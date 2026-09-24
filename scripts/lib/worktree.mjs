@@ -3,7 +3,8 @@
 import { portBlock } from './ports.mjs';
 
 export const projectName = (/** @type {number} */ slot) => `gsp-s${slot}`;
-export const devHost = (/** @type {number} */ slot) => (slot === 0 ? 'localhost' : `wt${slot}.localhost`);
+// Never plain localhost: the Caddyfile already has a localhost site, and a duplicate address stops Caddy.
+export const devHost = (/** @type {number} */ slot) => `wt${slot}.localhost`;
 
 /**
  * Values a slot's .env must carry on top of .env.example. They keep the

@@ -22,8 +22,8 @@ describe('slot env', () => {
       PZ_UDP_PORT: '30162',
       BACKUP_DIR: './.tmp/backups',
     });
-    expect(devHost(0)).toBe('localhost');
-    expect(slotOverrides(0).PANEL_HOST).toBe('localhost');
+    expect(devHost(0)).toBe('wt0.localhost');
+    expect(slotOverrides(0).PANEL_HOST).toBe('wt0.localhost');
   });
 
   it('writes a .env that stack.mjs accepts, with fresh secrets and no DDNS credentials', () => {

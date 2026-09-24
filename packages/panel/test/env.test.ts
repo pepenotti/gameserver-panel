@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { loadEnv } from '../src/env';
 
@@ -18,5 +19,18 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ PZ_ADMIN_PASSWORD: 'x' })).toThrow(/AGENT_TOKEN/);
     expect(() => loadEnv({ ...base, AGENT_TOKEN: 'short' })).toThrow(/32/);
     expect(() => loadEnv({ ...base, PZ_SERVER_NAME: '../etc' })).toThrow(/PZ_SERVER_NAME/);
+  });
+
+  it('ships defaults Caddy accepts: PANEL_HOST is neither localhost nor the LAN IP', () => {
+    const ex = Object.fromEntries(
+      readFileSync(new URL('../../../.env.example', import.meta.url), 'utf8')
+        .split(/\r?\n/)
+        .map((l) => /^([A-Z0-9_]+)=(.*)$/.exec(l))
+        .filter((m): m is RegExpExecArray => m !== null)
+        .map((m) => [m[1], m[2]]),
+    );
+    // The Caddyfile already has a site for localhost and LAN_IP; a duplicate address stops Caddy.
+    expect(ex.PANEL_HOST).not.toBe('localhost');
+    expect(ex.PANEL_HOST).not.toBe(ex.LAN_IP);
   });
 });

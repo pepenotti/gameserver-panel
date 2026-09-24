@@ -79,6 +79,6 @@ without a milestone is a PRD bug.
 | NFR-04 | NFR | M8 | — |
 | NFR-05 | NFR | M8 | — |
 | NFR-06 | NFR | M8 | — |
-| NFR-07 | NFR | M0 | — |
+| NFR-07 | NFR | M0 | `scripts/verify.sh` gates; `scripts/lib/*.test.ts`, `scripts/dev.test.ts`; per-slot isolation (`worktree-env.mjs`, `stack.mjs`) |
 | NFR-08 | NFR | M1 | — |
-| NFR-09 | NFR | M0 | — |
+| NFR-09 | NFR | M0 | `scripts/check-private.mjs` and the `privacy` step in `verify.sh`; `scripts/lib/privacy.test.ts`; `.githooks/commit-msg` |
