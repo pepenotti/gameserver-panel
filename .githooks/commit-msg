@@ -1,0 +1,18 @@
+#!/bin/sh
+# Every commit names the PRD requirement IDs or the milestone it serves
+# (docs/PRD.md, change control), and its message passes the privacy check.
+# Enabled by: git config core.hooksPath .githooks
+set -eu
+
+msg_file="$1"
+ids='(^|[^A-Za-z0-9_])(M[0-8]|D([1-9]|1[0-9])|G[1-8]|NFR-[0-9]{2}|(SRV|UPD|CFG|CON|PLY|MOD|BAK|SCH|ACC|HST|UX|AST)-[0-9]{2})([^A-Za-z0-9_]|$)'
+
+# Git drops '#' lines and everything below the `commit -v` scissors line.
+if ! sed -e '/^# -* >8 -*$/,$d' -e '/^#/d' "$msg_file" | grep -Eq "$ids"; then
+  echo "commit-msg: name the PRD requirement IDs or the milestone this commit serves" >&2
+  echo "            (e.g. M1, CFG-07, NFR-09); see CONTRIBUTING.md." >&2
+  exit 1
+fi
+
+root=$(git rev-parse --show-toplevel)
+exec node "$root/scripts/check-private.mjs" --message "$msg_file"

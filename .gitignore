@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+*.log
+# Captured game output the parser tests depend on.
+!fixtures/**/*.log
+.env
+.env.*
+!.env.example
+/backups/
+/.tmp/
+*.tsbuildinfo

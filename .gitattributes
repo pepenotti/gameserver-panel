@@ -1,1 +1,14 @@
+# Everything is LF, including on Windows: shell scripts and the Caddyfile run
+# inside Linux containers, where a CRLF breaks them ("bad interpreter").
 * text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.db binary
+*.bin binary
+*.zst binary
+*.gz binary
+
+# Captured game output must stay byte-exact (PZ on Windows writes CRLF and no
+# final newline; the parsers are tested against exactly that).
+fixtures/** -text

@@ -1,0 +1,143 @@
+[
+ {
+  "t": 0.005,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.006,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 0.006,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 2.036,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "help"
+ },
+ {
+  "t": 2.036,
+  "dir": "out",
+  "kind": "sentinel",
+  "id": 11
+ },
+ {
+  "t": 2.138,
+  "dir": "in",
+  "size": 4096,
+  "id": 10,
+  "type": 0,
+  "body": "List of server commands : \n* additem : Dar un objeto a un jugador. Si no se da un nombre de usuario, recibirás el objeto tú mismo. La cantidad es opcional. Usa /additem usuario module.item cantidad. Ejemplo: /additem rj Base.Axe 5\n* addkey : Da una llave a un jugador. Si no se da un nombre de usuario, recibirás el objeto tú mismo. El nombre de la llave es opcional. Usa: /addkey \\\"nombre_usuario\\\" \\\"id_llave\\\" \\\"nombre\\\". Ejemplo: /addkey \\\"rj\\\" \\\"7295\\\"\n* addsteamid : Usa este comando para añadir un SteamID a la lista de SteamID permitidos en el servidor. Usa: /addSteamID \\\"steamid\\\"\n* addtosafehouse : Añade un jugador a un refugio. Usa /addtosafehouse \"title\" \"username\"\n* adduser : Usa este comando para añadir un nuevo usuario a la lista blanca de un servidor. Usa /adduser usuario contraseña\n* addvehicle : Hacer aparecer un vehículo. Usa /addvehicle script usuario o x,y,z, ejemplo /addvehicle Base.VanAmbulance rj\n* addxp : Dar XP a un jugador. Usa /addxp jugador habilidad\n* alarm : Haz sonar la alarma del edificio en la posición del administrador. (Debe estar en una habitación)\n* banid : Banear un SteamID. Usa /banid SteamID\n* banip : Banear IP. Usa /banip IP\n* banuser : Banear a un usuario. Añade -ip para bloquear también la IP. Añade -r razón para especificar una razón para el baneo. Usa /banuser usuario -ip -r razón. Por ejemplo: /banuser rj -ip -r dupear items\n* changeoption : Cambiar una opción del servidor. Usa /changeoption nombreopción nuevovalor\n* checkModsNeedUpdate : Indica si se ha actualizado un mod. Escribe la respuesta en el archivo de registro\n* chopper : Ordenar un evento de helicóptero en un jugador al azar\n* createhorde : Despliega una horda cerca de un jugador. Usa /createhorde cantidad usuario. Ejemplo /createhorde 150 rj El nombre de usuario es opcional excepto desde la consola del servidor. Sin nombre de usuario la horda se creará a tu alrededor.\n* createhorde2 : UI_ServerOptionDesc_CreateHorde2\n* godmod : Hace invencible a un jugador. Si no se establece ningún nombre de usuario, entonces tú serás invencible. Usa /godmode usuario -valor. Ejemplo /godmode rj -true (puede ser -false)\n* godmodplayer : Vuelve invencible a un jugador. Uso: /godmodeplayer \"username\" -value, ex /godmodeplayer \"rj\" -true (también puede ser -false)\n* gunshot : Realiza un sonido de disparo en un jugador al azar\n* help : Ayuda\n* invisible : Hace que un jugador sea invisible para los zombis. Si no se establece ningún nombre de usuario, tú te volverás invisible. Usa /invisible usuario -valor, ejemplo /invisible rj -true (puede ser -false)\n* invisibleplayer : Vuelve invisible a un jugador ante los zombis. Uso: /invisibleplayer \"username\" -value, Ejemplo /invisibleplayer \"rj\" -true (también puede ser -false)\n* kick : Expulsar a un usuario. Añade una razón -r para especificar el motivo de la expulsión. Utilice: /kickuser usuario -r razón\n* kickfromsafehouse : Elimina a un jugador de un refugio. Usa /kickfromsafehouse \"title\" \"username\"\n* lightning : Usa /lightning \"nombre de usuario\", el nombre de usuario es opcional excepto desde la consola del servidor\n* list : UI_ServerOptionDesc_List\n* log : Establece el nivel de registro. Utiliza /log %1$s %2$s\n* noclip : Hace que el jugador atraviese paredes y estructuras. Se activa sin valor. Usa /noclip usuario -valor. Ejemplo /noclip rj -true (podría ser -false)\n* players : Lista de todos los jugadores conectados\n* quit : Guardar y salir del servidor\n* releasesafehouse : Liberar un refugio. Usa /releasesafehouse \"title\"\n* reloadalllua : Recarga un script Lua en el servidor. Usa /reloadlua nombrescript\n* reloadlua : Recarga un script Lua en el servidor. Usa /reloadlua nombrescript\n* reloadoptions : Recargar las opciones del servidor (ServerOptions.ini) y enviarlas a los clientes\n* remove : UI_ServerOptionDesc_Remove\n* removeitem : Elimina objetos de ti mismo. Elimina todos los objetos de un tipo si la cantidad se establece en 0. Usa: /removeitem \\\"módulo.objeto\\\" cantidad. Ejemplo: /removeitem Base.Axe 5\n* removemapsymbolsforuser : Elimina todo"
+ },
+ {
+  "t": 2.141,
+  "dir": "in",
+  "size": 2491,
+  "id": 10,
+  "type": 0,
+  "body": "s los símbolos compartidos del mapa en el juego para un usuario específico. Usa /removemapsymbolsforuser \"username\"\n* removesteamid : Usa este comando para eliminar un SteamID de la lista de SteamID permitidos en el servidor. Usa: /removeSteamID \\\"steamid\\\"\n* removeuserfromwhitelist : Eliminar un usuario de la lista blanca. Usa /removeuserfromwhitelist usuario\n* removezombies : UI_ServerOptionDesc_RemoveZombies\n* save : Guarda el mundo actual\n* servermsg : Enviar un mensaje a todos los jugadores conectados. Usa /servermsg mensaje\n* setTimeSpeed : Establece el multiplicador de tiempo en el servidor. Usa /setTimeSpeed periodo. Ejemplo: /setTimeSpeed 10\n* setaccesslevel : Establece el nivel de acceso de un jugador. Niveles actuales: Admin, Moderator, Overseer, GM, Observer. Usa /setaccesslevel usuario niveldeacceso. Ejemplo: /setaccesslevel rj moderator\n* setpassword : Usa este comando para cambiar la contraseña de un usuario. Usa: /setpassword \\\"nombre_usuario\\\" \\\"nueva_contraseña\\\"\n* showoptions : Muestra la lista de opciones y valores actuales del servidor.\n* startrain : Comienza a llover en el servidor. Usa /startrain intensidad, la intensidad opcional es de 1 a 100.\n* startstorm : Inicia una tormenta en el servidor. Usa /startstorm \"duración\", la duración opcional es en horas de juego\n* stats : Obtiene estadísticas del servidor. Usa '/stats help' para ver los detalles.\n* stoprain : Parar la lluvia en el servidor\n* stopweather : Detener el clima en el servidor\n* teleport : Teletransportarse a un jugador. Una vez teletransportado, espera a que aparezca el mapa. Usa /teleport usuario o /teleport usuario1 usuario2, . Ejemplo /teleport rj o /teleport rj usuario2\n* teleportplayer : Teletransporta un jugador hacia otro. Uso: /teleportplayer \"player1\" \"player2\". Ejemplo /teleportplayer \"rj\" \"toUser\"\n* teleportto : Teletransportarse a unas coordenadas. Usa /teleportto x,y,z. Ejemplo /teleportto 100098,189980,0\n* thunder : Usa /thunder usuario, el nombre de usuario es opcional excepto desde la consola del servidor\n* unbanid : Desbanear un SteamID. Usa /unbanid SteamID\n* unbanip : Desbanear IP. Usa /unbanip IP\n* unbanuser : Desbanear a un jugador. Usa /unbanuser usuario\n* voiceban : Bloquea la voz de un usuario. Usa /voiceban usuario -valor. Ejemplo /voiceban rj -true (puede ser -false)\n* worldgen : Controla el generador completo del mundo. Usa los comandos '/worldgen start', '/worldgen recheck', '/worldgen stop' y '/worldgen status'. Usa "
+ },
+ {
+  "t": 2.141,
+  "dir": "in",
+  "size": 10,
+  "id": 11,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 2.141,
+  "dir": "in",
+  "size": 10,
+  "id": 11,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 4.168,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 20,
+  "body": "showoptions"
+ },
+ {
+  "t": 4.169,
+  "dir": "out",
+  "kind": "sentinel",
+  "id": 21
+ },
+ {
+  "t": 4.27,
+  "dir": "in",
+  "size": 4022,
+  "id": 20,
+  "type": 0,
+  "body": "List of Server Options:\n* AdminSafehouse=false\n* AllowCoop=true\n* AllowDestructionBySledgehammer=true\n* AllowNonAsciiUsername=false\n* AnnounceAnimalDeath=false\n* AnnounceDeath=false\n* AntiCheatChecksum=2\n* AntiCheatHit=2\n* AntiCheatNoClip=4\n* AntiCheatPacketException=4\n* AntiCheatPermission=2\n* AntiCheatPlayer=2\n* AntiCheatSafeHouse=2\n* AntiCheatSafety=2\n* AntiCheatSpeed=2\n* AntiCheatXP=2\n* BackupsCount=5\n* BackupsOnStart=true\n* BackupsOnVersionChange=true\n* BackupsPeriod=0\n* BadWordListFile=\n* BadWordPolicy=3\n* BadWordReplacement=[HIDDEN]\n* BanKickGlobalSound=true\n* BloodSplatLifespanDays=0\n* CarEngineAttractionModifier=0.5\n* ChatMessageCharacterLimit=200\n* ChatMessageSlowModeTime=3\n* ChatStreams=s,r,a,w,y,sh,f,all\n* ClientActionLogs=ISEnterVehicle;ISExitVehicle;ISTakeEngineParts;\n* ClientCommandFilter=-vehicle.*;+vehicle.damageWindow;+vehicle.fixPart;+vehicle.installPart;+vehicle.uninstallPart\n* DefaultPort=16261\n* DenyLoginOnOverloadedServer=true\n* DisableBurntTowing=false\n* DisableRadioAdmin=true\n* DisableRadioGM=true\n* DisableRadioInvisible=true\n* DisableRadioModerator=false\n* DisableRadioOverseer=false\n* DisableRadioStaff=false\n* DisableSafehouseWhenOwnerConnected=false\n* DisableScoreboard=false\n* DisableTrailerTowing=false\n* DisableVehicleTowing=false\n* DiscordEnable=false\n* DisplayUserName=true\n* DoLuaChecksum=true\n* DropOffWhiteListAfterDeath=false\n* Faction=true\n* FactionDaySurvivedToCreate=0\n* FactionPlayersRequiredForTag=1\n* FastForwardMultiplier=40.0\n* GlobalChat=true\n* GoodWordListFile=\n* HideAdminsInPlayerList=false\n* HideDisguisedUserName=false\n* HidePlayersBehindYou=true\n* ItemNumbersLimitPerContainer=0\n* KnockedDownAllowed=false\n* LoginQueueConnectTimeout=60\n* LoginQueueEnabled=false\n* Map=Muldraugh, KY\n* MapRemotePlayerVisibility=1\n* MaxAccountsPerUser=0\n* MaxPacketsPerSecond=300\n* MaxPlayers=16\n* MaxSafezoneSize=20000\n* Mods=\n* MouseOverToSeeDisplayName=true\n* MultiplayerStatisticsPeriod=1\n* NoFire=false\n* Open=true\n* PVP=true\n* PVPFirearmDamageModifier=50.0\n* PVPLogToolChat=true\n* PVPLogToolFile=true\n* PVPMeleeDamageModifier=30.0\n* PVPMeleeWhileHitReaction=false\n* PauseEmpty=false\n* PerkLogs=true\n* PingLimit=0\n* PlayerBumpPlayer=false\n* PlayerRespawnWithOther=false\n* PlayerRespawnWithSelf=false\n* PlayerSafehouse=false\n* Public=false\n* PublicDescription=\n* PublicName=Prueba Ñandú\n* RemovePlayerCorpsesOnCorpseRemoval=false\n* ResetID=4237584\n* SafeHouseRemovalTime=144\n* SafehouseAllowFire=true\n* SafehouseAllowLoot=true\n* SafehouseAllowNonResidential=false\n* SafehouseAllowRespawn=false\n* SafehouseAllowTrepass=true\n* SafehouseDaySurvivedToClaim=0\n* SafehouseDisableDisguises=true\n* SafehousePreventsLootRespawn=true\n* SafetyCooldownTimer=3\n* SafetyDisconnectDelay=60\n* SafetySystem=true\n* SafetyToggleTimer=2\n* SaveWorldEveryMinutes=0\n* Seed=cHhvieQdxydmReMu\n* ServerPlayerID=417082464\n* ShowCoordinates=false\n* ShowFirstAndLastName=false\n* ShowSafety=true\n* SledgehammerOnlyInSafehouse=false\n* SleepAllowed=false\n* SleepNeeded=false\n* SneakModeHideFromOtherPlayers=true\n* SpawnItems=\n* SpawnPoint=0,0,0\n* SpeedLimit=70.0\n* SteamScoreboard=false\n* SteamVAC=true\n* SwitchZombiesOwnershipEachUpdate=false\n* TrashDeleteAll=false\n* UDPPort=16262\n* UPnP=true\n* UltraSpeedDoesnotAffectToAnimals=false\n* UsePhysicsHitReaction=false\n* UsernameDisguises=false\n* Voice3D=true\n* VoiceEnable=true\n* VoiceMaxDistance=100.0\n* VoiceMinDistance=10.0\n* War=false\n* WarDuration=3600\n* WarSafehouseHitPoints=3\n* WarStartDelay=600\n* WebhookAddress=\n* WorkshopItems=\n* server_browser_announced_ip=\n* ServerWelcomeMessage=Welcome to Project Zomboid Multiplayer! <LINE> <LINE> To interact with the Chat panel: press Tab, T, or Enter. <LINE> <LINE> The Tab key will change the target stream of the message. <LINE> <LINE> Global Streams: /all <LINE> Local Streams: /say, /yell <LINE> Special Steams: /whisper, /safehouse, /faction. <LINE> <LINE> Press the Up arrow to cycle through your message history. Click the Gear icon to customize chat. <LINE> <LINE> Happy surviving!"
+ },
+ {
+  "t": 4.27,
+  "dir": "in",
+  "size": 10,
+  "id": 21,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 4.27,
+  "dir": "in",
+  "size": 10,
+  "id": 21,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 6.297,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 30,
+  "body": "players"
+ },
+ {
+  "t": 6.297,
+  "dir": "out",
+  "kind": "sentinel",
+  "id": 31
+ },
+ {
+  "t": 6.349,
+  "dir": "in",
+  "size": 34,
+  "id": 30,
+  "type": 0,
+  "body": "Players connected (0): \n"
+ },
+ {
+  "t": 6.35,
+  "dir": "in",
+  "size": 10,
+  "id": 31,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 6.35,
+  "dir": "in",
+  "size": 10,
+  "id": 31,
+  "type": 0,
+  "body": ""
+ }
+]

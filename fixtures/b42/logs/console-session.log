@@ -1,0 +1,389 @@
+LOG  : General      f:0 st:34,936,253> command entered via server console (System.in): "help"
+WARN : General      f:0 st:34,936,339> Translator.reportMissingArgumentsFromPastAbuse> Exception thrown java.util.MissingFormatArgumentException: Format specifier '%1$s' at Formatter.format(null:-1). Message: ERROR: Missing arguments for "UI_ServerOptionDesc_SetLogLevel"
+LOG  : General      f:0 st:34,936,340> List of server commands : 
+* additem : Dar un objeto a un jugador. Si no se da un nombre de usuario, recibirás el objeto tú mismo. La cantidad es opcional. Usa /additem usuario module.item cantidad. Ejemplo: /additem rj Base.Axe 5
+* addkey : Da una llave a un jugador. Si no se da un nombre de usuario, recibirás el objeto tú mismo. El nombre de la llave es opcional. Usa: /addkey \"nombre_usuario\" \"id_llave\" \"nombre\". Ejemplo: /addkey \"rj\" \"7295\"
+* addsteamid : Usa este comando para añadir un SteamID a la lista de SteamID permitidos en el servidor. Usa: /addSteamID \"steamid\"
+* addtosafehouse : Añade un jugador a un refugio. Usa /addtosafehouse "title" "username"
+* adduser : Usa este comando para añadir un nuevo usuario a la lista blanca de un servidor. Usa /adduser usuario contraseña
+* addvehicle : Hacer aparecer un vehículo. Usa /addvehicle script usuario o x,y,z, ejemplo /addvehicle Base.VanAmbulance rj
+* addxp : Dar XP a un jugador. Usa /addxp jugador habilidad
+* alarm : Haz sonar la alarma del edificio en la posición del administrador. (Debe estar en una habitación)
+* banid : Banear un SteamID. Usa /banid SteamID
+* banip : Banear IP. Usa /banip IP
+* banuser : Banear a un usuario. Añade -ip para bloquear también la IP. Añade -r razón para especificar una razón para el baneo. Usa /banuser usuario -ip -r razón. Por ejemplo: /banuser rj -ip -r dupear items
+* changeoption : Cambiar una opción del servidor. Usa /changeoption nombreopción nuevovalor
+* checkModsNeedUpdate : Indica si se ha actualizado un mod. Escribe la respuesta en el archivo de registro
+* chopper : Ordenar un evento de helicóptero en un jugador al azar
+* createhorde : Despliega una horda cerca de un jugador. Usa /createhorde cantidad usuario. Ejemplo /createhorde 150 rj El nombre de usuario es opcional excepto desde la consola del servidor. Sin nombre de usuario la horda se creará a tu alrededor.
+* createhorde2 : UI_ServerOptionDesc_CreateHorde2
+* godmod : Hace invencible a un jugador. Si no se establece ningún nombre de usuario, entonces tú serás invencible. Usa /godmode usuario -valor. Ejemplo /godmode rj -true (puede ser -false)
+* godmodplayer : Vuelve invencible a un jugador. Uso: /godmodeplayer "username" -value, ex /godmodeplayer "rj" -true (también puede ser -false)
+* gunshot : Realiza un sonido de disparo en un jugador al azar
+* help : Ayuda
+* invisible : Hace que un jugador sea invisible para los zombis. Si no se establece ningún nombre de usuario, tú te volverás invisible. Usa /invisible usuario -valor, ejemplo /invisible rj -true (puede ser -false)
+* invisibleplayer : Vuelve invisible a un jugador ante los zombis. Uso: /invisibleplayer "username" -value, Ejemplo /invisibleplayer "rj" -true (también puede ser -false)
+* kick : Expulsar a un usuario. Añade una razón -r para especificar el motivo de la expulsión. Utilice: /kickuser usuario -r razón
+* kickfromsafehouse : Elimina a un jugador de un refugio. Usa /kickfromsafehouse "title" "username"
+* lightning : Usa /lightning "nombre de usuario", el nombre de usuario es opcional excepto desde la consola del servidor
+* list : UI_ServerOptionDesc_List
+* log : Establece el nivel de registro. Utiliza /log %1$s %2$s
+* noclip : Hace que el jugador atraviese paredes y estructuras. Se activa sin valor. Usa /noclip usuario -valor. Ejemplo /noclip rj -true (podría ser -false)
+* players : Lista de todos los jugadores conectados
+* quit : Guardar y salir del servidor
+* releasesafehouse : Liberar un refugio. Usa /releasesafehouse "title"
+* reloadalllua : Recarga un script Lua en el servidor. Usa /reloadlua nombrescript
+* reloadlua : Recarga un script Lua en el servidor. Usa /reloadlua nombrescript
+* reloadoptions : Recargar las opciones del servidor (ServerOptions.ini) y enviarlas a los clientes
+* remove : UI_ServerOptionDesc_Remove
+* removeitem : Elimina objetos de ti mismo. Elimina todos los objetos de un tipo si la cantidad se establece en 0. Usa: /removeitem \"módulo.objeto\" cantidad. Ejemplo: /removeitem Base.Axe 5
+* removemapsymbolsforuser : Elimina todos los símbolos compartidos del mapa en el juego para un usuario específico. Usa /removemapsymbolsforuser "username"
+* removesteamid : Usa este comando para eliminar un SteamID de la lista de SteamID permitidos en el servidor. Usa: /removeSteamID \"steamid\"
+* removeuserfromwhitelist : Eliminar un usuario de la lista blanca. Usa /removeuserfromwhitelist usuario
+* removezombies : UI_ServerOptionDesc_RemoveZombies
+* save : Guarda el mundo actual
+* servermsg : Enviar un mensaje a todos los jugadores conectados. Usa /servermsg mensaje
+* setTimeSpeed : Establece el multiplicador de tiempo en el servidor. Usa /setTimeSpeed periodo. Ejemplo: /setTimeSpeed 10
+* setaccesslevel : Establece el nivel de acceso de un jugador. Niveles actuales: Admin, Moderator, Overseer, GM, Observer. Usa /setaccesslevel usuario niveldeacceso. Ejemplo: /setaccesslevel rj moderator
+* setpassword : Usa este comando para cambiar la contraseña de un usuario. Usa: /setpassword \"nombre_usuario\" \"nueva_contraseña\"
+* showoptions : Muestra la lista de opciones y valores actuales del servidor.
+* startrain : Comienza a llover en el servidor. Usa /startrain intensidad, la intensidad opcional es de 1 a 100.
+* startstorm : Inicia una tormenta en el servidor. Usa /startstorm "duración", la duración opcional es en horas de juego
+* stats : Obtiene estadísticas del servidor. Usa '/stats help' para ver los detalles.
+* stoprain : Parar la lluvia en el servidor
+* stopweather : Detener el clima en el servidor
+* teleport : Teletransportarse a un jugador. Una vez teletransportado, espera a que aparezca el mapa. Usa /teleport usuario o /teleport usuario1 usuario2, . Ejemplo /teleport rj o /teleport rj usuario2
+* teleportplayer : Teletransporta un jugador hacia otro. Uso: /teleportplayer "player1" "player2". Ejemplo /teleportplayer "rj" "toUser"
+* teleportto : Teletransportarse a unas coordenadas. Usa /teleportto x,y,z. Ejemplo /teleportto 100098,189980,0
+* thunder : Usa /thunder usuario, el nombre de usuario es opcional excepto desde la consola del servidor
+* unbanid : Desbanear un SteamID. Usa /unbanid SteamID
+* unbanip : Desbanear IP. Usa /unbanip IP
+* unbanuser : Desbanear a un jugador. Usa /unbanuser usuario
+* voiceban : Bloquea la voz de un usuario. Usa /voiceban usuario -valor. Ejemplo /voiceban rj -true (puede ser -false)
+* worldgen : Controla el generador completo del mundo. Usa los comandos '/worldgen start', '/worldgen recheck', '/worldgen stop' y '/worldgen status'. Usa 
+LOG  : General      f:0 st:34,939,304> Reseeding weather period, new seed: 610275
+LOG  : General      f:0 st:34,948,422> command entered via server console (System.in): "players"
+LOG  : General      f:0 st:34,948,502> Players connected (0): 
+
+LOG  : General      f:0 st:34,952,144> command entered via server console (System.in): "save"
+LOG  : General      f:0 st:34,952,199> World saved
+LOG  : General      f:0 st:34,952,371> SaveAll took 73.0732 ms
+LOG  : General      f:0 st:34,952,371> Saving players
+LOG  : General      f:0 st:34,952,384> Saving worldgen params
+LOG  : General      f:0 st:34,952,389> Saving GlobalModData
+LOG  : General      f:0 st:34,952,403> Saving finish
+LOG  : General      f:0 st:34,952,404> Saving took 105.6815 ms
+LOG  : General      f:0 st:34,957,176> command entered via server console (System.in): "servermsg "hola desde el panel""
+LOG  : General      f:0 st:34,957,200> Message sent.
+LOG  : General      f:0 st:34,967,436> command entered via server console (System.in): "showoptions"
+LOG  : General      f:0 st:34,967,500> List of Server Options:
+* AdminSafehouse=false
+* AllowCoop=true
+* AllowDestructionBySledgehammer=true
+* AllowNonAsciiUsername=false
+* AnnounceAnimalDeath=false
+* AnnounceDeath=false
+* AntiCheatChecksum=2
+* AntiCheatHit=2
+* AntiCheatNoClip=4
+* AntiCheatPacketException=4
+* AntiCheatPermission=2
+* AntiCheatPlayer=2
+* AntiCheatSafeHouse=2
+* AntiCheatSafety=2
+* AntiCheatSpeed=2
+* AntiCheatXP=2
+* BackupsCount=5
+* BackupsOnStart=true
+* BackupsOnVersionChange=true
+* BackupsPeriod=0
+* BadWordListFile=
+* BadWordPolicy=3
+* BadWordReplacement=[HIDDEN]
+* BanKickGlobalSound=true
+* BloodSplatLifespanDays=0
+* CarEngineAttractionModifier=0.5
+* ChatMessageCharacterLimit=200
+* ChatMessageSlowModeTime=3
+* ChatStreams=s,r,a,w,y,sh,f,all
+* ClientActionLogs=ISEnterVehicle;ISExitVehicle;ISTakeEngineParts;
+* ClientCommandFilter=-vehicle.*;+vehicle.damageWindow;+vehicle.fixPart;+vehicle.installPart;+vehicle.uninstallPart
+* DefaultPort=16261
+* DenyLoginOnOverloadedServer=true
+* DisableBurntTowing=false
+* DisableRadioAdmin=true
+* DisableRadioGM=true
+* DisableRadioInvisible=true
+* DisableRadioModerator=false
+* DisableRadioOverseer=false
+* DisableRadioStaff=false
+* DisableSafehouseWhenOwnerConnected=false
+* DisableScoreboard=false
+* DisableTrailerTowing=false
+* DisableVehicleTowing=false
+* DiscordEnable=false
+* DisplayUserName=true
+* DoLuaChecksum=true
+* DropOffWhiteListAfterDeath=false
+* Faction=true
+* FactionDaySurvivedToCreate=0
+* FactionPlayersRequiredForTag=1
+* FastForwardMultiplier=40.0
+* GlobalChat=true
+* GoodWordListFile=
+* HideAdminsInPlayerList=false
+* HideDisguisedUserName=false
+* HidePlayersBehindYou=true
+* ItemNumbersLimitPerContainer=0
+* KnockedDownAllowed=false
+* LoginQueueConnectTimeout=60
+* LoginQueueEnabled=false
+* Map=Muldraugh, KY
+* MapRemotePlayerVisibility=1
+* MaxAccountsPerUser=0
+* MaxPacketsPerSecond=300
+* MaxPlayers=32
+* MaxSafezoneSize=20000
+* Mods=
+* MouseOverToSeeDisplayName=true
+* MultiplayerStatisticsPeriod=1
+* NoFire=false
+* Open=true
+* PVP=true
+* PVPFirearmDamageModifier=50.0
+* PVPLogToolChat=true
+* PVPLogToolFile=true
+* PVPMeleeDamageModifier=30.0
+* PVPMeleeWhileHitReaction=false
+* PauseEmpty=true
+* PerkLogs=true
+* PingLimit=0
+* PlayerBumpPlayer=false
+* PlayerRespawnWithOther=false
+* PlayerRespawnWithSelf=false
+* PlayerSafehouse=false
+* Public=false
+* PublicDescription=
+* PublicName=My PZ Server
+* RemovePlayerCorpsesOnCorpseRemoval=false
+* ResetID=4237584
+* SafeHouseRemovalTime=144
+* SafehouseAllowFire=true
+* SafehouseAllowLoot=true
+* SafehouseAllowNonResidential=false
+* SafehouseAllowRespawn=false
+* SafehouseAllowTrepass=true
+* SafehouseDaySurvivedToClaim=0
+* SafehouseDisableDisguises=true
+* SafehousePreventsLootRespawn=true
+* SafetyCooldownTimer=3
+* SafetyDisconnectDelay=60
+* SafetySystem=true
+* SafetyToggleTimer=2
+* SaveWorldEveryMinutes=0
+* Seed=cHhvieQdxydmReMu
+* ServerPlayerID=417082464
+* ShowCoordinates=false
+* ShowFirstAndLastName=false
+* ShowSafety=true
+* SledgehammerOnlyInSafehouse=false
+* SleepAllowed=false
+* SleepNeeded=false
+* SneakModeHideFromOtherPlayers=true
+* SpawnItems=
+* SpawnPoint=0,0,0
+* SpeedLimit=70.0
+* SteamScoreboard=false
+* SteamVAC=true
+* SwitchZombiesOwnershipEachUpdate=false
+* TrashDeleteAll=false
+* UDPPort=16262
+* UPnP=true
+* UltraSpeedDoesnotAffectToAnimals=false
+* UsePhysicsHitReaction=false
+* UsernameDisguises=false
+* Voice3D=true
+* VoiceEnable=true
+* VoiceMaxDistance=100.0
+* VoiceMinDistance=10.0
+* War=false
+* WarDuration=3600
+* WarSafehouseHitPoints=3
+* WarStartDelay=600
+* WebhookAddress=
+* WorkshopItems=
+* server_browser_announced_ip=
+* ServerWelcomeMessage=Welcome to Project Zomboid Multiplayer! <LINE> <LINE> To interact with the Chat panel: press Tab, T, or Enter. <LINE> <LINE> The Tab key will change the target stream of the message. <LINE> <LINE> Global Streams: /all <LINE> Local Streams: /say, /yell <LINE> Special Steams: /whisper, /safehouse, /faction. <LINE> <LINE> Press the Up arrow to cycle through your message history. Click the Gear icon to customize chat. <LINE> <LINE> Happy surviving!
+LOG  : General      f:0 st:34,971,461> command entered via server console (System.in): "changeoption PublicName "Prueba Ñandú""
+LOG  : General      f:0 st:34,971,503> Option : PublicName is now : Prueba Ñandú
+LOG  : General      f:0 st:34,984,535> command entered via server console (System.in): "reloadoptions"
+LOG  : General      f:0 st:34,984,658> ERROR: IntegerConfigOption.setValue() "frameRate" 10 is less than min=24
+LOG  : General      f:0 st:34,984,662> ERROR IntegerConfigOption.parse() "ChatMessageSlowModeTime" string="3PanelTestKey"
+LOG  : General      f:0 st:34,984,665> Options reloaded
+LOG  : General      f:1 st:34,984,710> Missing texture: media/textures/weather/fogwhite.png
+LOG  : General      f:40 st:34,988,562> command entered via server console (System.in): "showoptions"
+LOG  : General      f:40 st:34,988,600> List of Server Options:
+* AdminSafehouse=false
+* AllowCoop=true
+* AllowDestructionBySledgehammer=true
+* AllowNonAsciiUsername=false
+* AnnounceAnimalDeath=false
+* AnnounceDeath=false
+* AntiCheatChecksum=2
+* AntiCheatHit=2
+* AntiCheatNoClip=4
+* AntiCheatPacketException=4
+* AntiCheatPermission=2
+* AntiCheatPlayer=2
+* AntiCheatSafeHouse=2
+* AntiCheatSafety=2
+* AntiCheatSpeed=2
+* AntiCheatXP=2
+* BackupsCount=5
+* BackupsOnStart=true
+* BackupsOnVersionChange=true
+* BackupsPeriod=0
+* BadWordListFile=
+* BadWordPolicy=3
+* BadWordReplacement=[HIDDEN]
+* BanKickGlobalSound=true
+* BloodSplatLifespanDays=0
+* CarEngineAttractionModifier=0.5
+* ChatMessageCharacterLimit=200
+* ChatMessageSlowModeTime=3
+* ChatStreams=s,r,a,w,y,sh,f,all
+* ClientActionLogs=ISEnterVehicle;ISExitVehicle;ISTakeEngineParts;
+* ClientCommandFilter=-vehicle.*;+vehicle.damageWindow;+vehicle.fixPart;+vehicle.installPart;+vehicle.uninstallPart
+* DefaultPort=16261
+* DenyLoginOnOverloadedServer=true
+* DisableBurntTowing=false
+* DisableRadioAdmin=true
+* DisableRadioGM=true
+* DisableRadioInvisible=true
+* DisableRadioModerator=false
+* DisableRadioOverseer=false
+* DisableRadioStaff=false
+* DisableSafehouseWhenOwnerConnected=false
+* DisableScoreboard=false
+* DisableTrailerTowing=false
+* DisableVehicleTowing=false
+* DiscordEnable=false
+* DisplayUserName=true
+* DoLuaChecksum=true
+* DropOffWhiteListAfterDeath=false
+* Faction=true
+* FactionDaySurvivedToCreate=0
+* FactionPlayersRequiredForTag=1
+* FastForwardMultiplier=40.0
+* GlobalChat=true
+* GoodWordListFile=
+* HideAdminsInPlayerList=false
+* HideDisguisedUserName=false
+* HidePlayersBehindYou=true
+* ItemNumbersLimitPerContainer=0
+* KnockedDownAllowed=false
+* LoginQueueConnectTimeout=60
+* LoginQueueEnabled=false
+* Map=Muldraugh, KY
+* MapRemotePlayerVisibility=1
+* MaxAccountsPerUser=0
+* MaxPacketsPerSecond=300
+* MaxPlayers=16
+* MaxSafezoneSize=20000
+* Mods=
+* MouseOverToSeeDisplayName=true
+* MultiplayerStatisticsPeriod=1
+* NoFire=false
+* Open=true
+* PVP=true
+* PVPFirearmDamageModifier=50.0
+* PVPLogToolChat=true
+* PVPLogToolFile=true
+* PVPMeleeDamageModifier=30.0
+* PVPMeleeWhileHitReaction=false
+* PauseEmpty=false
+* PerkLogs=true
+* PingLimit=0
+* PlayerBumpPlayer=false
+* PlayerRespawnWithOther=false
+* PlayerRespawnWithSelf=false
+* PlayerSafehouse=false
+* Public=false
+* PublicDescription=
+* PublicName=Prueba Ñandú
+* RemovePlayerCorpsesOnCorpseRemoval=false
+* ResetID=4237584
+* SafeHouseRemovalTime=144
+* SafehouseAllowFire=true
+* SafehouseAllowLoot=true
+* SafehouseAllowNonResidential=false
+* SafehouseAllowRespawn=false
+* SafehouseAllowTrepass=true
+* SafehouseDaySurvivedToClaim=0
+* SafehouseDisableDisguises=true
+* SafehousePreventsLootRespawn=true
+* SafetyCooldownTimer=3
+* SafetyDisconnectDelay=60
+* SafetySystem=true
+* SafetyToggleTimer=2
+* SaveWorldEveryMinutes=0
+* Seed=cHhvieQdxydmReMu
+* ServerPlayerID=417082464
+* ShowCoordinates=false
+* ShowFirstAndLastName=false
+* ShowSafety=true
+* SledgehammerOnlyInSafehouse=false
+* SleepAllowed=false
+* SleepNeeded=false
+* SneakModeHideFromOtherPlayers=true
+* SpawnItems=
+* SpawnPoint=0,0,0
+* SpeedLimit=70.0
+* SteamScoreboard=false
+* SteamVAC=true
+* SwitchZombiesOwnershipEachUpdate=false
+* TrashDeleteAll=false
+* UDPPort=16262
+* UPnP=true
+* UltraSpeedDoesnotAffectToAnimals=false
+* UsePhysicsHitReaction=false
+* UsernameDisguises=false
+* Voice3D=true
+* VoiceEnable=true
+* VoiceMaxDistance=100.0
+* VoiceMinDistance=10.0
+* War=false
+* WarDuration=3600
+* WarSafehouseHitPoints=3
+* WarStartDelay=600
+* WebhookAddress=
+* WorkshopItems=
+* server_browser_announced_ip=
+* ServerWelcomeMessage=Welcome to Project Zomboid Multiplayer! <LINE> <LINE> To interact with the Chat panel: press Tab, T, or Enter. <LINE> <LINE> The Tab key will change the target stream of the message. <LINE> <LINE> Global Streams: /all <LINE> Local Streams: /say, /yell <LINE> Special Steams: /whisper, /safehouse, /faction. <LINE> <LINE> Press the Up arrow to cycle through your message history. Click the Gear icon to customize chat. <LINE> <LINE> Happy surviving!
+LOG  : General      f:77 st:34,992,284> command entered via server console (System.in): "changeoption SpeedLimit 71"
+LOG  : General      f:77 st:34,992,299> Option : SpeedLimit is now : 71.0
+LOG  : General      f:211 st:35,005,654> command entered via server console (System.in): "reloadoptions"
+LOG  : General      f:211 st:35,005,712> LightingFPS set to 15
+LOG  : General      f:211 st:35,005,717> Options reloaded
+LOG  : General      f:248 st:35,009,375> command entered via server console (System.in): "changeoption SpeedLimit 70"
+LOG  : General      f:248 st:35,009,400> Option : SpeedLimit is now : 70.0
+LOG  : General      f:376 st:35,022,156> command entered via server console (System.in): "quit"
+LOG  : General      f:376 st:35,022,197> Quit
+LOG  : General      f:377 st:35,022,300> Shutdown handling started
+LOG  : Network      f:377 st:35,022,300> Server exited
+LOG  : General      f:377 st:35,022,325> SaveAll took 24.6181 ms
+LOG  : General      f:377 st:35,022,325> Saving players
+LOG  : General      f:377 st:35,022,334> Saving worldgen params
+LOG  : General      f:377 st:35,022,335> Saving GlobalModData
+LOG  : General      f:377 st:35,022,339> Saving finish
+LOG  : General      f:377 st:35,022,339> Saving took 38.9943 ms
+LOG  : General      f:377 st:35,029,763> The id_manager_data.bin file is saved
+LOG  : General      f:377 st:35,029,765> ObjectID type=Unknown last=0 new=0
+LOG  : General      f:377 st:35,029,765> ObjectID type=Player last=0 new=0
+LOG  : General      f:377 st:35,029,765> ObjectID type=Zombie last=0 new=0
+LOG  : General      f:377 st:35,029,765> ObjectID type=Item last=0 new=0
+LOG  : General      f:377 st:35,029,765> ObjectID type=Container last=0 new=0
+LOG  : General      f:377 st:35,029,766> ObjectID type=DeadBody last=0 new=0
+LOG  : General      f:377 st:35,029,766> ObjectID type=Vehicle last=0 new=0
+LOG  : General      f:377 st:35,029,767> waiting for UdpEngine thread termination
+LOG  : General      f:377 st:35,029,827> Shutdown handling finished
