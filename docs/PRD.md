@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.1 |
+| Status | Draft 0.2 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` (working name, see [open questions](#15-open-questions)) |
 | Grows out of | [zomboid-server](https://github.com/pepenotti/zomboid-server), which stays as it is |
@@ -52,6 +52,28 @@ games people actually play together.
 | G4 | Adding a simple Steam game takes a declarative manifest, not new code. |
 | G5 | The same security bar as zomboid-server: an internet-facing panel with roles, 2FA and an audit log. |
 | G6 | Usable by non-technical friends, on a phone, in English or Spanish. |
+| G7 | Easy by default, never a ceiling: forms for the common settings, and anything too complex for a form stays fully editable as text in the browser. |
+| G8 | Ready for an optional assistant later, without redesigning the panel (see D8). |
+
+### 3.1 Product principles
+
+These settle UX disagreements. When a design choice is unclear, the one that
+fits these wins.
+
+1. **Easy by default.** The settings people change most get forms, with
+   plain-language help in EN/ES and sensible defaults. Rare and advanced
+   settings sit behind an "Advanced" section and search; they are never removed.
+2. **Never a ceiling.** Every configuration file a game reads can be opened
+   and edited as text in the browser. If a setting is too complex for a form
+   (nested lists, plugin configs, per-mod settings), the text editor is the
+   answer, not a missing feature.
+3. **Forms and text agree.** A change made in one shows up in the other. The
+   text editor keeps unknown keys and, where the format allows, comments.
+4. **Safe by default.** Validate before saving, show what will change
+   before applying it, back up before anything destructive, and offer undo.
+5. **Explain, don't hide.** Locked settings say why. Settings that need a
+   restart say so. Features a game doesn't support are explained, not just
+   greyed out.
 
 ## 4. Non-goals (v1)
 
@@ -62,6 +84,7 @@ games people actually play together.
 - Valheim mods (BepInEx / Thunderstore) and TShock plugins for Terraria.
 - Game clients, launchers, voice servers.
 - Automatic router configuration (UPnP). Port forwards stay a documented manual step.
+- Shipping an AI assistant. v1 is only built to be ready for one (G8, D8, [AST](#812-assistant-readiness--ast)).
 
 Each can move into scope later through [change control](#14-change-control).
 
@@ -146,6 +169,10 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | CFG-04 | P0 | Settings the panel manages itself (ports, RCON, paths) are locked. |
 | CFG-05 | P0 | Each setting says when it applies (live, or after a restart), and the UI shows a pending-restart badge. |
 | CFG-06 | P1 | Presets per game (e.g. Project Zomboid sandbox presets, Minecraft difficulty and game mode). |
+| CFG-07 | P0 | **Text editor for every config file.** Admins can browse the configuration folders each adapter declares (game settings, plugin and mod configs) and edit any text file there in the browser. It has syntax highlighting for the format (properties, ini, YAML, TOML, JSON/JSON5, Lua, plain text), validation where a parser exists, a diff preview before saving, and history with revert (CFG-03). |
+| CFG-08 | P0 | **Editor safety.** Only paths inside the adapter's declared folders; no symlinks out; text files only, with a size cap. Files the game runs as code (e.g. Project Zomboid's `SandboxVars.lua`) must parse as plain data (CFG-02); scripts and binaries (`.jar`, `.dll`, `.sh`, mod code) are never editable. Panel-managed keys (CFG-04) are re-applied on save, with a note explaining why. |
+| CFG-09 | P0 | Forms and text stay in sync (principle 3): editing either updates the other; unknown keys are kept, and so are comments where the format allows. |
+| CFG-10 | P1 | "Advanced" section and search in every settings form, so rare settings are reachable without cluttering the common ones (principle 1). |
 
 ### 8.4 Console and logs — CON
 
@@ -217,6 +244,20 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | UX-02 | P0 | Every page usable on a phone. |
 | UX-03 | P1 | First-run wizard that walks the owner through the first server. |
 
+### 8.12 Assistant readiness — AST
+
+v1 ships no assistant, but it's built so an optional one can be added later
+without a redesign (G8, D8). The P0 and P1 items below are cheap and useful
+on their own; only AST-05 is the assistant itself.
+
+| ID | P | Requirement |
+|---|---|---|
+| AST-01 | P0 | **API first.** Everything the UI can do goes through the documented, permission-checked HTTP API; there are no UI-only actions. A future assistant uses the same API, as the signed-in user, with that user's permissions. |
+| AST-02 | P0 | The audit log records **who acted and as what**: a person, a schedule, the host recovery tool, or an assistant acting for a person. |
+| AST-03 | P1 | **Propose, preview, approve.** Settings and file changes can be submitted as a proposal, shown as a diff, and applied only after a person approves. The text editor's preview (CFG-07) uses the same flow a future assistant would. |
+| AST-04 | P1 | **Machine-readable context** through the API: each adapter's settings schema with EN/ES descriptions, its capabilities, its console command catalog, and the server's recent log, with secrets masked. |
+| AST-05 | P2 | **Optional assistant.** Off by default; only the owner can turn it on. The model provider is pluggable (hosted, or a local model). It acts only as the signed-in user, and every change goes through AST-03 and is audited. Secrets and redacted log lines never leave the host. It is clearly labelled in the UI, and a server can run entirely without it. |
+
 ## 9. Non-functional requirements
 
 | ID | Area | Requirement |
@@ -229,7 +270,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | NFR-06 | Footprint | Panel under 512 MB of RAM; agent overhead under 64 MB per server; the UI stays responsive with 10 servers. |
 | NFR-07 | Testability | Each adapter has fixtures captured from a real server and a fake server for integration tests, and passes the shared adapter contract suite. `scripts/verify.sh` gates every commit. |
 | NFR-08 | Maintainability | Adapters live in their own packages. The core never imports game-specific code, and a lint rule enforces it. |
-| NFR-09 | Privacy | No telemetry. Secrets live only in `.env` and the database. The repository names no real host, person, IP or hostname. |
+| NFR-09 | Privacy | No telemetry. Secrets live only in `.env` and the database. The repository names no real host, person, IP or hostname. No server data leaves the host unless the owner turns on an optional integration that needs it (Discord, a future assistant), and even then secrets are masked. |
 
 NFR-01's controls, carried over from zomboid-server:
 - scrypt password hashes;
@@ -277,6 +318,14 @@ NFR-01's controls, carried over from zomboid-server:
   and backup paths.
 - **Data.** SQLite, with the server ID on every per-server table. Volumes are
   named by server ID, and backups go to `BACKUP_DIR/<server>/`.
+- **Config files.** Each adapter declares its editable folders and each
+  file's format. A format registry (parse, validate, serialise, highlight)
+  serves both the forms and the text editor, so they can't drift apart
+  (CFG-07…09).
+- **Assistant readiness.** The API is the only way to act (AST-01). Changes
+  can be proposals awaiting approval (AST-03). Adapters describe themselves in
+  machine-readable form (AST-04). A future assistant plugs in as one more API
+  client, not as a special path.
 
 ### Decisions
 
@@ -289,6 +338,7 @@ NFR-01's controls, carried over from zomboid-server:
 | D5 | Measured, not guessed: each adapter milestone starts by capturing fixtures from the real server. | zomboid-server found real surprises this way (RCON framing, file rewrites, steamcmd first-run errors). | Building from documentation and blog posts. |
 | D6 | Minecraft Java only: vanilla, Paper and Fabric, with mods from Modrinth. The EULA is accepted explicitly. | The biggest audience; Modrinth has an open API; the EULA is a legal requirement. | Forge, NeoForge, CurseForge (needs an API key and has terms): later. |
 | D7 | The same stack as zomboid-server: TypeScript, Fastify, SQLite, React with Mantine, Caddy, Docker Compose. | Reuses tested code and know-how. | — |
+| D8 | An assistant is optional, off by default and pluggable. It goes through the same API, permissions, approval and audit as a person. v1 builds only the readiness items (AST-01…04). | Keeps the door open without shipping or depending on AI. Many players dislike AI features, so the panel must work fully without one, and nothing leaves the host unless the owner opts in. | Building an assistant into v1: scope creep and a privacy question for every user. Ignoring it: retrofitting approval flows and machine-readable schemas later costs more. |
 
 ## 11. Milestones
 
@@ -298,8 +348,8 @@ matters, the calendar doesn't.
 | # | Milestone | Covers | Done when |
 |---|---|---|---|
 | M0 | Bootstrap: private repo seeded from zomboid-server `main`, renamed, gates green | D2, NFR-07, NFR-09 | `verify.sh` passes; no host or personal data in the repo; the Project Zomboid dev loop works. |
-| M1 | Adapter contract; Project Zomboid as the first adapter, still one server | G3, NFR-08, D4 | All ported Project Zomboid tests pass through the adapter; the core has no Project Zomboid imports (lint). |
-| M2 | Multi-server core: data model, orchestrator, create/list/delete, per-server permissions, server list UI | G1, SRV-01…07, ACC-02/03, HST-01, NFR-02/03 | Two Project Zomboid servers run side by side with separate worlds, ports and schedules; cross-server permission tests pass; the orchestrator refuses any spec outside its allowlist. |
+| M1 | Adapter contract; Project Zomboid as the first adapter, still one server; format registry and the text editor for every config file, with diff preview | G3, G7, NFR-08, D4, CFG-07…10, AST-03 | All ported Project Zomboid tests pass through the adapter; the core has no Project Zomboid imports (lint); any Project Zomboid config file is editable in the browser with a preview, while unsafe paths and file types are refused (tests). |
+| M2 | Multi-server core: data model, orchestrator, create/list/delete, per-server permissions, server list UI, API-first and actor-typed audit | G1, SRV-01…07, ACC-02/03, HST-01, NFR-02/03, AST-01/02/04 | Two Project Zomboid servers run side by side with separate worlds, ports and schedules; cross-server permission tests pass; the orchestrator refuses any spec outside its allowlist; a test finds no UI action missing from the API. |
 | M3 | Minecraft Java: fact-finding fixtures, install and pinning, run, RCON, settings forms, players, running backups, reset, EULA flow | D5, D6, CFG, PLY, BAK-02, UPD-05 | A Minecraft server created from the UI; a client joins; build, back up, break, restore, and it's back. |
 | M4 | Modrinth mods for Paper and Fabric: search, compatibility, dependencies, updates | MOD-02, MOD-04 | Add a mod that has a dependency; the server boots; a client joins. |
 | M5 | Terraria: vanilla and tModLoader, stdin control, world creation, Workshop mods for tModLoader | MOD-03, CON-02 | Create a world from the panel; join; kick and ban from the console; install a tModLoader mod. |
@@ -352,6 +402,7 @@ matters, the calendar doesn't.
 | Q5 | Host: this Windows PC only, or also document a Linux VPS path for v1? |
 | Q6 | License when the repository goes public (zomboid-server uses MIT). |
 | Q7 | Does the live Project Zomboid server move to this panel at v1, or stay on zomboid-server? |
+| Q8 | Assistant (AST-05, after v1): which providers first, and should a local model be the default? |
 
 ## 16. Glossary
 
@@ -363,9 +414,13 @@ matters, the calendar doesn't.
 | Manifest | A declarative description of a simple Steam game. |
 | Running backup | A backup taken without stopping the server, using the game's own save method. |
 | Fixture | Output captured from a real server and used in tests. |
+| Text editor | The in-browser editor for any config file an adapter declares (CFG-07). |
+| Proposal | A pending change shown as a diff that a person approves or rejects (AST-03). |
+| Assistant | An optional, pluggable helper that suggests and makes changes through the same API and approvals as a person (AST-05). |
 
 ## Changelog
 
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-09-24 | First draft: multi-server scope; Project Zomboid, Minecraft Java, Terraria, Valheim and Steam manifests for v1; private until v1. |
+| 0.2 | 2026-09-24 | Product principles ("easy by default, never a ceiling"); text editor for every config file (CFG-07…10); assistant readiness (G8, AST-01…05, D8), with the assistant itself after v1; milestones M1 and M2 updated. |
