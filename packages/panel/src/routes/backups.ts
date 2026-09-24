@@ -2,7 +2,7 @@ import { createReadStream, createWriteStream, mkdirSync, rmSync } from 'node:fs'
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { assertBackupName, PARTS, type BackupPart } from '../backups/service';
+import type { BackupPart } from '../backups/service';
 import { COUNTDOWNS, type GameLang } from '../control/control';
 import { actor, HttpError } from '../http/context';
 import type { Deps } from '../http/deps';
@@ -65,12 +65,12 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
           type: 'object',
           required: ['parts'],
           additionalProperties: false,
-          properties: { parts: { type: 'array', minItems: 1, uniqueItems: true, items: { enum: PARTS } }, countdownSec: { enum: [...COUNTDOWNS] } },
+          properties: { parts: { type: 'array', minItems: 1, uniqueItems: true, items: { enum: backups.parts() } }, countdownSec: { enum: [...COUNTDOWNS] } },
         },
       },
     },
     async (req) => {
-      assertBackupName(req.params.name);
+      backups.assertName(req.params.name);
       const op = flows.startRestore(who(req), req.params.name, req.body.parts, { countdownSec: req.body.countdownSec ?? 0, lang: lang(req) });
       audit.log({ user: actor(req), action: 'backup.restore', target: req.params.name, detail: { parts: req.body.parts }, ip: req.ip });
       return op;

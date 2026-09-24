@@ -134,17 +134,19 @@ describe('creating backups', () => {
     // The game holds its database open while we copy it.
     const live = new DatabaseSync(path.join(p.deps.env.pzDataDir, 'db', 'zomboid.db'));
     live.exec("INSERT INTO whitelist (username) VALUES ('while-running')");
-    p.agent.command = async (cmd) => {
-      p.agent.calls.push(`command:${cmd}`);
-      p.feed.emit({ type: 'log', stream: 'out', line: 'LOG  : General      f:0 st:1> Saving finish' });
-      return { via: 'rcon', output: 'World saved' };
+    let saved: unknown;
+    p.agent.save = async (req) => {
+      saved = req;
+      p.agent.calls.push('save');
+      return { ok: true };
     };
     const info = await p.deps.flows.backupNow(null, 'manual');
     live.close();
     expect(info.manifest.mode).toBe('hot');
-    // Both databases went through SQLite, not the plain-file fallback.
+    // Both databases went through SQLite (the adapter's sqlite globs), not the plain-file fallback.
     expect(info.manifest.warnings).toBeUndefined();
-    expect(p.agent.calls).toContain('command:save');
+    expect(p.agent.calls).toEqual(['save']);
+    expect(saved).toEqual({ timeoutMs: 20_000 });
   });
 
   it('keeps the newest ten manual backups and never drops pinned ones', async () => {

@@ -1,65 +1,34 @@
 /**
  * Project Zomboid, panel side without the config files: launch settings,
- * backup parts, resets, in-game messages, players, Workshop mods, updates.
+ * backup parts, resets, in-game messages, players, Workshop mods, updates,
+ * the console catalog and the first-start hook.
  */
 import type { PanelAdapterCore } from '@gsp/adapter-api';
-import { todo } from '../../shared/todo';
+import { PZ_BACKUP_PARTS, PZ_RESETS, pzBeforeStart } from './backups';
+import { PZ_CONSOLE_CATALOG } from './console';
+import { PZ_LAUNCH_DEFAULTS, PZ_LAUNCH_SCHEMA, pzToAgent, type PzLaunchSettings } from './launch';
+import { pzAnnounce, pzBroadcast } from './messages';
+import { pzPlayers } from './players';
+import { pzCheckUpdate } from './updates';
+import { createWorkshopSource } from './workshop';
 
-/** The launch settings the panel stores (today's `settings.launch`). */
-export interface PzLaunchSettings {
-  /** Java heap (-Xms and -Xmx), MiB. */
-  memoryMb: number;
-  /** Steam branch. */
-  branch: string;
-  /** steamcmd app_update before every start. */
-  updateOnStart: boolean;
-}
+export type { PanelExtras, SettingsAccess } from './ctx';
+export { parsePzLaunchSettings, PZ_LAUNCH_DEFAULTS, PZ_SECRET_ADMIN_PASSWORD, type LaunchHints, type PzLaunchSettings } from './launch';
+export { PZ_ACCESS_LEVELS, parseAccounts, parseBans } from './players';
+export { createWorkshopSource, FALLBACK_GAME_VERSION, PZ_WORKSHOP_APP_ID, SteamWorkshopApi, VANILLA_MAP, type PzMod, type WorkshopDetails } from './workshop';
 
-// ---- TODO(M1-B) -------------------------------------------------------------
-// Port from packages/panel/src: control/control.ts (launchParams, announcements,
-// servermsg), backups/service.ts (partPaths) and backups/flows.ts (reset scopes,
-// ResetID/Seed), players/service.ts (commands, accounts and bans from
-// db/<name>.db), mods/{service,scan,steam}.ts (Workshop source), and the
-// update check in scheduler/scheduler.ts and routes/server.ts. Data members
-// are left empty until then; nothing calls the functions yet.
 export const pzPanelCore: PanelAdapterCore<PzLaunchSettings> = {
   launch: {
-    schema: [],
-    defaults: () => todo('M1-B', 'launch.defaults'),
-    toAgent: () => todo('M1-B', 'launch.toAgent'),
+    schema: PZ_LAUNCH_SCHEMA,
+    defaults: () => ({ ...PZ_LAUNCH_DEFAULTS }),
+    toAgent: pzToAgent,
   },
-  backups: { parts: [] },
-  resets: [],
-  messages: {
-    announce: () => todo('M1-B', 'messages.announce'),
-    broadcast: () => todo('M1-B', 'messages.broadcast'),
-  },
-  players: {
-    accessLevels: [],
-    kick: () => todo('M1-B', 'players.kick'),
-    ban: () => todo('M1-B', 'players.ban'),
-    unban: () => todo('M1-B', 'players.unban'),
-    setAccess: () => todo('M1-B', 'players.setAccess'),
-    whitelistAdd: () => todo('M1-B', 'players.whitelistAdd'),
-    whitelistRemove: () => todo('M1-B', 'players.whitelistRemove'),
-    accounts: () => todo('M1-B', 'players.accounts'),
-    bans: () => todo('M1-B', 'players.bans'),
-  },
-  mods: [
-    {
-      id: 'workshop',
-      capability: 'mods:workshop',
-      label: { en: 'Steam Workshop', es: 'Steam Workshop' },
-      parseRef: () => todo('M1-B', 'mods.parseRef'),
-      expand: () => todo('M1-B', 'mods.expand'),
-      details: () => todo('M1-B', 'mods.details'),
-      download: () => todo('M1-B', 'mods.download'),
-      scan: () => todo('M1-B', 'mods.scan'),
-      toConfig: () => todo('M1-B', 'mods.toConfig'),
-      fromConfig: () => todo('M1-B', 'mods.fromConfig'),
-    },
-  ],
-  updates: { check: () => todo('M1-B', 'updates.check') },
-  consoleCatalog: [],
+  backups: { parts: PZ_BACKUP_PARTS },
+  resets: PZ_RESETS,
+  messages: { announce: pzAnnounce, broadcast: pzBroadcast },
+  players: pzPlayers,
+  mods: [createWorkshopSource()],
+  updates: { check: pzCheckUpdate },
+  consoleCatalog: PZ_CONSOLE_CATALOG,
+  hooks: { beforeStart: pzBeforeStart },
 };
-// ---- end TODO(M1-B) ---------------------------------------------------------

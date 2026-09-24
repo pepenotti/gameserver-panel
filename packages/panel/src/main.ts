@@ -1,5 +1,3 @@
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { panelAdapter } from '@gsp/adapters/panel';
 import { AgentClient } from './agent/client';
 import { buildApp } from './app';
@@ -23,7 +21,7 @@ import { ModsService } from './mods/service';
 import { DiscordNotifier } from './notifier/discord';
 import { wireNotifications } from './notifier/events';
 import { Scheduler } from './scheduler/scheduler';
-import { SteamWorkshop } from './mods/steam';
+import { ServerHandle } from './server/handle';
 import { PlayersService } from './players/service';
 import { UnimplementedProposals } from './proposals/service';
 import { Settings } from './settings';
@@ -53,11 +51,11 @@ const deps: Deps = {
   feed: agent,
   bus,
   ops,
-  control: new Control({ env, settings, agent, feed: agent, ops, audit }),
+  control: undefined as unknown as Control,
   config: new ConfigService({ env, db, agent, feed: agent, settings }),
-  backups: new BackupService({ env, feed: agent }),
+  backups: undefined as unknown as BackupService,
   flows: undefined as unknown as BackupFlows,
-  players: new PlayersService({ env, db, agent, feed: agent }),
+  players: undefined as unknown as PlayersService,
   mods: undefined as unknown as ModsService,
   notifier,
   scheduler: undefined as unknown as Scheduler,
@@ -65,25 +63,24 @@ const deps: Deps = {
   changes: new UnimplementedProposals(),
   adapter: panelAdapter('pz'),
 };
-deps.mods = new ModsService({ env, db, agent, feed: agent, ops, settings, config: deps.config, steam: new SteamWorkshop() });
-deps.flows = new BackupFlows({ agent, feed: agent, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, pzDataDir: env.pzDataDir });
+const server = new ServerHandle({ env, agent, feed: agent, files: deps.files, settings, config: deps.config, adapter: deps.adapter });
+deps.players = new PlayersService({ db, feed: agent, server });
+deps.mods = new ModsService({ db, feed: agent, ops, settings, config: deps.config, server, sources: deps.adapter.mods ?? [] });
+deps.backups = new BackupService({ env, feed: agent, server, mods: deps.mods });
+deps.control = new Control({ agent, feed: agent, ops, server, backups: deps.backups });
+deps.flows = new BackupFlows({ agent, feed: agent, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, server, dataDir: env.pzDataDir });
 deps.scheduler = new Scheduler({ settings, agent, feed: agent, ops, control: deps.control, flows: deps.flows, backups: deps.backups, mods: deps.mods, notifier, audit, backupPanelDb: () => backupPanelDb(db, deps.env.backupDir) });
-deps.control.beforeUpdateInstall = async () => {
-  // Only when there is a world to protect.
-  if (deps.backups.partPaths('world').some((p) => existsSync(path.join(env.pzDataDir, p)))) await deps.backups.create({ trigger: 'pre-update', hot: false });
-};
 wireNotifications({ feed: agent, players: deps.players, bus, notifier });
 agent.onEvent((e) => {
   if (e.event.type !== 'state' || e.event.status.state !== 'running') return;
   // The server downloads mod updates when it starts; re-read them once it's up.
-  deps.mods.rescan();
+  void deps.mods.rescan().catch(() => undefined);
   // A restored world that runs no longer needs the files it replaced (the
   // "before restore" backup still has them).
   deps.flows.purgeTrash();
 });
 deps.scheduler.reload();
 deps.players.attach();
-deps.control.onBeforeStart = () => deps.config.seedIniIfMissing();
 
 await bootstrapOwner(deps);
 agent.startStream();

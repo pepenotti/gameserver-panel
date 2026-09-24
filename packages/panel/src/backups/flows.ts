@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { parseLogLine, PZ_PATTERNS } from '@gsp/adapter-pz/shared';
+import type { ResetDecl } from '@gsp/adapter-api';
 import type { AgentStatus } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { Control, GameLang } from '../control/control';
@@ -9,17 +9,13 @@ import type { AgentFeed } from '../http/deps';
 import { HttpError } from '../http/context';
 import type { OpContext, OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
+import type { ServerHandle } from '../server/handle';
 import type { Settings } from '../settings';
 import type { ConfigStore } from '../config/store';
 import type { BackupInfo, BackupPart, BackupService, BackupTrigger } from './service';
 
-export type ResetScope = 'world' | 'full' | 'factory';
-
-/** A worldgen seed in PZ's format: 16 letters. */
-function randomSeed(): string {
-  const a = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => a[b % a.length]).join('');
-}
+/** A reset scope id, from the adapter's `resets`. */
+export type ResetScope = string;
 
 export interface LastRestore {
   id: string;
@@ -38,8 +34,13 @@ export interface FlowDeps {
   backups: BackupService;
   settings: Settings;
   config: ConfigStore;
-  pzDataDir: string;
+  server: ServerHandle;
+  /** The server's data folder (staging and trash live inside it, on the same volume). */
+  dataDir: string;
 }
+
+/** How long a running server may take to save before the backup copies anyway. */
+const SAVE_TIMEOUT_MS = 20_000;
 
 /** Resolves with the status once `pred` holds, or rejects after `timeoutMs`. */
 export function waitForStatus(feed: AgentFeed, pred: (s: AgentStatus) => boolean, timeoutMs: number): Promise<AgentStatus> {
@@ -66,23 +67,6 @@ export function waitForStatus(feed: AgentFeed, pred: (s: AgentStatus) => boolean
   });
 }
 
-/** Ask the running server to save and wait for PZ's "Saving finish" (or 20 s). */
-export async function saveNow(d: Pick<FlowDeps, 'agent' | 'feed'>): Promise<void> {
-  const finished = new Promise<void>((resolve) => {
-    const t = setTimeout(done, 20_000);
-    const off = d.feed.onEvent((e) => {
-      if (e.event.type === 'log' && PZ_PATTERNS.saveFinished.test(parseLogLine(e.event.line).message)) done();
-    });
-    function done() {
-      clearTimeout(t);
-      off();
-      resolve();
-    }
-  });
-  await d.agent.command('save');
-  await finished;
-}
-
 export class BackupFlows {
   constructor(private readonly d: FlowDeps) {}
 
@@ -96,11 +80,15 @@ export class BackupFlows {
    */
   async backupNow(ctx: OpContext | null, trigger: BackupTrigger): Promise<BackupInfo> {
     const running = this.state === 'running';
+    if (running && !this.d.server.has('hotBackup')) throw new HttpError(409, 'capability-unsupported', undefined, { capability: 'hotBackup' });
     let lockId: string | null = null;
     try {
       if (running) {
-        ctx?.step('saving');
-        await saveNow(this.d);
+        if (this.d.server.has('save')) {
+          ctx?.step('saving');
+          // A save that doesn't finish in time still leaves the hot copy consistent per file.
+          await this.d.agent.save({ timeoutMs: SAVE_TIMEOUT_MS });
+        }
       } else {
         lockId = (await this.d.agent.lock(`backup (${trigger})`, 2 * 3_600_000)).id;
       }
@@ -135,9 +123,12 @@ export class BackupFlows {
    */
   startRestore(by: string | null, name: string, parts: BackupPart[], opts: { countdownSec: number; lang: GameLang }): OpState {
     const info = this.d.backups.get(name);
-    const newerBuild = info.manifest.buildId && this.d.feed.status_?.installed?.buildId && Number(info.manifest.buildId) > Number(this.d.feed.status_.installed.buildId);
+    const status = this.d.feed.status_;
+    const installedBuild = status?.installedInfo?.build ?? status?.installed?.buildId;
+    const newerBuild = info.manifest.buildId && installedBuild && Number(info.manifest.buildId) > Number(installedBuild);
     if (newerBuild) throw new HttpError(409, 'backup-from-newer-build');
-    const usable = parts.filter((p) => info.manifest.parts.includes(p));
+    const known = this.d.backups.parts();
+    const usable = parts.filter((p) => known.includes(p) && info.manifest.parts.includes(p));
     if (usable.length === 0) throw new HttpError(400, 'nothing-to-restore');
 
     return this.d.ops.start(
@@ -149,8 +140,8 @@ export class BackupFlows {
 
         const lock = await this.d.agent.lock('restore', 3 * 3_600_000);
         const id = randomUUID();
-        const staging = path.join(this.d.pzDataDir, '.staging', id);
-        const trash = path.join(this.d.pzDataDir, '.trash', id);
+        const staging = path.join(this.d.dataDir, '.staging', id);
+        const trash = path.join(this.d.dataDir, '.trash', id);
         const wasRunning = ['running', 'starting'].includes(this.state ?? '');
         try {
           await this.d.control.countdown(ctx, 'restore', opts.countdownSec, opts.lang);
@@ -169,7 +160,7 @@ export class BackupFlows {
 
           if (wasRunning) {
             ctx.step('starting');
-            await this.d.agent.start(this.d.control.launchParams(), lock.id);
+            await this.d.control.startAgent({ lockId: lock.id, by });
             const s = await waitForStatus(this.d.feed, (x) => x.state === 'running' || x.state === 'failed', 30 * 60_000);
             if (s.state !== 'running') throw new Error('Restored, but the server did not start. Use "undo restore" to go back.');
             this.purgeTrash();
@@ -183,14 +174,19 @@ export class BackupFlows {
     );
   }
 
+  /** The adapter's reset scopes. */
+  resets(): ResetDecl[] {
+    return this.d.server.adapter.resets;
+  }
+
   /**
-   * Reset the server. Every scope first takes a cold backup (and aborts if it
-   * can't), so a reset can always be undone by restoring it.
-   *   world   — new world; accounts, whitelist, bans, settings and mods stay
-   *   full    — also wipes accounts/whitelist/bans (admin is recreated at start)
-   *   factory — also deletes the settings files; a first-run ini is written
+   * Reset the server to one of the adapter's scopes. Every scope first takes a
+   * cold backup (and aborts if it can't), so a reset can always be undone by
+   * restoring it; then the scope's parts are deleted and its `after` step runs.
    */
   startReset(by: string | null, scope: ResetScope, opts: { countdownSec: number; lang: GameLang; newSeed: boolean; preset?: string }): OpState {
+    const decl = this.resets().find((r) => r.id === scope);
+    if (!decl) throw new HttpError(400, 'unknown-reset');
     if (opts.preset && !this.d.config.presets().includes(opts.preset)) throw new HttpError(400, 'unknown-preset');
     return this.d.ops.start(
       'reset',
@@ -208,24 +204,13 @@ export class BackupFlows {
           await this.d.backups.create({ trigger: 'pre-reset', hot: false });
 
           ctx.step('deleting');
-          const parts: BackupPart[] = scope === 'world' ? ['world'] : scope === 'full' ? ['world', 'accounts'] : ['world', 'accounts', 'configs'];
-          for (const part of parts) for (const rel of this.d.backups.partPaths(part)) rmSync(path.join(this.d.pzDataDir, rel), { recursive: true, force: true });
-
-          if (scope === 'factory') {
-            this.d.config.seedIniIfMissing();
-          } else {
-            // A new ResetID tells returning players' games this is a fresh world.
-            const changes: Record<string, string> = { ResetID: String(100_000_000 + Math.floor(Math.random() * 899_999_999)) };
-            if (opts.newSeed) changes.Seed = randomSeed();
-            this.d.config.setIniDirect(changes, by, `reset (${scope})`);
-            if (opts.preset) this.d.config.applyPreset(opts.preset, by, { force: true });
-          }
+          for (const part of decl.removeParts) for (const rel of this.d.backups.partPaths(part)) rmSync(path.join(this.d.dataDir, rel), { recursive: true, force: true });
+          await decl.after?.(this.d.server.ctx(by), { newSeed: opts.newSeed, ...(opts.preset ? { preset: opts.preset } : {}) });
           this.d.settings.setRaw('pendingRestart', null);
 
           if (wasRunning) {
             ctx.step('starting');
-            this.d.config.seedIniIfMissing();
-            await this.d.agent.start(this.d.control.launchParams(), lock.id);
+            await this.d.control.startAgent({ lockId: lock.id, by });
           }
         } finally {
           await this.d.agent.unlock(lock.id).catch(() => undefined);

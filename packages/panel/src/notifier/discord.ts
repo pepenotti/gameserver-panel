@@ -51,7 +51,7 @@ export const MESSAGES: Record<'en' | 'es', Record<string, Msg>> = {
     reset: (p) => ({ title: p.ok === 'true' ? '🧟 World reset' : '⚠️ Reset failed', description: p.detail, color: p.ok === 'true' ? COLOR.orange : COLOR.red }),
     mods: (p) => ({ title: '🧩 Mods', description: p.detail, color: COLOR.blue }),
     security: (p) => ({ title: '🛡️ Security', description: p.detail, color: COLOR.red }),
-    test: () => ({ title: '✅ Test message', description: 'Discord notifications from the Zomboid panel work.', color: COLOR.green }),
+    test: () => ({ title: '✅ Test message', description: 'Discord notifications from the game server panel work.', color: COLOR.green }),
   },
   es: {
     serverUp: () => ({ title: '🟢 Servidor en línea', description: 'El servidor está prendido. ¡A jugar!', color: COLOR.green }),
@@ -66,7 +66,7 @@ export const MESSAGES: Record<'en' | 'es', Record<string, Msg>> = {
     reset: (p) => ({ title: p.ok === 'true' ? '🧟 Mundo reiniciado' : '⚠️ Falló el reinicio del mundo', description: p.detail, color: p.ok === 'true' ? COLOR.orange : COLOR.red }),
     mods: (p) => ({ title: '🧩 Mods', description: p.detail, color: COLOR.blue }),
     security: (p) => ({ title: '🛡️ Seguridad', description: p.detail, color: COLOR.red }),
-    test: () => ({ title: '✅ Mensaje de prueba', description: 'Las notificaciones de Discord del panel Zomboid funcionan.', color: COLOR.green }),
+    test: () => ({ title: '✅ Mensaje de prueba', description: 'Las notificaciones de Discord del panel de servidores funcionan.', color: COLOR.green }),
   },
 };
 

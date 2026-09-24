@@ -156,7 +156,7 @@ export class Scheduler {
           // Mod updates waiting for a restart are applied by the server's own download at start.
           this.pendingModUpdate = [];
           ctx.step('starting');
-          await this.d.agent.start(this.d.control.launchParams(), lock.id);
+          await this.d.control.startAgent({ lockId: lock.id, by: 'scheduler' });
         } finally {
           await this.d.agent.unlock(lock.id).catch(() => undefined);
         }
@@ -189,29 +189,32 @@ export class Scheduler {
     });
   }
 
+  /** The adapter's update check; nothing installed yet is not an update (the first start installs). */
   async checkGameUpdate(): Promise<void> {
     const c = this.config();
+    const { server } = this.d.control;
+    const updates = server.adapter.updates;
+    if (!updates || !server.has('updateCheck')) return;
     let info;
     try {
-      info = await this.d.agent.appInfo();
+      info = await updates.check(server.ctx('scheduler'));
     } catch {
       return;
     }
-    const branch = this.d.control.launchParams().branch;
-    const latest = info.branches.find((b) => b.name === branch);
-    if (!latest || !info.installed || (info.installed.branch === branch && info.installed.buildId === latest.buildId)) {
+    if (!info?.available || info.current === null) {
       this.pendingGameUpdate = null;
       return;
     }
-    if (this.pendingGameUpdate !== latest.buildId) {
-      this.pendingGameUpdate = latest.buildId;
-      this.d.notifier.notify('update', { detail: `${info.installed.buildId} → ${latest.buildId} (${branch})` }, 'updateAvailable');
+    if (this.pendingGameUpdate !== info.latest) {
+      this.pendingGameUpdate = info.latest;
+      this.d.notifier.notify('update', { detail: `${info.current} → ${info.latest}${info.channel ? ` (${info.channel})` : ''}` }, 'updateAvailable');
     }
     this.applyPolicy(c.gameUpdates.apply, 'update');
   }
 
   async checkModUpdates(): Promise<void> {
     const c = this.config();
+    if (!this.d.mods.available) return;
     let ids: string[];
     try {
       ids = await this.d.mods.checkUpdates();
@@ -243,7 +246,7 @@ export class Scheduler {
       this.d.control.update('scheduler', { countdownSec: countdown, validate: false }, lang);
       this.pendingGameUpdate = null;
     } else if (this.state === 'running') {
-      // The server downloads updated workshop items when it starts.
+      // The server fetches updated mods when it starts.
       this.d.control.restart('scheduler', countdown, lang);
       this.pendingModUpdate = [];
     }

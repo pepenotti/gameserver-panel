@@ -3,8 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { panelAdapter } from '@gsp/adapters/panel';
+import type { ModSource } from '@gsp/adapter-api';
+import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
 import type { AgentStatus, SeqEvent } from '@gsp/shared';
-import type { AgentApi } from '../src/agent/client';
+import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { Audit } from '../src/audit';
 import { bootstrapOwner } from '../src/auth/bootstrap';
@@ -27,7 +29,7 @@ import { ModsService } from '../src/mods/service';
 import { DiscordNotifier } from '../src/notifier/discord';
 import { wireNotifications } from '../src/notifier/events';
 import { Scheduler } from '../src/scheduler/scheduler';
-import { SteamWorkshop } from '../src/mods/steam';
+import { ServerHandle } from '../src/server/handle';
 import { PlayersService } from '../src/players/service';
 import { UnimplementedProposals } from '../src/proposals/service';
 import { Settings } from '../src/settings';
@@ -94,8 +96,12 @@ export function fakeAgent(feed: FakeFeed): AgentApi & { calls: string[] } {
     kill: async () => (calls.push('kill'), st()),
     command: async (c) => (calls.push(`command:${c}`), { via: 'rcon' as const, output: 'ok' }),
     install: async () => (calls.push('install'), { ok: true }),
-    appInfo: async () => ({ installed: null, branches: [] }),
-    downloadWorkshop: async () => ({ ok: true }),
+    versions: async () => ({ installed: null, versions: [] }),
+    save: async () => (calls.push('save'), { ok: true }),
+    action: async (name) => {
+      calls.push(`action:${name}`);
+      throw new AgentCallError(404, 'not-found', `No action ${name}`);
+    },
     lock: async () => ({ id: 'lock-1', expiresAt: new Date(Date.now() + 60_000).toISOString() }),
     renewLock: async () => undefined,
     unlock: async () => undefined,
@@ -109,7 +115,7 @@ export interface TestPanel {
   agent: ReturnType<typeof fakeAgent>;
 }
 
-export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { steam?: SteamWorkshop; fetch?: typeof fetch } = {}): Promise<TestPanel> {
+export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: ModSource[]; fetch?: typeof fetch } = {}): Promise<TestPanel> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'pz-panel-'));
   const env: PanelEnv = {
     version: 'test',
@@ -150,11 +156,11 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { steam?:
     feed,
     bus,
     ops,
-    control: new Control({ env, settings, agent, feed, ops, audit }),
+    control: undefined as unknown as Control,
     config: new ConfigService({ env, db, agent, feed, settings }),
-    backups: new BackupService({ env, feed }),
+    backups: undefined as unknown as BackupService,
     flows: undefined as unknown as BackupFlows,
-    players: new PlayersService({ env, db, agent, feed }),
+    players: undefined as unknown as PlayersService,
     mods: undefined as unknown as ModsService,
     notifier: new DiscordNotifier(settings, opts.fetch ?? ((() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch)),
     scheduler: undefined as unknown as Scheduler,
@@ -162,12 +168,16 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { steam?:
     changes: new UnimplementedProposals(),
     adapter: panelAdapter('pz'),
   };
-  deps.mods = new ModsService({ env, db, agent, feed, ops, settings, config: deps.config, steam: opts.steam ?? new SteamWorkshop(() => Promise.reject(new Error('no network in tests'))) });
-  deps.flows = new BackupFlows({ agent, feed, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, pzDataDir: env.pzDataDir });
+  const server = new ServerHandle({ env, agent, feed, files: deps.files, settings, config: deps.config, adapter: deps.adapter });
+  deps.players = new PlayersService({ db, feed, server });
+  const noNetwork = (() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch;
+  deps.mods = new ModsService({ db, feed, ops, settings, config: deps.config, server, sources: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })] });
+  deps.backups = new BackupService({ env, feed, server, mods: deps.mods });
+  deps.control = new Control({ agent, feed, ops, server, backups: deps.backups });
+  deps.flows = new BackupFlows({ agent, feed, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, server, dataDir: env.pzDataDir });
   deps.scheduler = new Scheduler({ settings, agent, feed, ops, control: deps.control, flows: deps.flows, backups: deps.backups, mods: deps.mods, notifier: deps.notifier, audit, backupPanelDb: () => backupPanelDb(db, deps.env.backupDir) });
   wireNotifications({ feed, players: deps.players, bus, notifier: deps.notifier });
   deps.players.attach();
-  deps.control.onBeforeStart = () => deps.config.seedIniIfMissing();
   await bootstrapOwner(deps);
   const app = await buildApp(deps);
   return { app, deps, feed, agent };

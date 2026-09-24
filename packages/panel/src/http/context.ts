@@ -1,8 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { Capability } from '@gsp/adapter-api';
 import { can, permissionsFor, requiresTotp, type Permission } from '@gsp/shared';
 import type { SessionRow } from '../auth/sessions';
 import { SESSION_COOKIE } from '../auth/sessions';
 import { toPublic, type PublicUser, type UserRow } from '../auth/users';
+import { capabilitiesOf } from '../server/handle';
 import type { Deps } from './deps';
 
 /** What a signed-in session still has to do before it is fully usable. */
@@ -19,6 +21,8 @@ declare module 'fastify' {
     /** `public`: no session. Otherwise a session is required. */
     auth?: 'public';
     permission?: Permission;
+    /** What the server's game must support; otherwise 409 `capability-unsupported` (after the permission check). */
+    capability?: Capability;
     /** Pending states this route is still reachable in (default: none). */
     allowPending?: Pending[];
   }
@@ -82,6 +86,8 @@ export function installGuards(app: FastifyInstance, deps: Deps): void {
     if (a.pending && !(cfg.allowPending ?? []).includes(a.pending)) throw new HttpError(403, 'pending', undefined, { pending: a.pending });
     if (UNSAFE.has(req.method) && req.headers['x-gsp-csrf'] !== a.session.csrf) throw new HttpError(403, 'bad-csrf');
     if (cfg.permission && (a.pending || !can(a.user.role, cfg.permission))) throw new HttpError(403, 'forbidden');
+    // One server until M2, so its flavour is the default (none).
+    if (cfg.capability && !capabilitiesOf(deps.adapter, null).has(cfg.capability)) throw new HttpError(409, 'capability-unsupported', undefined, { capability: cfg.capability });
   });
 
   app.addHook('onSend', async (req, reply: FastifyReply, payload) => {

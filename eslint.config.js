@@ -27,9 +27,6 @@ const LEGACY_GAME_IMPORTERS = [
   // --- M1-A (agent)
 
   // --- M1-B (panel)
-  'packages/panel/src/backups/flows.ts',
-  'packages/panel/src/mods/scan.ts',
-  'packages/panel/src/mods/service.ts',
 
   // --- M1-C (config/web)
   'packages/panel/src/config/service.ts',

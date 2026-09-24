@@ -143,14 +143,10 @@ describe('schedules', () => {
     const { p } = await setup();
     seedWorld(p);
     p.feed.status_ = fakeStatus({ state: 'running' });
-    p.agent.command = async (cmd) => {
-      p.agent.calls.push(`command:${cmd}`);
-      p.feed.emit({ type: 'log', stream: 'out', line: 'LOG  : General      f:0 st:1> Saving finish' });
-      return { via: 'rcon', output: 'World saved' };
-    };
     await p.deps.scheduler.runBackup();
     await p.deps.ops.idle();
-    expect(p.agent.calls).toContain('command:save');
+    // The agent's save waits for the game to finish writing.
+    expect(p.agent.calls).toEqual(['save']);
     expect(p.deps.backups.list()[0]!.manifest.mode).toBe('hot');
   });
 
@@ -174,7 +170,7 @@ describe('schedules', () => {
 
   it('applies a game update when nobody is playing, waits when someone is', async () => {
     const { p } = await setup();
-    p.agent.appInfo = async () => ({ installed: { buildId: '100', branch: 'public' }, branches: [{ name: 'public', buildId: '200', passwordRequired: false }] });
+    p.agent.versions = async () => ({ installed: { version: '42.20.4', channel: 'public', build: '100' }, versions: [{ id: 'public', build: '200' }] });
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 2, names: ['a', 'b'], at: '' } });
     await p.deps.scheduler.checkGameUpdate();
     expect(p.deps.ops.busy).toBeNull();
