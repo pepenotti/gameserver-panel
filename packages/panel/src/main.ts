@@ -64,16 +64,12 @@ const deps: Deps = {
   adapter: panelAdapter('pz'),
 };
 const server = new ServerHandle({ env, agent, feed: agent, files: deps.files, settings, config: deps.config, adapter: deps.adapter });
-deps.control = new Control({ agent, feed: agent, ops, server });
 deps.players = new PlayersService({ db, feed: agent, server });
 deps.mods = new ModsService({ db, feed: agent, ops, settings, config: deps.config, server, sources: deps.adapter.mods ?? [] });
 deps.backups = new BackupService({ env, feed: agent, server, mods: deps.mods });
+deps.control = new Control({ agent, feed: agent, ops, server, backups: deps.backups });
 deps.flows = new BackupFlows({ agent, feed: agent, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, server, dataDir: env.pzDataDir });
 deps.scheduler = new Scheduler({ settings, agent, feed: agent, ops, control: deps.control, flows: deps.flows, backups: deps.backups, mods: deps.mods, notifier, audit, backupPanelDb: () => backupPanelDb(db, deps.env.backupDir) });
-deps.control.beforeUpdateInstall = async () => {
-  // Only when there is something to protect.
-  if (deps.backups.hasData()) await deps.backups.create({ trigger: 'pre-update', hot: false });
-};
 wireNotifications({ feed: agent, players: deps.players, bus, notifier });
 agent.onEvent((e) => {
   if (e.event.type !== 'state' || e.event.status.state !== 'running') return;

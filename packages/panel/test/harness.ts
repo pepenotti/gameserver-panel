@@ -169,11 +169,11 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     adapter: panelAdapter('pz'),
   };
   const server = new ServerHandle({ env, agent, feed, files: deps.files, settings, config: deps.config, adapter: deps.adapter });
-  deps.control = new Control({ agent, feed, ops, server });
   deps.players = new PlayersService({ db, feed, server });
   const noNetwork = (() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch;
   deps.mods = new ModsService({ db, feed, ops, settings, config: deps.config, server, sources: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })] });
   deps.backups = new BackupService({ env, feed, server, mods: deps.mods });
+  deps.control = new Control({ agent, feed, ops, server, backups: deps.backups });
   deps.flows = new BackupFlows({ agent, feed, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, server, dataDir: env.pzDataDir });
   deps.scheduler = new Scheduler({ settings, agent, feed, ops, control: deps.control, flows: deps.flows, backups: deps.backups, mods: deps.mods, notifier: deps.notifier, audit, backupPanelDb: () => backupPanelDb(db, deps.env.backupDir) });
   wireNotifications({ feed, players: deps.players, bus, notifier: deps.notifier });

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auditableCommand } from '../src/routes/server';
@@ -116,6 +116,22 @@ describe('server controls', () => {
     expect(installed).toEqual({ validate: true, launch: { adapter: 'pz', params: { ...params, updateOnStart: true } } });
     // Just installed: the start doesn't update again.
     expect(started).toEqual([{ adapter: 'pz', params: { ...params, updateOnStart: false } }]);
+  });
+
+  it('takes a cold safety backup before updating when there is a world to protect', async () => {
+    const c = await ready();
+    const world = path.join(p.deps.env.pzDataDir, 'Saves', 'Multiplayer', 'zomboid');
+    mkdirSync(world, { recursive: true });
+    writeFileSync(path.join(world, 'map_t.bin'), 'world');
+    p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
+    p.agent.install = async () => {
+      // The backup is already there when the install starts.
+      p.agent.calls.push(`install after ${p.deps.backups.list().map((b) => `${b.manifest.trigger}/${b.manifest.mode}`).join(',')}`);
+      return { ok: true };
+    };
+    await c.post('/api/server/update', {});
+    await p.deps.ops.idle();
+    expect(p.agent.calls).toEqual(['stop', 'install after pre-update/cold', 'start']);
   });
 
   it('keeps the old build running if the update fails', async () => {

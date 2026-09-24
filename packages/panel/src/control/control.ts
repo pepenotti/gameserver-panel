@@ -1,5 +1,6 @@
 import type { AnnounceKind, Lang } from '@gsp/adapter-api';
 import type { AgentApi } from '../agent/client';
+import type { BackupService } from '../backups/service';
 import type { AgentFeed } from '../http/deps';
 import type { OpContext, OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
@@ -20,12 +21,11 @@ export interface ControlDeps {
   feed: AgentFeed;
   ops: OpRunner;
   server: ServerHandle;
+  /** For the safety backup before an update. */
+  backups: Pick<BackupService, 'hasData' | 'create'>;
 }
 
 export class Control {
-  /** Hook run after stopping for an update, before installing (a pre-update backup). */
-  beforeUpdateInstall: () => Promise<void> = async () => undefined;
-
   constructor(private readonly d: ControlDeps) {}
 
   /** The server this controls (routes reach its launch settings and context through it). */
@@ -130,7 +130,8 @@ export class Control {
           await this.d.agent.stop({ reason: 'update' });
         }
         ctx.step('safety-backup');
-        await this.beforeUpdateInstall();
+        // Only when there is something to protect; the server is stopped, so a cold copy.
+        if (this.d.backups.hasData()) await this.d.backups.create({ trigger: 'pre-update', hot: false });
         ctx.step(opts.validate ? 'validating' : 'updating');
         const r = await this.d.agent.install({ validate: opts.validate, launch });
         if (!r.ok) {
