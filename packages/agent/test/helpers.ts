@@ -3,13 +3,17 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { RuntimeAdapter } from '@gsp/adapter-api';
+import { runtimeAdapter } from '@gsp/adapters/runtime';
 import type { AgentStatus, LaunchParams, SeqEvent } from '@gsp/shared';
 import { Agent } from '../src/agent';
 import type { AgentConfig } from '../src/config';
 import { EventHub } from '../src/events';
 import { StateStore } from '../src/state-store';
 
-const tools = fileURLToPath(new URL('../../../tools/fake-pz/', import.meta.url));
+export const tools = fileURLToPath(new URL('../../../tools/fake-pz/', import.meta.url));
+export const fakeServer = [process.execPath, path.join(tools, 'server.mjs')];
+export const fakeSteamcmd = [process.execPath, path.join(tools, 'steamcmd.mjs')];
 
 /**
  * Stretches timeouts (not poll intervals) when the machine is busy, e.g.
@@ -37,9 +41,13 @@ export const launch: LaunchParams = {
   updateOnStart: false,
 };
 
+/** The same launch, as the panel sends it once it runs adapters. */
+export const envelope = (params: Partial<LaunchParams> = {}) => ({ adapter: 'pz', params: { ...launch, ...params } });
+
 export interface Harness {
   dir: string;
   cfg: AgentConfig;
+  adapter: RuntimeAdapter;
   hub: EventHub;
   store: StateStore;
   agent: Agent;
@@ -53,21 +61,20 @@ export interface Harness {
 }
 
 export async function makeHarness(overrides: Partial<AgentConfig> = {}): Promise<Harness> {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'pz-agent-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-agent-'));
   const cfg: AgentConfig = {
     version: 'test',
     token: 'x'.repeat(40),
     host: '127.0.0.1',
     port: 0,
+    adapter: 'pz',
     installDir: path.join(dir, 'install'),
     dataDir: path.join(dir, 'data'),
     stateDir: path.join(dir, 'state'),
-    steamcmd: [process.execPath, path.join(tools, 'steamcmd.mjs')],
-    appId: '380870',
-    gamePort: 16261,
-    udpPort: 16262,
-    rconPort: await freePort(),
-    startCommand: [process.execPath, path.join(tools, 'server.mjs')],
+    steamcmd: fakeSteamcmd,
+    home: path.join(dir, 'home'),
+    launcher: fakeServer,
+    ports: { rcon: await freePort() },
     readyTimeoutMs: 5_000 * TIME_SCALE,
     stopTimeoutMs: 2_000 * TIME_SCALE,
     termTimeoutMs: 1_000 * TIME_SCALE,
@@ -75,23 +82,25 @@ export async function makeHarness(overrides: Partial<AgentConfig> = {}): Promise
     restartDelayMs: 150,
     playersPollMs: 150,
     unresponsiveAfter: 3,
+    channelGraceMs: 10_000,
     logBufferLines: 5000,
-    baseJvmArgs: ['-Duser.language=en', '-Duser.country=US'],
     ...overrides,
   };
   return build(dir, cfg);
 }
 
 function build(dir: string, cfg: AgentConfig): Harness {
+  const adapter = runtimeAdapter(cfg.adapter);
   const hub = new EventHub(cfg.logBufferLines);
-  const store = new StateStore(cfg.stateDir);
-  const agent = new Agent(cfg, store, hub);
+  const store = new StateStore(cfg.stateDir, { adapter: adapter.meta.id });
+  const agent = new Agent(cfg, adapter, store, hub);
   const events: SeqEvent[] = [];
   hub.subscribe((e) => events.push(e));
 
   const h: Harness = {
     dir,
     cfg,
+    adapter,
     hub,
     store,
     agent,

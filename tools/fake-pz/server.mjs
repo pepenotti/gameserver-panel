@@ -189,17 +189,31 @@ if (scenario === 'admin-prompt' || (!adminPassword && !fs.existsSync(dbFile))) {
   promptMode = true;
 } else {
   const ini = ensureFiles();
-  // Real SQLite files with PZ's table names, like the game's own.
+  // Real SQLite files with PZ's tables (accounts, roles, bans), like the game's own.
   const { DatabaseSync } = await import('node:sqlite');
   for (const [file, ddl] of [
-    [dbFile, 'CREATE TABLE IF NOT EXISTS whitelist (id INTEGER PRIMARY KEY, world TEXT, username TEXT, password TEXT, lastConnection TEXT, role INTEGER NOT NULL DEFAULT 2, steamid TEXT)'],
+    [
+      dbFile,
+      `CREATE TABLE IF NOT EXISTS [whitelist] ([id] INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,[world] TEXT DEFAULT '' NULL,[username] TEXT NULL, [password] TEXT NULL, [lastConnection] TEXT NULL, [role] INTEGER NOT NULL, [authType] INTEGER NULL DEFAULT 1, [googleKey] TEXT NULL, [steamid] TEXT NULL, [ownerid] TEXT NULL, [displayName] TEXT NULL);
+       CREATE TABLE IF NOT EXISTS [role] ([id] INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, [name] TEXT NOT NULL,[description] TEXT NULL, [colorR] REAL NOT NULL, [colorG] REAL NOT NULL, [colorB] REAL NOT NULL, [readonly] BOOLEAN NULL DEFAULT false, [position] INTEGER NOT NULL DEFAULT -1);
+       CREATE TABLE IF NOT EXISTS [bannedid] ([steamid] TEXT NOT NULL, [reason] TEXT NULL);
+       CREATE TABLE IF NOT EXISTS [bannedip] ([ip] TEXT NOT NULL,[username] TEXT NULL, [reason] TEXT NULL);
+       INSERT OR IGNORE INTO role (id, name, colorR, colorG, colorB) VALUES (2, 'user', 1, 1, 1), (7, 'admin', 1, 0, 0);`,
+    ],
     [path.join(cacheDir, 'Saves', 'Multiplayer', serverName, 'players.db'), 'CREATE TABLE IF NOT EXISTS networkPlayers (id INTEGER PRIMARY KEY, world TEXT, username TEXT, name TEXT, steamid TEXT, x REAL, y REAL, z REAL, isDead BOOLEAN)'],
   ]) {
     const db = new DatabaseSync(file);
     db.exec(ddl);
     db.close();
   }
-  if (adminPassword) log('General', 'admin password changed via -adminpassword option');
+  if (adminPassword) {
+    // Like PZ: the admin account exists after the first boot with -adminpassword.
+    const db = new DatabaseSync(dbFile);
+    const admin = arg('-adminusername') ?? 'admin';
+    if (!db.prepare('SELECT 1 FROM whitelist WHERE username = ?').get(admin)) db.prepare("INSERT INTO whitelist (world, username, password, role) VALUES (?, ?, 'x', 7)").run(serverName, admin);
+    db.close();
+    log('General', 'admin password changed via -adminpassword option');
+  }
   await sleep(bootMs);
   if (scenario !== 'never-ready') {
     log('Network', '*** SERVER STARTED ****');

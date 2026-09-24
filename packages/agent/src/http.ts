@@ -1,10 +1,11 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
-import type { AgentError as AgentErrorBody } from '@gsp/shared';
-import { AgentError, validateLaunch, type Agent } from './agent';
+import type { AgentError as AgentErrorBody, AppInfoResponse, VersionsResponse } from '@gsp/shared';
+import { AgentError, type Agent } from './agent';
 import type { EventHub } from './events';
 
 const MAX_BODY = 64 * 1024;
+const ACTION_ROUTE = /^\/v1\/actions\/([a-z][a-z0-9-]{0,39})$/;
 
 class HttpError extends Error {
   constructor(
@@ -52,10 +53,22 @@ async function readJson(req: http.IncomingMessage): Promise<Record<string, unkno
   }
 }
 
-function send(res: http.ServerResponse, status: number, body: unknown): void {
+function send(res: http.ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
   const text = JSON.stringify(body ?? {});
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'content-length': Buffer.byteLength(text) });
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'content-length': Buffer.byteLength(text), ...headers });
   res.end(text);
+}
+
+/** Routes kept for the panel until it moves to the adapter-neutral ones (M1). */
+const DEPRECATED = { deprecation: 'true' };
+
+/** `/v1/steamcmd/appinfo`'s shape, from `POST /v1/versions`'s. */
+function toAppInfo(r: VersionsResponse): AppInfoResponse {
+  const i = r.installed;
+  return {
+    installed: i ? { buildId: i.build ?? '', branch: i.channel ?? '' } : null,
+    branches: r.versions.map((v) => ({ name: v.id, buildId: v.build ?? '', timeUpdated: v.timeUpdated, description: v.description, passwordRequired: v.passwordRequired ?? false })),
+  };
 }
 
 function streamEvents(req: http.IncomingMessage, res: http.ServerResponse, hub: EventHub, since: number): void {
@@ -93,6 +106,9 @@ export function createAgentServer(agent: Agent, hub: EventHub, token: string): h
         const lockId = typeof req.headers['x-lock-id'] === 'string' ? req.headers['x-lock-id'] : undefined;
         const body = await readJson(req);
 
+        const action = req.method === 'POST' ? ACTION_ROUTE.exec(url.pathname) : null;
+        if (action) return send(res, 200, { result: await agent.action(action[1]!, body.input) });
+
         switch (route) {
           case 'GET /v1/status':
             return send(res, 200, agent.status());
@@ -101,10 +117,11 @@ export function createAgentServer(agent: Agent, hub: EventHub, token: string): h
             return streamEvents(req, res, hub, Number.isFinite(since) ? since : 0);
           }
           case 'PUT /v1/launch':
-            agent.setLaunch(validateLaunch(body));
+            // A LaunchEnvelope, or (deprecated) bare params of the agent's adapter.
+            agent.setLaunch(body);
             return send(res, 200, agent.status());
           case 'POST /v1/start':
-            await agent.start(body.launch === undefined ? undefined : validateLaunch(body.launch), lockId);
+            await agent.start(body.launch, lockId);
             return send(res, 202, agent.status());
           case 'POST /v1/stop': {
             const timeoutMs = typeof body.timeoutMs === 'number' ? Math.min(Math.max(body.timeoutMs, 5_000), 600_000) : undefined;
@@ -122,14 +139,26 @@ export function createAgentServer(agent: Agent, hub: EventHub, token: string): h
             const via = body.via === 'rcon' || body.via === 'stdin' ? body.via : undefined;
             return send(res, 200, await agent.command(body.command, via));
           }
-          case 'POST /v1/steamcmd/install':
-            return send(res, 200, await agent.install({ branch: typeof body.branch === 'string' ? body.branch : undefined, validate: body.validate === true }, lockId));
-          case 'POST /v1/steamcmd/appinfo':
-            return send(res, 200, await agent.appInfo());
-          case 'POST /v1/steamcmd/workshop': {
-            const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === 'string') : [];
-            return send(res, 200, await agent.downloadWorkshop(ids));
+          case 'POST /v1/install':
+            return send(res, 200, await agent.install({ validate: body.validate === true, launch: body.launch }, lockId));
+          case 'POST /v1/versions':
+            return send(res, 200, await agent.versions({ launch: body.launch }));
+          case 'POST /v1/save': {
+            const timeoutMs = typeof body.timeoutMs === 'number' ? Math.min(Math.max(body.timeoutMs, 1_000), 600_000) : undefined;
+            return send(res, 200, await agent.save(timeoutMs));
           }
+          // ---- deprecated: the stored launch picks the branch; answer 409 `no-launch` without one.
+          case 'POST /v1/steamcmd/install':
+            return send(res, 200, await agent.install({ validate: body.validate === true }, lockId), DEPRECATED);
+          case 'POST /v1/steamcmd/appinfo':
+            return send(res, 200, toAppInfo(await agent.versions()), DEPRECATED);
+          case 'POST /v1/steamcmd/workshop': {
+            const name = agent.actionFor('workshop');
+            if (!name) throw new HttpError(404, 'not-found', 'This game has no workshop');
+            const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === 'string') : [];
+            return send(res, 200, await agent.action(name, { ids }), DEPRECATED);
+          }
+          // ----
           case 'POST /v1/lock': {
             const holder = typeof body.holder === 'string' ? body.holder : '';
             const ttlMs = typeof body.ttlMs === 'number' ? body.ttlMs : 30 * 60_000;
