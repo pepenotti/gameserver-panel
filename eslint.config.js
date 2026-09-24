@@ -20,17 +20,6 @@ const GAME_ADAPTER_IMPORTS = {
   ],
 };
 
-// Core files that still import Project Zomboid code while the M1 wave moves
-// it into packages/adapter-pz. Each branch removes only its own group; the
-// list goes away once all three are empty.
-const LEGACY_GAME_IMPORTERS = [
-  // --- M1-A (agent)
-
-  // --- M1-B (panel)
-
-  // --- M1-C (config/web)
-];
-
 export default tseslint.config(
   // '.*/**': every top-level dot-directory (tool state, nested worktrees, .tmp).
   { ignores: ['**/dist/**', '**/node_modules/**', 'coverage/**', 'fixtures/**', '.*/**'] },
@@ -50,7 +39,7 @@ export default tseslint.config(
   },
   {
     files: [CORE],
-    ignores: [...COMPOSITION_ROOTS, '**/*.test.{ts,tsx}', ...LEGACY_GAME_IMPORTERS],
+    ignores: [...COMPOSITION_ROOTS, '**/*.test.{ts,tsx}'],
     rules: { 'no-restricted-imports': ['error', GAME_ADAPTER_IMPORTS] },
   },
 );

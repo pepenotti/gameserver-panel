@@ -1,7 +1,7 @@
 /**
  * Game-agnostic output handling: JVM fatal lines, secret redaction and
  * steamcmd progress. Each game's own log format lives in its adapter
- * (Project Zomboid: packages/adapter-pz/src/shared/log.ts).
+ * package (packages/adapter-<game>).
  */
 
 /** Lines that mean the process is doomed even if it hasn't exited yet. */
@@ -42,8 +42,8 @@ export function stripAnsi(s: string): string {
  * steamcmd lines of interest (without a TTY progress arrives in bursts and
  * uses \r, so callers split on /\r|\n/):
  *   Update state (0x61) downloading, progress: 12.34 (123 / 456)
- *   Success! App '380870' fully installed.
- *   Error! App '380870' state is 0x202 after update job.
+ *   Success! App '<appid>' fully installed.
+ *   Error! App '<appid>' state is 0x202 after update job.
  */
 export function parseSteamcmdLine(line: string): SteamcmdProgress | null {
   const l = stripAnsi(line).trim();

@@ -431,7 +431,7 @@ export interface PanelAdapterConfig {
   schemas: Record<string, OptionMeta[]>;
   /** Values the panel sets for managed keys, by file id then key; managed keys not listed keep what is on disk. */
   managedValues(srv: ServerRef): Record<string, Record<string, string>>;
-  /** After the panel wrote a file of a running server (PZ: `reloadoptions`, then its log). */
+  /** After the panel wrote a file of a running server (e.g. the game's reload command, then its log). */
   afterWrite?(ctx: ServerCtx, fileId: string, keys: string[]): Promise<AfterWriteResult>;
   /** Settings presets (CFG-06): values for keys of the declared file `fileId`. */
   presets?: { fileId: string; list(ctx: ServerCtx): Promise<string[]>; load(ctx: ServerCtx, name: string): Promise<Record<string, Scalar>> };

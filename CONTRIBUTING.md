@@ -87,8 +87,10 @@ Hits show the file, line and pattern number, never the text.
   (`fixtures/pz/b42/`) — real captured output, not guesses.
 - The core (`shared`, `formats`, `adapter-api`, `agent`, `panel`, `web`) never
   imports a game adapter (NFR-08): it works through the contract in
-  `packages/adapter-api`, and only the agent's and the panel's entry points
-  pick adapters, from `@gsp/adapters`. ESLint enforces it.
+  `packages/adapter-api`, and only the agent's entry point and the panel's
+  wiring (`packages/panel/src/wiring.ts`) pick adapters, from
+  `@gsp/adapters`. ESLint enforces it, and `scripts/core-agnostic.test.ts`
+  also refuses a game's app ids, file names and console commands in the core.
 - The **agent** (`packages/agent`, runs in the `pz` container) is the only thing
   that spawns the game, speaks RCON or runs steamcmd. It knows nothing about users.
 - The **panel** never spawns the game or opens RCON; it goes through the agent

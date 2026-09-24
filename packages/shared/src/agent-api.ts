@@ -26,7 +26,7 @@ export interface LaunchParams {
   adminPassword: string;
   /** Heap size for both -Xms and -Xmx, in MiB. */
   memoryMb: number;
-  /** Steam branch of app 380870: `public`, `legacy41`, `42.19`, … */
+  /** Steam branch of the game's dedicated-server app: `public`, `legacy41`, `42.19`, … */
   branch: string;
   /** Run steamcmd app_update before every start. */
   updateOnStart: boolean;

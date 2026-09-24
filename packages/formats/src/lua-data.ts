@@ -1,7 +1,6 @@
 /**
- * A data-only reader/editor for the Lua files PZ keeps next to the ini:
- * `<name>_SandboxVars.lua`, `<name>_spawnregions.lua`, `<name>_spawnpoints.lua`
- * and the game's sandbox presets.
+ * A data-only reader/editor for Lua settings files a game keeps next to its
+ * ini (world options, spawn tables) and the game's own presets.
  *
  * The game *executes* these files with access to its Java API, so accepting
  * raw text from the panel would be remote code execution. Only these shapes

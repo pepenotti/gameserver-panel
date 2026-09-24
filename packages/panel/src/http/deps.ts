@@ -56,6 +56,6 @@ export interface Deps {
   files: ServerFiles;
   /** Change proposals (AST-03). */
   changes: ProposalService;
-  /** The game adapter's panel half (one server, Project Zomboid, until M2). */
+  /** The game adapter's panel half (the one server's, until M2). */
   adapter: PanelAdapter;
 }
