@@ -1,8 +1,9 @@
 import type { AddressInfo } from 'node:net';
 import type http from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { AgentStatus } from '@gsp/shared';
 import { createAgentServer } from '../src/http';
-import { launch, makeHarness, type Harness } from './helpers';
+import { envelope, launch, makeHarness, type Harness } from './helpers';
 
 let h: Harness;
 let server: http.Server;
@@ -82,5 +83,80 @@ describe('agent HTTP API', () => {
     ctrl2.abort();
     const first = Number(/^id: (\d+)$/m.exec(chunk)?.[1] ?? last + 1);
     expect(first).toBeGreaterThan(last);
+  });
+});
+
+describe('adapter routes', () => {
+  const post = (path: string, body: unknown = {}, method = 'POST') => fetch(`${base}${path}`, { method, headers: auth(), body: JSON.stringify(body) });
+
+  it('takes the launch as an envelope or as bare params', async () => {
+    await setup();
+    const wrong = await post('/v1/launch', { adapter: 'minecraft', params: launch }, 'PUT');
+    expect(wrong.status).toBe(400);
+    expect(((await wrong.json()) as { error: string }).error).toMatch(/runs "pz"/);
+
+    const bare = await post('/v1/launch', launch, 'PUT');
+    expect(bare.status).toBe(200);
+    const s = (await bare.json()) as AgentStatus;
+    expect(s.launch).toMatchObject({ serverName: 'testsrv', branch: 'public' });
+    expect(s.launch).not.toHaveProperty('adminPassword');
+
+    const env = await post('/v1/launch', envelope({ branch: 'legacy41' }), 'PUT');
+    expect(((await env.json()) as AgentStatus).launch?.branch).toBe('legacy41');
+  });
+
+  it('installs and lists versions for the stored launch or the given one', async () => {
+    await setup();
+    const none = await post('/v1/install');
+    expect(none.status).toBe(409);
+    expect(await none.json()).toEqual({ error: 'no-launch', code: 'conflict' });
+    expect((await post('/v1/versions')).status).toBe(409);
+
+    const inst = await post('/v1/install', { launch: envelope({ branch: 'legacy41' }) });
+    expect(await inst.json()).toEqual({ ok: true });
+    const v = await post('/v1/versions', { launch: envelope() });
+    expect(v.status).toBe(200);
+    expect(await v.json()).toMatchObject({ installed: { channel: 'legacy41', build: '24909800' }, versions: [{ id: 'public' }, { id: 'legacy41' }] });
+    const status = (await (await fetch(`${base}/v1/status`, { headers: auth() })).json()) as AgentStatus;
+    expect(status.installedInfo).toMatchObject({ channel: 'legacy41' });
+    expect(status.installed).toEqual({ buildId: '24909800', branch: 'legacy41' });
+  });
+
+  it('keeps the steamcmd routes as deprecated aliases on the stored launch', async () => {
+    await setup();
+    for (const path of ['/v1/steamcmd/install', '/v1/steamcmd/appinfo']) {
+      const r = await post(path);
+      expect(r.status).toBe(409);
+      expect(await r.json()).toMatchObject({ error: 'no-launch' });
+    }
+    await post('/v1/launch', envelope({ branch: 'legacy41' }), 'PUT');
+    const inst = await post('/v1/steamcmd/install', { validate: true });
+    expect(inst.headers.get('deprecation')).toBe('true');
+    expect(await inst.json()).toEqual({ ok: true });
+    const info = await post('/v1/steamcmd/appinfo');
+    expect(await info.json()).toMatchObject({ installed: { buildId: '24909800', branch: 'legacy41' }, branches: [{ name: 'public', buildId: '24909800', passwordRequired: false }, { name: 'legacy41' }] });
+    // Workshop downloads need no launch.
+    const ws = await post('/v1/steamcmd/workshop', { ids: ['2503622437'] });
+    expect(await ws.json()).toEqual({ ok: true });
+    expect((await post('/v1/steamcmd/workshop', { ids: [] })).status).toBe(400);
+  });
+
+  it('runs adapter actions and saves', async () => {
+    await setup();
+    const unknown = await post('/v1/actions/nope', { input: {} });
+    expect(unknown.status).toBe(404);
+    expect((await post('/v1/actions/Bad.Name', { input: {} })).status).toBe(404);
+    expect((await post('/v1/actions/accounts', { input: { serverName: '../x' } })).status).toBe(400);
+    expect((await post('/v1/save')).status).toBe(503);
+
+    await post('/v1/start', { launch: envelope() });
+    await h.waitFor((s) => s.state === 'running');
+    const accounts = await post('/v1/actions/accounts', { input: { serverName: 'testsrv' } });
+    expect(await accounts.json()).toEqual({ result: [{ username: 'admin', displayName: null, role: 'admin', lastConnection: null, steamId: null }] });
+    const bans = await post('/v1/actions/bans', { input: { serverName: 'testsrv' } });
+    expect(await bans.json()).toEqual({ result: { steamIds: [], ips: [] } });
+    const ws = await post('/v1/actions/workshop-download', { input: { ids: ['2503622437'] } });
+    expect(await ws.json()).toEqual({ result: { ok: true } });
+    expect(await (await post('/v1/save', { timeoutMs: 5_000 })).json()).toEqual({ ok: true });
   });
 });
