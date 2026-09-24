@@ -4,33 +4,62 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PERMISSIONS } from '@gsp/shared';
 import { get, post } from '../api/http';
 import { useLive } from '../api/live';
+import type { Meta } from '../api/meta';
 import { useSession } from '../api/session';
+import { useMeta } from '../api/useMeta';
 import { OpBanner } from '../components/OpBanner';
 import { useErrorText } from '../lib/format';
 
-type Scope = 'world' | 'full' | 'factory';
+type ResetDecl = Meta['resets'][number];
+
+/**
+ * A reset that deletes every backup part starts the server from scratch (a
+ * factory reset): there are no world settings left for a new seed or a preset
+ * to go into. Until the contract says which options each reset takes, the
+ * others offer both.
+ */
+const keepsSettings = (r: ResetDecl, m: Meta) => m.backupParts.some((p) => !r.removeParts.includes(p.id));
 
 export function Reset() {
   const { t } = useTranslation();
   const errorText = useErrorText();
   const { can } = useSession();
   const live = useLive();
-  const status = useQuery({ queryKey: ['status'], queryFn: () => get<{ serverName: string }>('/api/status') });
-  const meta = useQuery({ queryKey: ['config', 'meta'], queryFn: () => get<{ presets: string[] }>('/api/config/meta'), enabled: can('config.edit'), staleTime: Infinity });
-  const [scope, setScope] = useState<Scope>('world');
+  const { meta, has, l } = useMeta();
+  const presets = useQuery({ queryKey: ['config', 'meta'], queryFn: () => get<{ presets: string[] }>('/api/config/meta'), enabled: can('config.edit') && has('presets'), staleTime: Infinity });
+  const resets = meta?.resets ?? [];
+  const [picked, setPicked] = useState<string | null>(null);
   const [newSeed, setNewSeed] = useState(false);
   const [preset, setPreset] = useState<string | null>(null);
   const [countdown, setCountdown] = useState('300');
   const [confirm, setConfirm] = useState('');
-  const serverName = status.data?.serverName ?? '';
+  if (!meta) return null;
+
+  const scope = resets.find((r) => r.id === picked) ?? resets.find((r) => can(r.permission)) ?? resets[0];
+  const serverName = meta.server.gameName;
   const busy = !!live.op && !live.op.done;
   const playersOnline = (live.players?.count ?? 0) > 0 && live.status?.state === 'running';
-  const allowed: Record<Scope, boolean> = { world: can('reset.world'), full: can('reset.full'), factory: can('reset.factory') };
+  const options = scope !== undefined && keepsSettings(scope, meta);
+  const presetList = options && has('presets') ? (presets.data?.presets ?? []) : [];
+  const partLabel = (id: string) => l(meta.backupParts.find((p) => p.id === id)?.label) || id;
+  const summary = (r: ResetDecl) => {
+    const kept = meta.backupParts.filter((p) => !r.removeParts.includes(p.id)).map((p) => l(p.label));
+    const deleted = t('reset.deletes', { parts: r.removeParts.map(partLabel).join(', ') });
+    return kept.length ? `${deleted} ${t('reset.keeps', { parts: kept.join(', ') })}` : `${deleted} ${t('reset.keepsNothing')}`;
+  };
 
   const go = () =>
-    void post('/api/reset', { scope, confirm, countdownSec: playersOnline ? Number(countdown) : 0, newSeed: scope !== 'factory' && newSeed, ...(preset && scope === 'world' ? { preset } : {}) }).then(
+    scope &&
+    void post('/api/reset', {
+      scope: scope.id,
+      confirm,
+      countdownSec: playersOnline ? Number(countdown) : 0,
+      newSeed: options && newSeed,
+      ...(preset && presetList.includes(preset) ? { preset } : {}),
+    }).then(
       () => setConfirm(''),
       (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }),
     );
@@ -44,43 +73,32 @@ export function Reset() {
       <OpBanner />
 
       <Card withBorder>
-        <Radio.Group label={t('reset.scope')} value={scope} onChange={(v) => setScope(v as Scope)}>
+        <Radio.Group label={t('reset.scope')} value={scope?.id ?? null} onChange={setPicked}>
           <Stack mt="xs" gap="sm">
-            {(['world', 'full', 'factory'] as Scope[]).map((s) => (
+            {resets.map((r) => (
               <Radio
-                key={s}
-                value={s}
-                disabled={!allowed[s]}
+                key={r.id}
+                value={r.id}
+                disabled={!can(r.permission)}
                 label={
                   <Group gap={6}>
-                    {t(`reset.scopes.${s}`)}
-                    {s !== 'world' && (
+                    {l(r.label)}
+                    {PERMISSIONS[r.permission] === 'owner' && (
                       <Badge size="xs" variant="outline" color="gray">
                         {t('reset.ownerOnly')}
                       </Badge>
                     )}
                   </Group>
                 }
-                description={t(`reset.scopes.${s}Help`)}
+                description={summary(r)}
               />
             ))}
           </Stack>
         </Radio.Group>
 
-        {scope !== 'factory' && (
-          <Switch mt="md" label={t('reset.newSeed')} description={t('reset.newSeedHelp')} checked={newSeed} onChange={(e) => setNewSeed(e.currentTarget.checked)} />
-        )}
-        {scope === 'world' && (meta.data?.presets.length ?? 0) > 0 && (
-          <Select
-            mt="md"
-            w={320}
-            label={t('reset.preset')}
-            value={preset}
-            onChange={setPreset}
-            clearable
-            placeholder={t('reset.presetNone')}
-            data={meta.data!.presets}
-          />
+        {options && <Switch mt="md" label={t('reset.newSeed')} description={t('reset.newSeedHelp')} checked={newSeed} onChange={(e) => setNewSeed(e.currentTarget.checked)} />}
+        {presetList.length > 0 && (
+          <Select mt="md" w={{ base: '100%', xs: 320 }} label={t('reset.preset')} value={preset} onChange={setPreset} clearable placeholder={t('reset.presetNone')} data={presetList} />
         )}
         {playersOnline && (
           <Group gap="xs" mt="md">
@@ -109,7 +127,7 @@ export function Reset() {
           </Alert>
           <TextInput label={t('reset.confirmLabel', { name: serverName })} value={confirm} onChange={(e) => setConfirm(e.currentTarget.value)} autoComplete="off" spellCheck={false} />
           <Group>
-            <Button color="red" disabled={busy || !allowed[scope] || confirm.trim() !== serverName || !serverName} onClick={go}>
+            <Button color="red" disabled={busy || !scope || !can(scope.permission) || confirm.trim() !== serverName || !serverName} onClick={go}>
               {t('reset.go')}
             </Button>
           </Group>

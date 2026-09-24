@@ -23,7 +23,7 @@ export default {
     extracting: 'Unpacking…',
     swapping: 'Putting files in place…',
     deleting: 'Deleting…',
-    downloading: 'Downloading from the Workshop…',
+    downloading: 'Downloading mods…',
     scanning: 'Reading the mods…',
     done: 'Finished',
     failed: 'Failed',

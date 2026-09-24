@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { del, get, post, put } from '../api/http';
 import { useLive } from '../api/live';
+import type { Capability } from '../api/meta';
+import { useMeta } from '../api/useMeta';
 import { OpBanner } from '../components/OpBanner';
 import { useErrorText } from '../lib/format';
 
@@ -41,7 +43,31 @@ interface ModsResponse {
   lines: { Mods: string; WorkshopItems: string; Map: string };
 }
 
+/** How the web shows a mod source, by its capability; a source without a view here is named but not browsable. */
+const VIEWS: Partial<Record<Capability, { itemUrl: (id: string) => string }>> = {
+  // Steam Workshop items (any Steam game's Workshop): today's list with load order.
+  'mods:workshop': { itemUrl: (id) => `https://steamcommunity.com/sharedfiles/filedetails/?id=${encodeURIComponent(id)}` },
+};
+
+/** The server's mod source (the panel uses its adapter's first one). */
 export function Mods() {
+  const { t } = useTranslation();
+  const { meta, l } = useMeta();
+  const source = meta?.modSources[0];
+  if (!source) return null;
+  const view = VIEWS[source.capability];
+  if (!view) {
+    return (
+      <Stack maw={640}>
+        <Title order={2}>{t('mods.title')}</Title>
+        <Alert variant="light">{t('mods.noView', { source: l(source.label) })}</Alert>
+      </Stack>
+    );
+  }
+  return <SourceMods sourceName={l(source.label)} itemUrl={view.itemUrl} />;
+}
+
+function SourceMods({ sourceName, itemUrl }: { sourceName: string; itemUrl: (id: string) => string }) {
   const { t } = useTranslation();
   const errorText = useErrorText();
   const qc = useQueryClient();
@@ -128,13 +154,13 @@ export function Mods() {
         </Group>
       </Group>
       <Text size="sm" c="dimmed">
-        {t('mods.intro')}
+        {t('mods.intro', { source: sourceName })}
       </Text>
       <OpBanner />
 
       <Card withBorder>
         <Stack gap="xs">
-          <Textarea value={refs} onChange={(e) => setRefs(e.currentTarget.value)} placeholder={t('mods.addPlaceholder')} autosize minRows={2} maxRows={6} />
+          <Textarea value={refs} onChange={(e) => setRefs(e.currentTarget.value)} placeholder={t('mods.addPlaceholder', { source: sourceName })} autosize minRows={2} maxRows={6} aria-label={t('mods.add')} />
           <Group justify="flex-end">
             <Button onClick={() => void add()} loading={adding} disabled={busy || !refs.trim()}>
               {t('mods.add')}
@@ -189,7 +215,7 @@ export function Mods() {
         )}
       </Card>
 
-      <Text fw={600}>{t('mods.installed')}</Text>
+      <Text fw={600}>{t('mods.installed', { source: sourceName })}</Text>
       {data?.items.length === 0 && (
         <Text size="sm" c="dimmed">
           {t('mods.empty')}
@@ -217,9 +243,9 @@ export function Mods() {
                   )}
                 </Group>
                 <Group gap={4} wrap="nowrap">
-                  <Anchor href={`https://steamcommunity.com/sharedfiles/filedetails/?id=${item.workshopId}`} target="_blank" rel="noreferrer noopener" size="xs">
+                  <Anchor href={itemUrl(item.workshopId)} target="_blank" rel="noreferrer noopener" size="xs">
                     <Group gap={2}>
-                      {t('mods.open')} <IconExternalLink size={12} />
+                      {t('mods.open', { source: sourceName })} <IconExternalLink size={12} />
                     </Group>
                   </Anchor>
                   <ActionIcon

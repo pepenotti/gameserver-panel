@@ -8,10 +8,12 @@ import { useTranslation } from 'react-i18next';
 import { ApiError, del, get, patch, post } from '../api/http';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
+import { useMeta } from '../api/useMeta';
 import { OpBanner } from '../components/OpBanner';
 import { formatBytes, formatDateTime, useErrorText } from '../lib/format';
 
-type Part = 'world' | 'accounts' | 'configs';
+/** A backup part id: one of the adapter's `backupParts`. */
+type Part = string;
 
 interface Backup {
   name: string;
@@ -23,6 +25,8 @@ interface Backup {
     createdAt: string;
     trigger: string;
     mode: 'hot' | 'cold';
+    gameVersion: string | null;
+    /** Build and channel (Steam build id and branch) of the game that made it. */
     buildId: string | null;
     branch: string | null;
     parts: Part[];
@@ -40,9 +44,16 @@ export function Backups() {
   const qc = useQueryClient();
   const { can } = useSession();
   const live = useLive();
+  const { meta, l } = useMeta();
   const q = useQuery({ queryKey: ['backups'], queryFn: () => get<ListResponse>('/api/backups') });
   const [restoring, setRestoring] = useState<Backup | null>(null);
-  const [parts, setParts] = useState<Part[]>(['world']);
+  const [parts, setParts] = useState<Part[]>([]);
+  // What a backup is made of, as the server's game names it; parts a backup lists but the game doesn't are shown by id.
+  const allParts = (b: Backup | null) => [
+    ...(meta?.backupParts ?? []).map((p) => ({ id: p.id, label: l(p.label) })),
+    ...(b?.manifest.parts ?? []).filter((id) => !meta?.backupParts.some((p) => p.id === id)).map((id) => ({ id, label: id })),
+  ];
+  const known = new Set(meta?.backupParts.map((p) => p.id));
   const [countdown, setCountdown] = useState('300');
   const busy = !!live.op && !live.op.done;
 
@@ -94,6 +105,7 @@ export function Backups() {
         </Group>
       </Group>
       <Text size="sm" c="dimmed">
+        {meta && meta.backupParts.length > 0 && `${t('backups.holds', { parts: meta.backupParts.map((p) => l(p.label)).join(', ') })} `}
         {t('backups.intro')}
       </Text>
       <OpBanner />
@@ -160,7 +172,9 @@ export function Backups() {
                             variant="light"
                             disabled={busy}
                             onClick={() => {
-                              setParts(b.manifest.parts.includes('world') ? ['world'] : b.manifest.parts.slice(0, 1));
+                              // The game's first part it has (the world, for most games).
+                              const first = allParts(b).find((p) => b.manifest.parts.includes(p.id));
+                              setParts(first ? [first.id] : []);
                               setRestoring(b);
                             }}
                           >
@@ -220,19 +234,21 @@ export function Backups() {
             <Text size="sm" fw={500}>
               {t('backups.restoreFrom', { when: when(restoring) })}
             </Text>
-            {restoring.manifest.buildId && (
+            {(restoring.manifest.gameVersion || restoring.manifest.buildId) && (
               <Text size="xs" c="dimmed">
-                {t('backups.buildNote', { build: restoring.manifest.buildId, branch: restoring.manifest.branch ?? '?' })}
+                {t('backups.madeWith', {
+                  version: [restoring.manifest.gameVersion, restoring.manifest.buildId && t('dashboard.build', { build: restoring.manifest.buildId }), restoring.manifest.branch].filter(Boolean).join(' · '),
+                })}
               </Text>
             )}
-            {(['world', 'accounts', 'configs'] as Part[]).map((p) => (
+            {allParts(restoring).map((p) => (
               <Checkbox
-                key={p}
-                label={t(`backups.parts.${p}`)}
-                description={t(`backups.parts.${p}Help`)}
-                disabled={!restoring.manifest.parts.includes(p)}
-                checked={parts.includes(p)}
-                onChange={(e) => setParts((cur) => (e.currentTarget.checked ? [...cur, p] : cur.filter((x) => x !== p)))}
+                key={p.id}
+                label={p.label}
+                // Only parts this game knows can be restored (the API refuses the rest).
+                disabled={!restoring.manifest.parts.includes(p.id) || !known.has(p.id)}
+                checked={parts.includes(p.id)}
+                onChange={(e) => setParts((cur) => (e.currentTarget.checked ? [...cur, p.id] : cur.filter((x) => x !== p.id)))}
               />
             ))}
             {playersOnline && (

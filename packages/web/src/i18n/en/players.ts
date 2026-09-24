@@ -13,6 +13,8 @@ export default {
   banBySteam: 'Ban their Steam account (recommended)',
   access: 'Access level',
   accessHelp: 'In-game powers. Admins can use every admin command in game.',
+  // Names for access levels the adapter lists by id only (GET /api/meta `accessLevels`);
+  // an id without one here is shown as it is.
   levels: {
     none: 'Player',
     observer: 'Observer',
@@ -31,15 +33,17 @@ export default {
   whitelistRemove: 'Remove account',
   removeConfirm: 'Remove the account {{name}}? They will need a new one to join.',
   password: 'Password',
-  bans: 'Banned Steam accounts',
+  bans: 'Bans',
+  steamBans: 'Steam accounts',
   noBans: 'No bans.',
-  ipBans: 'Banned IPs',
+  ipBans: 'IP addresses',
   ipBansNote: 'IP bans are unreliable here: through Docker Desktop every player can appear with the same IP. Ban by Steam account instead.',
   history: 'Recent sessions',
   joined: 'Joined',
   left: 'Left',
   duration: 'Duration',
   stillOnline: 'still online',
+  onlineBadge: 'online',
   result: 'Server replied: {{output}}',
   notRunning: 'The server must be running for this.',
 } as const;
