@@ -29,8 +29,9 @@ services:
     stop_grace_period: 240s
     environment:
       AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}
-      PZ_GAME_PORT: ${PZ_GAME_PORT:-16261}
-      PZ_UDP_PORT: ${PZ_UDP_PORT:-16262}
+      # The adapter's ports by id (GAME_PORT_<ID>); the game listens on the published numbers.
+      GAME_PORT_GAME: ${PZ_GAME_PORT:-16261}
+      GAME_PORT_UDP: ${PZ_UDP_PORT:-16262}
       TZ: ${TZ:-UTC}
     ports:
       # Same port inside and out: PZ advertises its own port to clients.

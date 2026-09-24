@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// Talk to the agent from inside the pz container — handy before the panel
-// exists, and as an escape hatch when it's down.
+// Talk to the agent from inside the game container — an escape hatch when
+// the panel is down.
 //
-//   docker compose exec pz node /app/agentctl.mjs status
+//   docker compose exec pz node /app/agentctl.mjs status [--full]
 //   docker compose exec -T pz node /app/agentctl.mjs start - < launch.json
-//   docker compose exec pz node /app/agentctl.mjs stop | restart | kill
+//       (launch.json: {"adapter":"pz","params":{…}}, or the adapter's bare params)
+//   docker compose exec pz node /app/agentctl.mjs stop | restart | kill | save
 //   docker compose exec pz node /app/agentctl.mjs cmd "players"
-//   docker compose exec pz node /app/agentctl.mjs install [branch] [--validate]
-//   docker compose exec pz node /app/agentctl.mjs appinfo | logs
+//   docker compose exec pz node /app/agentctl.mjs install [--validate]     (for the stored launch)
+//   docker compose exec pz node /app/agentctl.mjs versions | logs [since]
+//   docker compose exec pz node /app/agentctl.mjs action accounts '{"serverName":"zomboid"}'
 import { readFileSync } from 'node:fs';
 
 const base = process.env.AGENT_URL ?? `http://127.0.0.1:${process.env.AGENT_PORT ?? 8081}`;
@@ -39,28 +41,32 @@ const summary = (s) => ({
   state: s.state,
   desired: s.desired,
   gameVersion: s.gameVersion,
-  installed: s.installed,
+  installed: s.installedInfo ?? null,
   players: s.players,
   failure: s.failure,
   lastExit: s.lastExit,
-  rcon: s.rcon,
+  control: s.control,
   job: s.job,
   process: s.process,
 });
+const print = (x) => console.log(JSON.stringify(x, null, 2));
 
 switch (cmd) {
   case 'status':
-    console.log(JSON.stringify(rest[0] === '--full' ? await call('GET', '/v1/status') : summary(await call('GET', '/v1/status')), null, 2));
+    print(rest[0] === '--full' ? await call('GET', '/v1/status') : summary(await call('GET', '/v1/status')));
     break;
   case 'start': {
     const launch = rest[0] === '-' ? JSON.parse(readFileSync(0, 'utf8')) : rest[0] ? JSON.parse(readFileSync(rest[0], 'utf8')) : undefined;
-    console.log(JSON.stringify(summary(await call('POST', '/v1/start', launch ? { launch } : {})), null, 2));
+    print(summary(await call('POST', '/v1/start', launch ? { launch } : {})));
     break;
   }
   case 'stop':
   case 'restart':
   case 'kill':
-    console.log(JSON.stringify(summary(await call('POST', `/v1/${cmd}`, {})), null, 2));
+    print(summary(await call('POST', `/v1/${cmd}`, {})));
+    break;
+  case 'save':
+    print(await call('POST', '/v1/save', {}));
     break;
   case 'cmd': {
     const r = await call('POST', '/v1/command', { command: rest.join(' ') });
@@ -68,11 +74,25 @@ switch (cmd) {
     break;
   }
   case 'install':
-    console.log(await call('POST', '/v1/steamcmd/install', { branch: rest.find((a) => !a.startsWith('--')), validate: rest.includes('--validate') }));
+    if (rest.some((a) => !a.startsWith('--'))) {
+      console.error('install takes no branch: it installs what the stored launch pins (start with new launch params to change it)');
+      process.exit(2);
+    }
+    print(await call('POST', '/v1/install', { validate: rest.includes('--validate') }));
     break;
+  case 'versions':
   case 'appinfo':
-    console.log(JSON.stringify(await call('POST', '/v1/steamcmd/appinfo', {}), null, 2));
+    print(await call('POST', '/v1/versions', {}));
     break;
+  case 'action': {
+    const [name, input] = rest;
+    if (!name) {
+      console.error('usage: agentctl action <name> [json input]');
+      process.exit(2);
+    }
+    print((await call('POST', `/v1/actions/${encodeURIComponent(name)}`, { input: input === undefined ? {} : JSON.parse(input) })).result);
+    break;
+  }
   case 'logs': {
     // Stream the event log as plain lines until interrupted.
     const res = await fetch(`${base}/v1/events?since=${rest[0] ?? 0}`, { headers });
@@ -97,6 +117,6 @@ switch (cmd) {
     break;
   }
   default:
-    console.error('usage: agentctl status|start [file|-]|stop|restart|kill|cmd <command>|install [branch] [--validate]|appinfo|logs [since]');
+    console.error('usage: agentctl status [--full]|start [file|-]|stop|restart|kill|save|cmd <command>|install [--validate]|versions|action <name> [json]|logs [since]');
     process.exit(2);
 }

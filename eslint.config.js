@@ -25,7 +25,6 @@ const GAME_ADAPTER_IMPORTS = {
 // list goes away once all three are empty.
 const LEGACY_GAME_IMPORTERS = [
   // --- M1-A (agent)
-  'packages/agent/src/agent.ts',
 
   // --- M1-B (panel)
   'packages/panel/src/backups/flows.ts',

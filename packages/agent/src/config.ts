@@ -6,34 +6,40 @@ export interface AgentConfig {
   token: string;
   host: string;
   port: number;
-  /** Game install (steamcmd force_install_dir). Never edited by us. */
-  installDir: string;
-  /** PZ `-cachedir`: Server/, Saves/, db/, Logs/. */
-  dataDir: string;
-  /** Agent state (launch params, RCON secret) lives here, outside PZ's folders. */
+  /** Runtime adapter id (`GAME_ADAPTER`). */
+  adapter: string;
+  /**
+   * Relocate the adapter's install and data roots (`GAME_INSTALL_DIR`,
+   * `GAME_DATA_DIR`; the image, the dev loop and tests set them). Null: the
+   * adapter's own `roots()` once a launch is stored.
+   */
+  installDir: string | null;
+  dataDir: string | null;
+  /** Agent state (launch params, generated secrets) lives here, outside the game's folders. */
   stateDir: string;
   /** steamcmd invocation; tests use the fake (`node tools/fake-pz/steamcmd.mjs`). */
   steamcmd: string[];
-  appId: string;
-  gamePort: number;
-  udpPort: number;
-  rconPort: number;
+  /** HOME for tools that keep state there (steamcmd). */
+  home: string;
   /**
-   * Command that starts the game. Default: the install's start-server.sh.
-   * Tests point it at the fake server (`node tools/fake-pz/server.mjs`).
+   * Replaces the adapter's launcher (`GAME_START_COMMAND`, a JSON array):
+   * tests and the dev loop start a fake server.
    */
-  startCommand: string[];
+  launcher: string[] | null;
+  /** Port numbers by `PortDecl.id` (`GAME_PORT_<ID>`); the rest use the adapter's defaults. */
+  ports: Record<string, number>;
   readyTimeoutMs: number;
-  stopTimeoutMs: number;
+  /** Clean-stop budget; null: the adapter's `meta.stopBudgetMs`. */
+  stopTimeoutMs: number | null;
   termTimeoutMs: number;
   crashLoop: { count: number; windowMs: number };
   restartDelayMs: number;
   playersPollMs: number;
-  /** Consecutive failed RCON polls while running before an `unresponsive` alert. */
+  /** Consecutive failed player polls while running before an `unresponsive` alert. */
   unresponsiveAfter: number;
+  /** After the game says it's up, how long its control channel gets to say so too. */
+  channelGraceMs: number;
   logBufferLines: number;
-  /** Extra JVM flags always passed (English comments in generated files). */
-  baseJvmArgs: string[];
 }
 
 /** The image copies the repo's VERSION next to the bundle. */
@@ -45,41 +51,83 @@ function bundledVersion(): string {
   }
 }
 
-function num(env: NodeJS.ProcessEnv, key: string, dflt: number): number {
-  const v = env[key];
-  if (v === undefined || v === '') return dflt;
-  const n = Number(v);
-  if (!Number.isFinite(n)) throw new Error(`${key} must be a number`);
+/**
+ * The first of `keys` that is set. The agent's settings used to be named
+ * after Project Zomboid (`PZ_*`); those names still work as fallbacks.
+ */
+function pick(env: NodeJS.ProcessEnv, ...keys: string[]): { key: string; value: string } | null {
+  for (const key of keys) {
+    const value = env[key];
+    if (value !== undefined && value !== '') return { key, value };
+  }
+  return null;
+}
+
+function num(env: NodeJS.ProcessEnv, keys: string[], dflt: number): number {
+  const v = pick(env, ...keys);
+  if (!v) return dflt;
+  const n = Number(v.value);
+  if (!Number.isFinite(n)) throw new Error(`${v.key} must be a number`);
   return n;
+}
+
+function argv(env: NodeJS.ProcessEnv, keys: string[]): string[] | null {
+  const v = pick(env, ...keys);
+  if (!v) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(v.value);
+  } catch {
+    parsed = null;
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0 || !parsed.every((a) => typeof a === 'string')) throw new Error(`${v.key} must be a JSON array of strings`);
+  return parsed as string[];
+}
+
+/** `GAME_PORT_<ID>` overrides, e.g. `GAME_PORT_RCON=27015`. */
+function ports(env: NodeJS.ProcessEnv): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(env)) {
+    const m = /^GAME_PORT_([A-Z0-9_]+)$/.exec(key);
+    if (!m || value === undefined || value === '') continue;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error(`${key} must be a port number`);
+    out[m[1]!.toLowerCase()] = n;
+  }
+  return out;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentConfig {
   const token = env.AGENT_TOKEN ?? '';
   if (token.length < 32) throw new Error('AGENT_TOKEN must be set (at least 32 characters)');
-  const installDir = env.PZ_INSTALL_DIR ?? '/opt/pz';
-  const dataDir = env.PZ_DATA_DIR ?? '/data';
+  const adapter = pick(env, 'GAME_ADAPTER')?.value ?? 'pz';
+  const installDir = pick(env, 'GAME_INSTALL_DIR', 'PZ_INSTALL_DIR')?.value ?? null;
+  const dataDir = pick(env, 'GAME_DATA_DIR', 'PZ_DATA_DIR')?.value ?? null;
+  const stop = pick(env, 'GAME_STOP_TIMEOUT_MS', 'PZ_STOP_TIMEOUT_MS');
   return {
     version: env.AGENT_VERSION ?? bundledVersion(),
     token,
     host: env.AGENT_HOST ?? '0.0.0.0',
-    port: num(env, 'AGENT_PORT', 8081),
+    port: num(env, ['AGENT_PORT'], 8081),
+    adapter,
     installDir,
     dataDir,
-    stateDir: env.AGENT_STATE_DIR ?? path.join(dataDir, '.agent'),
-    steamcmd: env.STEAMCMD_COMMAND ? (JSON.parse(env.STEAMCMD_COMMAND) as string[]) : ['/opt/steamcmd/steamcmd.sh'],
-    appId: env.PZ_APP_ID ?? '380870',
-    gamePort: num(env, 'PZ_GAME_PORT', 16261),
-    udpPort: num(env, 'PZ_UDP_PORT', 16262),
-    rconPort: num(env, 'PZ_RCON_PORT', 27015),
-    startCommand: env.PZ_START_COMMAND ? (JSON.parse(env.PZ_START_COMMAND) as string[]) : [path.join(installDir, 'start-server.sh')],
-    readyTimeoutMs: num(env, 'PZ_READY_TIMEOUT_MS', 15 * 60_000),
-    stopTimeoutMs: num(env, 'PZ_STOP_TIMEOUT_MS', 180_000),
-    termTimeoutMs: num(env, 'PZ_TERM_TIMEOUT_MS', 30_000),
-    crashLoop: { count: num(env, 'PZ_CRASH_LOOP_COUNT', 3), windowMs: num(env, 'PZ_CRASH_LOOP_WINDOW_MS', 10 * 60_000) },
-    restartDelayMs: num(env, 'PZ_RESTART_DELAY_MS', 10_000),
-    playersPollMs: num(env, 'PZ_PLAYERS_POLL_MS', 15_000),
-    unresponsiveAfter: num(env, 'PZ_UNRESPONSIVE_AFTER', 8),
-    logBufferLines: num(env, 'AGENT_LOG_LINES', 5000),
-    baseJvmArgs: ['-Duser.language=en', '-Duser.country=US'],
+    stateDir: env.AGENT_STATE_DIR ?? path.join(dataDir ?? '/data', '.agent'),
+    steamcmd: argv(env, ['STEAMCMD_COMMAND']) ?? ['/opt/steamcmd/steamcmd.sh'],
+    home: env.HOME ?? '/home/node',
+    launcher: argv(env, ['GAME_START_COMMAND', 'PZ_START_COMMAND']),
+    ports: ports(env),
+    readyTimeoutMs: num(env, ['GAME_READY_TIMEOUT_MS', 'PZ_READY_TIMEOUT_MS'], 15 * 60_000),
+    stopTimeoutMs: stop ? num(env, [stop.key], 0) : null,
+    termTimeoutMs: num(env, ['GAME_TERM_TIMEOUT_MS', 'PZ_TERM_TIMEOUT_MS'], 30_000),
+    crashLoop: {
+      count: num(env, ['GAME_CRASH_LOOP_COUNT', 'PZ_CRASH_LOOP_COUNT'], 3),
+      windowMs: num(env, ['GAME_CRASH_LOOP_WINDOW_MS', 'PZ_CRASH_LOOP_WINDOW_MS'], 10 * 60_000),
+    },
+    restartDelayMs: num(env, ['GAME_RESTART_DELAY_MS', 'PZ_RESTART_DELAY_MS'], 10_000),
+    playersPollMs: num(env, ['GAME_PLAYERS_POLL_MS', 'PZ_PLAYERS_POLL_MS'], 15_000),
+    unresponsiveAfter: num(env, ['GAME_UNRESPONSIVE_AFTER', 'PZ_UNRESPONSIVE_AFTER'], 8),
+    channelGraceMs: 10_000,
+    logBufferLines: num(env, ['AGENT_LOG_LINES'], 5000),
   };
 }

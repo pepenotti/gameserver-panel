@@ -1,17 +1,20 @@
+import { runtimeAdapter } from '@gsp/adapters/runtime';
 import { Agent } from './agent';
 import { loadConfig } from './config';
 import { EventHub } from './events';
 import { createAgentServer } from './http';
 import { StateStore } from './state-store';
 
+// Composition root: the only agent module that picks a game adapter (NFR-08).
 const cfg = loadConfig();
+const adapter = runtimeAdapter(cfg.adapter);
 const hub = new EventHub(cfg.logBufferLines + 500);
-const store = new StateStore(cfg.stateDir);
-const agent = new Agent(cfg, store, hub);
+const store = new StateStore(cfg.stateDir, { adapter: adapter.meta.id });
+const agent = new Agent(cfg, adapter, store, hub);
 const server = createAgentServer(agent, hub, cfg.token);
 
 server.listen(cfg.port, cfg.host, () => {
-  console.log(`pz agent ${cfg.version} listening on ${cfg.host}:${cfg.port}`);
+  console.log(`${adapter.meta.id} agent ${cfg.version} listening on ${cfg.host}:${cfg.port}`);
   void agent.init();
 });
 

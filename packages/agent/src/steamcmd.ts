@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { isRetryableSteamcmdError, parseAppInfoBranches, parseSteamcmdLine, stripAnsi, type BranchInfo } from '@gsp/formats';
+import type { JobResult, SteamCmd, VersionsResponse } from '@gsp/adapter-api';
+import { isRetryableSteamcmdError, parseAppInfoBranches, parseSteamcmdLine, stripAnsi } from '@gsp/formats';
 import { lineSplitter } from './process';
 
 export interface SteamcmdRunResult {
@@ -20,13 +21,21 @@ export interface SteamcmdOptions {
 }
 
 const BRANCH = /^[A-Za-z0-9._-]{1,64}$/;
+const APP_ID = /^\d{1,10}$/;
+const WORKSHOP_ID = /^\d{5,20}$/;
+
+/** steamcmd's environment: ours minus the agent's token, with its own HOME. */
+function steamcmdEnv(home: string): NodeJS.ProcessEnv {
+  const { AGENT_TOKEN: _token, ...env } = process.env;
+  return { ...env, HOME: home };
+}
 
 /** Run steamcmd once with the given `+command` args. Exit codes are unreliable; success is read from the output. */
 export function runSteamcmd(args: string[], opts: SteamcmdOptions, successTest: (output: string) => boolean): Promise<SteamcmdRunResult> {
   return new Promise((resolve) => {
     const [file, ...pre] = opts.steamcmd;
     const child = spawn(file!, [...pre, ...args], {
-      env: { ...process.env, HOME: opts.home },
+      env: steamcmdEnv(opts.home),
       stdio: ['ignore', 'pipe', 'pipe'],
       signal: opts.signal,
     });
@@ -69,42 +78,73 @@ async function withRetries(attempts: number, fn: () => Promise<SteamcmdRunResult
   return last!;
 }
 
-export function installArgs(installDir: string, appId: string, branch: string, validate: boolean): string[] {
-  if (!BRANCH.test(branch)) throw new Error('Invalid branch name');
+/** `+app_update` arguments; a null branch is Steam's default (`public`) one. */
+export function installArgs(installDir: string, appId: string, branch: string | null, validate: boolean): string[] {
+  if (!APP_ID.test(appId)) throw new Error('Invalid app id');
+  if (branch !== null && !BRANCH.test(branch)) throw new Error('Invalid branch name');
   const update = ['+app_update', appId];
-  if (branch !== 'public') update.push('-beta', branch);
+  if (branch !== null) update.push('-beta', branch);
   if (validate) update.push('validate');
   // force_install_dir must come before login.
   return ['+force_install_dir', installDir, '+login', 'anonymous', ...update, '+quit'];
 }
 
-export function installGame(opts: SteamcmdOptions & { installDir: string; appId: string; branch: string; validate: boolean; onRetry?: (n: number, e: string) => void }) {
-  const args = installArgs(opts.installDir, opts.appId, opts.branch, opts.validate);
-  const ok = (o: string) => new RegExp(`Success! App '${opts.appId}' (fully installed|already up to date)`).test(o);
-  return withRetries(3, () => runSteamcmd(args, opts, ok), opts.onRetry);
+export function workshopArgs(cacheDir: string, workshopAppId: string, ids: string[]): string[] {
+  if (!APP_ID.test(workshopAppId)) throw new Error('Invalid workshop app id');
+  for (const id of ids) if (!WORKSHOP_ID.test(id)) throw new Error(`Invalid workshop id ${id}`);
+  return ['+force_install_dir', cacheDir, '+login', 'anonymous', ...ids.flatMap((id) => ['+workshop_download_item', workshopAppId, id]), '+quit'];
 }
 
-export async function fetchBranches(opts: SteamcmdOptions & { appId: string }): Promise<BranchInfo[]> {
-  // steamcmd serves app_info from a local cache that can be days stale; drop it first.
-  rmSync(path.join(opts.home, 'Steam', 'appcache', 'appinfo.vdf'), { force: true });
-  const args = ['+login', 'anonymous', '+app_info_update', '1', '+app_info_print', opts.appId, '+quit'];
-  let last: SteamcmdRunResult | undefined;
-  for (let i = 0; i < 2; i++) {
-    last = await runSteamcmd(args, opts, (o) => o.includes(`"${opts.appId}"`));
-    if (last.ok) {
-      try {
-        return parseAppInfoBranches(last.output, opts.appId);
-      } catch {
-        // Empty or truncated print happens; retry once.
+export interface SteamcmdDriverOptions extends SteamcmdOptions {
+  /** `app_update` target: the server's install root. */
+  installDir: string;
+  /** Workshop cache (`force_install_dir` of downloads), inside the data root. */
+  workshopDir: string;
+  /** Agent log lines (retries). */
+  log?: (line: string) => void;
+}
+
+/**
+ * The agent's steamcmd driver (`InstallCtx.steam`): retries, progress and
+ * output lines for the running job. Adapters pass their own app ids.
+ */
+export class SteamcmdDriver implements SteamCmd {
+  constructor(private readonly o: SteamcmdDriverOptions) {}
+
+  async appUpdate(req: { appId: string; branch: string | null; validate: boolean }): Promise<JobResult> {
+    const args = installArgs(this.o.installDir, req.appId, req.branch, req.validate);
+    const ok = (out: string) => new RegExp(`Success! App '${req.appId}' (fully installed|already up to date)`).test(out);
+    const r = await withRetries(3, () => runSteamcmd(args, this.o, ok), (n, e) => this.o.log?.(`steamcmd attempt ${n} failed (${e}); retrying`));
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
+  async branches(req: { appId: string }): Promise<VersionsResponse> {
+    if (!APP_ID.test(req.appId)) throw new Error('Invalid app id');
+    // steamcmd serves app_info from a local cache that can be days stale; drop it first.
+    rmSync(path.join(this.o.home, 'Steam', 'appcache', 'appinfo.vdf'), { force: true });
+    const args = ['+login', 'anonymous', '+app_info_update', '1', '+app_info_print', req.appId, '+quit'];
+    let last: SteamcmdRunResult | undefined;
+    for (let i = 0; i < 2; i++) {
+      last = await runSteamcmd(args, this.o, (out) => out.includes(`"${req.appId}"`));
+      if (last.ok) {
+        try {
+          const branches = parseAppInfoBranches(last.output, req.appId);
+          return {
+            installed: null,
+            versions: branches.map((b) => ({ id: b.name, build: b.buildId, timeUpdated: b.timeUpdated, description: b.description, passwordRequired: b.passwordRequired })),
+          };
+        } catch {
+          // Empty or truncated print happens; retry once.
+        }
       }
     }
+    throw new Error(last?.error ?? 'Could not read app info');
   }
-  throw new Error(last?.error ?? 'Could not read app info');
-}
 
-export function downloadWorkshopItems(opts: SteamcmdOptions & { cacheDir: string; ids: string[] }) {
-  for (const id of opts.ids) if (!/^\d{5,20}$/.test(id)) throw new Error(`Invalid workshop id ${id}`);
-  const args = ['+force_install_dir', opts.cacheDir, '+login', 'anonymous', ...opts.ids.flatMap((id) => ['+workshop_download_item', '108600', id]), '+quit'];
-  const ok = (o: string) => opts.ids.every((id) => o.includes(`Success. Downloaded item ${id}`));
-  return withRetries(2, () => runSteamcmd(args, opts, ok));
+  async workshopDownload(req: { workshopAppId: string; ids: string[] }): Promise<JobResult> {
+    const args = workshopArgs(this.o.workshopDir, req.workshopAppId, req.ids);
+    const ok = (out: string) => req.ids.every((id) => out.includes(`Success. Downloaded item ${id}`));
+    const r = await withRetries(2, () => runSteamcmd(args, this.o, ok));
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
 }
