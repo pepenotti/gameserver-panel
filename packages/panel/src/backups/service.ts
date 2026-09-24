@@ -1,19 +1,22 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statfsSync, statSync, writeFileSync, type Stats } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statfsSync, statSync, writeFileSync, type Stats } from 'node:fs';
 import path from 'node:path';
 import { Transform, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { createZstdCompress, createZstdDecompress } from 'node:zlib';
-import { getIniValue, parseIni } from '@gsp/formats';
+import type { BackupPartDecl } from '@gsp/adapter-api';
 import type { AgentFeed } from '../http/deps';
 import { HttpError } from '../http/context';
 import type { PanelEnv } from '../env';
+import type { ServerHandle } from '../server/handle';
+import { globToRegExp, matchesAny } from './glob';
 import { TarError, TarPacker, unpack } from './tar';
 
-export type BackupPart = 'world' | 'accounts' | 'configs';
-export const PARTS: BackupPart[] = ['world', 'accounts', 'configs'];
+/** A backup part id, from the adapter's `backups.parts`. */
+export type BackupPart = string;
 export type BackupTrigger = 'manual' | 'scheduled' | 'pre-reset' | 'pre-restore' | 'pre-update' | 'upload';
+const TRIGGERS: BackupTrigger[] = ['manual', 'scheduled', 'pre-reset', 'pre-restore', 'pre-update', 'upload'];
 const PROTECTED: BackupTrigger[] = ['pre-reset', 'pre-restore', 'pre-update'];
 const KEEP = { scheduled: 14, manual: 10, upload: 10 } as const;
 const PROTECT_DAYS = 14;
@@ -27,7 +30,9 @@ export interface BackupManifest {
   gameVersion: string | null;
   buildId: string | null;
   branch: string | null;
+  /** Items (Workshop ids…) of the enabled mods, `;`-separated. */
   workshopItems: string | null;
+  /** Enabled mod ids in load order, `;`-separated. */
   mods: string | null;
   parts: BackupPart[];
   files: number;
@@ -45,22 +50,20 @@ export interface BackupInfo {
   manifest: BackupManifest;
 }
 
-const NAME = /^pz-[A-Za-z0-9_-]{1,32}-\d{8}T\d{6}Z-(manual|scheduled|pre-reset|pre-restore|pre-update|upload)(-\d+)?\.tar\.zst$/;
-
-export function assertBackupName(name: string): void {
-  if (!NAME.test(name)) throw new HttpError(400, 'invalid-backup-name');
-}
-
 function stamp(d: Date): string {
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
-/** Walk a directory, yielding paths relative to `root` (dirs end with /). */
-function* walk(root: string, rel: string): Generator<{ rel: string; abs: string; st: Stats }> {
+/**
+ * Walk a directory, yielding paths relative to `root` (dirs end with /).
+ * Symbolic links are skipped, never followed: whatever runs in the game
+ * (mods) can create them, and a backup must not reach outside the data.
+ */
+export function* walk(root: string, rel: string): Generator<{ rel: string; abs: string; st: Stats }> {
   const abs = path.join(root, rel);
   let st: Stats;
   try {
-    st = statSync(abs);
+    st = lstatSync(abs);
   } catch {
     return;
   }
@@ -72,32 +75,71 @@ function* walk(root: string, rel: string): Generator<{ rel: string; abs: string;
   }
 }
 
+function exists(abs: string): boolean {
+  try {
+    lstatSync(abs);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface BackupDeps {
   env: PanelEnv;
   feed: AgentFeed;
+  server: ServerHandle;
+  /** The enabled mods, recorded in each manifest. */
+  mods?: { enabled(): { modId: string; workshopId: string }[] };
 }
 
 export class BackupService {
-  constructor(private readonly d: BackupDeps) {}
+  private readonly nameRe: RegExp;
+
+  constructor(private readonly d: BackupDeps) {
+    const prefix = d.server.adapter.meta.id.replace(/[^a-z0-9-]/g, '');
+    this.nameRe = new RegExp(`^${prefix}-[A-Za-z0-9_-]{1,32}-\\d{8}T\\d{6}Z-(${TRIGGERS.join('|')})(-\\d+)?\\.tar\\.zst$`);
+  }
 
   private get dir(): string {
     return this.d.env.backupDir;
   }
 
   private get name(): string {
-    return this.d.env.serverName;
+    return this.d.server.ref.gameName;
   }
 
-  /** Paths (relative to the PZ data dir) that make up each part. */
+  /** Archive names start with the adapter id: `pz-<server>-<time>-<trigger>.tar.zst`. */
+  private archiveName(serverName: string, createdAt: Date, trigger: BackupTrigger, n = 1): string {
+    return `${this.d.server.adapter.meta.id}-${serverName}-${stamp(createdAt)}-${trigger}${n > 1 ? `-${n}` : ''}.tar.zst`;
+  }
+
+  assertName(name: string): void {
+    if (!this.nameRe.test(name)) throw new HttpError(400, 'invalid-backup-name');
+  }
+
+  private decls(): BackupPartDecl[] {
+    return this.d.server.adapter.backups.parts;
+  }
+
+  /** The adapter's part ids, in its order. */
+  parts(): BackupPart[] {
+    return this.decls().map((p) => p.id);
+  }
+
+  private decl(part: BackupPart): BackupPartDecl {
+    const p = this.decls().find((x) => x.id === part);
+    if (!p) throw new HttpError(400, 'unknown-part');
+    return p;
+  }
+
+  /** Paths (relative to the data folder) that make up a part, for this server or another name (a restored backup's). */
   partPaths(part: BackupPart, serverName = this.name): string[] {
-    switch (part) {
-      case 'world':
-        return [`Saves/Multiplayer/${serverName}`, `Saves/Multiplayer/${serverName}_player`];
-      case 'accounts':
-        return [`db/${serverName}.db`];
-      case 'configs':
-        return ['.ini', '_SandboxVars.lua', '_spawnregions.lua', '_spawnpoints.lua'].map((s) => `Server/${serverName}${s}`);
-    }
+    return this.decl(part).paths({ ...this.d.server.ref, gameName: serverName });
+  }
+
+  /** Whether anything a backup would cover exists (there is something to protect). */
+  hasData(): boolean {
+    return this.parts().some((p) => this.partPaths(p).some((rel) => exists(path.join(this.d.env.pzDataDir, rel))));
   }
 
   // ------------------------------------------------------------------ list
@@ -106,7 +148,7 @@ export class BackupService {
     if (!existsSync(this.dir)) return [];
     const out: BackupInfo[] = [];
     for (const f of readdirSync(this.dir)) {
-      if (!NAME.test(f)) continue;
+      if (!this.nameRe.test(f)) continue;
       try {
         const side = JSON.parse(readFileSync(path.join(this.dir, `${f}.json`), 'utf8')) as Omit<BackupInfo, 'name'>;
         out.push({ name: f, ...side });
@@ -126,14 +168,14 @@ export class BackupService {
   }
 
   get(name: string): BackupInfo {
-    assertBackupName(name);
+    this.assertName(name);
     const b = this.list().find((x) => x.name === name);
     if (!b) throw new HttpError(404, 'not-found');
     return b;
   }
 
   filePath(name: string): string {
-    assertBackupName(name);
+    this.assertName(name);
     return path.join(this.dir, name);
   }
 
@@ -172,40 +214,36 @@ export class BackupService {
 
   // ---------------------------------------------------------------- create
 
-  private sourceBytes(): number {
+  private sourceBytes(parts: BackupPart[]): number {
     let total = 0;
-    for (const part of PARTS) for (const p of this.partPaths(part)) for (const f of walk(this.d.env.pzDataDir, p)) if (f.st.isFile()) total += f.st.size;
+    for (const part of parts) for (const p of this.partPaths(part)) for (const f of walk(this.d.env.pzDataDir, p)) if (f.st.isFile()) total += f.st.size;
     return total;
   }
 
   /**
-   * Archive the world, accounts and configs. `hot` means the server is running:
-   * PZ's SQLite databases are copied with SQLite's online backup API instead
-   * of being read mid-write.
+   * Archive every part the adapter declares. `hot` means the server is
+   * running: files matching a part's `sqlite` globs (relative to the data
+   * folder) are copied as consistent SQLite snapshots instead of being read
+   * mid-write.
    */
   async create(opts: { trigger: BackupTrigger; hot: boolean; onProgress?: (fraction: number) => void }): Promise<BackupInfo> {
     mkdirSync(this.dir, { recursive: true });
-    const total = this.sourceBytes();
+    const data = this.d.env.pzDataDir;
+    const parts = this.parts().filter((p) => this.partPaths(p).some((rel) => exists(path.join(data, rel))));
+    const total = this.sourceBytes(parts);
     const free = statfsSync(this.dir);
     // Estimate the archive at 60% of the raw size (zstd usually does better) and keep 20% headroom.
     if (free.bavail * free.bsize < total * 1.2 * 0.6) throw new HttpError(507, 'no-space', undefined, { neededBytes: Math.round(total * 0.72), freeBytes: free.bavail * free.bsize });
 
     const createdAt = new Date();
-    let name = `pz-${this.name}-${stamp(createdAt)}-${opts.trigger}.tar.zst`;
-    for (let i = 2; existsSync(path.join(this.dir, name)); i++) name = `pz-${this.name}-${stamp(createdAt)}-${opts.trigger}-${i}.tar.zst`;
+    let name = this.archiveName(this.name, createdAt, opts.trigger);
+    for (let i = 2; existsSync(path.join(this.dir, name)); i++) name = this.archiveName(this.name, createdAt, opts.trigger, i);
     const tmp = path.join(this.dir, `.${name}.partial`);
-    const snapDir = path.join(this.d.env.pzDataDir, '.panel-snapshots', randomUUID());
+    const snapDir = path.join(data, '.panel-snapshots', randomUUID());
 
     const status = this.d.feed.status_;
-    const iniText = (() => {
-      try {
-        return readFileSync(path.join(this.d.env.pzDataDir, 'Server', `${this.name}.ini`), 'utf8');
-      } catch {
-        return null;
-      }
-    })();
-    const ini = iniText ? parseIni(iniText) : null;
-    const parts = PARTS.filter((p) => this.partPaths(p).some((rel) => existsSync(path.join(this.d.env.pzDataDir, rel))));
+    const installed = status?.installedInfo;
+    const enabled = this.d.mods?.enabled() ?? [];
 
     const hash = createHash('sha256');
     let size = 0;
@@ -230,11 +268,11 @@ export class BackupService {
         createdAt: createdAt.toISOString(),
         trigger: opts.trigger,
         mode: opts.hot ? 'hot' : 'cold',
-        gameVersion: status?.gameVersion ?? null,
-        buildId: status?.installed?.buildId ?? null,
-        branch: status?.installed?.branch ?? null,
-        workshopItems: ini ? (getIniValue(ini, 'WorkshopItems') ?? null) : null,
-        mods: ini ? (getIniValue(ini, 'Mods') ?? null) : null,
+        gameVersion: status?.gameVersion ?? installed?.version ?? null,
+        buildId: installed?.build ?? status?.installed?.buildId ?? null,
+        branch: installed?.channel ?? status?.installed?.branch ?? null,
+        workshopItems: enabled.length ? [...new Set(enabled.map((e) => e.workshopId))].join(';') : null,
+        mods: enabled.length ? enabled.map((e) => e.modId).join(';') : null,
         parts,
         files: 0,
         bytes: total,
@@ -243,8 +281,9 @@ export class BackupService {
       // Written first so a reader can check it before unpacking gigabytes.
       await tar.addBuffer('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2)), createdAt.getTime() / 1000);
       for (const part of parts) {
+        const sqlite = (this.decl(part).sqlite ?? []).map(globToRegExp);
         for (const rel of this.partPaths(part)) {
-          for (const f of walk(this.d.env.pzDataDir, rel)) {
+          for (const f of walk(data, rel)) {
             const archName = `data/${f.rel}`;
             const mtime = f.st.mtimeMs / 1000;
             if (f.rel.endsWith('/')) {
@@ -253,7 +292,7 @@ export class BackupService {
             }
             let src = f.abs;
             let len = f.st.size;
-            if (opts.hot && f.rel.endsWith('.db')) {
+            if (opts.hot && matchesAny(f.rel, sqlite)) {
               mkdirSync(snapDir, { recursive: true });
               const snap = path.join(snapDir, `${files}.db`);
               try {
@@ -398,7 +437,7 @@ export class BackupService {
       for (const rel of this.partPaths(part)) {
         const live = path.join(data, rel);
         const staged = path.join(staging, rel);
-        if (existsSync(live)) {
+        if (exists(live)) {
           mkdirSync(path.dirname(path.join(trash, rel)), { recursive: true });
           renameSync(live, path.join(trash, rel));
         }
@@ -440,7 +479,7 @@ export class BackupService {
       return null;
     });
     const created = new Date();
-    const name = `pz-${manifest.serverName}-${stamp(created)}-upload.tar.zst`;
+    const name = this.archiveName(manifest.serverName, created, 'upload');
     renameSync(tmpFile, path.join(this.dir, name));
     const sha256 = await this.sha256(name);
     const info: BackupInfo = { name, size: statSync(path.join(this.dir, name)).size, sha256, pinned: false, manifest: { ...manifest, trigger: 'upload' } };

@@ -60,4 +60,10 @@ export default {
   'invalid-message': 'Los mensajes no pueden tener comillas dobles ni saltos de línea.',
   'not-cancellable': 'Eso ya no se puede cancelar.',
   generic: 'Algo salió mal.',
+  'capability-unsupported': 'Este juego no admite eso.',
+  'invalid-mod-ref': 'Ese no es un enlace ni un ID que esta fuente de mods entienda.',
+  'mod-not-for-game': 'No es un mod de este juego (o es privado o fue eliminado).',
+  'save-failed': 'El servidor no terminó de guardar. Revisá el registro.',
+  'unknown-reset': 'Tipo de reinicio desconocido.',
+  'unknown-part': 'Parte de la copia desconocida.',
 } satisfies Translations['errors'];

@@ -13,6 +13,7 @@ import { statusRoutes } from './routes/status';
 import { backupRoutes } from './routes/backups';
 import { configRoutes } from './routes/config';
 import { fileRoutes } from './routes/files';
+import { metaRoutes } from './routes/meta';
 import { modRoutes } from './routes/mods';
 import { playerRoutes } from './routes/players';
 import { proposalRoutes } from './routes/proposals';
@@ -54,6 +55,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
   meRoutes(app, deps);
   userRoutes(app, deps);
   statusRoutes(app, deps);
+  metaRoutes(app, deps);
   serverRoutes(app, deps);
   configRoutes(app, deps);
   fileRoutes(app, deps);

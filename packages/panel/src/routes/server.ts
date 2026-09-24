@@ -1,4 +1,4 @@
-import { RconProtocolError } from '@gsp/formats';
+import { RconProtocolError, type OptionMeta } from '@gsp/formats';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { COUNTDOWNS, type GameLang } from '../control/control';
 import { actor, HttpError } from '../http/context';
@@ -19,8 +19,34 @@ export function auditableCommand(cmd: string): string {
   return cmd.slice(0, 300);
 }
 
+/** A JSON schema for the adapter's launch settings form: every key, typed, nothing else. */
+export function launchBodySchema(options: OptionMeta[]): Record<string, unknown> {
+  const prop = (o: OptionMeta): Record<string, unknown> => {
+    const range = { ...(o.min !== undefined ? { minimum: o.min } : {}), ...(o.max !== undefined ? { maximum: o.max } : {}) };
+    switch (o.type) {
+      case 'boolean':
+        return { type: 'boolean' };
+      case 'integer':
+        return { type: 'integer', ...range };
+      case 'decimal':
+        return { type: 'number', ...range };
+      case 'enum':
+        return { enum: (o.options ?? []).map((x) => x.value) };
+      case 'string':
+        return { type: 'string', maxLength: 200, pattern: '^[^\\r\\n\\u0000]*$' };
+    }
+  };
+  return {
+    type: 'object',
+    required: options.map((o) => o.key),
+    additionalProperties: false,
+    properties: Object.fromEntries(options.map((o) => [o.key, prop(o)])),
+  };
+}
+
 export function serverRoutes(app: FastifyInstance, deps: Deps): void {
-  const { control, ops, agent, audit, settings } = deps;
+  const { control, ops, agent, audit } = deps;
+  const { server } = control;
   const lang = (req: FastifyRequest): GameLang => (req.auth?.user.lang === 'en' ? 'en' : 'es');
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
 
@@ -57,16 +83,17 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     return s;
   });
 
-  app.post('/api/server/save', { config: { permission: 'server.control' } }, async (req) => {
-    const r = await agent.command('save');
-    audit.log({ user: actor(req), action: 'server.save', ip: req.ip });
-    return r;
+  app.post('/api/server/save', { config: { permission: 'server.control', capability: 'save' } }, async (req) => {
+    const r = await agent.save();
+    audit.log({ user: actor(req), action: 'server.save', ok: r.ok, ip: req.ip });
+    if (!r.ok) throw new HttpError(502, 'save-failed', r.error);
+    return { ok: true };
   });
 
   app.post<{ Body: { message: string } }>(
     '/api/server/broadcast',
     {
-      config: { permission: 'server.broadcast' },
+      config: { permission: 'server.broadcast', capability: 'broadcast' },
       schema: { body: { type: 'object', required: ['message'], additionalProperties: false, properties: { message: { type: 'string', minLength: 1, maxLength: 300 } } } },
     },
     async (req) => {
@@ -95,43 +122,38 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.get('/api/server/launch', { config: { permission: 'dashboard.view' } }, async () => settings.get('launch'));
+  app.get('/api/server/launch', { config: { permission: 'dashboard.view' } }, async () => server.launchSettings());
 
-  app.put<{ Body: { memoryMb: number; branch: string; updateOnStart: boolean } }>(
+  app.put<{ Body: Record<string, unknown> }>(
     '/api/server/launch',
-    {
-      config: { permission: 'server.update' },
-      schema: {
-        body: {
-          type: 'object',
-          required: ['memoryMb', 'branch', 'updateOnStart'],
-          additionalProperties: false,
-          properties: {
-            memoryMb: { type: 'integer', minimum: 2048, maximum: 32768, multipleOf: 512 },
-            branch: { type: 'string', pattern: '^[A-Za-z0-9._-]{1,64}$' },
-            updateOnStart: { type: 'boolean' },
-          },
-        },
-      },
-    },
+    { config: { permission: 'server.update' }, schema: { body: launchBodySchema(server.adapter.launch.schema) } },
     async (req) => {
-      const before = settings.get('launch');
-      settings.set('launch', req.body);
+      // The adapter refuses settings it can't turn into launch params (ranges and formats the form can't express).
+      try {
+        server.launchEnvelope({}, req.body);
+      } catch (e) {
+        throw new HttpError(400, 'validation', (e as Error).message);
+      }
+      const before = server.launchSettings();
+      server.setLaunchSettings(req.body);
       audit.log({ user: actor(req), action: 'server.launch-settings', detail: { before, after: req.body }, ip: req.ip });
-      return settings.get('launch');
+      return server.launchSettings();
     },
   );
 
-  app.get('/api/server/updates', { config: { permission: 'server.update' } }, async () => {
-    const info = await agent.appInfo();
-    const branch = settings.get('launch').branch;
-    const latest = info.branches.find((b) => b.name === branch) ?? null;
+  // The shape predates adapters (Steam branches); versions map onto it.
+  app.get('/api/server/updates', { config: { permission: 'server.update', capability: 'updateCheck' } }, async () => {
+    const ctx = server.ctx();
+    const check = await server.adapter.updates?.check(ctx);
+    const info = await ctx.versions();
+    const channel = check?.channel ?? null;
+    const latest = info.versions.find((v) => v.id === channel) ?? null;
     return {
-      installed: info.installed,
-      branch,
-      latest,
-      branches: info.branches.filter((b) => !b.passwordRequired).map((b) => ({ name: b.name, buildId: b.buildId, timeUpdated: b.timeUpdated ?? null })),
-      updateAvailable: !!latest && (!info.installed || info.installed.branch !== branch || info.installed.buildId !== latest.buildId),
+      installed: info.installed ? { buildId: info.installed.build ?? null, branch: info.installed.channel ?? null } : null,
+      branch: channel,
+      latest: latest ? { name: latest.id, buildId: latest.build ?? null, timeUpdated: latest.timeUpdated, description: latest.description, passwordRequired: latest.passwordRequired ?? false } : null,
+      branches: info.versions.filter((v) => !v.passwordRequired).map((v) => ({ name: v.id, buildId: v.build ?? null, timeUpdated: v.timeUpdated ?? null })),
+      updateAvailable: check?.available ?? false,
     };
   });
 

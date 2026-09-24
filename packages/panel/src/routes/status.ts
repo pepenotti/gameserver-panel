@@ -11,7 +11,7 @@ export function statusRoutes(app: FastifyInstance, deps: Deps): void {
       serverName: deps.env.serverName,
       agentConnected: deps.feed.connected,
       agent,
-      launch: deps.settings.get('launch'),
+      launch: deps.control.server.launchSettings(),
       nextRestart: deps.scheduler.nextRuns().restart,
       lastBackup: last ? { at: last.manifest.createdAt, trigger: last.manifest.trigger, mode: last.manifest.mode } : null,
     };

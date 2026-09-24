@@ -58,4 +58,10 @@ export default {
   'invalid-message': 'Messages cannot contain double quotes or line breaks.',
   'not-cancellable': 'That can no longer be cancelled.',
   generic: 'Something went wrong.',
+  'capability-unsupported': 'This game does not support that.',
+  'invalid-mod-ref': 'That is not a link or ID this mod source understands.',
+  'mod-not-for-game': 'Not a mod for this game (or it is private/removed).',
+  'save-failed': 'The server did not finish saving. Check the log.',
+  'unknown-reset': 'Unknown reset type.',
+  'unknown-part': 'Unknown backup part.',
 } as const;

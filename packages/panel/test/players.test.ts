@@ -1,24 +1,20 @@
-import { mkdirSync } from 'node:fs';
-import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { ACCOUNTS, BANS } from '@gsp/adapter-pz/shared';
 import { describe, expect, it } from 'vitest';
 import { Client, fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
-/** db/zomboid.db with PZ 42.20.4's real schema (fixtures/pz/b42, verification log). */
+const ACCOUNT_ROWS = [
+  { username: 'admin', displayName: null, role: 'admin', lastConnection: null, steamId: null },
+  { username: 'rick', displayName: null, role: 'user', lastConnection: '2026-09-23 10:00:00', steamId: '76561198000000001' },
+];
+
+/** The agent reads db/zomboid.db next to the game; the panel only sees the actions' replies. */
 function seedAccounts(p: TestPanel) {
-  const dir = path.join(p.deps.env.pzDataDir, 'db');
-  mkdirSync(dir, { recursive: true });
-  const db = new DatabaseSync(path.join(dir, 'zomboid.db'));
-  db.exec(`
-    CREATE TABLE [whitelist] ([id] INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,[world] TEXT DEFAULT '' NULL,[username] TEXT NULL, [password] TEXT NULL, [lastConnection] TEXT NULL, [role] INTEGER NOT NULL, [authType] INTEGER NULL DEFAULT 1, [googleKey] TEXT NULL, [steamid] TEXT NULL, [ownerid] TEXT NULL, [displayName] TEXT NULL);
-    CREATE TABLE [role] ([id] INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, [name] TEXT NOT NULL,[description] TEXT NULL, [colorR] REAL NOT NULL, [colorG] REAL NOT NULL, [colorB] REAL NOT NULL, [readonly] BOOLEAN NULL DEFAULT false, [position] INTEGER NOT NULL DEFAULT -1);
-    CREATE TABLE [bannedid] ([steamid] TEXT NOT NULL, [reason] TEXT NULL);
-    CREATE TABLE [bannedip] ([ip] TEXT NOT NULL,[username] TEXT NULL, [reason] TEXT NULL);
-    INSERT INTO role (id, name, colorR, colorG, colorB) VALUES (2, 'user', 1, 1, 1), (7, 'admin', 1, 0, 0);
-    INSERT INTO whitelist (world, username, password, role, steamid, lastConnection) VALUES ('zomboid', 'admin', '$2a$12$x', 7, NULL, NULL), ('zomboid', 'rick', '$2a$12$y', 2, '76561198000000001', '2026-09-23 10:00:00');
-    INSERT INTO bannedid VALUES ('76561198000000009', 'griefing');
-  `);
-  db.close();
+  p.agent.action = async (name, input) => {
+    p.agent.calls.push(`action:${name}:${JSON.stringify(input)}`);
+    if (name === ACCOUNTS) return ACCOUNT_ROWS;
+    if (name === BANS) return { steamIds: [{ steamId: '76561198000000009', reason: 'griefing' }], ips: [] };
+    throw new Error(`unexpected action ${name}`);
+  };
 }
 
 async function setup() {
@@ -61,18 +57,27 @@ describe('presence', () => {
 });
 
 describe('accounts and bans from the game database', () => {
-  it('reads PZ accounts and bans for operators, not viewers', async () => {
+  it('reads PZ accounts and bans through the agent for operators, not viewers', async () => {
     const { p, c } = await setup();
     const full = (await c.get('/api/players')).json() as { accounts: { username: string; role: string; steamId: string | null }[]; bans: { steamIds: unknown[] } };
-    expect(full.accounts).toEqual([
-      { username: 'admin', displayName: null, role: 'admin', lastConnection: null, steamId: null },
-      { username: 'rick', displayName: null, role: 'user', lastConnection: '2026-09-23 10:00:00', steamId: '76561198000000001' },
-    ]);
+    expect(full.accounts).toEqual(ACCOUNT_ROWS);
     expect(full.bans.steamIds).toEqual([{ steamId: '76561198000000009', reason: 'griefing' }]);
+    expect(p.agent.calls).toEqual([`action:${ACCOUNTS}:{"serverName":"zomboid"}`, `action:${BANS}:{"serverName":"zomboid"}`]);
 
     const viewer = await asRole(p, c, 'viewer');
     expect((await viewer.get('/api/players')).json()).toMatchObject({ accounts: null, bans: null });
     expect((await viewer.get('/api/players/history')).statusCode).toBe(403);
+  });
+
+  it('shows no accounts rather than failing when the agent cannot read them', async () => {
+    const { p, c } = await setup();
+    p.agent.action = async () => {
+      throw new Error('agent down');
+    };
+    expect((await c.get('/api/players')).json()).toMatchObject({ accounts: [], bans: { steamIds: [], ips: [] } });
+    // A reply that isn't the documented shape is not shown either.
+    p.agent.action = async () => ({ rows: 'nope' });
+    expect((await c.get('/api/players')).json()).toMatchObject({ accounts: [], bans: { steamIds: [], ips: [] } });
   });
 });
 

@@ -1,5 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { announcement } from '../src/control/control';
 import { auditableCommand } from '../src/routes/server';
 import { fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
@@ -10,14 +11,6 @@ async function ready() {
   const { client } = await ownerReady(p);
   return client;
 }
-
-describe('in-game announcements', () => {
-  it('reads naturally in both languages', () => {
-    expect(announcement('restart', 300, 'es')).toBe('El servidor se reinicia en 5 minutos. Busquen un lugar seguro.');
-    expect(announcement('stop', 60, 'es')).toBe('El servidor se apaga en 1 minuto. Busquen un lugar seguro.');
-    expect(announcement('update', 30, 'en')).toBe('Server updating in 30 seconds. Find somewhere safe.');
-  });
-});
 
 describe('server controls', () => {
   it('starts with the launch settings and the admin password from the environment', async () => {
@@ -30,8 +23,21 @@ describe('server controls', () => {
     const r = await c.post('/api/server/start');
     expect(r.json()).toMatchObject({ kind: 'start', done: false });
     await p.deps.ops.idle();
-    expect(launched).toEqual({ serverName: 'zomboid', adminUsername: 'admin', adminPassword: 'AdminPw-123456', memoryMb: 8192, branch: 'public', updateOnStart: true });
+    expect(launched).toEqual({
+      adapter: 'pz',
+      params: { serverName: 'zomboid', adminUsername: 'admin', adminPassword: 'AdminPw-123456', memoryMb: 8192, branch: 'public', updateOnStart: true },
+    });
     expect(p.deps.audit.list({ action: 'server.' })[0]).toMatchObject({ action: 'server.start', username: 'alice' });
+  });
+
+  it("runs the adapter's before-start hook: a first start gets the first-run settings", async () => {
+    const c = await ready();
+    const ini = path.join(p.deps.env.pzDataDir, 'Server', 'zomboid.ini');
+    expect(existsSync(ini)).toBe(false);
+    await c.post('/api/server/start');
+    await p.deps.ops.idle();
+    expect(readFileSync(ini, 'utf8')).toContain('SaveWorldEveryMinutes=10');
+    expect(p.agent.calls).toEqual(['start']);
   });
 
   it('restarts immediately when nobody is online, even with a countdown', async () => {
@@ -91,16 +97,25 @@ describe('server controls', () => {
     const c = await ready();
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
     let installed: unknown;
+    const started: unknown[] = [];
     p.agent.install = async (o) => {
       installed = o;
       p.agent.calls.push('install');
       return { ok: true };
     };
-    await c.req('PUT', '/api/server/launch', { memoryMb: 6144, branch: 'legacy41', updateOnStart: false });
+    p.agent.start = async (l) => {
+      started.push(l);
+      p.agent.calls.push('start');
+      return fakeStatus({ state: 'starting' });
+    };
+    await c.req('PUT', '/api/server/launch', { memoryMb: 6144, branch: 'legacy41', updateOnStart: true });
     await c.post('/api/server/update', { validate: true });
     await p.deps.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'install', 'start']);
-    expect(installed).toEqual({ branch: 'legacy41', validate: true });
+    const params = { serverName: 'zomboid', adminUsername: 'admin', adminPassword: 'AdminPw-123456', memoryMb: 6144, branch: 'legacy41' };
+    expect(installed).toEqual({ validate: true, launch: { adapter: 'pz', params: { ...params, updateOnStart: true } } });
+    // Just installed: the start doesn't update again.
+    expect(started).toEqual([{ adapter: 'pz', params: { ...params, updateOnStart: false } }]);
   });
 
   it('keeps the old build running if the update fails', async () => {
@@ -122,16 +137,31 @@ describe('server controls', () => {
 
   it('reports whether an update is available for the configured branch', async () => {
     const c = await ready();
-    p.agent.appInfo = async () => ({
+    const asked: unknown[] = [];
+    p.agent.versions = async (req) => {
+      asked.push(req);
+      return {
+        installed: { version: '42.20.4', channel: 'public', build: '24909800' },
+        versions: [
+          { id: 'public', build: '25000000', timeUpdated: 1758600000 },
+          { id: 'internal', build: '1', passwordRequired: true },
+        ],
+      };
+    };
+    const r = (await c.get('/api/server/updates')).json();
+    // The response keeps its Steam-branch shape for the current web UI.
+    expect(r).toEqual({
       installed: { buildId: '24909800', branch: 'public' },
-      branches: [
-        { name: 'public', buildId: '25000000', passwordRequired: false },
-        { name: 'internal', buildId: '1', passwordRequired: true },
-      ],
+      branch: 'public',
+      latest: { name: 'public', buildId: '25000000', timeUpdated: 1758600000, passwordRequired: false },
+      branches: [{ name: 'public', buildId: '25000000', timeUpdated: 1758600000 }],
+      updateAvailable: true,
     });
-    const r = (await c.get('/api/server/updates')).json() as { updateAvailable: boolean; branches: { name: string }[] };
-    expect(r.updateAvailable).toBe(true);
-    expect(r.branches.map((b) => b.name)).toEqual(['public']);
+    // One versions call per request, for the stored launch settings.
+    expect(asked).toEqual([{ launch: { adapter: 'pz', params: expect.objectContaining({ branch: 'public' }) } }]);
+
+    p.agent.versions = async () => ({ installed: { version: null, channel: 'public', build: '25000000' }, versions: [{ id: 'public', build: '25000000' }] });
+    expect(((await c.get('/api/server/updates')).json() as { updateAvailable: boolean }).updateAvailable).toBe(false);
   });
 });
 

@@ -1,12 +1,18 @@
 import type {
+  ActionRequest,
+  ActionResponse,
   AgentError as AgentErrorBody,
   AgentEvent,
   AgentStatus,
-  AppInfoResponse,
   CommandResponse,
-  JobResult,
-  LaunchParams,
+  InstallRequest,
+  InstallResponse,
+  LaunchEnvelope,
+  SaveRequest,
+  SaveResponse,
   SeqEvent,
+  VersionsRequest,
+  VersionsResponse,
 } from '@gsp/shared';
 
 export class AgentCallError extends Error {
@@ -21,17 +27,26 @@ export class AgentCallError extends Error {
 
 type Listener = (e: SeqEvent) => void;
 
+/** Adapter action names: what `/v1/actions/:name` accepts in a path segment. */
+const ACTION_NAME = /^[a-z][a-z0-9.-]{0,63}$/;
+
 export interface AgentApi {
   status(): Promise<AgentStatus>;
-  setLaunch(l: LaunchParams): Promise<AgentStatus>;
-  start(l?: LaunchParams, lockId?: string): Promise<AgentStatus>;
+  /** `PUT /v1/launch`: the params the agent keeps for restarts. */
+  setLaunch(l: LaunchEnvelope): Promise<AgentStatus>;
+  start(l?: LaunchEnvelope, lockId?: string): Promise<AgentStatus>;
   stop(opts?: { timeoutMs?: number; reason?: string }, lockId?: string): Promise<AgentStatus>;
   restart(lockId?: string): Promise<AgentStatus>;
   kill(lockId?: string): Promise<AgentStatus>;
   command(command: string, via?: 'rcon' | 'stdin'): Promise<CommandResponse>;
-  install(opts: { branch?: string; validate: boolean }, lockId?: string): Promise<JobResult>;
-  appInfo(): Promise<AppInfoResponse>;
-  downloadWorkshop(ids: string[]): Promise<JobResult>;
+  /** `POST /v1/install`: install, update or validate while the server is stopped. */
+  install(req: InstallRequest, lockId?: string): Promise<InstallResponse>;
+  /** `POST /v1/versions`: what the server could be pinned to, and what is installed. */
+  versions(req?: VersionsRequest): Promise<VersionsResponse>;
+  /** `POST /v1/save`: save the running world and wait for the game to finish. */
+  save(req?: SaveRequest): Promise<SaveResponse>;
+  /** `POST /v1/actions/:name`: an adapter-specific action; resolves with its result. */
+  action(name: string, input: unknown): Promise<unknown>;
   lock(holder: string, ttlMs: number): Promise<{ id: string; expiresAt: string }>;
   renewLock(id: string, ttlMs: number): Promise<void>;
   unlock(id: string): Promise<void>;
@@ -99,10 +114,10 @@ export class AgentClient implements AgentApi {
     return s;
   }
 
-  setLaunch(l: LaunchParams) {
+  setLaunch(l: LaunchEnvelope) {
     return this.call<AgentStatus>('PUT', '/v1/launch', l);
   }
-  start(l?: LaunchParams, lockId?: string) {
+  start(l?: LaunchEnvelope, lockId?: string) {
     return this.call<AgentStatus>('POST', '/v1/start', l ? { launch: l } : {}, lockId, 45 * 60_000);
   }
   stop(opts: { timeoutMs?: number; reason?: string } = {}, lockId?: string) {
@@ -117,14 +132,21 @@ export class AgentClient implements AgentApi {
   command(command: string, via?: 'rcon' | 'stdin') {
     return this.call<CommandResponse>('POST', '/v1/command', { command, via });
   }
-  install(opts: { branch?: string; validate: boolean }, lockId?: string) {
-    return this.call<JobResult>('POST', '/v1/steamcmd/install', opts, lockId, 60 * 60_000);
+  install(req: InstallRequest, lockId?: string) {
+    return this.call<InstallResponse>('POST', '/v1/install', req, lockId, 60 * 60_000);
   }
-  appInfo() {
-    return this.call<AppInfoResponse>('POST', '/v1/steamcmd/appinfo', {}, undefined, 5 * 60_000);
+  versions(req: VersionsRequest = {}) {
+    return this.call<VersionsResponse>('POST', '/v1/versions', req, undefined, 5 * 60_000);
   }
-  downloadWorkshop(ids: string[]) {
-    return this.call<JobResult>('POST', '/v1/steamcmd/workshop', { ids }, undefined, 60 * 60_000);
+  save(req: SaveRequest = {}) {
+    // The agent waits up to `timeoutMs` for the game; leave it room to answer.
+    return this.call<SaveResponse>('POST', '/v1/save', req, undefined, (req.timeoutMs ?? 60_000) + 30_000);
+  }
+  async action(name: string, input: unknown) {
+    if (!ACTION_NAME.test(name)) throw new AgentCallError(400, 'bad-request', `Invalid action name ${JSON.stringify(name)}`);
+    // Actions may be long jobs (downloads); quick ones answer well before this.
+    const r = await this.call<ActionResponse>('POST', `/v1/actions/${name}`, { input } satisfies ActionRequest, undefined, 60 * 60_000);
+    return r.result;
   }
   lock(holder: string, ttlMs: number) {
     return this.call<{ id: string; expiresAt: string }>('POST', '/v1/lock', { holder, ttlMs });

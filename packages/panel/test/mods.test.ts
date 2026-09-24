@@ -2,9 +2,10 @@ import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
+import { WORKSHOP_DOWNLOAD, type WorkshopDownloadInput } from '@gsp/adapter-pz/shared';
 import { getIniValue, parseIni } from '@gsp/formats';
 import { sortByDependencies } from '../src/mods/service';
-import { SteamWorkshop } from '../src/mods/steam';
 import { makePanel, ownerReady, type TestPanel } from './harness';
 
 const fixtures = fileURLToPath(new URL('../../../fixtures/pz/b42/workshop/', import.meta.url));
@@ -32,12 +33,14 @@ function fakeSteam(items: Record<string, { title: string; updated?: number; app?
       }),
     );
   }) as unknown as typeof fetch;
-  return { steam: new SteamWorkshop(doFetch), calls };
+  return { source: createWorkshopSource({ fetch: doFetch }), calls };
 }
 
-/** Pretend the agent downloaded these items (copying the real B42 mod folders). */
+/** Pretend the agent downloaded these items (copying the real B42 mod folders) through its Workshop action. */
 function fakeDownloads(p: TestPanel) {
-  p.agent.downloadWorkshop = async (ids) => {
+  p.agent.action = async (name, input) => {
+    expect(name).toBe(WORKSHOP_DOWNLOAD);
+    const { ids } = input as WorkshopDownloadInput;
     p.agent.calls.push(`download:${ids.join(',')}`);
     for (const id of ids) {
       const dest = path.join(p.deps.env.pzDataDir, '.workshop', 'steamapps', 'workshop', 'content', '108600', id);
@@ -62,7 +65,7 @@ const ITEMS = {
 
 async function setup() {
   const s = fakeSteam(ITEMS, { '9999999999': ['2544353492', '2946364542'] });
-  const p = await makePanel({}, { steam: s.steam });
+  const p = await makePanel({}, { mods: [s.source] });
   fakeDownloads(p);
   const { client } = await ownerReady(p);
   return { p, c: client, calls: s.calls };
@@ -93,10 +96,10 @@ describe('adding mods', () => {
     await p.deps.ops.idle();
 
     const s2 = fakeSteam({ '5555555555': { title: 'Skyrim mod', app: 72850 } });
-    const p2 = await makePanel({}, { steam: s2.steam });
+    const p2 = await makePanel({}, { mods: [s2.source] });
     const { client } = await ownerReady(p2);
-    expect((await client.post('/api/mods', { refs: ['5555555555'] })).json()).toMatchObject({ error: 'not-a-pz-mod', ids: ['5555555555'] });
-    expect((await client.post('/api/mods', { refs: ['https://evil.example/?id=1'] })).json()).toMatchObject({ error: 'invalid-workshop-ref' });
+    expect((await client.post('/api/mods', { refs: ['5555555555'] })).json()).toMatchObject({ error: 'mod-not-for-game', ids: ['5555555555'] });
+    expect((await client.post('/api/mods', { refs: ['https://evil.example/?id=1'] })).json()).toMatchObject({ error: 'invalid-mod-ref' });
   });
 });
 
@@ -136,7 +139,7 @@ describe('enabling and ordering', () => {
     const mapDir = path.join(p.deps.env.pzDataDir, '.workshop', 'steamapps', 'workshop', 'content', '108600', '2946364542', 'mods', 'Search Containers', '42.0', 'media', 'maps', 'Raven Creek');
     mkdirSync(mapDir, { recursive: true });
     writeFileSync(path.join(mapDir, 'map.info'), 'title=Raven Creek');
-    p.deps.mods.rescan();
+    await p.deps.mods.rescan();
     const r = await c.req('PUT', '/api/mods/enabled', {
       enabled: [
         { modId: 'SearchContainers', workshopId: '2946364542' },
@@ -163,7 +166,7 @@ describe('enabling and ordering', () => {
     mkdirSync(path.dirname(iniPath(p)), { recursive: true });
     writeFileSync(iniPath(p), 'WorkshopItems=2544353492\nMods=P4HasBeenRead\n');
     await fakeDownloads(p);
-    await p.agent.downloadWorkshop(['2544353492']);
+    await p.agent.action(WORKSHOP_DOWNLOAD, { ids: ['2544353492'] });
     const list = (await c.get('/api/mods')).json() as { enabled: { modId: string }[] };
     expect(list.enabled.map((e) => e.modId)).toEqual(['P4HasBeenRead']);
   });
@@ -173,7 +176,7 @@ describe('updates', () => {
   it('detects a newer version on Steam than the files we scanned', async () => {
     const items = { '2544353492': { title: 'Has Been Read', updated: 1000 } };
     const s = fakeSteam(items);
-    const p = await makePanel({}, { steam: s.steam });
+    const p = await makePanel({}, { mods: [s.source] });
     fakeDownloads(p);
     const { client } = await ownerReady(p);
     await client.post('/api/mods', { refs: ['2544353492'] });
