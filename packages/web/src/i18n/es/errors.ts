@@ -60,4 +60,10 @@ export default {
   'invalid-message': 'Los mensajes no pueden tener comillas dobles ni saltos de línea.',
   'not-cancellable': 'Eso ya no se puede cancelar.',
   generic: 'Algo salió mal.',
+  'unknown-file': 'Ese no es uno de los archivos de configuración de este servidor.',
+  'not-editable': 'Ese archivo no se puede editar acá.',
+  'invalid-path': 'Esa ruta no es válida.',
+  stale: 'El archivo cambió desde que lo abriste. Volvé a cargarlo y hacé el cambio de nuevo.',
+  expired: 'Ese cambio es demasiado viejo para aplicarlo. Hacelo de nuevo.',
+  'not-pending': 'Ese cambio ya se aplicó o se descartó.',
 } satisfies Translations['errors'];

@@ -33,7 +33,6 @@ const LEGACY_GAME_IMPORTERS = [
   'packages/panel/src/mods/service.ts',
 
   // --- M1-C (config/web)
-  'packages/panel/src/config/service.ts',
 ];
 
 export default tseslint.config(

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { Stats } from 'node:fs';
-import { lstat, mkdir, readdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, type Stats } from 'node:fs';
+import { lstat, mkdir, open, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { DirEntry, FileKind, FileRoots, FileStat, PackRequest, RootId, ServerFiles, ServerFilesErrorCode } from '@gsp/adapter-api';
 
@@ -14,23 +14,27 @@ export class ServerFilesError extends Error {
 }
 
 const MAX_REL = 1024;
+// Windows maps these names to devices in any folder, with or without an extension.
+const DEVICE_NAMES = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i;
 
-/**
- * `rel` as path segments. Paths are relative with `/` separators; absolute
- * paths, drive letters, backslashes, NUL and `..` are refused.
- */
-function segments(rel: string): string[] {
-  if (typeof rel !== 'string' || rel.length > MAX_REL || /[\0\\]/.test(rel) || rel.startsWith('/') || /^[A-Za-z]:/.test(rel)) {
-    throw new ServerFilesError('invalid-path', `Invalid path: ${JSON.stringify(rel)}`);
-  }
-  const parts = rel.split('/').filter((p) => p !== '' && p !== '.');
-  if (parts.includes('..')) throw new ServerFilesError('invalid-path', `Invalid path: ${JSON.stringify(rel)}`);
-  return parts;
+function invalid(rel: string): never {
+  throw new ServerFilesError('invalid-path', `Invalid path: ${JSON.stringify(rel)}`);
 }
 
-function isInside(parent: string, child: string): boolean {
-  const r = path.relative(parent, child);
-  return r === '' || (r !== '..' && !r.startsWith(`..${path.sep}`) && !path.isAbsolute(r));
+/**
+ * `rel` as path segments. Paths are relative with `/` separators. Refused:
+ * absolute paths, drive letters, backslashes, NUL and other control
+ * characters, `..`, and names Windows would read differently from Linux
+ * (`a.txt:stream`, a trailing dot or space, device names), so a check on the
+ * name is a check on the file that gets opened.
+ */
+export function segments(rel: string): string[] {
+  if (typeof rel !== 'string' || rel.length > MAX_REL || /[\x00-\x1f\x7f\\]/.test(rel) || rel.startsWith('/') || /^[A-Za-z]:/.test(rel)) invalid(rel);
+  const parts = rel.split('/').filter((p) => p !== '' && p !== '.');
+  for (const p of parts) {
+    if (p === '..' || /[:<>"|?*]/.test(p) || /[. ]$/.test(p) || DEVICE_NAMES.test(p)) invalid(rel);
+  }
+  return parts;
 }
 
 function kindOf(st: Stats): FileKind {
@@ -38,13 +42,28 @@ function kindOf(st: Stats): FileKind {
 }
 
 const code = (e: unknown) => (e as NodeJS.ErrnoException).code;
+const missing = (e: unknown) => code(e) === 'ENOENT';
+const statOf = (st: Stats): FileStat => ({ kind: kindOf(st), size: st.size, mtimeMs: st.mtimeMs });
+// Where the platform has it, the last component can't be swapped for a link between the check and the open.
+const READ_FLAGS = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0);
+
+/** The same file operations, synchronously (the config store's frozen methods are synchronous; see ConfigStore). */
+export interface SyncServerFiles {
+  statSync(root: RootId, rel: string): FileStat | null;
+  listSync(root: RootId, rel: string): DirEntry[];
+  readSync(root: RootId, rel: string, o?: { maxBytes?: number }): Buffer | null;
+  writeAtomicSync(root: RootId, rel: string, data: Buffer | string): void;
+}
 
 /**
  * `ServerFiles` on the panel's own disk, rooted at the folders the panel
  * mounts today (env data and install dirs). D11 moves file access behind
  * each server's agent; this keeps the same interface until then.
+ *
+ * Every path component below the root is checked with `lstat`: symbolic links
+ * (and Windows junctions) are never followed, wherever they point (CFG-08).
  */
-export class LocalServerFiles implements ServerFiles {
+export class LocalServerFiles implements ServerFiles, SyncServerFiles {
   constructor(private readonly roots: FileRoots) {}
 
   private base(root: RootId): string {
@@ -53,51 +72,59 @@ export class LocalServerFiles implements ServerFiles {
     return path.resolve(dir);
   }
 
-  /** Absolute path of `rel` in `root`, refusing anything that ends up outside it (symlinks included). */
-  private async resolve(root: RootId, rel: string, opts: { notRoot?: boolean } = {}): Promise<string> {
+  /** Absolute path of `rel` in `root`; refuses bad names and any symbolic link on the way. */
+  private resolve(root: RootId, rel: string, opts: { notRoot?: boolean } = {}): string {
     const base = this.base(root);
     const parts = segments(rel);
     if (opts.notRoot && parts.length === 0) throw new ServerFilesError('invalid-path', 'The root itself is not a file');
-    const abs = path.join(base, ...parts);
-    const realBase = await realpath(base).catch(() => base);
-    // The nearest existing ancestor decides: a symlink anywhere on the way out is caught by realpath.
-    for (let p = abs; ; p = path.dirname(p)) {
-      const real = await realpath(p).catch(() => null);
-      if (real !== null) {
-        if (!isInside(realBase, real)) throw new ServerFilesError('outside-root', `Path leaves its root: ${rel}`);
-        break;
+    let cur = base;
+    for (const part of parts) {
+      cur = path.join(cur, part);
+      let st: Stats;
+      try {
+        st = lstatSync(cur);
+      } catch (e) {
+        // The rest doesn't exist yet: nothing there can be a link.
+        if (missing(e) || code(e) === 'ENOTDIR') break;
+        throw e;
       }
-      if (p === base || path.dirname(p) === p) break;
+      if (st.isSymbolicLink()) throw new ServerFilesError('outside-root', `Symbolic links are not followed: ${rel}`);
     }
-    return abs;
+    return path.join(base, ...parts);
   }
 
+  private checkFile(st: Stats, rel: string, maxBytes: number | undefined): void {
+    if (st.isSymbolicLink()) throw new ServerFilesError('outside-root', `Symbolic links are not followed: ${rel}`);
+    if (!st.isFile()) throw new ServerFilesError('not-a-file', `Not a file: ${rel}`);
+    if (maxBytes !== undefined && st.size > maxBytes) throw new ServerFilesError('too-large', `${rel} is larger than ${maxBytes} bytes`);
+  }
+
+  // ------------------------------------------------------------------ async
+
   async stat(root: RootId, rel: string): Promise<FileStat | null> {
-    const abs = await this.resolve(root, rel);
+    const abs = this.resolve(root, rel);
     try {
-      const st = await lstat(abs);
-      return { kind: kindOf(st), size: st.size, mtimeMs: st.mtimeMs };
+      return statOf(await lstat(abs));
     } catch (e) {
-      if (code(e) === 'ENOENT') return null;
+      if (missing(e)) return null;
       throw e;
     }
   }
 
   async list(root: RootId, rel: string): Promise<DirEntry[]> {
-    const abs = await this.resolve(root, rel);
+    const abs = this.resolve(root, rel);
     let names: string[];
     try {
       names = await readdir(abs);
     } catch (e) {
-      if (code(e) === 'ENOENT') return [];
+      if (missing(e)) return [];
       if (code(e) === 'ENOTDIR') throw new ServerFilesError('not-a-dir', `Not a folder: ${rel}`);
       throw e;
     }
     const out: DirEntry[] = [];
     for (const name of names.sort()) {
       try {
-        const st = await lstat(path.join(abs, name));
-        out.push({ name, kind: kindOf(st), size: st.size, mtimeMs: st.mtimeMs });
+        out.push({ name, ...statOf(await lstat(path.join(abs, name))) });
       } catch {
         // Gone between readdir and lstat.
       }
@@ -106,26 +133,30 @@ export class LocalServerFiles implements ServerFiles {
   }
 
   async read(root: RootId, rel: string, o: { maxBytes?: number } = {}): Promise<Buffer | null> {
-    const abs = await this.resolve(root, rel, { notRoot: true });
-    let st: Stats;
+    const abs = this.resolve(root, rel, { notRoot: true });
     try {
-      st = await stat(abs);
+      this.checkFile(await lstat(abs), rel, o.maxBytes);
     } catch (e) {
-      if (code(e) === 'ENOENT') return null;
+      if (missing(e)) return null;
       throw e;
     }
-    if (!st.isFile()) throw new ServerFilesError('not-a-file', `Not a file: ${rel}`);
-    if (o.maxBytes !== undefined && st.size > o.maxBytes) throw new ServerFilesError('too-large', `${rel} is larger than ${o.maxBytes} bytes`);
-    return readFile(abs);
+    const fh = await open(abs, READ_FLAGS);
+    try {
+      const st = await fh.stat();
+      this.checkFile(st, rel, o.maxBytes);
+      return await fh.readFile();
+    } finally {
+      await fh.close();
+    }
   }
 
   async writeAtomic(root: RootId, rel: string, data: Buffer | string): Promise<void> {
-    const abs = await this.resolve(root, rel, { notRoot: true });
+    const abs = this.resolve(root, rel, { notRoot: true });
     await mkdir(path.dirname(abs), { recursive: true });
-    // Rename replaces a symlink at `abs` instead of writing through it.
+    // `wx` never opens an existing file or link; the rename replaces a link at `abs` instead of writing through it.
     const tmp = `${abs}.${randomUUID()}.tmp`;
     try {
-      await writeFile(tmp, data);
+      await writeFile(tmp, data, { flag: 'wx' });
       await rename(tmp, abs);
     } catch (e) {
       await rm(tmp, { force: true });
@@ -134,13 +165,74 @@ export class LocalServerFiles implements ServerFiles {
   }
 
   async remove(root: RootId, rels: string[]): Promise<void> {
-    const targets: string[] = [];
-    for (const rel of rels) targets.push(await this.resolve(root, rel, { notRoot: true }));
+    const targets = rels.map((rel) => this.resolve(root, rel, { notRoot: true }));
     for (const abs of targets) await rm(abs, { recursive: true, force: true });
   }
 
-  // Archives, staging and trash arrive with the text editor and restores
-  // through the agent (M1-C/M2-C).
+  // ------------------------------------------------------------------- sync
+
+  statSync(root: RootId, rel: string): FileStat | null {
+    const abs = this.resolve(root, rel);
+    try {
+      return statOf(lstatSync(abs));
+    } catch (e) {
+      if (missing(e)) return null;
+      throw e;
+    }
+  }
+
+  listSync(root: RootId, rel: string): DirEntry[] {
+    const abs = this.resolve(root, rel);
+    let names: string[];
+    try {
+      names = readdirSync(abs);
+    } catch (e) {
+      if (missing(e)) return [];
+      if (code(e) === 'ENOTDIR') throw new ServerFilesError('not-a-dir', `Not a folder: ${rel}`);
+      throw e;
+    }
+    const out: DirEntry[] = [];
+    for (const name of names.sort()) {
+      try {
+        out.push({ name, ...statOf(lstatSync(path.join(abs, name))) });
+      } catch {
+        // Gone between readdir and lstat.
+      }
+    }
+    return out;
+  }
+
+  readSync(root: RootId, rel: string, o: { maxBytes?: number } = {}): Buffer | null {
+    const abs = this.resolve(root, rel, { notRoot: true });
+    try {
+      this.checkFile(lstatSync(abs), rel, o.maxBytes);
+    } catch (e) {
+      if (missing(e)) return null;
+      throw e;
+    }
+    const fd = openSync(abs, READ_FLAGS);
+    try {
+      this.checkFile(fstatSync(fd), rel, o.maxBytes);
+      return readFileSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+  }
+
+  writeAtomicSync(root: RootId, rel: string, data: Buffer | string): void {
+    const abs = this.resolve(root, rel, { notRoot: true });
+    mkdirSync(path.dirname(abs), { recursive: true });
+    const tmp = `${abs}.${randomUUID()}.tmp`;
+    try {
+      writeFileSync(tmp, data, { flag: 'wx' });
+      renameSync(tmp, abs);
+    } catch (e) {
+      rmSync(tmp, { force: true });
+      throw e;
+    }
+  }
+
+  // Archives, staging and trash arrive with restores through the agent (M2).
   async pack(_req: PackRequest): Promise<AsyncIterable<Buffer>> {
     throw new Error('pack: not implemented yet');
   }

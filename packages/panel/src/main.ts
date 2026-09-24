@@ -25,7 +25,7 @@ import { wireNotifications } from './notifier/events';
 import { Scheduler } from './scheduler/scheduler';
 import { SteamWorkshop } from './mods/steam';
 import { PlayersService } from './players/service';
-import { UnimplementedProposals } from './proposals/service';
+import { ConfigProposals } from './proposals/service';
 import { Settings } from './settings';
 
 const env = loadEnv();
@@ -54,7 +54,7 @@ const deps: Deps = {
   bus,
   ops,
   control: new Control({ env, settings, agent, feed: agent, ops, audit }),
-  config: new ConfigService({ env, db, agent, feed: agent, settings }),
+  config: new ConfigService({ db, settings, agent, feed: agent, adapter: panelAdapter('pz'), srv: { id: 'default', gameName: env.serverName, flavour: null }, files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }) }),
   backups: new BackupService({ env, feed: agent }),
   flows: undefined as unknown as BackupFlows,
   players: new PlayersService({ env, db, agent, feed: agent }),
@@ -62,7 +62,7 @@ const deps: Deps = {
   notifier,
   scheduler: undefined as unknown as Scheduler,
   files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }),
-  changes: new UnimplementedProposals(),
+  changes: new ConfigProposals({ db, config: () => deps.config }),
   adapter: panelAdapter('pz'),
 };
 deps.mods = new ModsService({ env, db, agent, feed: agent, ops, settings, config: deps.config, steam: new SteamWorkshop() });

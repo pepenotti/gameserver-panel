@@ -101,7 +101,26 @@ const MIGRATIONS: string[] = [
     error TEXT
   );
   `,
-  // 5 is reserved for `proposals` (AST-03, CFG-07): M1-C appends it here.
+  // Change proposals (AST-03, CFG-07): submitted, shown as a diff, applied once approved.
+  `
+  CREATE TABLE proposals (
+    id TEXT PRIMARY KEY,
+    server_id TEXT,
+    file_id TEXT NOT NULL,
+    base_sha256 TEXT NOT NULL,
+    content TEXT NOT NULL,
+    note TEXT,
+    created_by TEXT,
+    created_at TEXT NOT NULL,
+    actor_type TEXT NOT NULL DEFAULT 'user',
+    status TEXT NOT NULL CHECK (status IN ('pending','applied','rejected','stale','expired')),
+    decided_by TEXT,
+    decided_at TEXT,
+    result TEXT
+  );
+  CREATE INDEX proposals_status ON proposals(status, created_at);
+  CREATE INDEX proposals_file ON proposals(file_id, status);
+  `,
 ];
 
 export type Db = DatabaseSync;

@@ -29,7 +29,7 @@ import { wireNotifications } from '../src/notifier/events';
 import { Scheduler } from '../src/scheduler/scheduler';
 import { SteamWorkshop } from '../src/mods/steam';
 import { PlayersService } from '../src/players/service';
-import { UnimplementedProposals } from '../src/proposals/service';
+import { ConfigProposals } from '../src/proposals/service';
 import { Settings } from '../src/settings';
 
 export const ORIGIN = 'https://panel.test:8443';
@@ -151,7 +151,7 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { steam?:
     bus,
     ops,
     control: new Control({ env, settings, agent, feed, ops, audit }),
-    config: new ConfigService({ env, db, agent, feed, settings }),
+    config: new ConfigService({ db, settings, agent, feed, adapter: panelAdapter('pz'), srv: { id: 'default', gameName: env.serverName, flavour: null }, files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }) }),
     backups: new BackupService({ env, feed }),
     flows: undefined as unknown as BackupFlows,
     players: new PlayersService({ env, db, agent, feed }),
@@ -159,7 +159,7 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { steam?:
     notifier: new DiscordNotifier(settings, opts.fetch ?? ((() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch)),
     scheduler: undefined as unknown as Scheduler,
     files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }),
-    changes: new UnimplementedProposals(),
+    changes: new ConfigProposals({ db, config: () => deps.config }),
     adapter: panelAdapter('pz'),
   };
   deps.mods = new ModsService({ env, db, agent, feed, ops, settings, config: deps.config, steam: opts.steam ?? new SteamWorkshop(() => Promise.reject(new Error('no network in tests'))) });

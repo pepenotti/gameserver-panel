@@ -58,4 +58,10 @@ export default {
   'invalid-message': 'Messages cannot contain double quotes or line breaks.',
   'not-cancellable': 'That can no longer be cancelled.',
   generic: 'Something went wrong.',
+  'unknown-file': 'That is not one of this server’s config files.',
+  'not-editable': 'That file cannot be edited here.',
+  'invalid-path': 'That path is not valid.',
+  stale: 'The file changed since you opened it. Reload it and make your change again.',
+  expired: 'That change is too old to apply. Make it again.',
+  'not-pending': 'That change was already applied or discarded.',
 } as const;
