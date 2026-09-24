@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.4 |
+| Status | Draft 0.5 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -334,6 +334,13 @@ NFR-01's controls, carried over from zomboid-server:
   and backup paths.
 - **Data.** SQLite, with the server ID on every per-server table. Volumes are
   named by server ID, and backups go to `BACKUP_DIR/<server>/`.
+- **Package layout.** `packages/adapter-api` holds the contract (types plus
+  shared contract test suites). Each game lives in `packages/adapter-<game>`,
+  and `packages/adapters` is the single place that lists them. The core
+  (`shared`, `formats`, `agent`, `panel`, `web`) never imports a game
+  adapter; a lint rule enforces it (NFR-08). Captured output lives in
+  `fixtures/<game>/<build>/` and measured facts in
+  `docs/verification/<game>-<build>.md`.
 - **Config files.** Each adapter declares its editable folders and each
   file's format. A format registry (parse, validate, serialise, highlight)
   serves both the forms and the text editor, so they can't drift apart
@@ -456,3 +463,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.2 | 2026-09-24 | Product principles ("easy by default, never a ceiling"); text editor for every config file (CFG-07…10); assistant readiness (G8, AST-01…05, D8), with the assistant itself after v1; milestones M1 and M2 updated. |
 | 0.3 | 2026-09-24 | Answers to Q1–Q8: name confirmed; TShock in v1 (CON-04, MOD-06); Minecraft loader per server, with Forge and NeoForge as P1 (UPD-06…08); OS-agnostic hosts (HST-05/06, D10); PolyForm Noncommercial license (D9); live server stays on zomboid-server (HST-04 to P2); assistant providers planned (AST-06). Milestones M0, M3, M4, M5, M7 and M8 updated. |
 | 0.4 | 2026-09-24 | Execution review: every P0 requirement now appears in a milestone (M1, M2, M3, M5, M7, M8 "Covers"); `docs/traceability.md` added; D11 (server files only through the agent); NFR-03 spells out socket listeners; M3/M5/M6 may run in parallel after M2; macOS documented but untested (M7, §12). |
+| 0.5 | 2026-09-24 | M1 contract landed: §10 names the package layout (`adapter-api`, `adapter-<game>`, `adapters`) and where fixtures and verification notes live per game. |

@@ -80,5 +80,5 @@ without a milestone is a PRD bug.
 | NFR-05 | NFR | M8 | — |
 | NFR-06 | NFR | M8 | — |
 | NFR-07 | NFR | M0 | `scripts/verify.sh` gates; `scripts/lib/*.test.ts`, `scripts/dev.test.ts`; per-slot isolation (`worktree-env.mjs`, `stack.mjs`) |
-| NFR-08 | NFR | M1 | — |
+| NFR-08 | NFR | M1 | `no-restricted-imports` rule in `eslint.config.js` (lint step of `verify.sh`); done when `LEGACY_GAME_IMPORTERS` is empty |
 | NFR-09 | NFR | M0 | `scripts/check-private.mjs` and the `privacy` step in `verify.sh`; `scripts/lib/privacy.test.ts`; `.githooks/commit-msg` |
