@@ -196,10 +196,11 @@ const actions: Record<string, RuntimeAction> = {
       for (const id of ids as string[]) if (!WORKSHOP_ID.test(id)) throw new Error(`Invalid workshop id ${id}`);
       return { ids: ids as string[] };
     },
-    run(ctx, _ctl, input): Promise<JobResult> {
+    async run(ctx, _ctl, input): Promise<JobResult> {
       const { ids } = input as WorkshopDownloadInput;
+      const driver = steam(ctx);
       ctx.progress(null, `Downloading ${ids.length} workshop item(s)`);
-      return steam(ctx).workshopDownload({ workshopAppId: PZ_WORKSHOP_APP_ID, ids });
+      return driver.workshopDownload({ workshopAppId: PZ_WORKSHOP_APP_ID, ids });
     },
   },
   [ACCOUNTS]: {
@@ -222,9 +223,11 @@ export const pzRuntimeAdapter: RuntimeAdapter<PzLaunch> = {
 
   installed,
 
-  install(ctx, p, { validate }): Promise<JobResult> {
+  async install(ctx, p, { validate }): Promise<JobResult> {
+    const driver = steam(ctx);
     ctx.progress(null, `${validate ? 'Validating' : 'Installing/updating'} (${p.branch})`);
-    return steam(ctx).appUpdate({ appId: appId(ctx), branch: p.branch === 'public' ? null : p.branch, validate });
+    // Steam's default branch is `public`: no -beta for it.
+    return driver.appUpdate({ appId: appId(ctx), branch: p.branch === 'public' ? null : p.branch, validate });
   },
 
   installOnStart(ctx, p) {
