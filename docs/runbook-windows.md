@@ -4,7 +4,7 @@ How to run the stack on a Windows PC: install, open it to friends, and keep it
 running. Commands are for PowerShell in the repo folder unless noted.
 
 > **If Docker Desktop won't start:** on Windows 11 build 26200 it can crash at
-> startup on undeletable socket files (see `verification-log.md`, M3). Option B
+> startup on undeletable socket files (see `verification/pz-b42.md`, M3). Option B
 > below, Docker Engine inside WSL, avoids Docker Desktop entirely. Everything
 > after "Install Docker" is the same for both options.
 

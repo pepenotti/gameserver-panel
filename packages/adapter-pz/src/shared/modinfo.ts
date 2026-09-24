@@ -1,7 +1,7 @@
 /**
  * Workshop mod metadata and the ini lines that enable mods.
  *
- * B42 layout (from the local workshop cache, fixtures/b42/workshop):
+ * B42 layout (from the local workshop cache, fixtures/pz/b42/workshop):
  *   mods/<Folder>/mod.info          B41 / fallback
  *   mods/<Folder>/common/           shared assets
  *   mods/<Folder>/42/, 42.13/, 42.20.1/ …  per-version; each with its own mod.info

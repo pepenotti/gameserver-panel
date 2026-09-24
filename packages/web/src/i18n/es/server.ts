@@ -1,0 +1,28 @@
+import type { Translations } from '../en';
+
+export default {
+  title: 'Servidor del juego',
+  launch: 'Configuración de inicio',
+  launchHelp: 'Se aplica la próxima vez que prenda el servidor.',
+  memory: 'Memoria de Java (GB)',
+  memoryHelp: 'Unos 8 GB para un mundo sin mods con pocos jugadores; más si hay muchos mods. Dejá al menos 3 GB por debajo del límite del contenedor.',
+  branch: 'Rama de Steam',
+  branchHelp: 'public es la última versión estable.',
+  branchWarn: 'Cambiar de rama (por ejemplo a legacy41) necesita un mundo nuevo: las partidas no son compatibles entre versiones.',
+  updateOnStart: 'Actualizar en cada inicio',
+  updateOnStartHelp: 'Mantiene el servidor en la misma versión que el juego de los jugadores, que Steam actualiza solo.',
+  updates: 'Actualizaciones del juego',
+  check: 'Buscar actualizaciones',
+  installed: 'Instalada',
+  latest: 'Última en Steam',
+  upToDate: 'Al día',
+  updateAvailable: 'Hay una actualización',
+  updateNow: 'Actualizar ahora',
+  validate: 'Verificar archivos del juego',
+  validateHelp: 'Vuelve a bajar lo que esté dañado o falte. Tarda unos minutos.',
+  danger: 'Emergencia',
+  kill: 'Forzar apagado (sin guardar)',
+  killHelp: 'Solo si el servidor se colgó y el apagado normal no funciona. Se pierde lo no guardado.',
+  killConfirm: '¿Forzar el apagado sin guardar?',
+  containerLimit: 'Límite de memoria del contenedor: {{limit}}',
+} satisfies Translations['server'];

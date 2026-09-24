@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // A stand-in for the PZ dedicated server, for agent/panel tests without the
 // 5 GB download. It speaks the same console and RCON behaviour measured on
-// 42.20.4 (docs/verification-log.md) — and is a separate implementation from
+// 42.20.4 (docs/verification/pz-b42.md) — and is a separate implementation from
 // the code under test on purpose.
 //
 //   node server.mjs [JVM args…] -- -servername n -cachedir=/data -adminusername a -adminpassword p

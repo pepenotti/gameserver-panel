@@ -1,0 +1,22 @@
+export default {
+  title: 'Reset',
+  intro: 'Start over. A backup of everything is always taken first, so a reset can be undone from the Backups page.',
+  scope: 'What to reset',
+  scopes: {
+    world: 'New world',
+    worldHelp: 'Deletes the map and all characters. Keeps player accounts, whitelist, bans, settings and mods. Players create new characters.',
+    full: 'New world and accounts',
+    fullHelp: 'Also deletes player accounts, whitelist, bans and admin roles. Settings and mods stay.',
+    factory: 'Factory reset',
+    factoryHelp: 'Also deletes all server and world settings and the mod list. The server starts as if freshly installed.',
+  },
+  ownerOnly: 'owner only',
+  newSeed: 'Use a new random world seed',
+  newSeedHelp: 'Changes the generated terrain details (forests, foraging). Leave off to keep the same map layout.',
+  preset: 'World settings preset',
+  presetNone: 'Keep current world settings',
+  when: 'When',
+  confirmLabel: 'Type {{name}} to confirm',
+  go: 'Reset',
+  warning: 'Everyone online will be disconnected. This deletes data (a backup is taken first).',
+} as const;

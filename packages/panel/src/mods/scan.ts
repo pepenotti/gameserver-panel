@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { checkCompat, parseModInfo, selectVersionFolder } from '@gsp/formats';
+import { checkCompat, parseModInfo, selectVersionFolder } from '@gsp/adapter-pz/shared';
 
 export interface ScannedMod {
   modId: string;

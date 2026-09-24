@@ -1,7 +1,7 @@
 /**
  * PZ server ini (`Server/<name>.ini`).
  *
- * Measured on 42.20.4 (docs/verification-log.md): `# comment` lines directly
+ * Measured on 42.20.4 (docs/verification/pz-b42.md): `# comment` lines directly
  * above `Key=Value`, blank lines between entries, CRLF on Windows / LF on
  * Linux, and no final newline. The server rewrites the whole file on start,
  * `changeoption` and `reloadoptions`, dropping unknown keys — so edits here are
@@ -104,49 +104,4 @@ export function buildIni(values: Record<string, string>, eol: '\r\n' | '\n' = '\
     lines.push(`${key}=${value}`);
   }
   return lines.join(eol) + eol;
-}
-
-export interface OptionCommentMeta {
-  description?: string;
-  min?: number;
-  max?: number;
-  /** Numeric default as text, or an enum default's label. */
-  default?: string;
-}
-
-// English: "… Min: 0 Max: 1000 Default: 2" (ini and sandbox) or "Default = Normal" (sandbox enums).
-// Spanish: "… Mínimo=0 Máximo=1000 Por defecto=2" and "Por defecto=Normal".
-const RANGE_PATTERNS = [
-  /\s*Min: (-?[\d.]+) Max: (-?[\d.]+) Default: (\S+)\s*$/,
-  /\s*Mínimo=(-?[\d.]+) Máximo=(-?[\d.]+) Por defecto=(\S+)\s*$/,
-];
-const DEFAULT_PATTERNS = [/\s*Default ?[=:] ?(.+?)\s*$/, /\s*Por defecto ?= ?(.+?)\s*$/];
-
-/** Pull min/max/default out of the comment PZ writes above an option. */
-export function parseOptionComment(comment: string): OptionCommentMeta {
-  let text = comment.trim();
-  const meta: OptionCommentMeta = {};
-  for (const re of RANGE_PATTERNS) {
-    const m = re.exec(text);
-    if (m) {
-      meta.min = Number(m[1]);
-      meta.max = Number(m[2]);
-      meta.default = m[3]!;
-      text = text.slice(0, m.index);
-      break;
-    }
-  }
-  if (meta.default === undefined) {
-    for (const re of DEFAULT_PATTERNS) {
-      const m = re.exec(text);
-      if (m) {
-        meta.default = m[1]!;
-        text = text.slice(0, m.index);
-        break;
-      }
-    }
-  }
-  text = text.trim();
-  if (text) meta.description = text;
-  return meta;
 }

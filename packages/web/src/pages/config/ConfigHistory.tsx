@@ -4,8 +4,8 @@ import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { diffLines, withContext } from '@gsp/shared';
 import { get, post } from '../../api/http';
-import { diffLines, withContext } from '../../lib/diff';
 import { formatDateTime, useErrorText } from '../../lib/format';
 
 type FileKey = 'ini' | 'sandbox' | 'spawnregions' | 'spawnpoints';

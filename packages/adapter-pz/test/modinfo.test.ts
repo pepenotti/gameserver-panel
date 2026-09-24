@@ -9,7 +9,7 @@ import {
   parseWorkshopItems,
   parseWorkshopRef,
   selectVersionFolder,
-} from '../src/modinfo';
+} from '../src/shared/modinfo';
 import { fixture } from './fixtures';
 
 const folders = (rel: string) => fixture(`workshop/${rel}/.folders`).trim().split('\n');

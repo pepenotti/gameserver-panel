@@ -1,0 +1,17 @@
+{
+  "name": "@gsp/adapter-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing/runtime-suite": "./src/testing/runtime-suite.ts",
+    "./testing/panel-suite-core": "./src/testing/panel-suite-core.ts",
+    "./testing/panel-suite-config": "./src/testing/panel-suite-config.ts"
+  },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "@gsp/formats": "*",
+    "@gsp/shared": "*"
+  }
+}

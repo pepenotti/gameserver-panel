@@ -1,0 +1,36 @@
+import type { Translations } from '../en';
+
+export default {
+  kind: {
+    start: 'Prendiendo el servidor',
+    restart: 'Reiniciando el servidor',
+    stop: 'Apagando el servidor',
+    update: 'Actualizando el juego',
+    backup: 'Haciendo copia de seguridad',
+    restore: 'Restaurando una copia',
+    reset: 'Reiniciando el mundo',
+    mods: 'Actualizando mods',
+  },
+  step: {
+    starting: 'Iniciando…',
+    countdown: 'Avisando a los jugadores: pasa en {{time}}',
+    acting: 'Ahora…',
+    stopping: 'Guardando y apagando…',
+    updating: 'Descargando la actualización…',
+    validating: 'Revisando los archivos del juego…',
+    saving: 'Guardando el mundo…',
+    archiving: 'Escribiendo la copia…',
+    verifying: 'Revisando el archivo de la copia…',
+    'safety-backup': 'Haciendo antes una copia de seguridad…',
+    extracting: 'Descomprimiendo…',
+    swapping: 'Poniendo los archivos en su lugar…',
+    deleting: 'Borrando…',
+    downloading: 'Descargando del Workshop…',
+    scanning: 'Leyendo los mods…',
+    done: 'Terminado',
+    failed: 'Falló',
+    cancelled: 'Cancelado',
+  },
+  by: 'por {{user}}',
+  cancel: 'Cancelar',
+} satisfies Translations['ops'];

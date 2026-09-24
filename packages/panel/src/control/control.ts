@@ -1,3 +1,4 @@
+import type { AnnounceKind } from '@gsp/adapter-api';
 import { quoteArg } from '@gsp/formats';
 import type { LaunchParams } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
@@ -10,8 +11,8 @@ import type { Settings } from '../settings';
 
 export type GameLang = 'en' | 'es';
 
-/** In-game announcements (players read them in chat, so keep them short). */
-export type AnnounceKind = 'restart' | 'stop' | 'update' | 'restore' | 'reset';
+/** In-game announcements (players read them in chat, so keep them short). The kinds are the adapter contract's. */
+export type { AnnounceKind };
 
 const MSG: Record<GameLang, Record<AnnounceKind, string> & { cancelled: string; min: (n: number) => string; sec: (n: number) => string }> = {
   es: {

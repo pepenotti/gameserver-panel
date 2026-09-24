@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { panelAdapter } from '@gsp/adapters/panel';
 import { AgentClient } from './agent/client';
 import { buildApp } from './app';
 import { Audit } from './audit';
@@ -15,6 +16,7 @@ import { backupPanelDb } from './backups/panel-db';
 import { BackupService } from './backups/service';
 import { ConfigService } from './config/service';
 import { Control } from './control/control';
+import { LocalServerFiles } from './files/local';
 import { PanelBus } from './ops/bus';
 import { OpRunner } from './ops/runner';
 import { ModsService } from './mods/service';
@@ -23,6 +25,7 @@ import { wireNotifications } from './notifier/events';
 import { Scheduler } from './scheduler/scheduler';
 import { SteamWorkshop } from './mods/steam';
 import { PlayersService } from './players/service';
+import { UnimplementedProposals } from './proposals/service';
 import { Settings } from './settings';
 
 const env = loadEnv();
@@ -58,6 +61,9 @@ const deps: Deps = {
   mods: undefined as unknown as ModsService,
   notifier,
   scheduler: undefined as unknown as Scheduler,
+  files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }),
+  changes: new UnimplementedProposals(),
+  adapter: panelAdapter('pz'),
 };
 deps.mods = new ModsService({ env, db, agent, feed: agent, ops, settings, config: deps.config, steam: new SteamWorkshop() });
 deps.flows = new BackupFlows({ agent, feed: agent, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, pzDataDir: env.pzDataDir });

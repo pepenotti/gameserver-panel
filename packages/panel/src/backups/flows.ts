@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { parseLogLine, PZ_PATTERNS } from '@gsp/formats';
+import { parseLogLine, PZ_PATTERNS } from '@gsp/adapter-pz/shared';
 import type { AgentStatus } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { Control, GameLang } from '../control/control';
@@ -10,7 +10,7 @@ import { HttpError } from '../http/context';
 import type { OpContext, OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
 import type { Settings } from '../settings';
-import type { ConfigService } from '../config/service';
+import type { ConfigStore } from '../config/store';
 import type { BackupInfo, BackupPart, BackupService, BackupTrigger } from './service';
 
 export type ResetScope = 'world' | 'full' | 'factory';
@@ -37,7 +37,7 @@ export interface FlowDeps {
   control: Control;
   backups: BackupService;
   settings: Settings;
-  config: ConfigService;
+  config: ConfigStore;
   pzDataDir: string;
 }
 

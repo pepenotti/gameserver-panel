@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import { Client, fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
-/** db/zomboid.db with PZ 42.20.4's real schema (fixtures/b42, verification log). */
+/** db/zomboid.db with PZ 42.20.4's real schema (fixtures/pz/b42, verification log). */
 function seedAccounts(p: TestPanel) {
   const dir = path.join(p.deps.env.pzDataDir, 'db');
   mkdirSync(dir, { recursive: true });
