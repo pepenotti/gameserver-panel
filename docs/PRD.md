@@ -2,9 +2,10 @@
 
 | | |
 |---|---|
-| Status | Draft 0.2 |
+| Status | Draft 0.3 |
 | Date | 2026-09-24 |
-| Name | `gameserver-panel` (working name, see [open questions](#15-open-questions)) |
+| Name | `gameserver-panel` |
+| License | PolyForm Noncommercial 1.0.0 (D9) |
 | Grows out of | [zomboid-server](https://github.com/pepenotti/zomboid-server), which stays as it is |
 
 This document is the plan. Work that can't be traced to a requirement ID or a
@@ -80,8 +81,12 @@ fits these wins.
 - Hosting for strangers: billing, customer quotas, hard multi-tenant isolation.
 - More than one host machine (nodes, clusters).
 - Windows-only dedicated servers run under Wine (e.g. Enshrouded, V Rising).
-- Minecraft Bedrock; Minecraft Forge and NeoForge; CurseForge.
-- Valheim mods (BepInEx / Thunderstore) and TShock plugins for Terraria.
+- x86-only game servers on ARM hosts (e.g. anything installed with steamcmd on
+  an Apple Silicon Mac or a Raspberry Pi). The panel says why instead (HST-05).
+- Minecraft Bedrock; CurseForge (needs an API key and has its own terms).
+- Valheim mods (BepInEx / Thunderstore).
+- Moving the live Project Zomboid server off zomboid-server (it stays there
+  for now; the importer HST-04 is P2).
 - Game clients, launchers, voice servers.
 - Automatic router configuration (UPnP). Port forwards stay a documented manual step.
 - Shipping an AI assistant. v1 is only built to be ready for one (G8, D8, [AST](#812-assistant-readiness--ast)).
@@ -120,13 +125,16 @@ Each can move into scope later through [change control](#14-change-control).
 | Game | Flavours | Install | Control | Settings | Mods | Default ports |
 |---|---|---|---|---|---|---|
 | Project Zomboid (Build 42) | — | steamcmd | RCON + stdin | server ini, `SandboxVars.lua`, spawn files | Steam Workshop | UDP 16261–16262 |
-| Minecraft Java | vanilla, Paper, Fabric | official downloads, version pinned | RCON + stdin | `server.properties`, whitelist / ops / bans | Modrinth (Paper plugins, Fabric mods) | TCP 25565 |
-| Terraria | vanilla, tModLoader | official download / steamcmd | stdin only | `serverconfig.txt`, world options | tModLoader via Steam Workshop | TCP 7777 |
+| Minecraft Java | vanilla, Paper, Fabric, Forge, NeoForge (picked per server) | official downloads and loader installers, version pinned | RCON + stdin | `server.properties`, whitelist / ops / bans, plugin and mod configs | Modrinth (Paper plugins; Fabric, Forge and NeoForge mods) | TCP 25565 |
+| Terraria | vanilla, TShock, tModLoader | official download / TShock releases / steamcmd | stdin; TShock adds its REST API | `serverconfig.txt`, world options, TShock config | TShock plugins; tModLoader via Steam Workshop | TCP 7777 |
 | Valheim | — | steamcmd | none: signals + log parsing | launch options, admin / banned / permitted lists | — (v1) | UDP 2456–2457 |
 | Other Steam games | — | steamcmd | per manifest | raw files | — | per manifest |
 
 - **Minecraft EULA:** Minecraft needs the owner to accept Mojang's EULA. The
   panel asks explicitly and never accepts it on the owner's behalf.
+- **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts. Servers
+  installed with steamcmd need x86-64. Each adapter declares what it runs
+  on, confirmed in its milestone (HST-05).
 - **Measured, not guessed:** details marked here, like readiness lines, stop
   commands and file formats, are confirmed against a real server in each
   game's first milestone, as zomboid-server did (see D5).
@@ -158,6 +166,9 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | UPD-03 | P0 | Update checks with a per-server policy: apply when nobody is playing, apply after a countdown, or only notify. |
 | UPD-04 | P0 | Every update takes a safety backup first. |
 | UPD-05 | P0 | Minecraft never moves to a new game version on its own, since that breaks mods and worlds. It only takes builds of the pinned version, unless an admin chooses a new version. |
+| UPD-06 | P0 | Minecraft's loader is picked per server when it's created: vanilla, Paper or Fabric. |
+| UPD-07 | P1 | Forge and NeoForge as loader choices too. The adapter runs their installers and pins the loader version. |
+| UPD-08 | P2 | Switch an existing Minecraft server to another loader, as a guided change with a backup, since worlds and mods may not carry over. |
 
 ### 8.3 Settings — CFG
 
@@ -181,6 +192,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | CON-01 | P0 | Live log per server for operators and up, with secrets redacted and a filter. |
 | CON-02 | P0 | Raw console (RCON or stdin) for admins, with command arguments sanitised. |
 | CON-03 | P1 | Broadcast a message to players where the game supports it. |
+| CON-04 | P0 | Terraria with TShock is controlled through TShock's REST API for players, kick, ban and broadcast. The API is bound to the server's internal network only, never published, with a token the agent generates. Vanilla Terraria uses stdin. |
 
 ### 8.5 Players — PLY
 
@@ -195,10 +207,11 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | ID | P | Requirement |
 |---|---|---|
 | MOD-01 | P0 | Project Zomboid Steam Workshop mods, at parity with zomboid-server. |
-| MOD-02 | P0 | Minecraft through Modrinth: search, add by link or ID, filter by loader and game version, resolve dependencies, check for updates. |
+| MOD-02 | P0 | Minecraft through Modrinth: search, add by link or ID, filter by the server's loader and game version, resolve dependencies, check for updates. Covers Paper plugins and Fabric mods, plus Forge and NeoForge mods once UPD-07 lands. |
 | MOD-03 | P1 | tModLoader mods through the Steam Workshop, reusing the Project Zomboid code. |
 | MOD-04 | P1 | Mod update checks with the same policies as game updates (UPD-03). |
-| MOD-05 | P2 | Thunderstore (Valheim), CurseForge, TShock plugins. |
+| MOD-05 | P2 | Thunderstore (Valheim), CurseForge. |
+| MOD-06 | P1 | TShock plugins: add by upload or by a release link, enable, disable, remove, with a restart badge. There's no central catalogue, so no dependency resolution. Admins only, with a warning that plugins run code inside the server. |
 
 ### 8.7 Backups, restore, reset — BAK
 
@@ -234,7 +247,9 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | HST-01 | P0 | One Docker Compose stack for the panel, the orchestrator and the TLS proxy. Game servers are containers the orchestrator creates. |
 | HST-02 | P0 | HTTPS with a self-signed certificate, or Let's Encrypt through DuckDNS, as in zomboid-server. |
 | HST-03 | P1 | Host overview: CPU, memory and disk per server and in total. |
-| HST-04 | P1 | Import an existing zomboid-server deployment: world, settings, mods, backups and panel users. |
+| HST-04 | P2 | Import an existing zomboid-server deployment: world, settings, mods, backups and panel users. (The live server stays on zomboid-server for now; Q7.) |
+| HST-05 | P0 | **Runs on the main operating systems through Docker:** Linux (Docker Engine), Windows 10/11 (Docker Desktop or Docker Engine in WSL) and macOS (Docker Desktop). x86-64 and ARM64 hosts work. Adapters declare the CPU architectures they support, and the panel won't create a server the host can't run natively; it says why instead. |
+| HST-06 | P0 | A setup and operations guide for each of Linux, Windows and macOS, with firewall and router notes. |
 
 ### 8.11 Language and usability — UX
 
@@ -256,7 +271,8 @@ on their own; only AST-05 is the assistant itself.
 | AST-02 | P0 | The audit log records **who acted and as what**: a person, a schedule, the host recovery tool, or an assistant acting for a person. |
 | AST-03 | P1 | **Propose, preview, approve.** Settings and file changes can be submitted as a proposal, shown as a diff, and applied only after a person approves. The text editor's preview (CFG-07) uses the same flow a future assistant would. |
 | AST-04 | P1 | **Machine-readable context** through the API: each adapter's settings schema with EN/ES descriptions, its capabilities, its console command catalog, and the server's recent log, with secrets masked. |
-| AST-05 | P2 | **Optional assistant.** Off by default; only the owner can turn it on. The model provider is pluggable (hosted, or a local model). It acts only as the signed-in user, and every change goes through AST-03 and is audited. Secrets and redacted log lines never leave the host. It is clearly labelled in the UI, and a server can run entirely without it. |
+| AST-05 | P2 | **Optional assistant.** Off by default; only the owner can turn it on. It acts only as the signed-in user, and every change goes through AST-03 and is audited. Secrets and redacted log lines never leave the host. It is clearly labelled in the UI, and a server can run entirely without it. |
+| AST-06 | P2 | **Providers** behind one pluggable interface, with the owner's own API keys. Planned: Anthropic, OpenAI, Google Gemini and xAI Grok. Also local models, through Ollama or any OpenAI-compatible endpoint, so nothing has to leave the host. There's no default provider: the owner picks one when turning the assistant on. |
 
 ## 9. Non-functional requirements
 
@@ -266,7 +282,7 @@ on their own; only AST-05 is the assistant itself.
 | NFR-02 | Security | The **orchestrator** is the only component with Docker access, and its API is narrow (see D3). Every server container gets `cap_drop: ALL`, `no-new-privileges`, a non-root user and a memory limit. It is never privileged, never on the host network, and has no host mounts beyond its own volumes. Images come from an allowlist. |
 | NFR-03 | Isolation | Each server gets its own internal network. A game container can't reach the panel, the orchestrator or another server. |
 | NFR-04 | Reliability | Graceful stop with a time budget per game; state survives restarts; watchdogs per server. |
-| NFR-05 | Portability | Linux hosts, and Windows with Docker Desktop or Docker Engine inside WSL. |
+| NFR-05 | Portability | Linux, Windows and macOS through Docker, on x86-64 and ARM64, within each adapter's declared architectures (HST-05). Nothing in the core depends on the host OS. |
 | NFR-06 | Footprint | Panel under 512 MB of RAM; agent overhead under 64 MB per server; the UI stays responsive with 10 servers. |
 | NFR-07 | Testability | Each adapter has fixtures captured from a real server and a fake server for integration tests, and passes the shared adapter contract suite. `scripts/verify.sh` gates every commit. |
 | NFR-08 | Maintainability | Adapters live in their own packages. The core never imports game-specific code, and a lint rule enforces it. |
@@ -336,9 +352,11 @@ NFR-01's controls, carried over from zomboid-server:
 | D3 | One container per server, created by an orchestrator with a restricted API. | Only one small component holds host-level power, and it can say no. | The panel holding the Docker socket: too much power in an internet-facing service. Generated Compose files run by hand: not self-service. A Docker socket proxy: can't restrict what a new container asks for. |
 | D4 | An adapter is a code package; simple Steam games are only a manifest. | Depth where it matters, cheap breadth otherwise (G2, G4). | Everything declarative: too shallow for the main games. |
 | D5 | Measured, not guessed: each adapter milestone starts by capturing fixtures from the real server. | zomboid-server found real surprises this way (RCON framing, file rewrites, steamcmd first-run errors). | Building from documentation and blog posts. |
-| D6 | Minecraft Java only: vanilla, Paper and Fabric, with mods from Modrinth. The EULA is accepted explicitly. | The biggest audience; Modrinth has an open API; the EULA is a legal requirement. | Forge, NeoForge, CurseForge (needs an API key and has terms): later. |
+| D6 | Minecraft Java only, with the loader picked per server: vanilla, Paper and Fabric (P0), Forge and NeoForge (P1). Mods come from Modrinth. The EULA is accepted explicitly. | The biggest audience. Owners choose their loader. Modrinth has an open API and hosts mods for every one of these loaders. The EULA is a legal requirement. | CurseForge (needs an API key and has its own terms): later. |
 | D7 | The same stack as zomboid-server: TypeScript, Fastify, SQLite, React with Mantine, Caddy, Docker Compose. | Reuses tested code and know-how. | — |
-| D8 | An assistant is optional, off by default and pluggable. It goes through the same API, permissions, approval and audit as a person. v1 builds only the readiness items (AST-01…04). | Keeps the door open without shipping or depending on AI. Many players dislike AI features, so the panel must work fully without one, and nothing leaves the host unless the owner opts in. | Building an assistant into v1: scope creep and a privacy question for every user. Ignoring it: retrofitting approval flows and machine-readable schemas later costs more. |
+| D8 | An assistant is optional, off by default and pluggable. It goes through the same API, permissions, approval and audit as a person. v1 builds only the readiness items (AST-01…04); the assistant and its providers (AST-05/06: Anthropic, OpenAI, Gemini, Grok, local models) come after v1. | Keeps the door open without shipping or depending on AI. Many players dislike AI features, so the panel must work fully without one, and nothing leaves the host unless the owner opts in. | Building an assistant into v1: scope creep and a privacy question for every user. Ignoring it: retrofitting approval flows and machine-readable schemas later costs more. |
+| D9 | License: **PolyForm Noncommercial 1.0.0.** Free for personal use and for non-profit organisations; commercial use needs the author's permission. Provided as is, without warranty. The `LICENSE` file is added in M0. | Matches the intent: free for players and communities, not for hosting businesses. PolyForm is a standard, lawyer-drafted license, unlike a home-made one. | MIT, which allows commercial use. CC BY-NC, which Creative Commons itself advises against for software. Note: this is "source-available" rather than OSI "open source". Code carried over from zomboid-server also stays available under MIT in that repository, so this repo keeps a `NOTICE` for it. |
+| D10 | OS-agnostic through Docker; adapters declare CPU architectures. | One stack for Linux, Windows and macOS (HST-05). Refusing unsupported combinations beats silently slow emulation. | Native installs per OS: far more work. Emulating x86 on ARM: slow and fragile for game servers. |
 
 ## 11. Milestones
 
@@ -347,15 +365,15 @@ matters, the calendar doesn't.
 
 | # | Milestone | Covers | Done when |
 |---|---|---|---|
-| M0 | Bootstrap: private repo seeded from zomboid-server `main`, renamed, gates green | D2, NFR-07, NFR-09 | `verify.sh` passes; no host or personal data in the repo; the Project Zomboid dev loop works. |
+| M0 | Bootstrap: private repo seeded from zomboid-server `main`, renamed, gates green, `LICENSE` and `NOTICE` | D2, D9, NFR-07, NFR-09 | `verify.sh` passes; no host or personal data in the repo; the Project Zomboid dev loop works; the license files are in place. |
 | M1 | Adapter contract; Project Zomboid as the first adapter, still one server; format registry and the text editor for every config file, with diff preview | G3, G7, NFR-08, D4, CFG-07…10, AST-03 | All ported Project Zomboid tests pass through the adapter; the core has no Project Zomboid imports (lint); any Project Zomboid config file is editable in the browser with a preview, while unsafe paths and file types are refused (tests). |
 | M2 | Multi-server core: data model, orchestrator, create/list/delete, per-server permissions, server list UI, API-first and actor-typed audit | G1, SRV-01…07, ACC-02/03, HST-01, NFR-02/03, AST-01/02/04 | Two Project Zomboid servers run side by side with separate worlds, ports and schedules; cross-server permission tests pass; the orchestrator refuses any spec outside its allowlist; a test finds no UI action missing from the API. |
-| M3 | Minecraft Java: fact-finding fixtures, install and pinning, run, RCON, settings forms, players, running backups, reset, EULA flow | D5, D6, CFG, PLY, BAK-02, UPD-05 | A Minecraft server created from the UI; a client joins; build, back up, break, restore, and it's back. |
-| M4 | Modrinth mods for Paper and Fabric: search, compatibility, dependencies, updates | MOD-02, MOD-04 | Add a mod that has a dependency; the server boots; a client joins. |
-| M5 | Terraria: vanilla and tModLoader, stdin control, world creation, Workshop mods for tModLoader | MOD-03, CON-02 | Create a world from the panel; join; kick and ban from the console; install a tModLoader mod. |
+| M3 | Minecraft Java: fact-finding fixtures; vanilla, Paper and Fabric loaders; install and pinning; run; RCON; settings forms; players; running backups; reset; EULA flow | D5, D6, CFG, PLY, BAK-02, UPD-05/06 | A Minecraft server created from the UI with each of the three loaders; a client joins; build, back up, break, restore, and it's back. |
+| M4 | Modrinth mods, then Forge and NeoForge loaders: search, compatibility, dependencies, updates | MOD-02, MOD-04, UPD-07 | Add a mod that has a dependency on Fabric, then on NeoForge; each server boots and a client joins. |
+| M5 | Terraria: vanilla, TShock (REST API, plugins) and tModLoader; stdin control; world creation; Workshop mods for tModLoader | MOD-03, MOD-06, CON-02, CON-04 | Create a world from the panel for each flavour; join; kick and ban (TShock through REST); install a TShock plugin and a tModLoader mod. |
 | M6 | Valheim, plus the declarative Steam manifest | G4, D4 | Valheim runs via manifest plus hooks. A second Steam game is added **with a manifest only**, and it boots, stops and backs up. |
-| M7 | zomboid-server import, host overview, job staggering | HST-03/04, SCH-02 | A copy of a live zomboid-server deployment imports with world, mods and users intact. |
-| M8 | v1: docs, security review, EN/ES completeness, phone layout, 48 h soak with three servers, then publish | G5, G6, UX-01/02 | Every [success criterion](#12-success-criteria-v1) met; the repository goes public. |
+| M7 | Host overview, job staggering, platform support: architecture checks and the Linux, Windows and macOS guides | HST-03, HST-05/06, SCH-02, D10 | Smoke test (create, start, back up, restore) passes on Linux, Windows and macOS; an ARM host refuses an x86-only game with a clear reason. |
+| M8 | v1: docs, security review, EN/ES completeness, phone layout, 48 h soak with three servers, then publish | G5, G6, UX-01/02 | Every [success criterion](#12-success-criteria-v1) met; the repository goes public under D9. |
 
 ## 12. Success criteria (v1)
 
@@ -369,6 +387,7 @@ matters, the calendar doesn't.
 4. Security tests pass for cross-server isolation, the orchestrator allowlist,
    Origin/CSRF checks and 2FA.
 5. A simple Steam game is added with a manifest only.
+6. The smoke test passes on Linux, Windows and macOS.
 
 ## 13. Risks
 
@@ -380,6 +399,9 @@ matters, the calendar doesn't.
 | Mod platform APIs change or rate-limit (Modrinth, Steam). | Caching, backoff, degrading gracefully to "can't check right now". |
 | Scope creep ("add game X"). | Change control, and the manifest path for simple games. |
 | Legal. | Explicit Minecraft EULA acceptance; no game files redistributed; captured fixtures limited to test data. |
+| Forge and NeoForge installers change often. | Pinned loader versions, fixtures per loader, and loaders shipped at P1 after the P0 ones are solid. |
+| Third-party code in plugins and mods (Paper, TShock, tModLoader). | Admin-only installs with a warning; the container isolation from NFR-02/03. |
+| Hosts that can't run a game (ARM hosts such as Apple Silicon Macs or a Raspberry Pi). | Architecture declared per adapter, and a clear refusal (HST-05). |
 
 ## 14. Change control
 
@@ -393,16 +415,20 @@ matters, the calendar doesn't.
 
 ## 15. Open questions
 
-| ID | Question |
-|---|---|
-| Q1 | Product name (`gameserver-panel` is a working name). |
-| Q2 | Terraria: add TShock (plugins, REST API) in v1, or keep it as a P2? |
-| Q3 | Minecraft: Forge and NeoForge after v1? |
-| Q4 | Discord: one webhook with per-server overrides (current plan), or one webhook per server only? |
-| Q5 | Host: this Windows PC only, or also document a Linux VPS path for v1? |
-| Q6 | License when the repository goes public (zomboid-server uses MIT). |
-| Q7 | Does the live Project Zomboid server move to this panel at v1, or stay on zomboid-server? |
-| Q8 | Assistant (AST-05, after v1): which providers first, and should a local model be the default? |
+None open. New questions go here, with an ID, until they're answered.
+
+### Answered
+
+| ID | Question | Answer (0.3) | Lands in |
+|---|---|---|---|
+| Q1 | Product name? | `gameserver-panel`. | Header |
+| Q2 | TShock in v1? | Yes: TShock as a Terraria flavour, with its REST API and plugins. | §7, CON-04, MOD-06, M5 |
+| Q3 | Forge and NeoForge? | The owner picks the loader per server. Forge and NeoForge are v1 targets after vanilla, Paper and Fabric. | §7, UPD-06…08, D6, M4 |
+| Q4 | Discord webhooks? | One webhook, with per-server overrides. | SCH-03 |
+| Q5 | Which host OS? | OS-agnostic: Linux, Windows and macOS, on x86-64 and ARM64 where games allow. | HST-05/06, NFR-05, D10, M7 |
+| Q6 | License? | Free for personal and non-profit use: PolyForm Noncommercial 1.0.0. | D9, M0 |
+| Q7 | Move the live Project Zomboid server? | Not for now; it stays on zomboid-server. The importer drops to P2. | §4, HST-04 |
+| Q8 | Assistant providers? | Planned: Anthropic, OpenAI, Gemini, Grok, and local models. Built after v1, with no default provider. | AST-06, D8 |
 
 ## 16. Glossary
 
@@ -414,6 +440,7 @@ matters, the calendar doesn't.
 | Manifest | A declarative description of a simple Steam game. |
 | Running backup | A backup taken without stopping the server, using the game's own save method. |
 | Fixture | Output captured from a real server and used in tests. |
+| Flavour / loader | A variant of a game's server, picked per server (e.g. Minecraft vanilla, Paper, Fabric, Forge, NeoForge; Terraria vanilla, TShock, tModLoader). |
 | Text editor | The in-browser editor for any config file an adapter declares (CFG-07). |
 | Proposal | A pending change shown as a diff that a person approves or rejects (AST-03). |
 | Assistant | An optional, pluggable helper that suggests and makes changes through the same API and approvals as a person (AST-05). |
@@ -424,3 +451,4 @@ matters, the calendar doesn't.
 |---|---|---|
 | 0.1 | 2026-09-24 | First draft: multi-server scope; Project Zomboid, Minecraft Java, Terraria, Valheim and Steam manifests for v1; private until v1. |
 | 0.2 | 2026-09-24 | Product principles ("easy by default, never a ceiling"); text editor for every config file (CFG-07…10); assistant readiness (G8, AST-01…05, D8), with the assistant itself after v1; milestones M1 and M2 updated. |
+| 0.3 | 2026-09-24 | Answers to Q1–Q8: name confirmed; TShock in v1 (CON-04, MOD-06); Minecraft loader per server, with Forge and NeoForge as P1 (UPD-06…08); OS-agnostic hosts (HST-05/06, D10); PolyForm Noncommercial license (D9); live server stays on zomboid-server (HST-04 to P2); assistant providers planned (AST-06). Milestones M0, M3, M4, M5, M7 and M8 updated. |
