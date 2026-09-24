@@ -50,7 +50,7 @@ export default {
   worldHelp: 'La configuración del mundo (sandbox) se lee al prender el servidor. Varias opciones (población zombi, botín) solo afectan zonas que nadie visitó todavía, o un mundo nuevo.',
   files: {
     ini: 'Configuración del servidor (.ini)',
-    sandbox: 'Mundo (SandboxVars.lua)',
+    sandbox: 'Configuración del mundo',
     spawnregions: 'Regiones de aparición',
     spawnpoints: 'Puntos de aparición',
   },

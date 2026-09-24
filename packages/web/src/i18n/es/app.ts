@@ -1,3 +1,3 @@
 import type { Translations } from '../en';
 
-export default { title: 'Panel Zomboid' } satisfies Translations['app'];
+export default { title: 'Panel de servidores de juegos' } satisfies Translations['app'];

@@ -1,1 +1,1 @@
-export default { title: 'Zomboid Panel' } as const;
+export default { title: 'Game Server Panel' } as const;

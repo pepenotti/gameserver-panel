@@ -5,7 +5,8 @@ import { Navigate, Route, Routes } from 'react-router';
 import type { Permission } from '@gsp/shared';
 import { LiveProvider } from './api/live';
 import { useSession } from './api/session';
-import { Layout } from './components/Layout';
+import { Layout, NAV } from './components/Layout';
+import { Supported } from './components/Supported';
 import { AuthFrame } from './pages/auth/AuthFrame';
 import { ChangePasswordForm } from './pages/auth/ChangePassword';
 import { EnrolTotp } from './pages/auth/EnrolTotp';
@@ -27,6 +28,34 @@ function Guard({ permission, children }: { permission: Permission; children: Rea
   const { can } = useSession();
   return can(permission) ? children : <Navigate to="/" replace />;
 }
+
+/** A NAV page: its permission, then what it needs from the game (a page reached anyway says why it's empty). */
+function Page({ to, children }: { to: string; children: ReactNode }) {
+  const { t } = useTranslation();
+  const item = NAV.find((n) => n.to === to);
+  if (!item) throw new Error(`No NAV item for ${to}`);
+  return (
+    <Guard permission={item.permission}>
+      <Supported need={item} title={t(item.label)}>
+        {children}
+      </Supported>
+    </Guard>
+  );
+}
+
+const PAGES: [string, ReactNode][] = [
+  ['/', <Dashboard />],
+  ['/players', <Players />],
+  ['/console', <Console />],
+  ['/config', <Config />],
+  ['/mods', <Mods />],
+  ['/backups', <Backups />],
+  ['/schedules', <Schedules />],
+  ['/server', <Server />],
+  ['/reset', <Reset />],
+  ['/users', <Users />],
+  ['/audit', <Audit />],
+];
 
 function NotFound() {
   const { t } = useTranslation();
@@ -80,67 +109,10 @@ export function App() {
     <LiveProvider enabled>
       <Layout>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/backups" element={<Backups />} />
-          <Route path="/players" element={<Players />} />
-          <Route path="/schedules" element={<Schedules />} />
-          <Route
-            path="/mods"
-            element={
-              <Guard permission="mods.manage">
-                <Mods />
-              </Guard>
-            }
-          />
-          <Route
-            path="/reset"
-            element={
-              <Guard permission="reset.world">
-                <Reset />
-              </Guard>
-            }
-          />
-          <Route
-            path="/console"
-            element={
-              <Guard permission="log.view">
-                <Console />
-              </Guard>
-            }
-          />
-          <Route
-            path="/config"
-            element={
-              <Guard permission="config.edit">
-                <Config />
-              </Guard>
-            }
-          />
-          <Route
-            path="/server"
-            element={
-              <Guard permission="server.update">
-                <Server />
-              </Guard>
-            }
-          />
-          <Route
-            path="/users"
-            element={
-              <Guard permission="users.manage">
-                <Users />
-              </Guard>
-            }
-          />
-          <Route
-            path="/audit"
-            element={
-              <Guard permission="audit.view">
-                <Audit />
-              </Guard>
-            }
-          />
+          {PAGES.map(([to, page]) => (
+            <Route key={to} path={to} element={<Page to={to}>{page}</Page>} />
+          ))}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>

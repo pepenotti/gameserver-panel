@@ -1,11 +1,17 @@
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/http';
+import { capabilityKey } from '../api/meta';
 
 /** Turn any thrown error into a translated, user-facing sentence. */
 export function useErrorText(): (e: unknown) => string {
   const { t, i18n } = useTranslation();
   return (e: unknown) => {
     if (e instanceof ApiError) {
+      // 409 from a route the server's game doesn't support: name what it lacks.
+      if (e.code === 'capability-unsupported' && typeof e.extra.capability === 'string') {
+        const cap = e.extra.capability;
+        return t('support.error', { feature: t(capabilityKey(cap), { defaultValue: cap }) });
+      }
       const key = `errors.${e.code}`;
       if (i18n.exists(key)) {
         const ms = typeof e.extra.retryAfterMs === 'number' ? e.extra.retryAfterMs : 0;

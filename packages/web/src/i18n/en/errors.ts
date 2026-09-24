@@ -45,8 +45,6 @@ export default {
   'too-large': 'The file is too large.',
   'unknown-preset': 'Unknown preset.',
   'invalid-argument': 'Names and reasons cannot contain double quotes or line breaks.',
-  'invalid-workshop-ref': 'That is not a Steam Workshop link or ID.',
-  'not-a-pz-mod': 'Not a Project Zomboid Workshop item (or it is private/removed).',
   'unknown-mod': 'Unknown mod.',
   'invalid-schedule': 'Those schedule settings are not valid.',
   'invalid-webhook': 'That is not a Discord webhook URL.',

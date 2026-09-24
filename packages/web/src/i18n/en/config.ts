@@ -25,6 +25,9 @@ export default {
   noResults: 'No options match.',
   advanced: 'Advanced',
   advancedHelp: 'Settings most servers never change. Search finds them from any section.',
+  // FALLBACK: `groups`, `sandboxGroups`, `worldHelp`, `managedHelp`, and the `tabs`/`files`
+  // names of declared files serve the form layouts in pages/config/Config.tsx, keyed by one
+  // adapter's schema and file ids, until the contract carries option groups and file labels.
   groups: {
     general: 'General',
     players: 'Players',
@@ -48,7 +51,7 @@ export default {
   worldHelp: 'World (sandbox) settings are read when the server starts. Several (zombie population, loot) only affect areas nobody has visited yet, or a new world.',
   files: {
     ini: 'Server settings (.ini)',
-    sandbox: 'World (SandboxVars.lua)',
+    sandbox: 'World settings',
     spawnregions: 'Spawn regions',
     spawnpoints: 'Spawn points',
   },

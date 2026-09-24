@@ -25,7 +25,7 @@ export default {
     extracting: 'Descomprimiendo…',
     swapping: 'Poniendo los archivos en su lugar…',
     deleting: 'Borrando…',
-    downloading: 'Descargando del Workshop…',
+    downloading: 'Descargando mods…',
     scanning: 'Leyendo los mods…',
     done: 'Terminado',
     failed: 'Falló',

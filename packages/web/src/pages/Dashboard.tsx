@@ -16,7 +16,8 @@ interface StatusResponse {
   serverName: string;
   agentConnected: boolean;
   agent: AgentStatus | null;
-  launch: { memoryMb: number; branch: string; updateOnStart: boolean };
+  /** The adapter's launch settings. */
+  launch: Record<string, unknown>;
   nextRestart: string | null;
   lastBackup: { at: string; trigger: string; mode: 'hot' | 'cold' } | null;
 }
@@ -45,6 +46,11 @@ export function Dashboard() {
   const players = live.players ?? s?.players ?? null;
   const dataDisk = s?.disks[0];
   const drift = s ? Math.round((new Date(s.now).getTime() - Date.now()) / 1000) : 0;
+  // Adapter-neutral fields (M1); the legacy `gameVersion`, `installed` and `rcon` are deprecated.
+  const installed = s?.installedInfo ?? null;
+  const control = s?.control;
+  // The panel talks to a running game through its control channel (RCON, REST); stdin has no connection to lose.
+  const channelDown = s?.state === 'running' && !!s.readyAt && control !== undefined && (control.kind === 'rcon' || control.kind === 'rest') && !control.connected;
 
   return (
     <Stack>
@@ -74,6 +80,12 @@ export function Dashboard() {
       {s?.failure && (
         <Alert color="red" variant="light" icon={<IconAlertTriangle />} title={t('dashboard.failure')}>
           {s.failure}
+        </Alert>
+      )}
+      {channelDown && control && (
+        <Alert color="yellow" variant="light" icon={<IconPlugConnectedX />} title={t('dashboard.channelDown', { channel: t(`dashboard.channels.${control.kind}`) })}>
+          {t('dashboard.channelDownHelp')}
+          {control.lastError ? ` (${control.lastError})` : ''}
         </Alert>
       )}
       {Math.abs(drift) > 60 && (
@@ -109,10 +121,10 @@ export function Dashboard() {
         <Stat label={t('dashboard.cpu')}>{s?.process ? `${s.process.cpuPercent}%` : '—'}</Stat>
         <Stat label={t('dashboard.disk')}>{dataDisk ? formatBytes(dataDisk.freeBytes) : '—'}</Stat>
         <Stat label={t('dashboard.gameVersion')}>
-          {s?.gameVersion ?? '—'}
-          {s?.installed && (
+          {installed?.version ?? '—'}
+          {installed && (installed.build || installed.channel) && (
             <Text size="xs" c="dimmed">
-              {t('dashboard.buildOf', { build: s.installed.buildId, branch: s.installed.branch })}
+              {[installed.build && t('dashboard.build', { build: installed.build }), installed.channel].filter(Boolean).join(' · ')}
             </Text>
           )}
         </Stat>

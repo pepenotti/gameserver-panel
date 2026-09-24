@@ -7,7 +7,10 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { del, get, post } from '../api/http';
 import { useLive } from '../api/live';
+import type { Need } from '../api/meta';
 import { useSession } from '../api/session';
+import { useMeta } from '../api/useMeta';
+import { UnsupportedNote } from '../components/Supported';
 import { formatDateTime, useDuration, useErrorText } from '../lib/format';
 
 interface Account {
@@ -32,7 +35,8 @@ interface Session {
   leftAt: string | null;
 }
 
-const LEVELS = ['none', 'observer', 'gm', 'overseer', 'moderator', 'admin'] as const;
+/** Moderation the page offers when the game has it; the note under the page names what it lacks. */
+const MODERATION: Need[] = [{ capability: 'kick' }, { capability: 'ban' }, { capability: 'whitelist' }, { capability: 'accessLevels' }, { capability: 'playerHistory' }];
 
 type Dialog = { kind: 'kick' | 'ban'; name: string; steamId: string | null } | { kind: 'access'; name: string } | { kind: 'whitelist' } | null;
 
@@ -41,16 +45,29 @@ export function Players() {
   const errorText = useErrorText();
   const dur = useDuration();
   const qc = useQueryClient();
-  const { can } = useSession();
+  const { can: canRole } = useSession();
   const live = useLive();
+  const { meta, has } = useMeta();
   const q = useQuery({ queryKey: ['players'], queryFn: () => get<PlayersResponse>('/api/players'), refetchInterval: 30_000 });
-  const history = useQuery({ queryKey: ['players', 'history'], queryFn: () => get<Session[]>('/api/players/history?limit=50'), enabled: can('accounts.view') });
+  const history = useQuery({ queryKey: ['players', 'history'], queryFn: () => get<Session[]>('/api/players/history?limit=50'), enabled: canRole('accounts.view') && has('playerHistory') });
   const [dialog, setDialog] = useState<Dialog>(null);
   const [reason, setReason] = useState('');
   const [bySteam, setBySteam] = useState(true);
-  const [level, setLevel] = useState<string>('none');
+  const levels = meta?.accessLevels ?? [];
+  const [level, setLevel] = useState<string | null>(null);
   const [wl, setWl] = useState({ username: '', password: '' });
   const running = live.status?.state === 'running';
+  // What this user may do and this game supports.
+  const can = {
+    kick: canRole('players.moderate') && has('kick'),
+    ban: canRole('players.moderate') && has('ban'),
+    access: canRole('players.accessLevel') && has('accessLevels') && levels.length > 0,
+    whitelist: canRole('whitelist.manage') && has('whitelist'),
+  };
+  const anyAction = can.kick || can.ban || can.access || can.whitelist;
+  /** Access level names: the adapter gives ids only, so known ones are translated here and others shown as they are. */
+  const levelLabel = (l: string) => t(`players.levels.${l}`, { defaultValue: l });
+  const steamIds = !!q.data?.accounts?.some((a) => a.steamId);
 
   // Presence changes arrive over the websocket; refresh the lists when they do.
   useEffect(() => {
@@ -81,10 +98,10 @@ export function Players() {
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
-        {can('players.moderate') && onlineNow && <Menu.Item onClick={() => setDialog({ kind: 'kick', name, steamId })}>{t('players.kick')}</Menu.Item>}
-        {can('players.moderate') && <Menu.Item onClick={() => { setBySteam(!!steamId); setDialog({ kind: 'ban', name, steamId }); }}>{t('players.ban')}</Menu.Item>}
-        {can('players.accessLevel') && <Menu.Item onClick={() => { setLevel('none'); setDialog({ kind: 'access', name }); }}>{t('players.access')}</Menu.Item>}
-        {can('whitelist.manage') && (
+        {can.kick && onlineNow && <Menu.Item onClick={() => setDialog({ kind: 'kick', name, steamId })}>{t('players.kick')}</Menu.Item>}
+        {can.ban && <Menu.Item onClick={() => { setBySteam(!!steamId); setDialog({ kind: 'ban', name, steamId }); }}>{t('players.ban')}</Menu.Item>}
+        {can.access && <Menu.Item onClick={() => { setLevel(levels[0] ?? null); setDialog({ kind: 'access', name }); }}>{t('players.access')}</Menu.Item>}
+        {can.whitelist && (
           <Menu.Item
             color="red"
             onClick={() =>
@@ -108,7 +125,7 @@ export function Players() {
     <Stack>
       <Group justify="space-between">
         <Title order={2}>{t('players.title')}</Title>
-        {can('whitelist.manage') && (
+        {can.whitelist && (
           <Button leftSection={<IconUserPlus size={16} />} variant="default" disabled={!running} onClick={() => setDialog({ kind: 'whitelist' })}>
             {t('players.whitelistAdd')}
           </Button>
@@ -137,7 +154,7 @@ export function Players() {
                       {since.get(name) ? t('players.since', { time: dur(Date.now() - new Date(since.get(name)!).getTime()) }) : ''}
                     </Text>
                   </Table.Td>
-                  <Table.Td w={50}>{(can('players.moderate') || can('players.accessLevel')) && playerMenu(name, accountOf(name)?.steamId ?? null, true)}</Table.Td>
+                  <Table.Td w={50}>{anyAction && playerMenu(name, accountOf(name)?.steamId ?? null, true)}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -145,7 +162,7 @@ export function Players() {
         )}
       </Card>
 
-      {q.data?.accounts && (
+      {q.data?.accounts && has('accounts') && (
         <Card withBorder>
           <Text fw={600}>{t('players.accounts')}</Text>
           <Text size="xs" c="dimmed" mb="xs">
@@ -158,7 +175,7 @@ export function Players() {
                   <Table.Th>{t('auth.username')}</Table.Th>
                   <Table.Th>{t('players.role')}</Table.Th>
                   <Table.Th>{t('players.lastSeen')}</Table.Th>
-                  <Table.Th>{t('players.steamId')}</Table.Th>
+                  {steamIds && <Table.Th>{t('players.steamId')}</Table.Th>}
                   <Table.Th w={50} />
                 </Table.Tr>
               </Table.Thead>
@@ -170,33 +187,35 @@ export function Players() {
                         {a.username}
                         {online.includes(a.username) && (
                           <Badge size="xs" color="green">
-                            online
+                            {t('players.onlineBadge')}
                           </Badge>
                         )}
                       </Group>
                     </Table.Td>
                     <Table.Td>
                       <Badge variant="light" color={a.role === 'admin' ? 'red' : a.role === 'banned' ? 'gray' : 'blue'}>
-                        {a.role}
+                        {levelLabel(a.role)}
                       </Badge>
                     </Table.Td>
                     <Table.Td>{a.lastConnection ?? '—'}</Table.Td>
-                    <Table.Td>
-                      {a.steamId ? (
-                        <CopyButton value={a.steamId}>
-                          {({ copied, copy }) => (
-                            <Tooltip label={copied ? t('common.copied') : t('common.copy')}>
-                              <Text size="xs" ff="monospace" style={{ cursor: 'pointer' }} onClick={copy}>
-                                {a.steamId}
-                              </Text>
-                            </Tooltip>
-                          )}
-                        </CopyButton>
-                      ) : (
-                        '—'
-                      )}
-                    </Table.Td>
-                    <Table.Td>{(can('players.moderate') || can('players.accessLevel')) && playerMenu(a.username, a.steamId, online.includes(a.username))}</Table.Td>
+                    {steamIds && (
+                      <Table.Td>
+                        {a.steamId ? (
+                          <CopyButton value={a.steamId}>
+                            {({ copied, copy }) => (
+                              <Tooltip label={copied ? t('common.copied') : t('common.copy')}>
+                                <Text size="xs" ff="monospace" style={{ cursor: 'pointer' }} onClick={copy}>
+                                  {a.steamId}
+                                </Text>
+                              </Tooltip>
+                            )}
+                          </CopyButton>
+                        ) : (
+                          '—'
+                        )}
+                      </Table.Td>
+                    )}
+                    <Table.Td>{anyAction && playerMenu(a.username, a.steamId, online.includes(a.username))}</Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -205,37 +224,43 @@ export function Players() {
         </Card>
       )}
 
-      {q.data?.bans && (
+      {q.data?.bans && has('ban') && (
         <Card withBorder>
           <Text fw={600} mb="xs">
             {t('players.bans')}
           </Text>
-          {q.data.bans.steamIds.length === 0 ? (
+          {q.data.bans.steamIds.length === 0 && q.data.bans.ips.length === 0 && (
             <Text size="sm" c="dimmed">
               {t('players.noBans')}
             </Text>
-          ) : (
-            <Table fz="sm">
-              <Table.Tbody>
-                {q.data.bans.steamIds.map((b) => (
-                  <Table.Tr key={b.steamId}>
-                    <Table.Td ff="monospace">{b.steamId}</Table.Td>
-                    <Table.Td>{b.reason ?? ''}</Table.Td>
-                    <Table.Td w={100} ta="right">
-                      {can('players.moderate') && (
-                        <Button size="compact-xs" variant="subtle" disabled={!running} onClick={() => void act(() => post('/api/players/unban', { steamId: b.steamId }))}>
-                          {t('players.unban')}
-                        </Button>
-                      )}
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+          )}
+          {q.data.bans.steamIds.length > 0 && (
+            <>
+              <Text size="sm" fw={500} mb={4}>
+                {t('players.steamBans')}
+              </Text>
+              <Table fz="sm">
+                <Table.Tbody>
+                  {q.data.bans.steamIds.map((b) => (
+                    <Table.Tr key={b.steamId}>
+                      <Table.Td ff="monospace">{b.steamId}</Table.Td>
+                      <Table.Td>{b.reason ?? ''}</Table.Td>
+                      <Table.Td w={100} ta="right">
+                        {can.ban && (
+                          <Button size="compact-xs" variant="subtle" disabled={!running} onClick={() => void act(() => post('/api/players/unban', { steamId: b.steamId }))}>
+                            {t('players.unban')}
+                          </Button>
+                        )}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </>
           )}
           {q.data.bans.ips.length > 0 && (
             <>
-              <Text fw={600} mt="md" mb="xs">
+              <Text size="sm" fw={500} mt="md" mb={4}>
                 {t('players.ipBans')}
               </Text>
               {!q.data.ipBansTrustworthy && (
@@ -287,6 +312,8 @@ export function Players() {
         </Card>
       )}
 
+      <UnsupportedNote needs={MODERATION} />
+
       <Modal
         opened={dialog !== null}
         onClose={() => setDialog(null)}
@@ -325,8 +352,10 @@ export function Players() {
             <Text size="sm" c="dimmed">
               {t('players.accessHelp')}
             </Text>
-            <Select data={LEVELS.map((l) => ({ value: l, label: t(`players.levels.${l}`) }))} value={level} onChange={(v) => v && setLevel(v)} allowDeselect={false} />
-            <Button onClick={() => void act(() => post('/api/players/access', { username: dialog.name, level }))}>{t('common.save')}</Button>
+            <Select data={levels.map((l) => ({ value: l, label: levelLabel(l) }))} value={level} onChange={(v) => v && setLevel(v)} allowDeselect={false} aria-label={t('players.access')} />
+            <Button disabled={!level} onClick={() => void act(() => post('/api/players/access', { username: dialog.name, level }))}>
+              {t('common.save')}
+            </Button>
           </Stack>
         )}
         {dialog?.kind === 'whitelist' && (

@@ -36,7 +36,12 @@ const INI_GROUPS: [string, (k: string) => boolean][] = [
   ],
 ];
 
-/** Forms by schema id; a schema without one here groups by dotted prefix. */
+/**
+ * Forms by schema id; a schema without one here groups by dotted prefix.
+ * FALLBACK until the adapter contract carries option groups and "advanced"
+ * flags (`OptionMeta`): these layouts match one adapter's schema ids (`ini`,
+ * `sandbox`) and stay dormant for every other game.
+ */
 function useLayouts(): (schemaId: string) => FormLayout {
   const { t } = useTranslation();
   const dotted = (k: string) => (k.includes('.') ? k.split('.')[0]! : 'general');

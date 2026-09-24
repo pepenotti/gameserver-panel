@@ -5,11 +5,13 @@ import { es } from './es';
 
 export type Lang = 'en' | 'es';
 
-const STORAGE_KEY = 'pz-lang';
+const STORAGE_KEY = 'gsp-lang';
+/** Where earlier versions kept the choice; read once so it survives the rename. */
+const OLD_STORAGE_KEY = 'pz-lang';
 
 function initialLang(): Lang {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(OLD_STORAGE_KEY);
     if (saved === 'en' || saved === 'es') return saved;
   } catch {
     // storage blocked: fall through

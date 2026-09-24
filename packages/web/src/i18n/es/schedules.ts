@@ -17,7 +17,7 @@ export default {
   everyHours: 'Cada {{n}} horas',
   backupsHelp: 'Se hacen con el servidor prendido (antes se guarda el mundo). La del reinicio diario es la completa.',
   gameUpdates: 'Actualizaciones del juego',
-  gameUpdatesHelp: 'Cuando Steam actualiza Project Zomboid, el juego de los jugadores también se actualiza y ya no pueden entrar a un servidor más viejo.',
+  gameUpdatesHelp: 'Cuando {{game}} se actualiza, el juego de los jugadores suele actualizarse también y ya no pueden entrar a un servidor más viejo.',
   modUpdates: 'Actualizaciones de mods',
   modUpdatesHelp: 'Los jugadores con una versión de un mod más nueva que la del servidor no pueden entrar.',
   checkEvery: 'Revisar cada (minutos)',
