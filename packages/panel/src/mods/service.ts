@@ -205,7 +205,7 @@ export class ModsService {
       const firstScan = r.info === '[]';
       const enabled = this.enabled();
       if (firstScan && mods.length === 1 && !enabled.some((e) => e.workshopId === r.workshop_id)) {
-        this.setEnabled([...enabled, { modId: mods[0]!.modId, workshopId: r.workshop_id }], null);
+        await this.setEnabled([...enabled, { modId: mods[0]!.modId, workshopId: r.workshop_id }], null);
       }
     }
   }
@@ -219,7 +219,7 @@ export class ModsService {
   }
 
   /** Save the enabled list (in load order) and write the config values it turns into. */
-  setEnabled(list: EnabledMod[], by: string | null): { restartNeeded: boolean } {
+  async setEnabled(list: EnabledMod[], by: string | null): Promise<{ restartNeeded: boolean }> {
     const known = this.knownMods();
     const seen = new Set<string>();
     const clean: EnabledMod[] = [];
@@ -234,14 +234,14 @@ export class ModsService {
     return this.writeConfig(by);
   }
 
-  autoSort(by: string | null): EnabledMod[] {
+  async autoSort(by: string | null): Promise<EnabledMod[]> {
     const known = this.knownMods();
     const sorted = sortByDependencies(this.enabled(), (id) => known.get(id)?.mod.require ?? []);
-    this.setEnabled(sorted, by);
+    await this.setEnabled(sorted, by);
     return sorted;
   }
 
-  remove(workshopId: string, by: string | null): { restartNeeded: boolean } {
+  async remove(workshopId: string, by: string | null): Promise<{ restartNeeded: boolean }> {
     const r = this.d.db.prepare('DELETE FROM mods WHERE workshop_id = ?').run(workshopId);
     if (Number(r.changes) === 0) throw new HttpError(404, 'not-found');
     this.d.settings.setRaw(
@@ -259,19 +259,11 @@ export class ModsService {
     return this.source().toConfig(enabled, entries);
   }
 
-  /**
-   * The frozen ConfigStore edits one file directly, the server ini, so mod
-   * sources that write elsewhere wait for M1-C's generic store.
-   */
-  private assertIni(fileId: string): void {
-    if (fileId !== 'ini') throw new Error(`Mod config for file "${fileId}" is not supported yet`);
-  }
-
-  private writeConfig(by: string | null): { restartNeeded: boolean } {
+  /** Write the list into the source's config file (first-run files are created first); a running server needs a restart. */
+  private async writeConfig(by: string | null): Promise<{ restartNeeded: boolean }> {
     const { fileId, values } = this.configValues();
-    this.assertIni(fileId);
-    this.d.config.seedIniIfMissing();
-    this.d.config.setIniDirect(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, String(v ?? '')])), by, 'mod list');
+    await this.d.config.seedIfMissing();
+    await this.d.config.setDirect(fileId, values, by, 'mod list');
     const running = ['running', 'starting'].includes(this.d.feed.status_?.state ?? '');
     if (running) this.d.config.markPendingPublic(['Mods']);
     return { restartNeeded: running };
@@ -287,10 +279,9 @@ export class ModsService {
     const source = this.source();
     if (!source.fromConfig) return;
     const { fileId } = source.toConfig([], new Map());
-    this.assertIni(fileId);
-    const ini = this.d.config.getIni();
-    if (ini.missing) return;
-    const { items, enabled } = source.fromConfig(ini.values);
+    const current = await this.d.config.values(fileId);
+    if (current.missing) return;
+    const { items, enabled } = source.fromConfig(current.values);
     const now = nowIso();
     for (const id of items) this.d.db.prepare('INSERT OR IGNORE INTO mods (workshop_id, title, added_at, added_by) VALUES (?, ?, ?, ?)').run(id, id, now, null);
     await this.rescan();

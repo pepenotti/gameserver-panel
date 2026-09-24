@@ -117,8 +117,10 @@ export function panelAdapterConfigSuite<S>(adapter: PanelAdapter<S>, opts: Panel
         files.map((f) => `${f.root}/${f.rel}`),
         'config file paths',
       );
+      if (cfg.presets) expect(files.map((f) => f.id), 'the file presets apply to').toContain(cfg.presets.fileId);
       for (const f of files) {
         expect(f.id, 'file id').toMatch(/^[a-z][a-z0-9-]*$/);
+        if (f.label) expectI18n(f.label, `label of ${f.id}`);
         expect(f.rel, `${f.id} path`).toMatch(RELATIVE);
         // A validate would overwrite the install; settings live with the server's data.
         expect(f.root, `${f.id} root`).not.toBe('install');
@@ -191,17 +193,23 @@ export function panelAdapterConfigSuite<S>(adapter: PanelAdapter<S>, opts: Panel
     const ctxFor = () => {
       const files = memoryServerFiles(seed());
       const commands: string[] = [];
+      const no = async (): Promise<never> => {
+        throw new Error('not available in the config contract suite');
+      };
       const ctx: ServerCtx = {
         srv: server(),
         files,
+        actor: 'contract-suite',
         status: () => null,
         command: async (c): Promise<CommandResponse> => {
           commands.push(c.command);
           return { via: 'rcon', output: '' };
         },
-        action: async () => {
-          throw new Error('agent actions are not available in the contract suite');
-        },
+        action: no,
+        versions: no,
+        launchSettings: () => adapter.launch.defaults(),
+        // Config code is what the panel's settings service runs; it doesn't call itself.
+        config: { set: no, seedIfMissing: no, applyPreset: no },
         onLog: () => () => undefined,
       };
       return { ctx, files, commands };

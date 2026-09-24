@@ -1,4 +1,4 @@
-import type { OptionMeta, SecretBag, ServerRef } from '@gsp/adapter-api';
+import type { LaunchSecretDecl, OptionMeta, SecretBag, ServerRef, ToAgentOptions } from '@gsp/adapter-api';
 import type { LaunchParams } from '@gsp/shared';
 
 /** The launch settings the panel stores (the settings row `launch`). */
@@ -60,19 +60,16 @@ export function parsePzLaunchSettings(input: unknown): PzLaunchSettings {
   return { memoryMb: s.memoryMb, branch: s.branch, updateOnStart: s.updateOnStart };
 }
 
-/**
- * Optional fourth argument of `toAgent` the panel passes until the contract
- * has it (M1-B contract request): the start follows an install the panel just
- * ran, so the pre-start update would only repeat it.
- */
-export interface LaunchHints {
-  afterInstall?: boolean;
-}
-
 /** Secrets the panel holds for a Project Zomboid server (`SecretBag` keys). */
 export const PZ_SECRET_ADMIN_PASSWORD = 'adminPassword';
 
-export function pzToAgent(srv: ServerRef, s: PzLaunchSettings, secrets: SecretBag, hints: LaunchHints = {}): LaunchParams {
+/** The in-game `admin` account's password, re-applied on every start. */
+export const PZ_LAUNCH_SECRETS: LaunchSecretDecl[] = [
+  { key: PZ_SECRET_ADMIN_PASSWORD, label: { en: 'Password of the in-game admin account', es: 'Contraseña de la cuenta admin del juego' } },
+];
+
+/** `afterInstall`: the start follows an install the panel just ran, so the pre-start update would only repeat it. */
+export function pzToAgent(srv: ServerRef, s: PzLaunchSettings, secrets: SecretBag, hints: ToAgentOptions = {}): LaunchParams {
   const v = parsePzLaunchSettings(s);
   const adminPassword = secrets[PZ_SECRET_ADMIN_PASSWORD];
   if (!adminPassword) throw new Error('The server admin password is not set');

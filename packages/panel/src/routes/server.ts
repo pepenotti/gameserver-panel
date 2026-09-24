@@ -1,3 +1,4 @@
+import type { CommandDoc } from '@gsp/adapter-api';
 import { RconProtocolError, type OptionMeta } from '@gsp/formats';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { COUNTDOWNS, type GameLang } from '../control/control';
@@ -10,12 +11,11 @@ const countdownBody = {
   properties: { countdownSec: { enum: [...COUNTDOWNS] } },
 } as const;
 
-/** Commands whose arguments are secrets: the audit log keeps only the command name. */
-const SENSITIVE = new Set(['setpassword', 'adduser', 'changeoption']);
-
-export function auditableCommand(cmd: string): string {
+/** A console command for the audit log: only the name when the adapter's catalog says its arguments hold secrets. */
+export function auditableCommand(cmd: string, catalog: readonly CommandDoc[]): string {
   const [name = '', ...rest] = cmd.trim().split(/\s+/);
-  if (SENSITIVE.has(name.toLowerCase()) && rest.length) return `${name} <arguments hidden>`;
+  const secret = catalog.some((c) => c.secretArgs && c.name.toLowerCase() === name.toLowerCase());
+  if (secret && rest.length) return `${name} <arguments hidden>`;
   return cmd.slice(0, 300);
 }
 
@@ -117,7 +117,7 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     async (req) => {
       const cmd = req.body.command.trim().replace(/^\//, '');
       const r = await agent.command(cmd);
-      audit.log({ user: actor(req), action: 'server.command', detail: auditableCommand(cmd), ip: req.ip });
+      audit.log({ user: actor(req), action: 'server.command', detail: auditableCommand(cmd, server.adapter.consoleCatalog ?? []), ip: req.ip });
       return r;
     },
   );
@@ -144,7 +144,7 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
   // The shape predates adapters (Steam branches); versions map onto it.
   app.get('/api/server/updates', { config: { permission: 'server.update', capability: 'updateCheck' } }, async () => {
     const ctx = server.ctx();
-    const check = await server.adapter.updates?.check(ctx);
+    const check = await server.adapter.updates?.check(ctx, server.launchSettings());
     const info = await ctx.versions();
     const channel = check?.channel ?? null;
     const latest = info.versions.find((v) => v.id === channel) ?? null;

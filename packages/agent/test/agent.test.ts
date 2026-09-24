@@ -239,6 +239,8 @@ describe('the watchdog', () => {
     await h.agent.start(launch, undefined);
     const s = await h.waitFor((x) => x.state === 'failed');
     expect(s.failure).toMatch(/admin password/);
+    // The generic kind, whatever the game prompted for.
+    expect(h.events.find((e) => e.event.type === 'alert')?.event).toMatchObject({ type: 'alert', kind: 'blocking-prompt' });
   });
 
   it('fails when the server never becomes ready', async () => {

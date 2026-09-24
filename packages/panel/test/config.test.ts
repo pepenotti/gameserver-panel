@@ -129,7 +129,7 @@ describe('server settings (ini)', () => {
     const { p } = await setup();
     const config = p.deps.config;
     expect(config.getIni().values.RCONPassword).toBe(MASK);
-    config.setIniDirect({ Mods: 'modA;modB' }, null, 'mod list');
+    await config.setDirect('ini', { Mods: 'modA;modB' }, null, 'mod list');
     expect(ini(p).Mods).toBe('modA;modB');
     expect(config.read('ini')).toContain('Mods=modA;modB');
     expect(await config.applyIni({ PVP: 'false' }, 'alice')).toEqual({ applied: 'next-start', warnings: [], restartNeeded: false });
@@ -183,9 +183,11 @@ describe('sandbox', () => {
     expect(v).toMatchObject({ Zombies: 1, 'ZombieLore.Speed': 3 });
     expect(p.deps.config.historyOf('sandbox')[0]!.note).toBe('preset Apocalypse');
     expect((await c.post('/api/config/proposals', { fileId: 'sandbox', preset: '../../etc' })).statusCode).toBe(404);
-    // The synchronous path the reset flow uses.
-    expect(p.deps.config.presets()).toEqual(['Apocalypse']);
-    expect(p.deps.config.applyPreset('Apocalypse', null, { force: true })).toMatchObject({ applied: 'unchanged', applied_keys: 2 });
+    // A preset only applies to the file the adapter names.
+    expect((await c.post('/api/config/proposals', { fileId: 'ini', preset: 'Apocalypse' })).statusCode).toBe(404);
+    // The path the reset flow uses.
+    expect(await p.deps.config.presets()).toEqual(['Apocalypse']);
+    expect(await p.deps.config.applyPreset('Apocalypse', null, { force: true })).toMatchObject({ applied: 'unchanged', applied_keys: 2 });
   });
 });
 

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { CommandVia, ControlHandle, InstallCtx, JobResult, SteamCmd, VersionsResponse } from '@gsp/adapter-api';
+import type { CommandVia, ControlHandle, InstallCtx, JobResult, SteamCmd, VersionInfo } from '@gsp/adapter-api';
 import { iniToRecord, parseIni } from '@gsp/formats';
 import { ACCOUNTS, BANS, WORKSHOP_DOWNLOAD } from '../src/shared/actions';
 import { pzRuntimeAdapter as pz, type PzLaunch } from '../src/runtime';
@@ -23,7 +23,7 @@ function stubSteam(result: JobResult = { ok: true }) {
   const calls: unknown[] = [];
   const steam: SteamCmd = {
     appUpdate: async (o) => (calls.push(['appUpdate', o]), result),
-    branches: async (o): Promise<VersionsResponse> => (calls.push(['branches', o]), { installed: null, versions: [{ id: 'public', build: '1' }] }),
+    branches: async (o): Promise<VersionInfo[]> => (calls.push(['branches', o]), [{ id: 'public', build: '1' }]),
     workshopDownload: async (o) => (calls.push(['workshopDownload', o]), result),
   };
   return { steam, calls };
@@ -256,14 +256,18 @@ describe('control', () => {
     expect(starting.sent).toEqual([['quit', 'stdin-line']]);
   });
 
-  it('saves and waits for "Saving finish"', async () => {
+  it('saves and waits for "Saving finish" within the budget', async () => {
     const ok = fakeCtl({ lines: ['World saved', 'Saving finish'] });
-    await pz.save!(ok.ctl);
+    const waits: number[] = [];
+    const wait = ok.ctl.waitForLine.bind(ok.ctl);
+    ok.ctl.waitForLine = (re, ms) => (waits.push(ms), wait(re, ms));
+    await pz.save!(ok.ctl, { budgetMs: 5_000 });
     expect(ok.sent).toEqual([['save', undefined]]);
+    expect(waits).toEqual([5_000]);
     await pz.hotCopy!.before(ok.ctl);
     await pz.hotCopy!.after(ok.ctl);
     expect(pz.hotCopy!.sqlite).toEqual(['**/*.db']);
-    await expect(pz.save!(fakeCtl({ waitTimesOut: true }).ctl)).rejects.toThrow(/finished saving/);
+    await expect(pz.save!(fakeCtl({ waitTimesOut: true }).ctl, { budgetMs: 5_000 })).rejects.toThrow(/finished saving/);
   });
 
   it('lists players from the RCON reply', async () => {

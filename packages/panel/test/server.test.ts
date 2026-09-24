@@ -211,9 +211,23 @@ describe('console and broadcast', () => {
     expect((await op.post('/api/server/broadcast', { message: 'hola' })).statusCode).toBe(200);
   });
 
-  it('hides arguments of sensitive commands', () => {
-    expect(auditableCommand('adduser bob pw')).toBe('adduser <arguments hidden>');
-    expect(auditableCommand('changeoption Password "x"')).toBe('changeoption <arguments hidden>');
-    expect(auditableCommand('kickuser bob')).toBe('kickuser bob');
+  it('hides the arguments of commands the adapter marks as secret', async () => {
+    const catalog = [
+      { name: 'passwd', syntax: 'passwd <user> <pw>', description: { en: 'x', es: 'x' }, secretArgs: true },
+      { name: 'kick', syntax: 'kick <user>', description: { en: 'x', es: 'x' } },
+    ];
+    expect(auditableCommand('passwd bob pw', catalog)).toBe('passwd <arguments hidden>');
+    expect(auditableCommand('PASSWD bob pw', catalog)).toBe('PASSWD <arguments hidden>');
+    expect(auditableCommand('kick bob', catalog)).toBe('kick bob');
+    expect(auditableCommand('other bob', catalog)).toBe('other bob');
+
+    // Through the route, with the game's own catalog.
+    const c = await ready();
+    p.feed.status_ = fakeStatus({ state: 'running' });
+    await c.post('/api/server/command', { command: 'setpassword "bob" "hunter2-secret"' });
+    await c.post('/api/server/command', { command: 'players' });
+    const details = p.deps.audit.list({ action: 'server.command' }).map((a) => a.detail);
+    expect(details).toEqual(expect.arrayContaining(['setpassword <arguments hidden>', 'players']));
+    expect(details.join()).not.toContain('hunter2');
   });
 });

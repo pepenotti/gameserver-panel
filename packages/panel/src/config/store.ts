@@ -52,6 +52,8 @@ export interface ReappliedKey {
 
 export interface DeclaredFile {
   id: string;
+  /** The adapter's name for the file (`ConfigFileDecl.label`); null: show the file name. */
+  label: I18n | null;
   root: RootId;
   rel: string;
   format: FormatId;
@@ -108,10 +110,10 @@ export interface FileContent {
 }
 
 export interface ConfigMeta {
-  files: Pick<DeclaredFile, 'id' | 'format' | 'schemaId' | 'managedKeys' | 'secretKeys' | 'restartKeys'>[];
+  files: Pick<DeclaredFile, 'id' | 'label' | 'format' | 'schemaId' | 'managedKeys' | 'secretKeys' | 'restartKeys'>[];
   schemas: Record<string, OptionMeta[]>;
   presets: string[];
-  /** The file presets apply to. */
+  /** The file presets apply to (the adapter's `config.presets.fileId`). */
   presetFile: string | null;
 }
 
@@ -157,8 +159,14 @@ export interface ConfigStore {
   // ------------------------------------------------------------------ files
   /** A file's text, or null when it doesn't exist. */
   read(file: ConfigFile): string | null;
-  /** Writes the first-run settings when there is no ini yet; true if it did. */
-  seedIniIfMissing(): boolean;
+  /** Writes each declared file's first-run `seed` where that file doesn't exist yet; true if one was written. */
+  seedIfMissing(): Promise<boolean>;
+  /**
+   * Internal edits (resets, the mod list; the adapter's `ServerCtx.config`)
+   * while the server is stopped: declared files only, no managed-key or busy
+   * checks. A file that doesn't exist is left alone.
+   */
+  setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string): Promise<void>;
 
   // ---------------------------------------------------------------- history
   history(file: ConfigFile): VersionRow[];
@@ -175,8 +183,6 @@ export interface ConfigStore {
   iniMeta(): OptionMeta[];
   getIni(): { values: Record<string, string>; missing: boolean };
   applyIni(changes: Record<string, string>, by: string | null): Promise<ApplyResult>;
-  /** Internal edits (resets, the mod list) while the server is stopped: no managed-key or busy checks. */
-  setIniDirect(changes: Record<string, string>, by: string | null, note: string): void;
   getIniRaw(): string;
   putIniRaw(text: string, by: string | null, note?: string, opts?: { keepManagedFromDisk?: boolean }): Promise<ApplyResult>;
 
@@ -188,10 +194,10 @@ export interface ConfigStore {
   putLuaRaw(file: Exclude<ConfigFile, 'ini'>, text: string, by: string | null, note?: string): Promise<ApplyResult>;
 
   // ---------------------------------------------------------------- presets
-  /** The presets last listed (listing is async: `listPresets` refreshes this). */
-  presets(): string[];
-  /** Copies a game preset's values onto the current file, for options both have. */
-  applyPreset(name: string, by: string | null, opts?: { force?: boolean }): ApplyResult & { applied_keys: number };
+  /** The adapter's presets that load, listed now (one installed since the panel started counts). */
+  presets(): Promise<string[]>;
+  /** Copies a game preset's values onto the file presets apply to, for options both have. */
+  applyPreset(name: string, by: string | null, opts?: { force?: boolean }): Promise<ApplyResult & { applied_keys: number }>;
 
   // ------------------------------------------------ the editor (CFG-01…10)
   /** Schemas, declared files and presets: what the forms are built from. */
@@ -208,5 +214,4 @@ export interface ConfigStore {
   /** `content` against the file now, secrets masked on both sides. */
   compare(fileId: string, content: string): Promise<{ before: string; after: string; sha256: string | null }>;
   historyOf(fileId: string): FileVersionRow[];
-  listPresets(): Promise<string[]>;
 }

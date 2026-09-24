@@ -41,8 +41,8 @@ export const PZ_JVM_FLAGS = ['-Duser.language=en', '-Duser.country=US'];
 export const PZ_ROOTS = { data: '/data', install: '/opt/pz' } as const;
 
 const ADMIN_PROMPT = 'The server asked for an admin password on the console';
-/** Upper bound for "Saving finish"; the agent's own budget for a save is shorter. */
-const SAVE_WAIT_MS = 10 * 60_000;
+/** How long the hot copy waits for "Saving finish" (a save the agent asks for has its own budget). */
+const HOT_COPY_SAVE_MS = 10 * 60_000;
 
 const NAME = /^[A-Za-z0-9_-]{1,32}$/;
 const ADMIN_USER = /^[A-Za-z0-9_]{1,32}$/;
@@ -124,9 +124,9 @@ export function classify(raw: string): LineSignal {
   return s;
 }
 
-/** `save`, then PZ's "Saving finish" (the console fallback also works: PZ reads stdin). */
-async function save(ctl: ControlHandle): Promise<void> {
-  const finished = ctl.waitForLine(PZ_PATTERNS.saveFinished, SAVE_WAIT_MS);
+/** `save`, then PZ's "Saving finish" within `budgetMs` (the console fallback also works: PZ reads stdin). */
+async function save(ctl: ControlHandle, o: { budgetMs: number }): Promise<void> {
+  const finished = ctl.waitForLine(PZ_PATTERNS.saveFinished, o.budgetMs);
   await ctl.command('save');
   if (!(await finished)) throw new Error('The server did not report that it finished saving');
 }
@@ -238,8 +238,8 @@ export const pzRuntimeAdapter: RuntimeAdapter<PzLaunch> = {
 
   async versions(ctx, _p): Promise<VersionsResponse> {
     ctx.progress(null, 'Checking Steam for the latest builds');
-    const r = await steam(ctx).branches({ appId: appId(ctx) });
-    return { installed: installed(ctx), versions: r.versions };
+    const versions = await steam(ctx).branches({ appId: appId(ctx) });
+    return { installed: installed(ctx), versions };
   },
 
   async prepare(ctx, p) {
@@ -296,7 +296,7 @@ export const pzRuntimeAdapter: RuntimeAdapter<PzLaunch> = {
   save,
 
   hotCopy: {
-    before: save,
+    before: (ctl) => save(ctl, { budgetMs: HOT_COPY_SAVE_MS }),
     // PZ has no save-off: nothing to switch back on.
     after: async () => undefined,
     // Every .db file in a running backup is copied as a SQLite snapshot.

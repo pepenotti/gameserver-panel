@@ -12,9 +12,10 @@ export function metaRoutes(app: FastifyInstance, deps: Deps): void {
     const srv = deps.control.server.ref;
     return {
       adapter: a.meta,
-      server: { gameName: srv.gameName, flavour: srv.flavour },
+      server: { id: srv.id, gameName: srv.gameName, flavour: srv.flavour },
       capabilities: [...capabilitiesOf(a, srv.flavour)],
-      launch: { schema: a.launch.schema },
+      // Which secrets the server needs, never their values.
+      launch: { schema: a.launch.schema, secrets: (a.launch.secrets ?? []).map((s) => ({ key: s.key, label: s.label })) },
       backupParts: a.backups.parts.map((p) => ({ id: p.id, label: p.label })),
       resets: a.resets.map((r) => ({ id: r.id, label: r.label, permission: r.permission, removeParts: r.removeParts })),
       accessLevels: a.players?.accessLevels ?? [],

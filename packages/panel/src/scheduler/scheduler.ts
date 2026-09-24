@@ -197,7 +197,7 @@ export class Scheduler {
     if (!updates || !server.has('updateCheck')) return;
     let info;
     try {
-      info = await updates.check(server.ctx('scheduler'));
+      info = await updates.check(server.ctx('scheduler'), server.launchSettings());
     } catch {
       return;
     }

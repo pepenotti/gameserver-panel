@@ -271,7 +271,7 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
     it.runIf(adapter.save !== undefined)(
       'saves, and waits for the game to finish',
       async () => {
-        await expect(adapter.save!(game!.ctl)).resolves.toBeUndefined();
+        await expect(adapter.save!(game!.ctl, { budgetMs: waitMs })).resolves.toBeUndefined();
       },
       testMs,
     );

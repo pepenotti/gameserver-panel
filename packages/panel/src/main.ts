@@ -7,7 +7,7 @@ import { Sessions } from './auth/sessions';
 import { GlobalBreaker } from './auth/throttle';
 import { Users } from './auth/users';
 import { openDb } from './db/db';
-import { loadEnv } from './env';
+import { loadEnv, secretEnvName } from './env';
 import type { Deps } from './http/deps';
 import { BackupFlows } from './backups/flows';
 import { backupPanelDb } from './backups/panel-db';
@@ -35,6 +35,11 @@ const settings = new Settings(db);
 const bus = new PanelBus();
 const ops = new OpRunner(bus);
 const notifier = new DiscordNotifier(settings);
+const adapter = panelAdapter('pz');
+const files = new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir });
+const server = new ServerHandle({ env, agent, feed: agent, files, settings, config: () => deps.config, adapter });
+const missing = server.missingSecrets();
+if (missing.length) throw new Error(`${missing.map(secretEnvName).join(', ')} must be set`);
 const deps: Deps = {
   env,
   db,
@@ -52,18 +57,17 @@ const deps: Deps = {
   bus,
   ops,
   control: undefined as unknown as Control,
-  config: new ConfigService({ db, settings, agent, feed: agent, adapter: panelAdapter('pz'), srv: { id: 'default', gameName: env.serverName, flavour: null }, files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }) }),
+  config: new ConfigService({ db, settings, feed: agent, adapter, server, files }),
   backups: undefined as unknown as BackupService,
   flows: undefined as unknown as BackupFlows,
   players: undefined as unknown as PlayersService,
   mods: undefined as unknown as ModsService,
   notifier,
   scheduler: undefined as unknown as Scheduler,
-  files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }),
+  files,
   changes: new ConfigProposals({ db, config: () => deps.config }),
-  adapter: panelAdapter('pz'),
+  adapter,
 };
-const server = new ServerHandle({ env, agent, feed: agent, files: deps.files, settings, config: deps.config, adapter: deps.adapter });
 deps.players = new PlayersService({ db, feed: agent, server });
 deps.mods = new ModsService({ db, feed: agent, ops, settings, config: deps.config, server, sources: deps.adapter.mods ?? [] });
 deps.backups = new BackupService({ env, feed: agent, server, mods: deps.mods });

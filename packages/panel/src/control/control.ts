@@ -1,10 +1,10 @@
-import type { AnnounceKind, Lang } from '@gsp/adapter-api';
+import type { AnnounceKind, Lang, ToAgentOptions } from '@gsp/adapter-api';
 import type { AgentApi } from '../agent/client';
 import type { BackupService } from '../backups/service';
 import type { AgentFeed } from '../http/deps';
 import type { OpContext, OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
-import type { LaunchHints, ServerHandle } from '../server/handle';
+import type { ServerHandle } from '../server/handle';
 
 /** Language of in-game messages. */
 export type GameLang = Lang;
@@ -75,7 +75,7 @@ export class Control {
   }
 
   /** Start the game: the adapter's before-start hook, then the agent with the stored launch settings. */
-  async startAgent(o: { lockId?: string; by?: string | null; hints?: LaunchHints } = {}): Promise<void> {
+  async startAgent(o: { lockId?: string; by?: string | null; hints?: ToAgentOptions } = {}): Promise<void> {
     const launch = this.d.server.launchEnvelope(o.hints);
     await this.d.server.adapter.hooks?.beforeStart?.(this.d.server.ctx(o.by ?? null));
     await this.d.agent.start(launch, o.lockId);

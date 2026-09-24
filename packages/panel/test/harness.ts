@@ -129,7 +129,7 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     pzInstallDir: path.join(tmp, 'install'),
     backupDir: path.join(tmp, 'backups'),
     serverName: 'zomboid',
-    pzAdminPassword: 'AdminPw-123456',
+    secrets: { adminPassword: 'AdminPw-123456' },
     origins: [ORIGIN],
     owner: OWNER,
     trustProxy: 'loopback',
@@ -144,6 +144,9 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
   const settings = new Settings(db);
   const bus = new PanelBus();
   const ops = new OpRunner(bus);
+  const adapter = panelAdapter('pz');
+  const files = new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir });
+  const server = new ServerHandle({ env, agent, feed, files, settings, config: () => deps.config, adapter });
   const deps: Deps = {
     env,
     db,
@@ -157,18 +160,17 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     bus,
     ops,
     control: undefined as unknown as Control,
-    config: new ConfigService({ db, settings, agent, feed, adapter: panelAdapter('pz'), srv: { id: 'default', gameName: env.serverName, flavour: null }, files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }) }),
+    config: new ConfigService({ db, settings, feed, adapter, server, files }),
     backups: undefined as unknown as BackupService,
     flows: undefined as unknown as BackupFlows,
     players: undefined as unknown as PlayersService,
     mods: undefined as unknown as ModsService,
     notifier: new DiscordNotifier(settings, opts.fetch ?? ((() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch)),
     scheduler: undefined as unknown as Scheduler,
-    files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }),
+    files,
     changes: new ConfigProposals({ db, config: () => deps.config }),
-    adapter: panelAdapter('pz'),
+    adapter,
   };
-  const server = new ServerHandle({ env, agent, feed, files: deps.files, settings, config: deps.config, adapter: deps.adapter });
   deps.players = new PlayersService({ db, feed, server });
   const noNetwork = (() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch;
   deps.mods = new ModsService({ db, feed, ops, settings, config: deps.config, server, sources: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })] });

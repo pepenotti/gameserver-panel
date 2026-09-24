@@ -49,6 +49,23 @@ describe('reset', () => {
     expect(pre[0]!.manifest.parts).toEqual(['world', 'accounts', 'configs']);
   });
 
+  it('applies a preset installed after the panel started, and refuses an unknown one up front', async () => {
+    const { p, c } = await setup();
+    // The game's install gains a preset while the panel runs (the first install, an update).
+    const presets = path.join(p.deps.env.pzInstallDir, 'media', 'lua', 'shared', 'Sandbox');
+    mkdirSync(presets, { recursive: true });
+    writeFileSync(path.join(presets, 'Apocalypse.lua'), 'return {\n    Zombies = 1,\n}\n');
+
+    expect((await c.post('/api/reset', { scope: 'world', confirm: 'zomboid', preset: 'Nope' })).json()).toEqual({ error: 'unknown-preset' });
+    expect(exists(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe(true);
+
+    expect((await c.post('/api/reset', { scope: 'world', confirm: 'zomboid', preset: 'Apocalypse' })).statusCode).toBe(200);
+    await p.deps.ops.idle();
+    expect(p.deps.bus.currentOp()).toMatchObject({ kind: 'reset', ok: true });
+    expect(readFileSync(path.join(p.deps.env.pzDataDir, 'Server', 'zomboid_SandboxVars.lua'), 'utf8')).toMatch(/Zombies = 1,/);
+    expect(p.deps.config.historyOf('sandbox')[0]).toMatchObject({ note: 'preset Apocalypse', username: 'alice' });
+  });
+
   it('full: also wipes accounts; factory: also settings, then first-run defaults', async () => {
     const { p, c } = await setup();
     await c.post('/api/reset', { scope: 'full', confirm: 'zomboid' });

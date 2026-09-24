@@ -468,10 +468,9 @@ export class Agent {
       }
     }
     if (sig.blockingPrompt && this.run === run) {
-      // The game waits for console input nobody will type. `admin-prompt` is
-      // the wire's name for it (Project Zomboid's admin password prompt came first).
+      // The game waits for console input nobody will type.
       this.failure = sig.blockingPrompt;
-      this.alert('admin-prompt', this.failure);
+      this.alert('blocking-prompt', this.failure);
       this.expectExit = true;
       run.proc.signal('SIGKILL');
     }
@@ -657,8 +656,9 @@ export class Agent {
     const run = this.run;
     if (!run || this.state !== 'running') throw new AgentError('unavailable', 'The server is not running');
     const ctl = run.handle((e) => this.log(`${CHANNEL_LABEL[run.kind]} command failed (${e.message}).`));
+    // The adapter gets the same budget, so it stops waiting when the agent does.
     const saving = Promise.resolve()
-      .then(() => save.call(this.adapter, ctl))
+      .then(() => save.call(this.adapter, ctl, { budgetMs: timeoutMs }))
       .then(
         () => null,
         (e: Error) => e,

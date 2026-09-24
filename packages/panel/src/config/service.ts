@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { ConfigFileDecl, DirEntry, EditableRoot, PanelAdapter, RootId, Scalar, ServerCtx, ServerFiles, ServerRef } from '@gsp/adapter-api';
 import { checkOptionValue, formatFor, formatIdForName, type ConfigFormat, type LuaEdit, type OptionMeta, type ParseIssue } from '@gsp/formats';
-import type { AgentApi } from '../agent/client';
 import { nowIso, type Db } from '../db/db';
 import { segments, ServerFilesError, type SyncServerFiles } from '../files/local';
 import { decodeText, editableFolderOf, excludedDir, included, MAX_TEXT_BYTES, nameReason, textProblem, UNREADABLE, type ReadonlyReason } from '../files/policy';
@@ -39,11 +38,11 @@ const TREE_MAX_DEPTH = 8;
 export interface ConfigDeps {
   db: Db;
   settings: Settings;
-  agent: AgentApi;
   feed: AgentFeed;
   /** The game adapter's panel half: its `config` drives everything here. */
   adapter: PanelAdapter;
-  srv: ServerRef;
+  /** The server: its ref, and the context the adapter's `afterWrite` and presets run with. */
+  server: { readonly ref: ServerRef; ctx(actor?: string | null): ServerCtx };
   files: ServerFiles & SyncServerFiles;
 }
 
@@ -99,21 +98,20 @@ function filesError(e: unknown): unknown {
  * → history snapshot → atomic write → `afterWrite` → pending restart.
  */
 export class ConfigService implements ConfigStore {
-  private presetCache: { names: string[]; values: Map<string, Record<string, Scalar>>; fileId: string | null } = { names: [], values: new Map(), fileId: null };
-
-  constructor(private readonly d: ConfigDeps) {
-    // The frozen `presets()` is synchronous: have the list ready.
-    void this.listPresets().catch(() => undefined);
-  }
+  constructor(private readonly d: ConfigDeps) {}
 
   // ------------------------------------------------------------ the adapter
 
+  private get srv(): ServerRef {
+    return this.d.server.ref;
+  }
+
   private decls(): ConfigFileDecl[] {
-    return this.d.adapter.config.files(this.d.srv);
+    return this.d.adapter.config.files(this.srv);
   }
 
   private folders(): EditableRoot[] {
-    return this.d.adapter.config.roots(this.d.srv);
+    return this.d.adapter.config.roots(this.srv);
   }
 
   private schemaOf(t: Target): OptionMeta[] | null {
@@ -121,21 +119,8 @@ export class ConfigService implements ConfigStore {
     return id === undefined ? null : (this.d.adapter.config.schemas[id] ?? null);
   }
 
-  private ctx(): ServerCtx {
-    const { agent, feed } = this.d;
-    return {
-      srv: this.d.srv,
-      files: this.d.files,
-      status: () => feed.status_,
-      command: (c) => agent.command(c.command, c.via),
-      action: async (name) => {
-        throw new Error(`Agent action ${name} is not available to config files`);
-      },
-      onLog: (listener) =>
-        feed.onEvent((e) => {
-          if (e.event.type === 'log') listener(e.event.line);
-        }),
-    };
+  private ctx(actor: string | null = null): ServerCtx {
+    return this.d.server.ctx(actor);
   }
 
   // ---------------------------------------------------------------- targets
@@ -246,7 +231,7 @@ export class ConfigService implements ConfigStore {
   }
 
   private managedValues(): Record<string, Record<string, string>> {
-    return this.d.adapter.config.managedValues(this.d.srv);
+    return this.d.adapter.config.managedValues(this.srv);
   }
 
   // -------------------------------------------------------------- pipeline
@@ -384,11 +369,11 @@ export class ConfigService implements ConfigStore {
   }
 
   /** After a write: a running server re-reads the file (`afterWrite`) and the rest waits for a restart. */
-  private async finish(t: Target, changedKeys: string[]): Promise<ApplyResult> {
+  private async finish(t: Target, changedKeys: string[], by: string | null): Promise<ApplyResult> {
     if (this.d.feed.status_?.state !== 'running') return { applied: 'next-start', warnings: [], restartNeeded: false };
     let applied: 'live' | 'restart' = 'restart';
     let warnings: string[] = [];
-    if (t.decl && this.d.adapter.config.afterWrite) ({ applied, warnings } = await this.d.adapter.config.afterWrite(this.ctx(), t.id, changedKeys));
+    if (t.decl && this.d.adapter.config.afterWrite) ({ applied, warnings } = await this.d.adapter.config.afterWrite(this.ctx(by), t.id, changedKeys));
     const pending = this.restartReasons(t, changedKeys, applied === 'restart');
     this.markPending(pending);
     return { applied: applied === 'live' ? 'live' : 'next-start', warnings, restartNeeded: pending.length > 0 };
@@ -410,12 +395,20 @@ export class ConfigService implements ConfigStore {
   // ------------------------------------------------- the editor (CFG-07…09)
 
   async meta(): Promise<ConfigMeta> {
-    const presets = await this.listPresets();
+    const presets = await this.presets();
     return {
-      files: this.decls().map((f) => ({ id: f.id, format: f.format, schemaId: f.schemaId ?? null, managedKeys: f.managedKeys, secretKeys: f.secretKeys, restartKeys: f.restartKeys })),
+      files: this.decls().map((f) => ({
+        id: f.id,
+        label: f.label ?? null,
+        format: f.format,
+        schemaId: f.schemaId ?? null,
+        managedKeys: f.managedKeys,
+        secretKeys: f.secretKeys,
+        restartKeys: f.restartKeys,
+      })),
       schemas: this.d.adapter.config.schemas,
       presets,
-      presetFile: this.presetCache.fileId,
+      presetFile: this.d.adapter.config.presets?.fileId ?? null,
     };
   }
 
@@ -447,6 +440,7 @@ export class ConfigService implements ConfigStore {
       }
       files.push({
         id: d.id,
+        label: d.label ?? null,
         root: d.root,
         rel: d.rel,
         format: d.format,
@@ -540,7 +534,7 @@ export class ConfigService implements ConfigStore {
     if (req.text !== undefined) proposed = req.text;
     else if (req.changes) proposed = this.proposedFromChanges(t, disk, req.changes);
     else if (req.preset !== undefined) {
-      const values = await this.loadPreset(req.preset);
+      const values = await this.loadPreset(req.preset, t.id);
       const current = this.flat(t, disk);
       proposed = this.proposedFromChanges(t, disk, Object.fromEntries(Object.entries(values).filter(([k]) => k in current)));
       note = `preset ${req.preset}`;
@@ -576,7 +570,7 @@ export class ConfigService implements ConfigStore {
     const p = this.prepareText(t, disk, content, { managed: o.managed });
     if (p.next === disk) return { applied: 'unchanged', warnings: [], restartNeeded: false, reapplied: p.reapplied, changedKeys: [], sha256: this.shaOf(t, disk) };
     this.writeSync(t, disk, p.next, by, note);
-    const r = await this.finish(t, p.changedKeys);
+    const r = await this.finish(t, p.changedKeys, by);
     return { ...r, reapplied: p.reapplied, changedKeys: p.changedKeys, sha256: this.shaOf(t, p.next) };
   }
 
@@ -663,7 +657,7 @@ export class ConfigService implements ConfigStore {
 
   // ------------------------------------------------------------ first run
 
-  seedIniIfMissing(): boolean {
+  async seedIfMissing(): Promise<boolean> {
     let seeded = false;
     for (const d of this.decls()) {
       const t = this.declTarget(d);
@@ -672,6 +666,15 @@ export class ConfigService implements ConfigStore {
       seeded = true;
     }
     return seeded;
+  }
+
+  async setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string): Promise<void> {
+    const t = this.target(fileId);
+    if (!t.decl) throw new HttpError(404, 'unknown-file');
+    const disk = this.readText(t);
+    if (disk === null) return;
+    const next = t.format.edit(disk, values);
+    if (next !== disk) this.writeSync(t, disk, next, by, note);
   }
 
   // ------------------------------------ frozen methods (other services, M1)
@@ -691,15 +694,6 @@ export class ConfigService implements ConfigStore {
 
   async applyIni(changes: Record<string, string>, by: string | null): Promise<ApplyResult> {
     return this.applyChanges('ini', changes, by);
-  }
-
-  /** Internal edits (resets, the mod list) while the server is stopped: no managed-key or busy checks. */
-  setIniDirect(changes: Record<string, string>, by: string | null, note: string): void {
-    const t = this.target('ini');
-    const disk = this.readText(t);
-    if (disk === null) return;
-    const next = t.format.edit(disk, changes);
-    if (next !== disk) this.writeSync(t, disk, next, by, note);
   }
 
   getIniRaw(): string {
@@ -741,7 +735,7 @@ export class ConfigService implements ConfigStore {
     const p = this.prepareText(t, disk, this.proposedFromChanges(t, disk, changes));
     if (p.next === disk) return { applied: 'unchanged', warnings: [], restartNeeded: false };
     this.writeSync(t, disk, p.next, by, this.noteFor(p.changedKeys, p.reapplied));
-    return this.finish(t, p.changedKeys);
+    return this.finish(t, p.changedKeys, by);
   }
 
   private applyChangesSync(fileId: string, changes: Record<string, Scalar>, by: string | null, opts: { force?: boolean; note?: string } = {}): ApplyResult {
@@ -757,59 +751,48 @@ export class ConfigService implements ConfigStore {
 
   // ---------------------------------------------------------------- presets
 
-  /** Lists the adapter's presets (and loads them, for the synchronous `applyPreset`). */
-  async listPresets(): Promise<string[]> {
+  /** The adapter's presets that load, listed now (a preset installed since the panel started counts). */
+  async presets(): Promise<string[]> {
     const presets = this.d.adapter.config.presets;
     if (!presets) return [];
     const ctx = this.ctx();
-    const values = new Map<string, Record<string, Scalar>>();
+    let names: string[];
     try {
-      for (const name of await presets.list(ctx)) {
-        try {
-          values.set(name, await presets.load(ctx, name));
-        } catch {
-          // A preset that doesn't load isn't offered.
-        }
-      }
+      names = await presets.list(ctx);
     } catch {
       // No preset folder (nothing installed yet).
+      return [];
     }
-    this.presetCache = { names: [...values.keys()], values, fileId: this.presetTarget(values) };
-    return this.presetCache.names;
-  }
-
-  /**
-   * The declared file presets apply to: the one whose schema has most of a
-   * preset's keys (the contract doesn't name it; see the M1-C handoff).
-   */
-  private presetTarget(values: Map<string, Record<string, Scalar>>): string | null {
-    const first = values.values().next().value;
-    if (!first) return null;
-    let best: { id: string; hits: number } | null = null;
-    for (const d of this.decls()) {
-      const schema = d.schemaId === undefined ? undefined : this.d.adapter.config.schemas[d.schemaId];
-      if (!schema) continue;
-      const keys = new Set(schema.map((m) => m.key));
-      const hits = Object.keys(first).filter((k) => keys.has(k)).length;
-      if (hits > 0 && (!best || hits > best.hits)) best = { id: d.id, hits };
+    const out: string[] = [];
+    for (const name of names) {
+      try {
+        await presets.load(ctx, name);
+        out.push(name);
+      } catch {
+        // A preset that doesn't load isn't offered.
+      }
     }
-    return best?.id ?? null;
+    return out;
   }
 
-  private async loadPreset(name: string): Promise<Record<string, Scalar>> {
-    if (!(await this.listPresets()).includes(name)) throw new HttpError(404, 'not-found');
-    return this.presetCache.values.get(name)!;
+  /** A preset's values for `fileId`, the file the adapter says presets apply to; 404 otherwise. */
+  private async loadPreset(name: string, fileId: string): Promise<Record<string, Scalar>> {
+    const presets = this.d.adapter.config.presets;
+    if (!presets || presets.fileId !== fileId) throw new HttpError(404, 'not-found');
+    const ctx = this.ctx();
+    try {
+      if (!(await presets.list(ctx)).includes(name)) throw new Error('not a preset');
+      return await presets.load(ctx, name);
+    } catch {
+      throw new HttpError(404, 'not-found');
+    }
   }
 
-  presets(): string[] {
-    return this.presetCache.names;
-  }
-
-  /** Copies a game preset's values onto the current file, for options both have. */
-  applyPreset(name: string, by: string | null, opts: { force?: boolean } = {}): ApplyResult & { applied_keys: number } {
-    const values = this.presetCache.values.get(name);
-    const fileId = this.presetCache.fileId;
-    if (!values || !fileId) throw new HttpError(404, 'not-found');
+  /** Copies a game preset's values onto its file, for options both have. */
+  async applyPreset(name: string, by: string | null, opts: { force?: boolean } = {}): Promise<ApplyResult & { applied_keys: number }> {
+    const fileId = this.d.adapter.config.presets?.fileId;
+    if (!fileId) throw new HttpError(404, 'not-found');
+    const values = await this.loadPreset(name, fileId);
     const t = this.target(fileId);
     const current = this.flat(t, this.requireText(t));
     const changes = Object.fromEntries(Object.entries(values).filter(([k]) => k in current));

@@ -86,10 +86,15 @@ export interface AgentStatus {
   lastExit: ExitInfo | null;
   /** Why the state is `failed`. */
   failure: string | null;
-  /** From the `version=` log line of the current or last run. */
+  /**
+   * From the game's version line of the current or last run.
+   * @deprecated Read `installedInfo.version`; removed in M2's contract step.
+   */
   gameVersion: string | null;
+  /** @deprecated Read `installedInfo` (`build`, `channel`); removed in M2's contract step. */
   installed: { buildId: string; branch: string } | null;
   players: { count: number; names: string[]; at: string } | null;
+  /** @deprecated Read `control`; removed in M2's contract step. */
   rcon: { connected: boolean; lastError: string | null };
   /** The adapter's control channel (M1; `rcon` stays until every reader uses this). */
   control?: { kind: ControlKind; connected: boolean; lastError: string | null };
@@ -106,7 +111,17 @@ export interface AgentStatus {
   now: string;
 }
 
-export type AlertKind = 'crash' | 'crash-loop' | 'unresponsive' | 'admin-prompt' | 'fatal' | 'start-timeout' | 'start-failed';
+export type AlertKind =
+  | 'crash'
+  | 'crash-loop'
+  | 'unresponsive'
+  /** The game waited for console input nobody will type (a runtime adapter's `blockingPrompt`); the agent killed it. */
+  | 'blocking-prompt'
+  /** @deprecated The agent sends `blocking-prompt`; kept until the web reads that, removed in M2's contract step. */
+  | 'admin-prompt'
+  | 'fatal'
+  | 'start-timeout'
+  | 'start-failed';
 
 export type AgentEvent =
   | { type: 'state'; status: AgentStatus }

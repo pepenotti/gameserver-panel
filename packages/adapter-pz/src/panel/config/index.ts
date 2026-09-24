@@ -64,6 +64,7 @@ function files(srv: ServerRef): ConfigFileDecl[] {
   return [
     {
       id: 'ini',
+      label: { en: 'Server settings (.ini)', es: 'Configuración del servidor (.ini)' },
       root: 'data',
       rel: `${base}.ini`,
       format: 'ini',
@@ -76,6 +77,7 @@ function files(srv: ServerRef): ConfigFileDecl[] {
     // The game reads these three at boot and executes them, so they must be plain data (CFG-02).
     {
       id: 'sandbox',
+      label: { en: 'World (SandboxVars.lua)', es: 'Mundo (SandboxVars.lua)' },
       root: 'data',
       rel: `${base}_SandboxVars.lua`,
       format: 'lua-data',
@@ -85,8 +87,28 @@ function files(srv: ServerRef): ConfigFileDecl[] {
       restartKeys: '*',
       dataOnly: { form: 'assign', name: 'SandboxVars' },
     },
-    { id: 'spawnregions', root: 'data', rel: `${base}_spawnregions.lua`, format: 'lua-data', managedKeys: [], secretKeys: [], restartKeys: '*', dataOnly: { form: 'function', name: 'SpawnRegions' } },
-    { id: 'spawnpoints', root: 'data', rel: `${base}_spawnpoints.lua`, format: 'lua-data', managedKeys: [], secretKeys: [], restartKeys: '*', dataOnly: { form: 'function', name: 'SpawnPoints' } },
+    {
+      id: 'spawnregions',
+      label: { en: 'Spawn regions', es: 'Regiones de aparición' },
+      root: 'data',
+      rel: `${base}_spawnregions.lua`,
+      format: 'lua-data',
+      managedKeys: [],
+      secretKeys: [],
+      restartKeys: '*',
+      dataOnly: { form: 'function', name: 'SpawnRegions' },
+    },
+    {
+      id: 'spawnpoints',
+      label: { en: 'Spawn points', es: 'Puntos de aparición' },
+      root: 'data',
+      rel: `${base}_spawnpoints.lua`,
+      format: 'lua-data',
+      managedKeys: [],
+      secretKeys: [],
+      restartKeys: '*',
+      dataOnly: { form: 'function', name: 'SpawnPoints' },
+    },
   ];
 }
 
@@ -160,5 +182,6 @@ export const pzPanelConfig: PanelAdapterConfig = {
   // The agent writes the ports and the RCON password before every start; the panel only pins UPnP off.
   managedValues: () => ({ ini: { UPnP: 'false' } }),
   afterWrite,
-  presets: { list: listPresets, load: loadPreset },
+  // The game's presets are sandbox tables.
+  presets: { fileId: 'sandbox', list: listPresets, load: loadPreset },
 };

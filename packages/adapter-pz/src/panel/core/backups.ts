@@ -1,5 +1,4 @@
 import type { BackupPartDecl, ResetDecl, ResetOptions, ServerCtx } from '@gsp/adapter-api';
-import { extras, required } from './ctx';
 
 /** What a backup is made of, relative to the data root (PZ's -cachedir). */
 export const PZ_BACKUP_PARTS: BackupPartDecl[] = [
@@ -37,12 +36,11 @@ export function randomResetId(): string {
 /** After the world (and maybe the accounts) is gone: new ResetID, maybe a new seed and a preset. */
 function newWorld(scope: string) {
   return async (ctx: ServerCtx, o: ResetOptions): Promise<void> => {
-    const config = required(ctx, 'config');
-    const by = extras(ctx).actor ?? null;
     const changes: Record<string, string> = { ResetID: randomResetId() };
     if (o.newSeed) changes.Seed = randomSeed();
-    config.setIniDirect(changes, by, `reset (${scope})`);
-    if (o.preset) config.applyPreset(o.preset, by, { force: true });
+    // The history names ctx.actor, who asked for the reset.
+    await ctx.config.set('ini', changes, `reset (${scope})`);
+    if (o.preset) await ctx.config.applyPreset(o.preset);
   };
 }
 
@@ -73,12 +71,12 @@ export const PZ_RESETS: ResetDecl[] = [
     permission: 'reset.factory',
     removeParts: ['world', 'accounts', 'configs'],
     after: async (ctx) => {
-      required(ctx, 'config').seedIniIfMissing();
+      await ctx.config.seedIfMissing();
     },
   },
 ];
 
 /** Before every start: a brand-new server gets the first-run settings (PZ fills in the rest). */
 export async function pzBeforeStart(ctx: ServerCtx): Promise<void> {
-  extras(ctx).config?.seedIniIfMissing();
+  await ctx.config.seedIfMissing();
 }
