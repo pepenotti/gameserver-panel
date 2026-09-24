@@ -5,3 +5,4 @@ export * from './modinfo';
 export * from './rcon-codec';
 export * from './log';
 export * from './option-meta';
+export * from './registry';

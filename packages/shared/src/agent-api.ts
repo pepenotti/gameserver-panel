@@ -134,6 +134,36 @@ export interface AppInfoResponse {
   branches: { name: string; buildId: string; timeUpdated?: number; description?: string; passwordRequired: boolean }[];
 }
 
+// ------------------------------------------------ adapter-neutral (M1, D4)
+
+/** What is installed, in any game's terms (a runtime adapter's `installed()`). */
+export interface InstalledInfo {
+  /** Game version when known (PZ reports it only once it runs). */
+  version: string | null;
+  /** Steam branch, Minecraft release channel, loader… */
+  channel?: string;
+  /** Build of that version when the source has one (Steam build id). */
+  build?: string;
+}
+
+/** One version a server can be pinned to (UPD-02). */
+export interface VersionInfo {
+  /** What gets pinned: a Steam branch, a Minecraft version, a loader version. */
+  id: string;
+  build?: string;
+  /** Unix seconds. */
+  timeUpdated?: number;
+  description?: string;
+  /** Steam branches behind a password are listed but can't be picked. */
+  passwordRequired?: boolean;
+}
+
+/** `POST /v1/versions`. */
+export interface VersionsResponse {
+  installed: InstalledInfo | null;
+  versions: VersionInfo[];
+}
+
 /** Error body for every non-2xx agent response. */
 export interface AgentError {
   error: string;

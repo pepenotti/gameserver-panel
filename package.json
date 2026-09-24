@@ -6,6 +6,7 @@
   "workspaces": [
     "packages/shared",
     "packages/formats",
+    "packages/adapter-api",
     "packages/agent",
     "packages/panel",
     "packages/web"
