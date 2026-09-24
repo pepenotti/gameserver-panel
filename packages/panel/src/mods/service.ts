@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
-import { formatModsLine, formatWorkshopItems, getIniValue, parseIni, parseModsLine, parseWorkshopItems, parseWorkshopRef } from '@gsp/formats';
+import { formatModsLine, formatWorkshopItems, parseModsLine, parseWorkshopItems, parseWorkshopRef } from '@gsp/adapter-pz/shared';
+import { getIniValue, parseIni } from '@gsp/formats';
 import type { AgentApi } from '../agent/client';
 import type { ConfigService } from '../config/service';
 import { nowIso, type Db } from '../db/db';

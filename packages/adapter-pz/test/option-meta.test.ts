@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseIni } from '../src/ini';
-import { parseLuaData } from '../src/lua-data';
-import { checkOptionValue, iniOptions, mergeLanguages, sandboxOptions } from '../src/option-meta';
+import { checkOptionValue, mergeLanguages, parseIni, parseLuaData } from '@gsp/formats';
+import { iniOptions, sandboxOptions } from '../src/shared/option-meta';
 import { fixture } from './fixtures';
 
 const iniMeta = mergeLanguages({

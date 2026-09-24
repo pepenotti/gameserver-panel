@@ -7,6 +7,8 @@
     "packages/shared",
     "packages/formats",
     "packages/adapter-api",
+    "packages/adapter-pz",
+    "packages/adapters",
     "packages/agent",
     "packages/panel",
     "packages/web"

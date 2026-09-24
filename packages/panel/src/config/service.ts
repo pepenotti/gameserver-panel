@@ -1,5 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { PZ_OPTION_META } from '@gsp/adapter-pz/panel/config';
+import { parseLogLine, PZ_PATTERNS } from '@gsp/adapter-pz/shared';
 import {
   buildIni,
   checkOptionValue,
@@ -8,9 +10,7 @@ import {
   iniToRecord,
   LuaDataError,
   parseIni,
-  parseLogLine,
   parseLuaData,
-  PZ_PATTERNS,
   scalarToJs,
   setIniValues,
   setLuaValues,
@@ -23,7 +23,6 @@ import type { PanelEnv } from '../env';
 import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
 import type { Settings } from '../settings';
-import metaJson from './option-meta.json';
 
 export type ConfigFile = 'ini' | 'sandbox' | 'spawnregions' | 'spawnpoints';
 export const CONFIG_FILES: ConfigFile[] = ['ini', 'sandbox', 'spawnregions', 'spawnpoints'];
@@ -68,7 +67,7 @@ export const FIRST_RUN_INI: Record<string, string> = {
   SaveWorldEveryMinutes: '10',
 };
 
-const META = metaJson as { source: string; ini: OptionMeta[]; sandbox: OptionMeta[] };
+const META = PZ_OPTION_META;
 
 export interface PendingRestart {
   since: string;

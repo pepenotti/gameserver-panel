@@ -12,6 +12,7 @@
     "@fastify/multipart": "^10.1.2",
     "@fastify/static": "^10.1.4",
     "@fastify/websocket": "^11.3.1",
+    "@gsp/adapter-pz": "*",
     "@gsp/formats": "*",
     "@gsp/shared": "*",
     "croner": "^10.0.1",

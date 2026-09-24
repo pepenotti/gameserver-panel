@@ -1,0 +1,19 @@
+{
+  "name": "@gsp/adapter-pz",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./shared": "./src/shared/index.ts",
+    "./runtime": "./src/runtime/index.ts",
+    "./panel": "./src/panel/index.ts",
+    "./panel/core": "./src/panel/core/index.ts",
+    "./panel/config": "./src/panel/config/index.ts"
+  },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "@gsp/adapter-api": "*",
+    "@gsp/formats": "*",
+    "@gsp/shared": "*"
+  }
+}

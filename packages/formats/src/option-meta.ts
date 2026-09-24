@@ -1,12 +1,8 @@
 /**
- * Option metadata (type, range, default, enum labels, description) derived
- * from the comments PZ writes into the ini and SandboxVars.lua. Comments are
- * in the server's locale, so the English and Spanish files are parsed
- * separately and merged by key: both have the same keys in the same order.
+ * Option metadata (type, range, default, enum labels, description) that the
+ * settings forms are built from. Adapters derive it per language (Project
+ * Zomboid from the comments in its own files) and merge the languages here.
  */
-
-import { parseOptionComment, type IniDoc } from './ini';
-import { flattenScalars, type LuaTable } from './lua-data';
 
 export type Lang = 'en' | 'es';
 export type OptionType = 'boolean' | 'integer' | 'decimal' | 'string' | 'enum';
@@ -24,7 +20,8 @@ export interface OptionMeta {
   description: Localized;
 }
 
-interface OneLang {
+/** One language's metadata for an option, before `mergeLanguages`. */
+export interface OneLang {
   key: string;
   type: OptionType;
   min?: number;
@@ -32,44 +29,6 @@ interface OneLang {
   default?: string;
   options?: { value: number; label: string }[];
   description?: string;
-}
-
-function inferType(value: string): OptionType {
-  if (value === 'true' || value === 'false') return 'boolean';
-  if (/^-?\d+$/.test(value)) return 'integer';
-  if (/^-?\d+\.\d+$/.test(value)) return 'decimal';
-  return 'string';
-}
-
-export function iniOptions(doc: IniDoc): OneLang[] {
-  return doc.entries.map((e) => {
-    const meta = parseOptionComment(e.comments.join(' '));
-    return { key: e.key, type: inferType(e.value), ...meta };
-  });
-}
-
-const ENUM_LINE = /^(-?\d+) = (.+)$/;
-
-export function sandboxOptions(table: LuaTable): OneLang[] {
-  return flattenScalars(table).map(({ path, value, comments }) => {
-    const options: { value: number; label: string }[] = [];
-    const desc: string[] = [];
-    for (const c of comments) {
-      const m = ENUM_LINE.exec(c);
-      if (m) options.push({ value: Number(m[1]), label: m[2]!.trim() });
-      else desc.push(c);
-    }
-    const meta = parseOptionComment(desc.join(' '));
-    let type: OptionType =
-      value.type === 'boolean' ? 'boolean' : value.type === 'string' ? 'string' : value.type === 'number' ? (/[.eE]/.test(value.raw) ? 'decimal' : 'integer') : 'string';
-    let def = meta.default;
-    if (options.length > 0 && type === 'integer') {
-      type = 'enum';
-      const hit = def === undefined ? undefined : options.find((o) => o.label === def);
-      def = hit ? String(hit.value) : undefined;
-    }
-    return { key: path, type, ...meta, default: def, ...(options.length ? { options } : {}) };
-  });
 }
 
 /** Merge per-language metadata; structure (type, range, enum values) comes from the first list. */
