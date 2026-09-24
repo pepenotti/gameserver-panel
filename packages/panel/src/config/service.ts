@@ -525,6 +525,7 @@ export class ConfigService implements ConfigStore {
       secretKeys: t.decl?.secretKeys ?? [],
       readonlyReason: t.reason,
       issues: r.ok ? [] : r.issues,
+      dataOnly: t.decl?.dataOnly ?? null,
     };
   }
 

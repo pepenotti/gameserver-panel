@@ -2,23 +2,9 @@ import { Badge, Group, NumberInput, PasswordInput, Select, Stack, Switch, Text, 
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OptionMeta } from '@gsp/formats';
+import type { Value } from './api';
 
-export type Value = string | number | boolean | null;
-
-export interface ConfigMeta {
-  ini: OptionMeta[];
-  sandbox: OptionMeta[];
-  managed: string[];
-  secret: string[];
-  restartOnly: string[];
-  presets: string[];
-}
-
-export interface ApplyResult {
-  applied: 'live' | 'next-start' | 'unchanged';
-  warnings: string[];
-  restartNeeded: boolean;
-}
+export type { Value };
 
 /** "SafetyToggleTimer" → "Safety toggle timer"; "ZombieLore.Speed" → "Speed". */
 export function humanize(key: string): string {
@@ -44,10 +30,12 @@ interface RowProps {
   managed?: boolean;
   secret?: boolean;
   restartOnly?: boolean;
+  /** Where the option lives (shown in search results). */
+  group?: string;
 }
 
 /** One option: label, badges, localized description and a control matching its type. */
-export const OptionRow = memo(function OptionRow({ meta, value, original, onChange, managed, secret, restartOnly }: RowProps) {
+export const OptionRow = memo(function OptionRow({ meta, value, original, onChange, managed, secret, restartOnly, group }: RowProps) {
   const { t, i18n } = useTranslation();
   const description = localized(meta.description, i18n.language);
   const changed = String(value) !== String(original);
@@ -110,6 +98,11 @@ export const OptionRow = memo(function OptionRow({ meta, value, original, onChan
           {restartOnly && (
             <Badge size="xs" variant="light" color="orange">
               {t('config.restartOnly')}
+            </Badge>
+          )}
+          {group && (
+            <Badge size="xs" variant="outline" color="gray" tt="none">
+              {group}
             </Badge>
           )}
         </Group>

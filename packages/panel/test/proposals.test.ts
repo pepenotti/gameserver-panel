@@ -37,7 +37,7 @@ describe('proposals (AST-03)', () => {
     const listed = (await c.get('/api/config/proposals?status=pending')).json() as { id: string; status: string; createdBy: string; actorType: string; fileId: string; note: string }[];
     expect(listed).toMatchObject([{ id: r.id, status: 'pending', createdBy: 'alice', actorType: 'user', fileId: 'ini', note: 'no more PvP' }]);
     const one = (await c.get(`/api/config/proposals/${r.id}`)).json() as { diff: unknown[]; status: string };
-    expect(one.status).toBe('pending');
+    expect(one).toMatchObject({ status: 'pending', changedKeys: ['PVP', 'UPnP'], applies: 'live', reapplied: [] });
     expect(one.diff).toEqual(r.diff);
 
     const applied = (await c.post(`/api/config/proposals/${r.id}/apply`)).json() as { applied: string; proposal: { status: string; decidedBy: string } };

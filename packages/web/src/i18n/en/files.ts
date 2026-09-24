@@ -1,2 +1,32 @@
-// The config-folder browser and text editor (CFG-07, CFG-08). Filled in with the editor (M1-C).
-export default {} as const;
+// The config-folder browser and text editor (CFG-07, CFG-08).
+export default {
+  help: 'Every config file the game reads, as text. Changes are checked as you type, and you see exactly what changes before it is applied.',
+  declared: 'Config files',
+  pick: 'Pick a file on the left to open it.',
+  emptyFolder: 'No files in {{folder}} yet.',
+  truncated: 'Only the first files are listed.',
+  readonly: 'Read-only',
+  history: 'History',
+  historyOf: 'History: {{file}}',
+  previewSave: 'Review and save',
+  reload: 'Load the new version',
+  staleHelp: 'Your edits are still here. Loading the new version discards them; copy what you need first.',
+  issues: '{{count}} problem(s) to fix before saving',
+  line: 'Line {{line}}',
+  lineCol: 'Line {{line}}, column {{col}}',
+  managedNote: 'Set by the panel, put back when you save: {{keys}}',
+  secretNote: 'Passwords show as ••••••••. Leave them like that to keep them.',
+  unsavedTitle: 'Unsaved changes',
+  unsaved: 'This file has changes you haven’t saved. Discard them?',
+  reasons: {
+    'outside-roots': 'Not in a folder the editor may open.',
+    'install-root': 'Part of the game install, which an update would overwrite.',
+    symlink: 'A link to somewhere else: links are never followed.',
+    'not-a-file': 'Not a regular file.',
+    'too-large': 'Larger than 1 MiB.',
+    binary: 'Not a text file.',
+    script: 'Code the game runs: shown read-only, never edited here.',
+    'not-utf8': 'Not UTF-8 text.',
+    missing: 'Created the first time the server starts.',
+  },
+} as const;

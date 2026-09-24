@@ -1,5 +1,5 @@
 import type { FormatId, I18n, OptionMeta, RootId, Scalar } from '@gsp/adapter-api';
-import type { Highlight, LuaEdit, ParseIssue } from '@gsp/formats';
+import type { DataShape, Highlight, LuaEdit, ParseIssue } from '@gsp/formats';
 import type { ReadonlyReason } from '../files/policy';
 
 /**
@@ -103,6 +103,8 @@ export interface FileContent {
   readonlyReason: ReadonlyReason | null;
   /** Problems of the text as it is on disk. */
   issues: ParseIssue[];
+  /** The shape a file the game executes must keep (the editor checks it as you type). */
+  dataOnly: DataShape | null;
 }
 
 export interface ConfigMeta {

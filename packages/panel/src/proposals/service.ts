@@ -68,10 +68,8 @@ export interface ProposalPreview {
   applies: 'live' | 'restart';
 }
 
-export interface ProposalView extends Proposal {
-  /** Against the file as it is now. */
-  diff: (DiffLine | null)[];
-}
+/** A proposal with what it would do to the file as it is now (for a pending one, what applying it does). */
+export interface ProposalView extends Proposal, Omit<ProposalPreview, 'id' | 'fileId'> {}
 
 export type ProposalOutcome = Omit<CommitResult, 'sha256'> & { proposal: Proposal };
 
@@ -211,7 +209,16 @@ export class ConfigProposals implements ProposalService {
 
   async get(id: string): Promise<ProposalView> {
     const row = this.row(id);
+    const proposal = toProposal(row);
+    if (row.status === 'pending') {
+      try {
+        const p = await this.d.config().prepare({ fileId: row.file_id, text: row.content });
+        return { ...proposal, diff: withContext(diffLines(p.before, p.after)), issues: p.issues, reapplied: p.reapplied, changedKeys: p.changedKeys, applies: p.applies };
+      } catch {
+        // The file changed so much it no longer takes this text (or is gone): show the plain difference.
+      }
+    }
     const { before, after } = await this.d.config().compare(row.file_id, row.content);
-    return { ...toProposal(row), diff: withContext(diffLines(before, after)) };
+    return { ...proposal, diff: withContext(diffLines(before, after)), issues: [], reapplied: [], changedKeys: [], applies: 'restart' };
   }
 }
