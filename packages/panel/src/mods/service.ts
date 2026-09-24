@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { formatModsLine, formatWorkshopItems, parseModsLine, parseWorkshopItems, parseWorkshopRef } from '@gsp/adapter-pz/shared';
 import { getIniValue, parseIni } from '@gsp/formats';
 import type { AgentApi } from '../agent/client';
-import type { ConfigService } from '../config/service';
+import type { ConfigStore } from '../config/store';
 import { nowIso, type Db } from '../db/db';
 import type { PanelEnv } from '../env';
 import { HttpError } from '../http/context';
@@ -61,7 +61,7 @@ export interface ModsDeps {
   feed: AgentFeed;
   ops: OpRunner;
   settings: Settings;
-  config: ConfigService;
+  config: ConfigStore;
   steam: SteamWorkshop;
 }
 

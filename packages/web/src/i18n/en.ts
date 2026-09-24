@@ -109,6 +109,7 @@ export const en = {
     'cannot-reset-own-2fa': 'You cannot reset your own 2FA.',
     validation: 'Some fields are not valid.',
     'not-found': 'Not found.',
+    'not-implemented': 'Not available yet.',
     network: 'Cannot reach the panel. Check your connection.',
     'agent-unreachable': 'The game server container is not responding.',
     'agent-locked': 'Maintenance in progress; try again when it finishes.',

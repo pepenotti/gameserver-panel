@@ -23,8 +23,9 @@ import type { PanelEnv } from '../env';
 import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
 import type { Settings } from '../settings';
+import type { ApplyResult, ConfigFile, ConfigStore, PendingRestart, VersionRow } from './store';
 
-export type ConfigFile = 'ini' | 'sandbox' | 'spawnregions' | 'spawnpoints';
+export type { ApplyResult, ConfigFile, PendingRestart, VersionRow };
 export const CONFIG_FILES: ConfigFile[] = ['ini', 'sandbox', 'spawnregions', 'spawnpoints'];
 
 /** Owned by the agent (ports, RCON) or the mod manager: never edited here. */
@@ -69,20 +70,6 @@ export const FIRST_RUN_INI: Record<string, string> = {
 
 const META = PZ_OPTION_META;
 
-export interface PendingRestart {
-  since: string;
-  reasons: string[];
-}
-
-export interface VersionRow {
-  id: number;
-  file: ConfigFile;
-  at: string;
-  username: string | null;
-  note: string | null;
-  size: number;
-}
-
 export function maskIniText(text: string): string {
   return text.replace(new RegExp(`^(${SECRET_INI.join('|')})=(.+)$`, 'gm'), (_m, k: string) => `${k}=${MASK}`);
 }
@@ -95,7 +82,7 @@ export interface ConfigDeps {
   settings: Settings;
 }
 
-export class ConfigService {
+export class ConfigService implements ConfigStore {
   constructor(private readonly d: ConfigDeps) {}
 
   // ------------------------------------------------------------------ files
@@ -401,12 +388,4 @@ export class ConfigService {
     const r = this.applySandbox(changes, by, opts);
     return { ...r, applied_keys: Object.keys(changes).length };
   }
-}
-
-export interface ApplyResult {
-  /** `live`: the running server re-read it; `next-start`: takes effect when it (re)starts. */
-  applied: 'live' | 'next-start' | 'unchanged';
-  /** Options the game rejected when re-reading (from its log). */
-  warnings: string[];
-  restartNeeded: boolean;
 }

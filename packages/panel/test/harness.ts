@@ -2,6 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
+import { panelAdapter } from '@gsp/adapters/panel';
 import type { AgentStatus, SeqEvent } from '@gsp/shared';
 import type { AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
@@ -19,6 +20,7 @@ import { backupPanelDb } from '../src/backups/panel-db';
 import { BackupService } from '../src/backups/service';
 import { ConfigService } from '../src/config/service';
 import { Control } from '../src/control/control';
+import { LocalServerFiles } from '../src/files/local';
 import { PanelBus } from '../src/ops/bus';
 import { OpRunner } from '../src/ops/runner';
 import { ModsService } from '../src/mods/service';
@@ -27,6 +29,7 @@ import { wireNotifications } from '../src/notifier/events';
 import { Scheduler } from '../src/scheduler/scheduler';
 import { SteamWorkshop } from '../src/mods/steam';
 import { PlayersService } from '../src/players/service';
+import { UnimplementedProposals } from '../src/proposals/service';
 import { Settings } from '../src/settings';
 
 export const ORIGIN = 'https://panel.test:8443';
@@ -155,6 +158,9 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { steam?:
     mods: undefined as unknown as ModsService,
     notifier: new DiscordNotifier(settings, opts.fetch ?? ((() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch)),
     scheduler: undefined as unknown as Scheduler,
+    files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }),
+    changes: new UnimplementedProposals(),
+    adapter: panelAdapter('pz'),
   };
   deps.mods = new ModsService({ env, db, agent, feed, ops, settings, config: deps.config, steam: opts.steam ?? new SteamWorkshop(() => Promise.reject(new Error('no network in tests'))) });
   deps.flows = new BackupFlows({ agent, feed, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, pzDataDir: env.pzDataDir });

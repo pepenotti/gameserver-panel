@@ -101,6 +101,7 @@ const MIGRATIONS: string[] = [
     error TEXT
   );
   `,
+  // 5 is reserved for `proposals` (AST-03, CFG-07): M1-C appends it here.
 ];
 
 export type Db = DatabaseSync;

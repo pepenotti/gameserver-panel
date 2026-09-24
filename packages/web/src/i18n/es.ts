@@ -111,6 +111,7 @@ export const es: Translations = {
     'cannot-reset-own-2fa': 'No podés reiniciar tu propio 2FA.',
     validation: 'Hay campos que no son válidos.',
     'not-found': 'No encontrado.',
+    'not-implemented': 'Todavía no está disponible.',
     network: 'No se puede conectar con el panel. Revisá tu conexión.',
     'agent-unreachable': 'El contenedor del servidor del juego no responde.',
     'agent-locked': 'Hay un mantenimiento en curso; probá cuando termine.',

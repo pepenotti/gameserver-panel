@@ -68,7 +68,8 @@ async function setup() {
   return { p, c: client, calls: s.calls };
 }
 
-const iniLine = (p: TestPanel, key: string) => getIniValue(parseIni(readFileSync(p.deps.config.pathOf('ini'), 'utf8')), key);
+const iniPath = (p: TestPanel) => path.join(p.deps.env.pzDataDir, 'Server', `${p.deps.env.serverName}.ini`);
+const iniLine = (p: TestPanel, key: string) => getIniValue(parseIni(readFileSync(iniPath(p), 'utf8')), key);
 
 describe('adding mods', () => {
   it('adds by URL, downloads, reads the B42 mod.info and writes the ini lines', async () => {
@@ -159,8 +160,8 @@ describe('enabling and ordering', () => {
 
   it('adopts mods already in the ini the first time', async () => {
     const { p, c } = await setup();
-    mkdirSync(path.dirname(p.deps.config.pathOf('ini')), { recursive: true });
-    writeFileSync(p.deps.config.pathOf('ini'), 'WorkshopItems=2544353492\nMods=P4HasBeenRead\n');
+    mkdirSync(path.dirname(iniPath(p)), { recursive: true });
+    writeFileSync(iniPath(p), 'WorkshopItems=2544353492\nMods=P4HasBeenRead\n');
     await fakeDownloads(p);
     await p.agent.downloadWorkshop(['2544353492']);
     const list = (await c.get('/api/mods')).json() as { enabled: { modId: string }[] };

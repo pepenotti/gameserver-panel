@@ -21,7 +21,9 @@ async function setup(opts: { withFiles?: boolean } = { withFiles: true }) {
   return { p, c: client, dir };
 }
 
-const ini = (p: TestPanel) => iniToRecord(parseIni(readFileSync(p.deps.config.pathOf('ini'), 'utf8')));
+/** Where the game keeps a server file (`Server/<name><suffix>`), read directly by these tests. */
+const serverFile = (p: TestPanel, suffix: string) => path.join(p.deps.env.pzDataDir, 'Server', `${p.deps.env.serverName}${suffix}`);
+const ini = (p: TestPanel) => iniToRecord(parseIni(readFileSync(serverFile(p, '.ini'), 'utf8')));
 
 describe('server settings (ini)', () => {
   it('reads values with secrets masked', async () => {
@@ -99,7 +101,7 @@ describe('sandbox', () => {
     expect(r.values['ZombieLore.Speed']).toBe(4);
     const put = await c.req('PUT', '/api/config/sandbox', { changes: { 'ZombieLore.Speed': 1, 'Map.AllowMiniMap': true, 'MultiplierConfig.Global': 2.5 } });
     expect(put.statusCode).toBe(200);
-    const f = parseLuaData(readFileSync(p.deps.config.pathOf('sandbox'), 'utf8'));
+    const f = parseLuaData(readFileSync(serverFile(p, '_SandboxVars.lua'), 'utf8'));
     expect(getPath(f.table, 'ZombieLore.Speed')!.value).toMatchObject({ value: 1 });
     expect(getPath(f.table, 'MultiplierConfig.Global')!.value).toMatchObject({ raw: '2.5' });
     expect((await c.req('PUT', '/api/config/sandbox', { changes: { 'ZombieLore.Speed': 9 } })).json()).toMatchObject({ fields: { 'ZombieLore.Speed': 'is not one of the allowed choices' } });
