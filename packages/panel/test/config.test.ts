@@ -6,7 +6,7 @@ import { getPath, iniToRecord, parseIni, parseLuaData } from '@gsp/formats';
 import { MASK } from '../src/config/service';
 import { fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
-const fixtures = fileURLToPath(new URL('../../../fixtures/b42/config/', import.meta.url));
+const fixtures = fileURLToPath(new URL('../../../fixtures/pz/b42/config/', import.meta.url));
 
 async function setup(opts: { withFiles?: boolean } = { withFiles: true }) {
   const p = await makePanel();

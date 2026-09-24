@@ -1,5 +1,5 @@
 // Builds src/panel/config/option-meta.json from the English and Spanish
-// files PZ generated in the M1 spike (fixtures/b42/config). Re-run after
+// files PZ generated in the M1 spike (fixtures/pz/b42/config). Re-run after
 // capturing files from a newer build:
 //
 //   npx tsx packages/adapter-pz/scripts/gen-option-meta.ts
@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { mergeLanguages, parseIni, parseLuaData } from '@gsp/formats';
 import { iniOptions, sandboxOptions } from '../src/shared/option-meta';
 
-const read = (f: string) => readFileSync(new URL(`../../../fixtures/b42/config/${f}`, import.meta.url), 'utf8');
+const read = (f: string) => readFileSync(new URL(`../../../fixtures/pz/b42/config/${f}`, import.meta.url), 'utf8');
 
 const ini = mergeLanguages({ en: iniOptions(parseIni(read('server.en.ini'))), es: iniOptions(parseIni(read('server.es.ini'))) });
 const sandbox = mergeLanguages({

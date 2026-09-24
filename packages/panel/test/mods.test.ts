@@ -7,7 +7,7 @@ import { sortByDependencies } from '../src/mods/service';
 import { SteamWorkshop } from '../src/mods/steam';
 import { makePanel, ownerReady, type TestPanel } from './harness';
 
-const fixtures = fileURLToPath(new URL('../../../fixtures/b42/workshop/', import.meta.url));
+const fixtures = fileURLToPath(new URL('../../../fixtures/pz/b42/workshop/', import.meta.url));
 
 /** A fake Steam Workshop API: known items, one collection. */
 function fakeSteam(items: Record<string, { title: string; updated?: number; app?: number }>, collections: Record<string, string[]> = {}) {

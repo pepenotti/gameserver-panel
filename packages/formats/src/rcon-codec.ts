@@ -1,5 +1,5 @@
 /**
- * Source RCON framing as PZ 42.20.4 speaks it (fixtures/b42/rcon):
+ * Source RCON framing as PZ 42.20.4 speaks it (fixtures/pz/b42/rcon):
  *   int32le size | int32le id | int32le type | body | 0x00 0x00
  * Long replies arrive as several type-0 packets with the same id (size ≤ 4096),
  * so bodies are kept as bytes and joined before UTF-8 decoding — a split can

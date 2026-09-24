@@ -6,4 +6,4 @@ Files are byte-exact (CRLF, no final newline) except that the admin and RCON
 passwords are replaced with `<ADMIN_PASSWORD>` / `<RCON_PASSWORD>`.
 Log files are the game's stdout+stderr lines without any prefix.
 
-See `docs/verification-log.md` for what each one demonstrates.
+See `docs/verification/pz-b42.md` for what each one demonstrates.

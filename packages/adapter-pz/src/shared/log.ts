@@ -1,6 +1,6 @@
 /**
  * PZ server console output (stdout/stderr), as captured from 42.20.4 in
- * fixtures/b42/logs. Header lines look like
+ * fixtures/pz/b42/logs. Header lines look like
  *   LOG  : Network      f:0 st:34,907,676> *** SERVER STARTED ****
  *   WARN : Script       f:0 st:34,865,802 at ModelScript.check     > no such model …
  * and multi-line command replies continue without a header (`* additem : …`).

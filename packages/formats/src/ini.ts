@@ -1,7 +1,7 @@
 /**
  * PZ server ini (`Server/<name>.ini`).
  *
- * Measured on 42.20.4 (docs/verification-log.md): `# comment` lines directly
+ * Measured on 42.20.4 (docs/verification/pz-b42.md): `# comment` lines directly
  * above `Key=Value`, blank lines between entries, CRLF on Windows / LF on
  * Linux, and no final newline. The server rewrites the whole file on start,
  * `changeoption` and `reloadoptions`, dropping unknown keys — so edits here are

@@ -1,7 +1,7 @@
 # B42 verification log
 
 Facts measured on a real server, not taken from blogs. Each entry says how it
-was verified. Fixtures live in `fixtures/b42/`.
+was verified. Fixtures live in `fixtures/pz/b42/`.
 
 ## M1 spike — 2026-09-23
 
