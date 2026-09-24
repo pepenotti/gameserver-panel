@@ -61,18 +61,6 @@ describe('LocalServerFiles', () => {
     expect(await files.list('data', '')).toEqual([]);
   });
 
-  it('does the same synchronously', () => {
-    const { files } = setup();
-    files.writeAtomicSync('data', 'Server/zomboid.ini', 'PVP=true\n');
-    files.writeAtomicSync('data', 'Server/zomboid.ini', 'PVP=false\n');
-    expect(files.readSync('data', 'Server/zomboid.ini')!.toString('utf8')).toBe('PVP=false\n');
-    expect(files.statSync('data', 'Server/zomboid.ini')).toMatchObject({ kind: 'file', size: 10 });
-    expect(files.listSync('data', 'Server').map((e) => e.name)).toEqual(['zomboid.ini']);
-    expect(files.readSync('data', 'nope.txt')).toBeNull();
-    expect(files.statSync('data', 'nope.txt')).toBeNull();
-    expect(files.listSync('data', 'nope')).toEqual([]);
-  });
-
   it('answers null or empty for what is not there', async () => {
     const { files } = setup();
     expect(await files.read('data', 'nope.txt')).toBeNull();
@@ -93,8 +81,6 @@ describe('LocalServerFiles', () => {
     for (const rel of ['../x', 'a/../../x', '/etc/passwd', 'C:/Windows/win.ini', 'c:x', 'a\\b', 'a\0b', '..', 'a\nb']) {
       expect(await code(files.read('data', rel)), rel).toBe('invalid-path');
       expect(await code(files.writeAtomic('data', rel, 'x')), rel).toBe('invalid-path');
-      expect(await code(() => files.readSync('data', rel)), rel).toBe('invalid-path');
-      expect(await code(() => files.writeAtomicSync('data', rel, 'x')), rel).toBe('invalid-path');
     }
     expect(await code(files.writeAtomic('data', '', 'x'))).toBe('invalid-path');
     expect(await code(files.remove('data', ['.']))).toBe('invalid-path');
@@ -117,8 +103,6 @@ describe('LocalServerFiles', () => {
     expect(await code(files.read('data', 'mods/secret.txt'))).toBe('outside-root');
     expect(await code(files.writeAtomic('data', 'mods/new.txt', 'x'))).toBe('outside-root');
     expect(await code(files.list('data', 'mods'))).toBe('outside-root');
-    expect(await code(() => files.readSync('data', 'mods/secret.txt'))).toBe('outside-root');
-    expect(await code(() => files.writeAtomicSync('data', 'mods/new.txt', 'x'))).toBe('outside-root');
     // Listing the folder that holds it shows it as a link, without following it.
     expect((await files.list('data', '')).map((e) => [e.name, e.kind])).toEqual([['mods', 'symlink']]);
   });
@@ -140,9 +124,7 @@ describe('LocalServerFiles', () => {
       return;
     }
     expect(await code(files.read('data', 'link.txt'))).toBe('outside-root');
-    expect(await code(() => files.readSync('data', 'link.txt'))).toBe('outside-root');
     expect(await code(files.writeAtomic('data', 'link.txt', 'mine'))).toBe('outside-root');
-    expect(await code(() => files.writeAtomicSync('data', 'link.txt', 'mine'))).toBe('outside-root');
     expect(readFileSync(path.join(tmp, 'secret.txt'), 'utf8')).toBe('no');
     expect(await code(files.stat('data', 'link.txt'))).toBe('outside-root');
     expect((await files.list('data', '')).map((e) => [e.name, e.kind])).toEqual([['link.txt', 'symlink']]);
@@ -152,7 +134,6 @@ describe('LocalServerFiles', () => {
     const { files } = setup();
     await files.writeAtomic('data', 'big.txt', 'x'.repeat(100));
     expect(await code(files.read('data', 'big.txt', { maxBytes: 99 }))).toBe('too-large');
-    expect(await code(() => files.readSync('data', 'big.txt', { maxBytes: 99 }))).toBe('too-large');
     expect((await files.read('data', 'big.txt', { maxBytes: 100 }))!.length).toBe(100);
     await files.writeAtomic('data', 'dir/f.txt', 'x');
     expect(await code(files.read('data', 'dir'))).toBe('not-a-file');

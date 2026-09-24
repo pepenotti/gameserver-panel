@@ -1,27 +1,26 @@
 import type { FormatId, I18n, OptionMeta, RootId, Scalar } from '@gsp/adapter-api';
-import type { DataShape, Highlight, LuaEdit, ParseIssue } from '@gsp/formats';
+import type { DataShape, Highlight, ParseIssue } from '@gsp/formats';
 import type { ReadonlyReason } from '../files/policy';
 
 /**
  * The server's settings as routes and other services use them. Services
  * depend on this interface, not on the class.
  *
- * The first block of methods is the one other services call (frozen for the
- * M1 wave); several are synchronous, so the implementation reads and writes
- * through `SyncServerFiles`. Moving files behind the agent (D11, M2) makes
- * them asynchronous. Everything added for the editor (CFG-07) is async.
+ * Every method that touches the server's files is asynchronous: they are
+ * read and written through `ServerFiles`, which reaches them through the
+ * server's agent from M2 (D11). History, the pending-restart badge and the
+ * adapter's declarations live in the panel and stay synchronous.
  */
-
-export type ConfigFile = 'ini' | 'sandbox' | 'spawnregions' | 'spawnpoints';
 
 export interface PendingRestart {
   since: string;
   reasons: string[];
 }
 
+/** A version of a file: `file` is a declared id (`ini`) or `path:<root>/<rel>`. */
 export interface VersionRow {
   id: number;
-  file: ConfigFile;
+  file: string;
   at: string;
   username: string | null;
   note: string | null;
@@ -37,9 +36,6 @@ export interface ApplyResult {
 }
 
 // ------------------------------------------------------- the editor (CFG-07)
-
-/** A version of any file: `file` is a declared id (`ini`) or `path:<root>/<rel>`. */
-export type FileVersionRow = Omit<VersionRow, 'file'> & { file: string };
 
 /** A panel-managed key the panel put back on save (CFG-04, CFG-08). */
 export interface ReappliedKey {
@@ -157,8 +153,8 @@ export interface CommitResult extends ApplyResult {
 
 export interface ConfigStore {
   // ------------------------------------------------------------------ files
-  /** A file's text, or null when it doesn't exist. */
-  read(file: ConfigFile): string | null;
+  /** A file's text (a declared id or `path:<root>/<rel>`), or null when it doesn't exist. */
+  read(fileId: string): Promise<string | null>;
   /** Writes each declared file's first-run `seed` where that file doesn't exist yet; true if one was written. */
   seedIfMissing(): Promise<boolean>;
   /**
@@ -169,7 +165,8 @@ export interface ConfigStore {
   setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string): Promise<void>;
 
   // ---------------------------------------------------------------- history
-  history(file: ConfigFile): VersionRow[];
+  /** A file's versions, newest first. */
+  historyOf(fileId: string): VersionRow[];
   /** A version and the one before it, secrets masked, for a diff view. */
   version(id: number): { row: VersionRow; content: string; previous: string | null };
   revert(id: number, by: string | null): Promise<ApplyResult>;
@@ -178,20 +175,6 @@ export interface ConfigStore {
   pendingRestart(): PendingRestart | null;
   /** For other services (mods) whose changes need a restart. */
   markPendingPublic(reasons: string[]): void;
-
-  // -------------------------------------------------------------------- ini
-  iniMeta(): OptionMeta[];
-  getIni(): { values: Record<string, string>; missing: boolean };
-  applyIni(changes: Record<string, string>, by: string | null): Promise<ApplyResult>;
-  getIniRaw(): string;
-  putIniRaw(text: string, by: string | null, note?: string, opts?: { keepManagedFromDisk?: boolean }): Promise<ApplyResult>;
-
-  // ---------------------------------------------------------------- sandbox
-  sandboxMeta(): OptionMeta[];
-  getSandbox(): { values: Record<string, string | number | boolean | null>; missing: boolean };
-  applySandbox(changes: Record<string, LuaEdit>, by: string | null, opts?: { force?: boolean }): ApplyResult;
-  getLuaRaw(file: Exclude<ConfigFile, 'ini'>): string;
-  putLuaRaw(file: Exclude<ConfigFile, 'ini'>, text: string, by: string | null, note?: string): Promise<ApplyResult>;
 
   // ---------------------------------------------------------------- presets
   /** The adapter's presets that load, listed now (one installed since the panel started counts). */
@@ -213,5 +196,4 @@ export interface ConfigStore {
   commit(fileId: string, content: string, by: string | null, note: string, o?: { baseSha256?: string }): Promise<CommitResult>;
   /** `content` against the file now, secrets masked on both sides. */
   compare(fileId: string, content: string): Promise<{ before: string; after: string; sha256: string | null }>;
-  historyOf(fileId: string): FileVersionRow[];
 }

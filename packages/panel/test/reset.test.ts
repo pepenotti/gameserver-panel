@@ -43,7 +43,7 @@ describe('reset', () => {
     expect(v.ResetID).not.toBe('1');
     expect(v.Seed).toMatch(/^[A-Za-z]{16}$/);
     // The adapter's reset step goes through the settings service: history names who did it.
-    expect(p.deps.config.history('ini')[0]).toMatchObject({ note: 'reset (world)', username: 'alice' });
+    expect(p.deps.config.historyOf('ini')[0]).toMatchObject({ note: 'reset (world)', username: 'alice' });
     const pre = p.deps.backups.list().filter((b) => b.manifest.trigger === 'pre-reset');
     expect(pre).toHaveLength(1);
     expect(pre[0]!.manifest.parts).toEqual(['world', 'accounts', 'configs']);

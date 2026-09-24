@@ -125,20 +125,23 @@ describe('server settings (ini)', () => {
     expect(p.deps.config.historyOf('ini').map((h) => h.note)).toEqual(['first-run defaults']);
   });
 
-  it('keeps working for the services that call the store directly', async () => {
+  it('keeps working for the services that call the store directly, all asynchronously', async () => {
     const { p } = await setup();
     const config = p.deps.config;
-    expect(config.getIni().values.RCONPassword).toBe(MASK);
-    await config.setDirect('ini', { Mods: 'modA;modB' }, null, 'mod list');
+    expect((await config.values('ini')).values.RCONPassword).toBe(MASK);
+    await config.setDirect('ini', { Mods: 'modA;modB' }, 'alice', 'mod list');
     expect(ini(p).Mods).toBe('modA;modB');
-    expect(config.read('ini')).toContain('Mods=modA;modB');
-    expect(await config.applyIni({ PVP: 'false' }, 'alice')).toEqual({ applied: 'next-start', warnings: [], restartNeeded: false });
-    expect(config.applySandbox({ Zombies: 2 }, 'alice')).toEqual({ applied: 'next-start', warnings: [], restartNeeded: false });
-    expect(await config.putLuaRaw('spawnregions', 'function SpawnRegions() return {} end', 'alice')).toMatchObject({ applied: 'next-start' });
-    await expect(config.putLuaRaw('sandbox', 'SandboxVars = { a = os.exit() }', 'alice')).rejects.toThrow(/invalid-file/);
-    expect(config.getIniRaw()).toContain(`RCONPassword=${MASK}`);
-    expect(config.iniMeta().length).toBe(144);
-    expect(config.sandboxMeta().length).toBeGreaterThan(200);
+    expect(config.historyOf('ini')[0]).toMatchObject({ note: 'mod list', username: 'alice' });
+    expect(await config.read('ini')).toContain('Mods=modA;modB');
+    // Only declared files, and a missing one is left alone.
+    await expect(config.setDirect('path:data/Server/zomboid_notes.ini', { A: '1' }, null, 'x')).rejects.toThrow(/unknown-file/);
+    await config.setDirect('spawnpoints', { A: '1' }, null, 'x');
+    expect(await config.read('spawnpoints')).toBeNull();
+    expect(await config.commit('spawnregions', 'function SpawnRegions() return {} end', 'alice', 'raw edit')).toMatchObject({ applied: 'next-start' });
+    await expect(config.commit('sandbox', 'SandboxVars = { a = os.exit() }', 'alice', 'raw edit')).rejects.toThrow(/invalid-file/);
+    expect((await config.content('ini')).text).toContain(`RCONPassword=${MASK}`);
+    // Nothing to seed: the ini exists.
+    expect(await config.seedIfMissing()).toBe(false);
   });
 });
 

@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { ConfigFileDecl, DirEntry, EditableRoot, PanelAdapter, RootId, Scalar, ServerCtx, ServerFiles, ServerRef } from '@gsp/adapter-api';
-import { checkOptionValue, formatFor, formatIdForName, type ConfigFormat, type LuaEdit, type OptionMeta, type ParseIssue } from '@gsp/formats';
+import { checkOptionValue, formatFor, formatIdForName, type ConfigFormat, type OptionMeta, type ParseIssue } from '@gsp/formats';
 import { nowIso, type Db } from '../db/db';
-import { segments, ServerFilesError, type SyncServerFiles } from '../files/local';
+import { segments, ServerFilesError } from '../files/local';
 import { decodeText, editableFolderOf, excludedDir, included, MAX_TEXT_BYTES, nameReason, textProblem, UNREADABLE, type ReadonlyReason } from '../files/policy';
 import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
@@ -11,21 +11,17 @@ import type {
   ApplyResult,
   ChangeRequest,
   CommitResult,
-  ConfigFile,
   ConfigMeta,
   ConfigStore,
   DeclaredFile,
   EditableFolder,
   FileContent,
-  FileVersionRow,
   PendingRestart,
   PreparedChange,
   ReappliedKey,
   TreeEntry,
   VersionRow,
 } from './store';
-
-export type { ApplyResult, ConfigFile, PendingRestart, VersionRow };
 
 /** What secret values look like in forms, the text editor, diffs and history. */
 export const MASK = '••••••••';
@@ -43,7 +39,7 @@ export interface ConfigDeps {
   adapter: PanelAdapter;
   /** The server: its ref, and the context the adapter's `afterWrite` and presets run with. */
   server: { readonly ref: ServerRef; ctx(actor?: string | null): ServerCtx };
-  files: ServerFiles & SyncServerFiles;
+  files: ServerFiles;
 }
 
 /** A file the store can read and write: a declared config file, or a file in an editable folder. */
@@ -93,9 +89,10 @@ function filesError(e: unknown): unknown {
  * The server's config files, driven by the adapter's `config` (CFG-01…10):
  * declared files with their formats, schemas, managed and secret keys, the
  * editable folders, `afterWrite` and presets. Forms, the text editor,
- * reverts and presets all end in one write path (`commit`, or its
- * synchronous twin for the frozen methods): validate → re-apply managed keys
- * → history snapshot → atomic write → `afterWrite` → pending restart.
+ * reverts and presets all end in one write path (`commit`, `applyChanges`):
+ * validate → re-apply managed keys → history snapshot → atomic write →
+ * `afterWrite` → pending restart. Files are read and written only through
+ * `ServerFiles` (the server's agent from M2, D11).
  */
 export class ConfigService implements ConfigStore {
   constructor(private readonly d: ConfigDeps) {}
@@ -150,10 +147,10 @@ export class ConfigService implements ConfigStore {
   }
 
   /** The file's text, or null when it doesn't exist; refused when it isn't text (CFG-08). */
-  private readText(t: Target): string | null {
+  private async readText(t: Target): Promise<string | null> {
     let buf: Buffer | null;
     try {
-      buf = this.d.files.readSync(t.root, t.rel, { maxBytes: MAX_TEXT_BYTES });
+      buf = await this.d.files.read(t.root, t.rel, { maxBytes: MAX_TEXT_BYTES });
     } catch (e) {
       throw filesError(e);
     }
@@ -163,8 +160,8 @@ export class ConfigService implements ConfigStore {
     return r.text;
   }
 
-  private requireText(t: Target): string {
-    const text = this.readText(t);
+  private async requireText(t: Target): Promise<string> {
+    const text = await this.readText(t);
     if (text === null) throw t.decl ? new HttpError(409, 'config-missing') : new HttpError(404, 'not-found');
     return text;
   }
@@ -342,10 +339,10 @@ export class ConfigService implements ConfigStore {
   }
 
   /** Snapshot and write; what was on disk goes to the history first if the panel didn't write it. */
-  private writeSync(t: Target, disk: string | null, next: string, by: string | null, note: string): void {
+  private async write(t: Target, disk: string | null, next: string, by: string | null, note: string): Promise<void> {
     if (disk !== null && disk !== this.latestContent(t.id)) this.snapshot(t.id, disk, null, 'on disk before this change');
     try {
-      this.d.files.writeAtomicSync(t.root, t.rel, next);
+      await this.d.files.writeAtomic(t.root, t.rel, next);
     } catch (e) {
       throw filesError(e);
     }
@@ -379,14 +376,6 @@ export class ConfigService implements ConfigStore {
     return { applied: applied === 'live' ? 'live' : 'next-start', warnings, restartNeeded: pending.length > 0 };
   }
 
-  /** `finish` for the synchronous methods: no re-read, so a running server needs a restart. */
-  private finishSync(t: Target, changedKeys: string[]): ApplyResult {
-    if (!['running', 'starting'].includes(this.d.feed.status_?.state ?? '')) return { applied: 'next-start', warnings: [], restartNeeded: false };
-    const pending = this.restartReasons(t, changedKeys, true);
-    this.markPending(pending);
-    return { applied: 'next-start', warnings: [], restartNeeded: pending.length > 0 };
-  }
-
   private noteFor(changedKeys: string[], reapplied: ReappliedKey[]): string {
     const own = changedKeys.filter((k) => !reapplied.some((r) => r.key === k));
     return own.length ? `changed ${own.join(', ')}` : 'raw edit';
@@ -412,19 +401,15 @@ export class ConfigService implements ConfigStore {
     };
   }
 
-  private valuesSync(fileId: string): { values: Record<string, Scalar>; missing: boolean; sha256: string | null } {
+  async values(fileId: string): Promise<{ values: Record<string, Scalar>; missing: boolean; sha256: string | null }> {
     const t = this.target(fileId);
-    const text = this.readText(t);
+    const text = await this.readText(t);
     if (text === null) return { values: {}, missing: true, sha256: null };
     const r = t.format.parse(text);
     if (!r.ok) throw new HttpError(409, 'invalid-file', undefined, { issues: r.issues });
     const values = t.format.flatten(r.doc);
     for (const k of t.decl?.secretKeys ?? []) if (values[k] !== undefined && String(values[k]) !== '') values[k] = MASK;
     return { values, missing: false, sha256: this.shaOf(t, text) };
-  }
-
-  async values(fileId: string): Promise<{ values: Record<string, Scalar>; missing: boolean; sha256: string | null }> {
-    return this.valuesSync(fileId);
   }
 
   async listFiles(): Promise<{ files: DeclaredFile[]; folders: EditableFolder[] }> {
@@ -507,7 +492,7 @@ export class ConfigService implements ConfigStore {
   async content(fileId: string): Promise<FileContent> {
     const t = this.target(fileId);
     if (t.reason && UNREADABLE.has(t.reason)) throw new HttpError(403, 'not-editable', undefined, { reason: t.reason });
-    const text = this.requireText(t);
+    const text = await this.requireText(t);
     const r = t.format.parse(text);
     return {
       id: t.id,
@@ -526,7 +511,7 @@ export class ConfigService implements ConfigStore {
   async prepare(req: ChangeRequest): Promise<PreparedChange> {
     const t = this.target(req.fileId);
     this.assertSavable(t);
-    const disk = this.requireText(t);
+    const disk = await this.requireText(t);
     const baseSha256 = this.shaOf(t, disk);
     if (req.baseSha256 !== undefined && req.baseSha256 !== baseSha256) throw new HttpError(409, 'stale');
     let proposed: string;
@@ -565,18 +550,18 @@ export class ConfigService implements ConfigStore {
     const t = this.target(fileId);
     this.assertSavable(t);
     this.assertWritable();
-    const disk = this.requireText(t);
+    const disk = await this.requireText(t);
     if (o.baseSha256 !== undefined && o.baseSha256 !== this.shaOf(t, disk)) throw new HttpError(409, 'stale');
     const p = this.prepareText(t, disk, content, { managed: o.managed });
     if (p.next === disk) return { applied: 'unchanged', warnings: [], restartNeeded: false, reapplied: p.reapplied, changedKeys: [], sha256: this.shaOf(t, disk) };
-    this.writeSync(t, disk, p.next, by, note);
+    await this.write(t, disk, p.next, by, note);
     const r = await this.finish(t, p.changedKeys, by);
     return { ...r, reapplied: p.reapplied, changedKeys: p.changedKeys, sha256: this.shaOf(t, p.next) };
   }
 
   async compare(fileId: string, content: string): Promise<{ before: string; after: string; sha256: string | null }> {
     const t = this.target(fileId);
-    const disk = this.readText(t);
+    const disk = await this.readText(t);
     return { before: disk === null ? '' : this.mask(t, disk), after: this.mask(t, content), sha256: disk === null ? null : this.shaOf(t, disk) };
   }
 
@@ -594,13 +579,9 @@ export class ConfigService implements ConfigStore {
     return r?.content ?? null;
   }
 
-  historyOf(fileId: string): FileVersionRow[] {
+  historyOf(fileId: string): VersionRow[] {
     const t = this.target(fileId);
-    return this.d.db.prepare('SELECT id, file, at, username, note, length(content) AS size FROM config_versions WHERE file = ? ORDER BY id DESC').all(t.id) as unknown as FileVersionRow[];
-  }
-
-  history(file: ConfigFile): VersionRow[] {
-    return this.historyOf(file) as VersionRow[];
+    return this.d.db.prepare('SELECT id, file, at, username, note, length(content) AS size FROM config_versions WHERE file = ? ORDER BY id DESC').all(t.id) as unknown as VersionRow[];
   }
 
   /** A version and the one before it, secrets masked, for a diff view. */
@@ -661,8 +642,15 @@ export class ConfigService implements ConfigStore {
     let seeded = false;
     for (const d of this.decls()) {
       const t = this.declTarget(d);
-      if (!d.seed || !t.format.create || this.d.files.statSync(t.root, t.rel)) continue;
-      this.writeSync(t, null, t.format.create(d.seed), null, 'first-run defaults');
+      if (!d.seed || !t.format.create) continue;
+      let present: boolean;
+      try {
+        present = (await this.d.files.stat(t.root, t.rel)) !== null;
+      } catch (e) {
+        throw filesError(e);
+      }
+      if (present) continue;
+      await this.write(t, null, t.format.create(d.seed), null, 'first-run defaults');
       seeded = true;
     }
     return seeded;
@@ -671,82 +659,26 @@ export class ConfigService implements ConfigStore {
   async setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string): Promise<void> {
     const t = this.target(fileId);
     if (!t.decl) throw new HttpError(404, 'unknown-file');
-    const disk = this.readText(t);
+    const disk = await this.readText(t);
     if (disk === null) return;
     const next = t.format.edit(disk, values);
-    if (next !== disk) this.writeSync(t, disk, next, by, note);
+    if (next !== disk) await this.write(t, disk, next, by, note);
   }
 
-  // ------------------------------------ frozen methods (other services, M1)
-
-  read(file: ConfigFile): string | null {
-    return this.readText(this.target(file));
+  async read(fileId: string): Promise<string | null> {
+    return this.readText(this.target(fileId));
   }
 
-  iniMeta(): OptionMeta[] {
-    return this.schemaOf(this.target('ini')) ?? [];
-  }
-
-  getIni(): { values: Record<string, string>; missing: boolean } {
-    const { values, missing } = this.valuesSync('ini');
-    return { values: values as Record<string, string>, missing };
-  }
-
-  async applyIni(changes: Record<string, string>, by: string | null): Promise<ApplyResult> {
-    return this.applyChanges('ini', changes, by);
-  }
-
-  getIniRaw(): string {
-    return this.mask(this.target('ini'), this.requireText(this.target('ini')));
-  }
-
-  async putIniRaw(text: string, by: string | null, note = 'raw edit', opts: { keepManagedFromDisk?: boolean } = {}): Promise<ApplyResult> {
-    const { reapplied: _r, changedKeys: _c, sha256: _s, ...result } = await this.commit('ini', text, by, note, { managed: opts.keepManagedFromDisk !== false });
-    return result;
-  }
-
-  sandboxMeta(): OptionMeta[] {
-    return this.schemaOf(this.target('sandbox')) ?? [];
-  }
-
-  getSandbox(): { values: Record<string, string | number | boolean | null>; missing: boolean } {
-    const { values, missing } = this.valuesSync('sandbox');
-    return { values, missing };
-  }
-
-  applySandbox(changes: Record<string, LuaEdit>, by: string | null, opts: { force?: boolean } = {}): ApplyResult {
-    return this.applyChangesSync('sandbox', changes, by, opts);
-  }
-
-  getLuaRaw(file: Exclude<ConfigFile, 'ini'>): string {
-    return this.requireText(this.target(file));
-  }
-
-  async putLuaRaw(file: Exclude<ConfigFile, 'ini'>, text: string, by: string | null, note = 'raw edit'): Promise<ApplyResult> {
-    const { reapplied: _r, changedKeys: _c, sha256: _s, ...result } = await this.commit(file, text, by, note);
-    return result;
-  }
-
-  private async applyChanges(fileId: string, changes: Record<string, Scalar>, by: string | null): Promise<ApplyResult> {
-    const t = this.target(fileId);
-    this.assertSavable(t);
-    this.assertWritable();
-    const disk = this.requireText(t);
-    const p = this.prepareText(t, disk, this.proposedFromChanges(t, disk, changes));
-    if (p.next === disk) return { applied: 'unchanged', warnings: [], restartNeeded: false };
-    this.writeSync(t, disk, p.next, by, this.noteFor(p.changedKeys, p.reapplied));
-    return this.finish(t, p.changedKeys, by);
-  }
-
-  private applyChangesSync(fileId: string, changes: Record<string, Scalar>, by: string | null, opts: { force?: boolean; note?: string } = {}): ApplyResult {
+  /** Key changes through the write path (validated, managed keys re-applied); `force` skips the busy check (resets). */
+  private async applyChanges(fileId: string, changes: Record<string, Scalar>, by: string | null, opts: { force?: boolean; note?: string } = {}): Promise<ApplyResult> {
     const t = this.target(fileId);
     this.assertSavable(t);
     if (!opts.force) this.assertWritable();
-    const disk = this.requireText(t);
+    const disk = await this.requireText(t);
     const p = this.prepareText(t, disk, this.proposedFromChanges(t, disk, changes));
     if (p.next === disk) return { applied: 'unchanged', warnings: [], restartNeeded: false };
-    this.writeSync(t, disk, p.next, by, opts.note ?? this.noteFor(p.changedKeys, p.reapplied));
-    return this.finishSync(t, p.changedKeys);
+    await this.write(t, disk, p.next, by, opts.note ?? this.noteFor(p.changedKeys, p.reapplied));
+    return this.finish(t, p.changedKeys, by);
   }
 
   // ---------------------------------------------------------------- presets
@@ -794,9 +726,9 @@ export class ConfigService implements ConfigStore {
     if (!fileId) throw new HttpError(404, 'not-found');
     const values = await this.loadPreset(name, fileId);
     const t = this.target(fileId);
-    const current = this.flat(t, this.requireText(t));
+    const current = this.flat(t, await this.requireText(t));
     const changes = Object.fromEntries(Object.entries(values).filter(([k]) => k in current));
-    const r = this.applyChangesSync(fileId, changes, by, { ...opts, note: `preset ${name}` });
+    const r = await this.applyChanges(fileId, changes, by, { ...opts, note: `preset ${name}` });
     return { ...r, applied_keys: Object.keys(changes).length };
   }
 }
