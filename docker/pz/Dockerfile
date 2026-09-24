@@ -14,11 +14,13 @@ RUN npm ci --ignore-scripts --no-audit --no-fund \
  && cp VERSION packages/agent/dist/VERSION
 
 FROM node:24-trixie-slim
+# The agent runs the pz runtime adapter; its roots are this image's volumes.
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     HOME=/home/node \
-    PZ_INSTALL_DIR=/opt/pz \
-    PZ_DATA_DIR=/data \
+    GAME_ADAPTER=pz \
+    GAME_INSTALL_DIR=/opt/pz \
+    GAME_DATA_DIR=/data \
     STEAMCMD_COMMAND='["/opt/steamcmd/steamcmd.sh"]'
 
 # steamcmd is 32-bit: it needs the multilib gcc/stdc++ runtimes.
