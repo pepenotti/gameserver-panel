@@ -37,9 +37,12 @@ export function launchLabel(key: string): string {
 
 /** One launch setting, as its schema types it. `versions` turns a text field into a picker of known versions. */
 function LaunchField({ o, value, onChange, versions }: { o: OptionMeta; value: unknown; onChange: (v: unknown) => void; versions?: string[] }) {
-  const { i18n } = useTranslation();
-  const label = launchLabel(o.key);
+  const { t, i18n } = useTranslation();
+  // FALLBACK until the contract's OptionMeta has a label: common setting names are translated here, others humanized.
+  const label = t(`server.fields.${o.key}`, { defaultValue: launchLabel(o.key) });
   const description = localize(o.description, i18n.language) || undefined;
+  // The field stays narrow; its description may use the card's width.
+  const common = { label, description, maw: 560, styles: { input: { maxWidth: 260 } } };
   switch (o.type) {
     case 'boolean':
       return <Switch label={label} description={description} checked={value === true} onChange={(e) => onChange(e.currentTarget.checked)} />;
@@ -47,34 +50,31 @@ function LaunchField({ o, value, onChange, versions }: { o: OptionMeta; value: u
     case 'decimal':
       return (
         <NumberInput
-          label={label}
-          description={description}
+          {...common}
           value={typeof value === 'number' ? value : ''}
           onChange={(v) => onChange(v === '' ? null : Number(v))}
           min={o.min}
           max={o.max}
           allowDecimal={o.type === 'decimal'}
           hideControls={o.min !== undefined && o.max !== undefined && o.max - o.min > 100}
-          w={{ base: '100%', xs: 260 }}
         />
       );
     case 'enum':
       return (
         <Select
-          label={label}
-          description={description}
+          {...common}
           data={(o.options ?? []).map((x) => ({ value: String(x.value), label: localize(x.label, i18n.language) || String(x.value) }))}
           value={value === null || value === undefined ? null : String(value)}
           onChange={(v) => v !== null && onChange(Number(v))}
           allowDeselect={false}
-          w={{ base: '100%', xs: 260 }}
         />
       );
     case 'string':
       return versions ? (
-        <Autocomplete label={label} description={description} data={versions} value={String(value ?? '')} onChange={(v) => onChange(v.replace(/[\r\n]/g, ''))} w={{ base: '100%', xs: 260 }} />
+        // Free text (a pinned build), with every known version listed whatever is typed.
+        <Autocomplete {...common} data={versions} filter={({ options }) => options} value={String(value ?? '')} onChange={(v) => onChange(v.replace(/[\r\n]/g, ''))} />
       ) : (
-        <TextInput label={label} description={description} value={String(value ?? '')} onChange={(e) => onChange(e.currentTarget.value.replace(/[\r\n]/g, ''))} w={{ base: '100%', xs: 260 }} />
+        <TextInput {...common} value={String(value ?? '')} onChange={(e) => onChange(e.currentTarget.value.replace(/[\r\n]/g, ''))} />
       );
   }
 }

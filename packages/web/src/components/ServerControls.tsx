@@ -9,6 +9,7 @@ import { post } from '../api/http';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
+import { UnsupportedNote } from './Supported';
 import { useErrorText } from '../lib/format';
 
 export function ServerControls() {
@@ -88,6 +89,7 @@ export function ServerControls() {
             </Button>
           )}
         </Group>
+        {can('server.control') && <UnsupportedNote needs={[{ capability: 'save' }, ...(can('server.broadcast') ? [{ capability: 'broadcast' as const }] : [])]} />}
         {can('server.control') && playersOnline && (
           <Group gap="xs" align="center">
             <Text size="sm" c="dimmed">

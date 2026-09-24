@@ -47,8 +47,8 @@ export function Reset() {
   const partLabel = (id: string) => l(meta.backupParts.find((p) => p.id === id)?.label) || id;
   const summary = (r: ResetDecl) => {
     const kept = meta.backupParts.filter((p) => !r.removeParts.includes(p.id)).map((p) => l(p.label));
-    const deleted = t('reset.deletes', { parts: r.removeParts.map(partLabel).join(', ') });
-    return kept.length ? `${deleted} ${t('reset.keeps', { parts: kept.join(', ') })}` : `${deleted} ${t('reset.keepsNothing')}`;
+    const deleted = t('reset.deletes', { parts: r.removeParts.map(partLabel).join('; ') });
+    return kept.length ? `${deleted} ${t('reset.keeps', { parts: kept.join('; ') })}` : `${deleted} ${t('reset.keepsNothing')}`;
   };
 
   const go = () =>

@@ -4,6 +4,11 @@ export default {
   title: 'Servidor del juego',
   launch: 'Configuración de inicio',
   launchHelp: 'Se aplica la próxima vez que prenda el servidor.',
+  fields: {
+    memoryMb: 'Memoria (MiB)',
+    branch: 'Versión (rama)',
+    updateOnStart: 'Actualizar en cada inicio',
+  },
   versionWarn: 'Cambiar a otra versión puede dejar el mundo inservible: las partidas no siempre pasan de una versión a otra. Hacé una copia de seguridad antes.',
   updates: 'Actualizaciones del juego',
   check: 'Buscar actualizaciones',

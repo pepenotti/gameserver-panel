@@ -2,6 +2,12 @@ export default {
   title: 'Game server',
   launch: 'Launch settings',
   launchHelp: 'Applied the next time the server starts.',
+  // Names of common launch settings (the adapter's launch schema has keys and descriptions, no names yet).
+  fields: {
+    memoryMb: 'Memory (MiB)',
+    branch: 'Version (branch)',
+    updateOnStart: 'Update on every start',
+  },
   versionWarn: 'Switching to another version can leave the world unusable: saves often do not carry across versions. Take a backup first.',
   updates: 'Game updates',
   check: 'Check for updates',

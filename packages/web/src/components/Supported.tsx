@@ -44,6 +44,7 @@ export function UnsupportedNote({ needs }: { needs: Need[] }) {
 /** Renders `children` when the server's game has what they need; otherwise says why not. */
 export function Supported({ need, title, children }: { need: Need; title?: string; children: ReactNode }) {
   const m = useMeta();
+  if (need.capability === undefined && !need.when) return children;
   if (m.loading) {
     return (
       <Center mt="xl">

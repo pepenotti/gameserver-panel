@@ -105,7 +105,7 @@ export function Backups() {
         </Group>
       </Group>
       <Text size="sm" c="dimmed">
-        {meta && meta.backupParts.length > 0 && `${t('backups.holds', { parts: meta.backupParts.map((p) => l(p.label)).join(', ') })} `}
+        {meta && meta.backupParts.length > 0 && `${t('backups.holds', { parts: meta.backupParts.map((p) => l(p.label)).join('; ') })} `}
         {t('backups.intro')}
       </Text>
       <OpBanner />
