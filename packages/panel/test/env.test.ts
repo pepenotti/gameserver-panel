@@ -22,6 +22,12 @@ describe('loadEnv', () => {
     expect(secretEnvName('rconToken')).toBe('GAME_SECRET_RCON_TOKEN');
   });
 
+  it('reads the described server\'s published ports from GAME_PORT_<ID> (M2)', () => {
+    expect(loadEnv({ ...base, GAME_PORT_GAME: '16300', GAME_PORT_UDP: '16301', GAME_PORT_: '1' }).ports).toEqual({ game: 16300, udp: 16301 });
+    expect(loadEnv(base).ports).toEqual({});
+    expect(() => loadEnv({ ...base, GAME_PORT_GAME: '70000' })).toThrow(/GAME_PORT_GAME must be a port number/);
+  });
+
   it('requires the secrets and a safe server name', () => {
     expect(() => loadEnv({ GAME_SECRET_ADMIN_PASSWORD: 'x' })).toThrow(/AGENT_TOKEN/);
     expect(() => loadEnv({ ...base, AGENT_TOKEN: 'short' })).toThrow(/32/);

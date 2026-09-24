@@ -6,7 +6,7 @@ import { segments, ServerFilesError } from '../files/local';
 import { decodeText, editableFolderOf, excludedDir, included, MAX_TEXT_BYTES, nameReason, textProblem, UNREADABLE, type ReadonlyReason } from '../files/policy';
 import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
-import type { Settings } from '../settings';
+import type { KeyValueSettings } from '../settings';
 import type {
   ApplyResult,
   ChangeRequest,
@@ -33,7 +33,8 @@ const TREE_MAX_DEPTH = 8;
 
 export interface ConfigDeps {
   db: Db;
-  settings: Settings;
+  /** The server's own settings. */
+  settings: KeyValueSettings;
   feed: AgentFeed;
   /** The game adapter's panel half: its `config` drives everything here. */
   adapter: PanelAdapter;
@@ -525,7 +526,7 @@ export class ConfigService implements ConfigStore {
       proposed = this.proposedFromChanges(t, disk, Object.fromEntries(Object.entries(values).filter(([k]) => k in current)));
       note = `preset ${req.preset}`;
     } else if (req.revert !== undefined) {
-      const row = this.d.db.prepare('SELECT content FROM config_versions WHERE id = ? AND file = ?').get(req.revert, t.id) as { content: string } | undefined;
+      const row = this.d.db.prepare('SELECT content FROM config_versions WHERE id = ? AND server_id = ? AND file = ?').get(req.revert, this.srv.id, t.id) as { content: string } | undefined;
       if (!row) throw new HttpError(404, 'not-found');
       proposed = row.content;
       note = `revert to version ${req.revert}`;
@@ -569,29 +570,29 @@ export class ConfigService implements ConfigStore {
   // ---------------------------------------------------------------- history
 
   private snapshot(file: string, content: string, by: string | null, note: string): void {
-    this.d.db.prepare('INSERT INTO config_versions (file, at, username, note, content) VALUES (?,?,?,?,?)').run(file, nowIso(), by, note, content);
+    this.d.db.prepare('INSERT INTO config_versions (server_id, file, at, username, note, content) VALUES (?,?,?,?,?,?)').run(this.srv.id, file, nowIso(), by, note, content);
     this.d.db
-      .prepare('DELETE FROM config_versions WHERE file = ? AND id NOT IN (SELECT id FROM config_versions WHERE file = ? ORDER BY id DESC LIMIT ?)')
-      .run(file, file, HISTORY_KEEP);
+      .prepare('DELETE FROM config_versions WHERE server_id = ? AND file = ? AND id NOT IN (SELECT id FROM config_versions WHERE server_id = ? AND file = ? ORDER BY id DESC LIMIT ?)')
+      .run(this.srv.id, file, this.srv.id, file, HISTORY_KEEP);
   }
 
   private latestContent(file: string): string | null {
-    const r = this.d.db.prepare('SELECT content FROM config_versions WHERE file = ? ORDER BY id DESC LIMIT 1').get(file) as { content: string } | undefined;
+    const r = this.d.db.prepare('SELECT content FROM config_versions WHERE server_id = ? AND file = ? ORDER BY id DESC LIMIT 1').get(this.srv.id, file) as { content: string } | undefined;
     return r?.content ?? null;
   }
 
   historyOf(fileId: string): VersionRow[] {
     const t = this.target(fileId);
-    return this.d.db.prepare('SELECT id, file, at, username, note, length(content) AS size FROM config_versions WHERE file = ? ORDER BY id DESC').all(t.id) as unknown as VersionRow[];
+    return this.d.db.prepare('SELECT id, file, at, username, note, length(content) AS size FROM config_versions WHERE server_id = ? AND file = ? ORDER BY id DESC').all(this.srv.id, t.id) as unknown as VersionRow[];
   }
 
   /** A version and the one before it, secrets masked, for a diff view. */
   version(id: number): { row: VersionRow; content: string; previous: string | null } {
-    const row = this.d.db.prepare('SELECT id, file, at, username, note, length(content) AS size, content FROM config_versions WHERE id = ?').get(id) as
+    const row = this.d.db.prepare('SELECT id, file, at, username, note, length(content) AS size, content FROM config_versions WHERE id = ? AND server_id = ?').get(id, this.srv.id) as
       | (VersionRow & { content: string })
       | undefined;
     if (!row) throw new HttpError(404, 'not-found');
-    const prev = this.d.db.prepare('SELECT content FROM config_versions WHERE file = ? AND id < ? ORDER BY id DESC LIMIT 1').get(row.file, id) as { content: string } | undefined;
+    const prev = this.d.db.prepare('SELECT content FROM config_versions WHERE server_id = ? AND file = ? AND id < ? ORDER BY id DESC LIMIT 1').get(this.srv.id, row.file, id) as { content: string } | undefined;
     let mask = (text: string) => text;
     try {
       const t = this.target(row.file);
@@ -604,7 +605,7 @@ export class ConfigService implements ConfigStore {
   }
 
   async revert(id: number, by: string | null): Promise<ApplyResult> {
-    const row = this.d.db.prepare('SELECT file, content FROM config_versions WHERE id = ?').get(id) as { file: string; content: string } | undefined;
+    const row = this.d.db.prepare('SELECT file, content FROM config_versions WHERE id = ? AND server_id = ?').get(id, this.srv.id) as { file: string; content: string } | undefined;
     if (!row) throw new HttpError(404, 'not-found');
     const { reapplied: _r, changedKeys: _c, sha256: _s, ...result } = await this.commit(row.file, row.content, by, `revert to version ${id}`);
     return result;

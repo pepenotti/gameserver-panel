@@ -4,7 +4,7 @@ import type { AgentApi } from '../agent/client';
 import type { ConfigStore } from '../config/store';
 import type { PanelEnv } from '../env';
 import type { AgentFeed } from '../http/deps';
-import type { Settings } from '../settings';
+import type { KeyValueSettings } from '../settings';
 
 /** Settings row with the adapter's launch settings (its `S`). */
 const LAUNCH_KEY = 'launch';
@@ -23,7 +23,8 @@ export interface ServerHandleDeps {
   agent: AgentApi;
   feed: AgentFeed;
   files: ServerFiles;
-  settings: Settings;
+  /** The server's own settings. */
+  settings: KeyValueSettings;
   /** The settings service; late-bound because it runs adapter code with this handle's contexts. */
   config: () => ConfigStore;
   adapter: PanelAdapter;

@@ -53,38 +53,38 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
 
   app.post<{ Params: { id: string } }>('/api/ops/:id/cancel', { config: { permission: 'server.control' } }, async (req) => {
     if (!ops.cancel(req.params.id)) throw new HttpError(409, 'not-cancellable');
-    audit.log({ user: actor(req), action: 'server.cancel', ip: req.ip });
+    audit.log({ actor: actor(req), action: 'server.cancel', ip: req.ip });
     return { ok: true };
   });
 
   app.post('/api/server/start', { config: { permission: 'server.control' } }, async (req) => {
     const op = control.start(who(req));
-    audit.log({ user: actor(req), action: 'server.start', ip: req.ip });
+    audit.log({ actor: actor(req), action: 'server.start', ip: req.ip });
     return op;
   });
 
   app.post<{ Body: { countdownSec?: number } }>('/api/server/stop', { config: { permission: 'server.control' }, schema: { body: countdownBody } }, async (req) => {
     const op = control.stop(who(req), req.body?.countdownSec ?? 0, lang(req));
-    audit.log({ user: actor(req), action: 'server.stop', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'server.stop', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
     return op;
   });
 
   app.post<{ Body: { countdownSec?: number } }>('/api/server/restart', { config: { permission: 'server.control' }, schema: { body: countdownBody } }, async (req) => {
     const op = control.restart(who(req), req.body?.countdownSec ?? 0, lang(req));
-    audit.log({ user: actor(req), action: 'server.restart', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'server.restart', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
     return op;
   });
 
   // Emergency stop without saving: admins only.
   app.post('/api/server/kill', { config: { permission: 'server.update' } }, async (req) => {
     const s = await agent.kill();
-    audit.log({ user: actor(req), action: 'server.kill', ip: req.ip });
+    audit.log({ actor: actor(req), action: 'server.kill', ip: req.ip });
     return s;
   });
 
   app.post('/api/server/save', { config: { permission: 'server.control', capability: 'save' } }, async (req) => {
     const r = await agent.save();
-    audit.log({ user: actor(req), action: 'server.save', ok: r.ok, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'server.save', ok: r.ok, ip: req.ip });
     if (!r.ok) throw new HttpError(502, 'save-failed', r.error);
     return { ok: true };
   });
@@ -102,7 +102,7 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
         if (e instanceof RconProtocolError) throw new HttpError(400, 'invalid-message');
         throw e;
       }
-      audit.log({ user: actor(req), action: 'server.broadcast', detail: req.body.message.slice(0, 300), ip: req.ip });
+      audit.log({ actor: actor(req), action: 'server.broadcast', detail: req.body.message.slice(0, 300), ip: req.ip });
       return { ok: true };
     },
   );
@@ -116,7 +116,7 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     async (req) => {
       const cmd = req.body.command.trim().replace(/^\//, '');
       const r = await agent.command(cmd);
-      audit.log({ user: actor(req), action: 'server.command', detail: auditableCommand(cmd, server.adapter.consoleCatalog ?? []), ip: req.ip });
+      audit.log({ actor: actor(req), action: 'server.command', detail: auditableCommand(cmd, server.adapter.consoleCatalog ?? []), ip: req.ip });
       return r;
     },
   );
@@ -135,7 +135,7 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
       }
       const before = server.launchSettings();
       server.setLaunchSettings(req.body);
-      audit.log({ user: actor(req), action: 'server.launch-settings', detail: { before, after: req.body }, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'server.launch-settings', detail: { before, after: req.body }, ip: req.ip });
       return server.launchSettings();
     },
   );
@@ -164,7 +164,7 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     },
     async (req) => {
       const op = control.update(who(req), { countdownSec: req.body?.countdownSec ?? 0, validate: req.body?.validate ?? false }, lang(req));
-      audit.log({ user: actor(req), action: req.body?.validate ? 'server.validate' : 'server.update', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
+      audit.log({ actor: actor(req), action: req.body?.validate ? 'server.validate' : 'server.update', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
       return op;
     },
   );

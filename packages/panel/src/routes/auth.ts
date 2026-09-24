@@ -3,6 +3,7 @@ import { requiresTotp } from '@gsp/shared';
 import { burnPasswordCheck, verifyPassword } from '../auth/passwords';
 import { SESSION_COOKIE } from '../auth/sessions';
 import { otpauthUri } from '../auth/totp';
+import { userActor } from '../audit';
 import { actor, HttpError, pendingFor, sessionView } from '../http/context';
 import type { Deps } from '../http/deps';
 
@@ -48,14 +49,14 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
         await burnPasswordCheck(password);
         breaker.recordUnknownUser(username);
         breaker.recordFailure();
-        audit.log({ action: 'auth.login', target: username.slice(0, 64), ip: req.ip, ok: false, detail: 'unknown or disabled user' });
+        audit.log({ actor: userActor(null), action: 'auth.login', target: username.slice(0, 64), ip: req.ip, ok: false, detail: 'unknown or disabled user' });
         throw new HttpError(401, 'invalid-credentials');
       }
       if (user.locked_until > Date.now()) throw tooMany(user.locked_until - Date.now());
       if (!(await verifyPassword(password, user.password_hash))) {
         users.recordFailure(user.id);
         breaker.recordFailure();
-        audit.log({ user: { id: user.id, username: user.username }, action: 'auth.login', ip: req.ip, ok: false, detail: 'wrong password' });
+        audit.log({ actor: userActor(user), action: 'auth.login', ip: req.ip, ok: false, detail: 'wrong password' });
         throw new HttpError(401, 'invalid-credentials');
       }
       users.recordSuccess(user.id);
@@ -64,7 +65,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
       const mfaNeeded = user.totp_enabled === 1;
       const { token } = sessions.create(user.id, { mfaOk: !mfaNeeded, ip: req.ip, userAgent: ua(req) });
       setSessionCookie(reply, deps, token, mfaNeeded ? 600 : THIRTY_DAYS_S);
-      audit.log({ user: { id: user.id, username: user.username }, action: 'auth.login', ip: req.ip, detail: mfaNeeded ? 'password ok, waiting for 2FA' : undefined });
+      audit.log({ actor: userActor(user), action: 'auth.login', ip: req.ip, detail: mfaNeeded ? 'password ok, waiting for 2FA' : undefined });
       const session = sessions.get(token)!;
       return sessionView({ session, user, pending: pendingFor(session, user) });
     },
@@ -84,7 +85,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
       if (!how) {
         users.recordFailure(a.user.id);
         breaker.recordFailure();
-        audit.log({ user: actor(req), action: 'auth.mfa', ip: req.ip, ok: false });
+        audit.log({ actor: actor(req), action: 'auth.mfa', ip: req.ip, ok: false });
         throw new HttpError(401, 'invalid-code');
       }
       users.recordSuccess(a.user.id);
@@ -92,7 +93,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
       sessions.revoke(a.session.id_hash);
       const { token } = sessions.create(a.user.id, { mfaOk: true, ip: req.ip, userAgent: ua(req) });
       setSessionCookie(reply, deps, token, THIRTY_DAYS_S);
-      audit.log({ user: actor(req), action: 'auth.mfa', ip: req.ip, detail: how === 'recovery' ? `recovery code used, ${users.unusedRecoveryCodes(a.user.id)} left` : undefined });
+      audit.log({ actor: actor(req), action: 'auth.mfa', ip: req.ip, detail: how === 'recovery' ? `recovery code used, ${users.unusedRecoveryCodes(a.user.id)} left` : undefined });
       const session = sessions.get(token)!;
       const user = users.byId(a.user.id)!;
       return sessionView({ session, user, pending: pendingFor(session, user) });
@@ -102,7 +103,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
   app.post('/api/auth/logout', { config: { allowPending: ['mfa', 'password', 'enrol'] } }, async (req, reply) => {
     sessions.revoke(req.auth!.session.id_hash);
     clearSessionCookie(reply, deps);
-    audit.log({ user: actor(req), action: 'auth.logout', ip: req.ip });
+    audit.log({ actor: actor(req), action: 'auth.logout', ip: req.ip });
     return { ok: true };
   });
 
@@ -129,7 +130,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
       await users.setPassword(a.user.id, req.body.next);
       // Everyone else signed in as this user is signed out.
       const revoked = sessions.revokeAllForUser(a.user.id, a.session.id_hash);
-      audit.log({ user: actor(req), action: 'auth.password.change', ip: req.ip, detail: revoked ? `${revoked} other session(s) signed out` : undefined });
+      audit.log({ actor: actor(req), action: 'auth.password.change', ip: req.ip, detail: revoked ? `${revoked} other session(s) signed out` : undefined });
       const user = users.byId(a.user.id)!;
       return sessionView({ session: a.session, user, pending: pendingFor(a.session, user) });
     },
@@ -150,7 +151,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
     async (req) => {
       const a = req.auth!;
       const recoveryCodes = users.enableTotp(a.user.id, req.body.code);
-      audit.log({ user: actor(req), action: 'auth.totp.enable', ip: req.ip });
+      audit.log({ actor: actor(req), action: 'auth.totp.enable', ip: req.ip });
       const user = users.byId(a.user.id)!;
       return { ...sessionView({ session: a.session, user, pending: pendingFor(a.session, user) }), recoveryCodes };
     },
@@ -164,7 +165,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
       if (requiresTotp(a.user.role)) throw new HttpError(400, 'totp-required-for-role');
       if (!(await verifyPassword(req.body.password, a.user.password_hash))) throw new HttpError(400, 'wrong-current-password');
       users.disableTotp(a.user.id);
-      audit.log({ user: actor(req), action: 'auth.totp.disable', ip: req.ip });
+      audit.log({ actor: actor(req), action: 'auth.totp.disable', ip: req.ip });
       return { ok: true };
     },
   );

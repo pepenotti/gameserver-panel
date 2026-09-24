@@ -43,7 +43,7 @@ export function resetRoutes(app: FastifyInstance, deps: Deps): void {
         newSeed: req.body.newSeed ?? false,
         preset: req.body.preset,
       });
-      deps.audit.log({ user: actor(req), action: `reset.${scope}`, detail: { newSeed: req.body.newSeed ?? false, preset: req.body.preset ?? null }, ip: req.ip });
+      deps.audit.log({ actor: actor(req), action: `reset.${scope}`, detail: { newSeed: req.body.newSeed ?? false, preset: req.body.preset ?? null }, ip: req.ip });
       return op;
     },
   );

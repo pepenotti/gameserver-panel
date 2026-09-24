@@ -1,3 +1,4 @@
+import { userActor } from '../audit';
 import type { Deps } from '../http/deps';
 
 /**
@@ -12,7 +13,7 @@ export async function bootstrapOwner(deps: Pick<Deps, 'users' | 'audit' | 'env'>
     return 'missing-env';
   }
   const u = await deps.users.create({ username: deps.env.owner.username, password: deps.env.owner.password, role: 'owner', lang: 'es', mustChangePassword: true });
-  deps.audit.log({ user: { id: u.id, username: u.username }, action: 'user.bootstrap-owner', target: u.username });
+  deps.audit.log({ actor: userActor(u), action: 'user.bootstrap-owner', target: u.username });
   console.log(`Created owner account "${u.username}"; change its password at first login.`);
   return 'created';
 }

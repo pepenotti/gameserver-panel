@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Capability } from '@gsp/adapter-api';
 import { canHost, hostPermissionsFor, requiresTotp, type Permission, type Principal } from '@gsp/shared';
+import { userActor, type Actor } from '../audit';
 import type { SessionRow } from '../auth/sessions';
 import { SESSION_COOKIE } from '../auth/sessions';
 import { toPublic, type PublicUser, type UserRow } from '../auth/users';
@@ -49,9 +50,9 @@ export function pendingFor(session: SessionRow, user: UserRow): Pending | null {
   return null;
 }
 
-/** An account as the permission matrix sees it (every account has scope `all` until grants exist). */
+/** An account as the permission matrix sees it. */
 export function principal(user: UserRow): Principal {
-  return { role: user.role, scope: 'all' };
+  return { role: user.role, scope: user.scope };
 }
 
 /** `permissions`: what the user holds on the host (host permissions, and server permissions on every server). */
@@ -124,6 +125,7 @@ export function installGuards(app: FastifyInstance, deps: Deps): void {
   });
 }
 
-export function actor(req: FastifyRequest): { id: number; username: string } | null {
-  return req.auth ? { id: req.auth.user.id, username: req.auth.user.username } : null;
+/** The signed-in person, as the audit log records who acted (AST-02). */
+export function actor(req: FastifyRequest): Actor {
+  return userActor(req.auth ? req.auth.user : null);
 }

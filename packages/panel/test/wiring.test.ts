@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { openDb } from '../src/db/db';
 import type { Deps } from '../src/http/deps';
+import { ServerSettings } from '../src/settings';
 import { createPanelDeps } from '../src/wiring';
 import { FakeFeed, fakeAgent, makePanel, noNetwork } from './harness';
 
@@ -48,8 +49,14 @@ describe('createPanelDeps (the one composition root)', () => {
     // or BackupService is how scheduled backups once went wrong.
     const data = new Set<keyof Deps>(['env', 'db', 'adapter']);
     let checked = 0;
+    // `settings` is the host's in Deps and the notifier, and the server's in the server's services (below).
+    const serverSettings = new Set<unknown>();
     const same = (where: string, fields: Record<string, unknown>) => {
       for (const [key, value] of Object.entries(fields)) {
+        if (key === 'settings' && value instanceof ServerSettings) {
+          serverSettings.add(value);
+          continue;
+        }
         if (!(key in FIELDS) || typeof value !== 'object' || value === null) continue;
         expect(value, `${where}.${key}`).toBe(deps[key as keyof Deps]);
         checked++;
@@ -60,7 +67,8 @@ describe('createPanelDeps (the one composition root)', () => {
       same(name, svc as Record<string, unknown>);
       if ('d' in svc) same(`${name}.d`, (svc as { d: Record<string, unknown> }).d);
     }
-    expect(checked).toBeGreaterThan(30);
+    expect(checked).toBeGreaterThan(25);
+    expect([...serverSettings].map((s) => (s as ServerSettings).serverId)).toEqual(['default']);
     expect(deps.control.server).toBe(deps.server);
     expect(deps.server.ref).toEqual({ id: 'default', gameName: 'zomboid', flavour: null });
     expect(deps.server.adapter).toBe(deps.adapter);

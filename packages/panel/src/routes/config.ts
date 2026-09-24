@@ -40,7 +40,7 @@ export function configRoutes(app: FastifyInstance, deps: Deps): void {
   /** One-click revert (CFG-03). The web previews it first as a proposal (`revert`). */
   app.post<{ Params: { id: number } }>('/api/config/history/:id/revert', { config: perm, schema: { params: idParam } }, async (req) => {
     const r = await config.revert(req.params.id, who(req));
-    audit.log({ user: actor(req), action: 'config.revert', target: String(req.params.id), ip: req.ip });
+    audit.log({ actor: actor(req), action: 'config.revert', target: String(req.params.id), ip: req.ip });
     return r;
   });
 }

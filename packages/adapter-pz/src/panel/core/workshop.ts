@@ -163,7 +163,7 @@ function jobResult(x: unknown): JobResult {
 export function createWorkshopSource(o: { fetch?: Fetch } = {}): ModSource<PzMod> {
   const api = new SteamWorkshopApi(o.fetch);
   return {
-    id: 'workshop',
+    id: 'steam-workshop',
     capability: 'mods:workshop',
     label: { en: 'Steam Workshop', es: 'Steam Workshop' },
     parseRef: parseWorkshopRef,

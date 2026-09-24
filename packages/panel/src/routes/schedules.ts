@@ -62,7 +62,7 @@ export function scheduleRoutes(app: FastifyInstance, deps: Deps): void {
       } catch (e) {
         throw new HttpError(400, 'invalid-schedule', (e as Error).message, { message: (e as Error).message });
       }
-      audit.log({ user: actor(req), action: 'schedules.update', detail: req.body, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'schedules.update', detail: req.body, ip: req.ip });
       return { settings: scheduler.config(), next: scheduler.nextRuns() };
     },
   );
@@ -103,7 +103,7 @@ export function scheduleRoutes(app: FastifyInstance, deps: Deps): void {
         webhookUrl = url;
       }
       notifier.save({ webhookUrl, lang: req.body.lang, events: { ...cur.events, ...req.body.events } });
-      audit.log({ user: actor(req), action: 'notifications.update', detail: { lang: req.body.lang, events: req.body.events, webhookChanged: webhookUrl !== cur.webhookUrl }, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'notifications.update', detail: { lang: req.body.lang, events: req.body.events, webhookChanged: webhookUrl !== cur.webhookUrl }, ip: req.ip });
       return view();
     },
   );

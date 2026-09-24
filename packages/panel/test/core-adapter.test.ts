@@ -84,7 +84,7 @@ describe('GET /api/meta', () => {
     expect(m.accessLevels.map((l) => l.id)).toEqual(['none', 'observer', 'gm', 'overseer', 'moderator', 'admin']);
     expect(m.accessLevels[0]).toEqual({ id: 'none', label: { en: 'Player', es: 'Jugador' } });
     expect(m.banTargets).toEqual(['username', 'steamId']);
-    expect(m.modSources).toEqual([expect.objectContaining({ id: 'workshop', capability: 'mods:workshop' })]);
+    expect(m.modSources).toEqual([expect.objectContaining({ id: 'steam-workshop', capability: 'mods:workshop' })]);
     expect(m.consoleCatalog.map((x) => x.name)).toContain('servermsg');
 
     const viewer = await asRole(p, c, 'viewer');

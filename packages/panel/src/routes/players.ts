@@ -47,7 +47,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     },
     async (req) => {
       const output = await players.kick(who(req), req.body.username, req.body.reason);
-      audit.log({ user: actor(req), action: 'player.kick', target: req.body.username, detail: req.body.reason ?? null, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'player.kick', target: req.body.username, detail: req.body.reason ?? null, ip: req.ip });
       return { output };
     },
   );
@@ -57,7 +57,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     { config: { permission: 'players.moderate', capability: 'ban' }, schema: { body: target } },
     async (req) => {
       const output = await players.ban(who(req), { username: req.body.username, steamId: req.body.steamId }, req.body.reason);
-      audit.log({ user: actor(req), action: 'player.ban', target: req.body.steamId ?? req.body.username ?? null, detail: req.body.reason ?? null, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'player.ban', target: req.body.steamId ?? req.body.username ?? null, detail: req.body.reason ?? null, ip: req.ip });
       return { output };
     },
   );
@@ -67,7 +67,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     { config: { permission: 'players.moderate', capability: 'ban' }, schema: { body: target } },
     async (req) => {
       const output = await players.unban(who(req), { username: req.body.username, steamId: req.body.steamId });
-      audit.log({ user: actor(req), action: 'player.unban', target: req.body.steamId ?? req.body.username ?? null, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'player.unban', target: req.body.steamId ?? req.body.username ?? null, ip: req.ip });
       return { output };
     },
   );
@@ -80,7 +80,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     },
     async (req) => {
       const output = await players.setAccess(who(req), req.body.username, req.body.level);
-      audit.log({ user: actor(req), action: 'player.access-level', target: req.body.username, detail: req.body.level, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'player.access-level', target: req.body.username, detail: req.body.level, ip: req.ip });
       return { output };
     },
   );
@@ -93,7 +93,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     },
     async (req) => {
       const output = await players.whitelistAdd(who(req), req.body.username, req.body.password);
-      audit.log({ user: actor(req), action: 'player.whitelist-add', target: req.body.username, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'player.whitelist-add', target: req.body.username, ip: req.ip });
       return { output };
     },
   );
@@ -103,7 +103,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     { config: { permission: 'whitelist.manage', capability: 'whitelist' }, schema: { params: { type: 'object', required: ['username'], properties: { username } } } },
     async (req) => {
       const output = await players.whitelistRemove(who(req), req.params.username);
-      audit.log({ user: actor(req), action: 'player.whitelist-remove', target: req.params.username, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'player.whitelist-remove', target: req.params.username, ip: req.ip });
       return { output };
     },
   );

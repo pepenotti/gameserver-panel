@@ -37,7 +37,7 @@ export function meRoutes(app: FastifyInstance, deps: Deps): void {
     const target = sessions.listForUser(req.auth!.user.id).find((s) => s.id_hash.startsWith(req.params.id) && req.params.id.length === 16);
     if (!target) throw new HttpError(404, 'not-found');
     sessions.revoke(target.id_hash);
-    deps.audit.log({ user: actor(req), action: 'auth.session.revoke', ip: req.ip });
+    deps.audit.log({ actor: actor(req), action: 'auth.session.revoke', ip: req.ip });
     return { ok: true };
   });
 }
@@ -69,7 +69,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
     async (req) => {
       // New accounts pick their own password at first login.
       const u = await users.create({ ...req.body, mustChangePassword: true });
-      audit.log({ user: actor(req), action: 'user.create', target: u.username, detail: { role: u.role }, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'user.create', target: u.username, detail: { role: u.role }, ip: req.ip });
       return toPublic(u);
     },
   );
@@ -95,7 +95,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
       if (req.body.disabled !== undefined) users.setDisabled(target.id, req.body.disabled);
       // A role change or disable takes effect everywhere now.
       sessions.revokeAllForUser(target.id);
-      audit.log({ user: actor(req), action: 'user.update', target: target.username, detail: req.body, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'user.update', target: target.username, detail: req.body, ip: req.ip });
       return toPublic(users.byId(target.id)!);
     },
   );
@@ -112,7 +112,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
       if (target.id === req.auth!.user.id) throw new HttpError(400, 'use-own-password-change');
       await users.setPassword(target.id, req.body.password, { mustChange: true });
       sessions.revokeAllForUser(target.id);
-      audit.log({ user: actor(req), action: 'user.reset-password', target: target.username, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'user.reset-password', target: target.username, ip: req.ip });
       return toPublic(users.byId(target.id)!);
     },
   );
@@ -123,7 +123,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
     if (target.id === req.auth!.user.id) throw new HttpError(400, 'cannot-reset-own-2fa');
     users.disableTotp(target.id);
     sessions.revokeAllForUser(target.id);
-    audit.log({ user: actor(req), action: 'user.reset-2fa', target: target.username, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'user.reset-2fa', target: target.username, ip: req.ip });
     return toPublic(users.byId(target.id)!);
   });
 
@@ -131,7 +131,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
     const target = users.byId(req.params.id);
     if (!target) throw new HttpError(404, 'not-found');
     users.delete(target.id);
-    audit.log({ user: actor(req), action: 'user.delete', target: target.username, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'user.delete', target: target.username, ip: req.ip });
     return { ok: true };
   });
 

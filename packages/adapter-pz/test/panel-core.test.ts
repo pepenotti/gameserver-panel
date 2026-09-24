@@ -360,6 +360,6 @@ describe('Steam Workshop source', () => {
   });
 
   it("is the adapter's only mod source", () => {
-    expect(pzPanelAdapter.mods?.map((m) => m.id)).toEqual(['workshop']);
+    expect(pzPanelAdapter.mods?.map((m) => m.id)).toEqual(['steam-workshop']);
   });
 });

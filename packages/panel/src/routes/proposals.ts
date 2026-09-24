@@ -48,7 +48,7 @@ export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
       for (const v of Object.values(b.changes ?? {}) as unknown[]) if (v !== null && !['string', 'number', 'boolean'].includes(typeof v)) throw new HttpError(400, 'validation');
       if (b.changes) for (const k of Object.keys(b.changes)) if (k.length > 200) throw new HttpError(400, 'validation');
       const r = await changes.propose({ ...b, changes: b.changes as Record<string, Scalar | null> | undefined }, who(req));
-      if (r.id) audit.log({ user: actor(req), action: 'config.propose', target: b.fileId, detail: { proposal: r.id, keys: r.changedKeys.slice(0, 50) }, ip: req.ip });
+      if (r.id) audit.log({ actor: actor(req), action: 'config.propose', target: b.fileId, detail: { proposal: r.id, keys: r.changedKeys.slice(0, 50) }, ip: req.ip });
       return r;
     },
   );
@@ -65,7 +65,7 @@ export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
     const r = await changes.apply(req.params.id, who(req));
     // Keys only: the history has the text, and the audit log never holds a secret.
     audit.log({
-      user: actor(req),
+      actor: actor(req),
       action: 'config.apply',
       target: r.proposal.fileId,
       detail: { proposal: r.proposal.id, applied: r.applied, keys: r.changedKeys.slice(0, 50), reapplied: r.reapplied.map((x) => x.key) },
@@ -76,7 +76,7 @@ export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
 
   app.post<{ Params: { id: string } }>('/api/config/proposals/:id/reject', { config: perm, schema: { params: idParam } }, async (req) => {
     const p = changes.reject(req.params.id, who(req));
-    audit.log({ user: actor(req), action: 'config.reject', target: p.fileId, detail: { proposal: p.id }, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'config.reject', target: p.fileId, detail: { proposal: p.id }, ip: req.ip });
     return p;
   });
 }

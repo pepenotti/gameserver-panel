@@ -5,7 +5,7 @@
 import type { ModSource, PanelAdapter } from '@gsp/adapter-api';
 import { panelAdapter } from '@gsp/adapters/panel';
 import type { AgentApi } from './agent/client';
-import { Audit } from './audit';
+import { Audit, SYSTEM } from './audit';
 import { Sessions } from './auth/sessions';
 import { GlobalBreaker } from './auth/throttle';
 import { Users } from './auth/users';
@@ -28,7 +28,8 @@ import { PlayersService } from './players/service';
 import { ConfigProposals } from './proposals/service';
 import { Scheduler } from './scheduler/scheduler';
 import { ServerHandle } from './server/handle';
-import { Settings } from './settings';
+import { ServerSettings, Settings } from './settings';
+import { DEFAULT_SERVER_ID, ensureDefaultServer, ServersStore } from './servers/store';
 
 /** The game of the panel's one server until M2 lets each server pick its adapter. */
 export const DEFAULT_ADAPTER = 'pz';
@@ -59,6 +60,9 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
   const adapter = o.adapter ?? panelAdapter(DEFAULT_ADAPTER);
   const audit = new Audit(db);
   const settings = new Settings(db);
+  // The one server until the registry serves several (M2-B): the environment describes it.
+  const serverSettings = new ServerSettings(db, DEFAULT_SERVER_ID);
+  ensureDefaultServer(new ServersStore(db), { env, adapter, settings: serverSettings });
   const bus = new PanelBus();
   const ops = new OpRunner(bus);
   const notifier = new DiscordNotifier(settings, o.fetch);
@@ -66,17 +70,17 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
 
   // The server's contexts give adapter code the config store, and the store
   // runs adapter code (afterWrite, presets) with those contexts: late-bound.
-  const server: ServerHandle = new ServerHandle({ env, agent, feed, files, settings, adapter, config: (): ConfigStore => config });
+  const server: ServerHandle = new ServerHandle({ env, agent, feed, files, settings: serverSettings, adapter, config: (): ConfigStore => config });
   const missing = server.missingSecrets();
   if (missing.length) throw new Error(`${missing.map(secretEnvName).join(', ')} must be set (secrets the ${adapter.meta.id} adapter needs)`);
-  const config: ConfigService = new ConfigService({ db, settings, feed, adapter, server, files });
+  const config: ConfigService = new ConfigService({ db, settings: serverSettings, feed, adapter, server, files });
 
   const players = new PlayersService({ db, feed, server });
-  const mods = new ModsService({ db, feed, ops, settings, config, server, sources: o.mods ?? adapter.mods ?? [] });
+  const mods = new ModsService({ db, feed, ops, settings: serverSettings, config, server, sources: o.mods ?? adapter.mods ?? [] });
   const backups = new BackupService({ env, feed, server, mods });
   const control = new Control({ agent, feed, ops, server, backups });
-  const flows = new BackupFlows({ agent, feed, ops, control, backups, settings, config, server, dataDir: env.pzDataDir });
-  const scheduler = new Scheduler({ settings, agent, feed, ops, control, flows, backups, mods, notifier, audit, backupPanelDb: () => backupPanelDb(db, env.backupDir) });
+  const flows = new BackupFlows({ agent, feed, ops, control, backups, settings: serverSettings, config, server, dataDir: env.pzDataDir });
+  const scheduler = new Scheduler({ settings: serverSettings, agent, feed, ops, control, flows, backups, mods, notifier, audit, backupPanelDb: () => backupPanelDb(db, env.backupDir) });
 
   const deps: Deps = {
     env,
@@ -87,7 +91,7 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     settings,
     breaker: new GlobalBreaker((n) => {
       const detail = `${n} failed logins in a minute; logins paused for 60 s`;
-      audit.log({ action: 'security.login-spike', detail, ok: false });
+      audit.log({ actor: SYSTEM, action: 'security.login-spike', detail, ok: false });
       notifier.notify('security', { detail });
     }),
     agent,
@@ -104,7 +108,7 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     notifier,
     scheduler,
     files,
-    changes: new ConfigProposals({ db, config: () => deps.config }),
+    changes: new ConfigProposals({ db, config: () => deps.config, serverId: server.ref.id }),
     adapter,
   };
 

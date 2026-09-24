@@ -10,7 +10,7 @@ import { HttpError } from '../http/context';
 import type { OpContext, OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
 import type { ServerHandle } from '../server/handle';
-import type { Settings } from '../settings';
+import type { KeyValueSettings } from '../settings';
 import type { ConfigStore } from '../config/store';
 import type { BackupInfo, BackupPart, BackupService, BackupTrigger } from './service';
 
@@ -32,7 +32,8 @@ export interface FlowDeps {
   ops: OpRunner;
   control: Control;
   backups: BackupService;
-  settings: Settings;
+  /** The server's own settings. */
+  settings: KeyValueSettings;
   config: ConfigStore;
   server: ServerHandle;
   /** The server's data folder (staging and trash live inside it, on the same volume). */

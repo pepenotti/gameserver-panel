@@ -22,7 +22,7 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
 
   app.post('/api/backups', { config: { permission: 'backups.create' } }, async (req) => {
     const op = flows.startBackup(who(req));
-    audit.log({ user: actor(req), action: 'backup.create', ip: req.ip });
+    audit.log({ actor: actor(req), action: 'backup.create', ip: req.ip });
     return op;
   });
 
@@ -34,21 +34,21 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
     },
     async (req) => {
       const b = backups.setPinned(req.params.name, req.body.pinned);
-      audit.log({ user: actor(req), action: req.body.pinned ? 'backup.pin' : 'backup.unpin', target: req.params.name, ip: req.ip });
+      audit.log({ actor: actor(req), action: req.body.pinned ? 'backup.pin' : 'backup.unpin', target: req.params.name, ip: req.ip });
       return b;
     },
   );
 
   app.delete<{ Params: { name: string } }>('/api/backups/:name', { config: { permission: 'backups.delete' }, schema: { params: nameParam } }, async (req) => {
     backups.delete(req.params.name);
-    audit.log({ user: actor(req), action: 'backup.delete', target: req.params.name, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'backup.delete', target: req.params.name, ip: req.ip });
     return { ok: true };
   });
 
   // Backups hold account hashes and the join password: admins only, and audited.
   app.get<{ Params: { name: string } }>('/api/backups/:name/download', { config: { permission: 'backups.download' }, schema: { params: nameParam } }, async (req, reply) => {
     const b = backups.get(req.params.name);
-    audit.log({ user: actor(req), action: 'backup.download', target: b.name, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'backup.download', target: b.name, ip: req.ip });
     reply.header('content-type', 'application/zstd');
     reply.header('content-length', String(b.size));
     reply.header('content-disposition', `attachment; filename="${b.name}"`);
@@ -72,14 +72,14 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
     async (req) => {
       backups.assertName(req.params.name);
       const op = flows.startRestore(who(req), req.params.name, req.body.parts, { countdownSec: req.body.countdownSec ?? 0, lang: lang(req) });
-      audit.log({ user: actor(req), action: 'backup.restore', target: req.params.name, detail: { parts: req.body.parts }, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'backup.restore', target: req.params.name, detail: { parts: req.body.parts }, ip: req.ip });
       return op;
     },
   );
 
   app.post('/api/backups/undo-restore', { config: { permission: 'backups.restore' } }, async (req) => {
     const op = flows.startUndoRestore(who(req));
-    audit.log({ user: actor(req), action: 'backup.undo-restore', ip: req.ip });
+    audit.log({ actor: actor(req), action: 'backup.undo-restore', ip: req.ip });
     return op;
   });
 
@@ -94,7 +94,7 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
       await pipeline(file.file, createWriteStream(tmp));
       if (file.file.truncated) throw new HttpError(413, 'too-large');
       const info = await backups.adopt(tmp);
-      audit.log({ user: actor(req), action: 'backup.upload', target: info.name, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'backup.upload', target: info.name, ip: req.ip });
       return info;
     } catch (e) {
       rmSync(tmp, { force: true });

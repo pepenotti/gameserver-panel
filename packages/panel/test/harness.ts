@@ -10,7 +10,7 @@ import { buildApp } from '../src/app';
 import { bootstrapOwner } from '../src/auth/bootstrap';
 import { SESSION_COOKIE } from '../src/auth/sessions';
 import { base32Decode, currentStep, hotp } from '../src/auth/totp';
-import { openDb } from '../src/db/db';
+import { openDb, type Db } from '../src/db/db';
 import type { PanelEnv } from '../src/env';
 import type { AgentFeed, Deps } from '../src/http/deps';
 import { createPanelDeps } from '../src/wiring';
@@ -97,7 +97,7 @@ export interface TestPanel {
   agent: ReturnType<typeof fakeAgent>;
 }
 
-export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: ModSource[]; fetch?: typeof fetch } = {}): Promise<TestPanel> {
+export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: ModSource[]; fetch?: typeof fetch; db?: Db } = {}): Promise<TestPanel> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'pz-panel-'));
   const env: PanelEnv = {
     version: 'test',
@@ -112,6 +112,7 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     backupDir: path.join(tmp, 'backups'),
     serverName: 'zomboid',
     secrets: { adminPassword: 'AdminPw-123456' },
+    ports: {},
     origins: [ORIGIN],
     owner: OWNER,
     trustProxy: 'loopback',
@@ -119,7 +120,7 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     secureCookies: true,
     ...envOver,
   };
-  const db = openDb(':memory:');
+  const db = opts.db ?? openDb(':memory:');
   const feed = new FakeFeed();
   const agent = fakeAgent(feed);
   // The same construction as main.ts, without the network (Discord, the Steam Workshop API).
