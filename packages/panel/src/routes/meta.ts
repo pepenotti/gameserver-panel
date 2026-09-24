@@ -9,7 +9,7 @@ import { capabilitiesOf } from '../server/handle';
 export function metaRoutes(app: FastifyInstance, deps: Deps): void {
   app.get('/api/meta', async () => {
     const a = deps.adapter;
-    const srv = deps.control.server.ref;
+    const srv = deps.server.ref;
     return {
       adapter: a.meta,
       server: { id: srv.id, gameName: srv.gameName, flavour: srv.flavour },

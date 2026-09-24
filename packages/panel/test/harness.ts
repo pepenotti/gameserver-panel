@@ -2,37 +2,18 @@ import { mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
-import { panelAdapter } from '@gsp/adapters/panel';
 import type { ModSource } from '@gsp/adapter-api';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
 import type { AgentStatus, SeqEvent } from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
-import { Audit } from '../src/audit';
 import { bootstrapOwner } from '../src/auth/bootstrap';
-import { Sessions, SESSION_COOKIE } from '../src/auth/sessions';
-import { GlobalBreaker } from '../src/auth/throttle';
+import { SESSION_COOKIE } from '../src/auth/sessions';
 import { base32Decode, currentStep, hotp } from '../src/auth/totp';
-import { Users } from '../src/auth/users';
 import { openDb } from '../src/db/db';
 import type { PanelEnv } from '../src/env';
 import type { AgentFeed, Deps } from '../src/http/deps';
-import { BackupFlows } from '../src/backups/flows';
-import { backupPanelDb } from '../src/backups/panel-db';
-import { BackupService } from '../src/backups/service';
-import { ConfigService } from '../src/config/service';
-import { Control } from '../src/control/control';
-import { LocalServerFiles } from '../src/files/local';
-import { PanelBus } from '../src/ops/bus';
-import { OpRunner } from '../src/ops/runner';
-import { ModsService } from '../src/mods/service';
-import { DiscordNotifier } from '../src/notifier/discord';
-import { wireNotifications } from '../src/notifier/events';
-import { Scheduler } from '../src/scheduler/scheduler';
-import { ServerHandle } from '../src/server/handle';
-import { PlayersService } from '../src/players/service';
-import { ConfigProposals } from '../src/proposals/service';
-import { Settings } from '../src/settings';
+import { createPanelDeps } from '../src/wiring';
 
 export const ORIGIN = 'https://panel.test:8443';
 export const OWNER = { username: 'alice', password: 'Primera-clave-2026' };
@@ -108,6 +89,8 @@ export function fakeAgent(feed: FakeFeed): AgentApi & { calls: string[] } {
   };
 }
 
+export const noNetwork = (() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch;
+
 export interface TestPanel {
   app: FastifyInstance;
   deps: Deps;
@@ -140,46 +123,8 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
   const db = openDb(':memory:');
   const feed = new FakeFeed();
   const agent = fakeAgent(feed);
-  const audit = new Audit(db);
-  const settings = new Settings(db);
-  const bus = new PanelBus();
-  const ops = new OpRunner(bus);
-  const adapter = panelAdapter('pz');
-  const files = new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir });
-  const server = new ServerHandle({ env, agent, feed, files, settings, config: () => deps.config, adapter });
-  const deps: Deps = {
-    env,
-    db,
-    users: new Users(db),
-    sessions: new Sessions(db),
-    audit,
-    settings,
-    breaker: new GlobalBreaker(),
-    agent,
-    feed,
-    bus,
-    ops,
-    control: undefined as unknown as Control,
-    config: new ConfigService({ db, settings, feed, adapter, server, files }),
-    backups: undefined as unknown as BackupService,
-    flows: undefined as unknown as BackupFlows,
-    players: undefined as unknown as PlayersService,
-    mods: undefined as unknown as ModsService,
-    notifier: new DiscordNotifier(settings, opts.fetch ?? ((() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch)),
-    scheduler: undefined as unknown as Scheduler,
-    files,
-    changes: new ConfigProposals({ db, config: () => deps.config }),
-    adapter,
-  };
-  deps.players = new PlayersService({ db, feed, server });
-  const noNetwork = (() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch;
-  deps.mods = new ModsService({ db, feed, ops, settings, config: deps.config, server, sources: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })] });
-  deps.backups = new BackupService({ env, feed, server, mods: deps.mods });
-  deps.control = new Control({ agent, feed, ops, server, backups: deps.backups });
-  deps.flows = new BackupFlows({ agent, feed, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, server, dataDir: env.pzDataDir });
-  deps.scheduler = new Scheduler({ settings, agent, feed, ops, control: deps.control, flows: deps.flows, backups: deps.backups, mods: deps.mods, notifier: deps.notifier, audit, backupPanelDb: () => backupPanelDb(db, deps.env.backupDir) });
-  wireNotifications({ feed, players: deps.players, bus, notifier: deps.notifier });
-  deps.players.attach();
+  // The same construction as main.ts, without the network (Discord, the Steam Workshop API).
+  const deps = createPanelDeps({ env, db, agent, feed, fetch: opts.fetch ?? noNetwork, mods: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })] });
   await bootstrapOwner(deps);
   const app = await buildApp(deps);
   return { app, deps, feed, agent };

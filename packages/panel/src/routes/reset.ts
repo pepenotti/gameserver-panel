@@ -36,7 +36,7 @@ export function resetRoutes(app: FastifyInstance, deps: Deps): void {
       const decl = scopes.find((s) => s.id === scope)!;
       if (!can(req.auth!.user.role, decl.permission)) throw new HttpError(403, 'forbidden');
       // Typing the server name is the "are you really sure" for an irreversible action.
-      if (req.body.confirm.trim() !== deps.control.server.ref.gameName) throw new HttpError(400, 'confirm-mismatch');
+      if (req.body.confirm.trim() !== deps.server.ref.gameName) throw new HttpError(400, 'confirm-mismatch');
       const op = await deps.flows.startReset(req.auth!.user.username, scope, {
         countdownSec: req.body.countdownSec ?? 0,
         lang: req.auth!.user.lang,

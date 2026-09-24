@@ -45,8 +45,7 @@ export function launchBodySchema(options: OptionMeta[]): Record<string, unknown>
 }
 
 export function serverRoutes(app: FastifyInstance, deps: Deps): void {
-  const { control, ops, agent, audit } = deps;
-  const { server } = control;
+  const { control, ops, agent, audit, server } = deps;
   const lang = (req: FastifyRequest): GameLang => (req.auth?.user.lang === 'en' ? 'en' : 'es');
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
 
