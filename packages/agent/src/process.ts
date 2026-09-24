@@ -4,7 +4,7 @@ export interface GameProcess {
   child: ChildProcess;
   pid: number;
   writeLine(line: string): boolean;
-  /** Signal the whole process group: start-server.sh does not exec the JVM, so signalling bash alone would orphan it. */
+  /** Signal the whole process group: launcher scripts may not exec the game (PZ's start-server.sh), so signalling the shell alone would orphan it. */
   signal(sig: NodeJS.Signals): void;
   exited: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
 }
@@ -37,7 +37,7 @@ export function spawnGame(
     cwd: opts.cwd,
     env: opts.env,
     stdio: ['pipe', 'pipe', 'pipe'],
-    // Own process group on Linux so stop/kill reach the JVM behind start-server.sh.
+    // Own process group on Linux so stop/kill reach the game behind its launcher script.
     detached: !isWin,
     windowsHide: true,
   });
