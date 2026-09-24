@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { isRetryableSteamcmdError, parseAppInfoBranches, parseSteamcmdLine, stripAnsi, type BranchInfo } from '@pz/formats';
+import { isRetryableSteamcmdError, parseAppInfoBranches, parseSteamcmdLine, stripAnsi, type BranchInfo } from '@gsp/formats';
 import { lineSplitter } from './process';
 
 export interface SteamcmdRunResult {

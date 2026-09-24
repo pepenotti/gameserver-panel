@@ -2,7 +2,7 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { getPath, iniToRecord, parseIni, parseLuaData } from '@pz/formats';
+import { getPath, iniToRecord, parseIni, parseLuaData } from '@gsp/formats';
 import { MASK } from '../src/config/service';
 import { fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 

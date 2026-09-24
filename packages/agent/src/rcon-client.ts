@@ -1,5 +1,5 @@
 import net from 'node:net';
-import { encodePacket, RCON_TYPE, RconDecoder, type RconPacket } from '@pz/formats';
+import { encodePacket, RCON_TYPE, RconDecoder, type RconPacket } from '@gsp/formats';
 
 export class RconError extends Error {}
 

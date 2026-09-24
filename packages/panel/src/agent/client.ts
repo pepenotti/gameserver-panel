@@ -7,7 +7,7 @@ import type {
   JobResult,
   LaunchParams,
   SeqEvent,
-} from '@pz/shared';
+} from '@gsp/shared';
 
 export class AgentCallError extends Error {
   constructor(

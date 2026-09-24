@@ -1,11 +1,14 @@
-# Project Zomboid server + management panel.
+# Game server panel (for now: one Project Zomboid server + the panel).
 #   node scripts/init-env.mjs     # once: creates .env with fresh secrets
 #   docker compose up -d --build
+# In a development worktree, never call docker compose directly: use
+#   node scripts/worktree-env.mjs --slot N    then    node scripts/stack.mjs up -d --build
 #
 # Published ports: game UDP ${PZ_GAME_PORT}/${PZ_UDP_PORT} and the panel on
-# ${PANEL_PORT} (HTTPS). Nothing else leaves the host: RCON and the agent API
-# stay on the internal `backend` network.
-name: zomboid
+# ${PANEL_PORT} (HTTPS), bound to ${PUBLISH_ADDR} (default: every address).
+# Nothing else leaves the host: RCON and the agent API stay on the internal
+# `backend` network.
+name: gameserver-panel
 
 x-hardening: &hardening
   restart: unless-stopped
@@ -21,7 +24,7 @@ services:
     build:
       context: .
       dockerfile: docker/pz/Dockerfile
-    image: zomboid/pz:local
+    image: gsp/pz:${IMAGE_TAG:-local}
     # Room for `save` + `quit` on a big world before Docker kills it.
     stop_grace_period: 240s
     environment:
@@ -31,8 +34,14 @@ services:
       TZ: ${TZ:-UTC}
     ports:
       # Same port inside and out: PZ advertises its own port to clients.
-      - "${PZ_GAME_PORT:-16261}:${PZ_GAME_PORT:-16261}/udp"
-      - "${PZ_UDP_PORT:-16262}:${PZ_UDP_PORT:-16262}/udp"
+      - target: ${PZ_GAME_PORT:-16261}
+        published: "${PZ_GAME_PORT:-16261}"
+        protocol: udp
+        host_ip: ${PUBLISH_ADDR:-0.0.0.0}
+      - target: ${PZ_UDP_PORT:-16262}
+        published: "${PZ_UDP_PORT:-16262}"
+        protocol: udp
+        host_ip: ${PUBLISH_ADDR:-0.0.0.0}
     volumes:
       - pz-install:/opt/pz
       - pz-data:/data
@@ -45,7 +54,7 @@ services:
     build:
       context: .
       dockerfile: docker/panel/Dockerfile
-    image: zomboid/panel:local
+    image: gsp/panel:${IMAGE_TAG:-local}
     read_only: true
     tmpfs: [/tmp]
     environment:
@@ -66,13 +75,13 @@ services:
       - ${BACKUP_DIR:-./backups}:/backups
     networks: [edge, backend]
     depends_on: [pz]
-    mem_limit: 1g
+    mem_limit: ${PANEL_MEM_LIMIT:-1g}
 
   caddy:
     <<: *hardening
     # caddy:2-alpine plus the DuckDNS DNS provider (for PANEL_TLS=duckdns).
     build: docker/caddy
-    image: zomboid/caddy:local
+    image: gsp/caddy:${IMAGE_TAG:-local}
     read_only: true
     # The official caddy binary carries this file capability; without it in
     # the bounding set the kernel refuses to run it at all.
@@ -84,7 +93,10 @@ services:
       PANEL_TLS: ${PANEL_TLS:-internal}
       DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:-}
     ports:
-      - "${PANEL_PORT:-8443}:${PANEL_PORT:-8443}"
+      - target: ${PANEL_PORT:-8443}
+        published: "${PANEL_PORT:-8443}"
+        protocol: tcp
+        host_ip: ${PUBLISH_ADDR:-0.0.0.0}
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       # Holds Caddy's local CA and certificates: keep it, or every device sees a new certificate.

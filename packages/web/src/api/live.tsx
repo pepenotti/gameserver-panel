@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { AgentEvent, AgentStatus, JobInfo, JobResult, SeqEvent } from '@pz/shared';
+import type { AgentEvent, AgentStatus, JobInfo, JobResult, SeqEvent } from '@gsp/shared';
 
 export interface LogLine {
   seq: number;

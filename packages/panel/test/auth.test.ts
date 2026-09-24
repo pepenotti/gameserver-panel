@@ -23,7 +23,7 @@ describe('first login of the bootstrapped owner', () => {
     expect((await c.get('/api/status')).statusCode).toBe(403);
 
     const setup = (await c.post('/api/auth/totp/setup')).json() as { secret: string; uri: string };
-    expect(setup.uri).toMatch(/^otpauth:\/\/totp\/Zomboid%20Panel%3Aalice\?secret=[A-Z2-7]+&issuer=Zomboid%20Panel/);
+    expect(setup.uri).toMatch(/^otpauth:\/\/totp\/Game%20Server%20Panel%3Aalice\?secret=[A-Z2-7]+&issuer=Game%20Server%20Panel/);
     expect((await c.post('/api/auth/totp/enable', { code: '000000' })).json()).toEqual({ error: 'totp-invalid' });
     const enabled = await c.post('/api/auth/totp/enable', { code: totpCode(setup.secret, 0) });
     expect(enabled.json()).toMatchObject({ pending: null, recoveryCodes: expect.arrayContaining([expect.stringMatching(/^[a-z2-9]{4}-[a-z2-9]{4}$/)]) });

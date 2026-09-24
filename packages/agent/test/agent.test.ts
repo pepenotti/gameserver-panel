@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { parseIni, iniToRecord } from '@pz/formats';
+import { parseIni, iniToRecord } from '@gsp/formats';
 import { AgentError } from '../src/agent';
 import { launch, makeHarness, type Harness } from './helpers';
 

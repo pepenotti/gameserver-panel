@@ -4,7 +4,7 @@ import { IconArchive, IconCalendarTime, IconChevronDown, IconGauge, IconPuzzle, 
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink as RouterLink, useLocation } from 'react-router';
-import type { Permission } from '@pz/shared';
+import type { Permission } from '@gsp/shared';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
 import { LangSwitch } from './LangSwitch';

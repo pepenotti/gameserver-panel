@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { iniToRecord, parseIni } from '@pz/formats';
+import { iniToRecord, parseIni } from '@gsp/formats';
 import { Client, fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
 function seed(p: TestPanel) {

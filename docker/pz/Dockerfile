@@ -4,9 +4,13 @@
 
 FROM node:24-trixie-slim AS build
 WORKDIR /src
-COPY . .
+# Explicit list, never `COPY . .`: nested worktrees and dot-directories in
+# the checkout must not reach the image.
+COPY package.json package-lock.json tsconfig.base.json VERSION ./
+COPY packages/ packages/
+COPY tools/ tools/
 RUN npm ci --ignore-scripts --no-audit --no-fund \
- && npm run build -w @pz/agent \
+ && npm run build -w @gsp/agent \
  && cp VERSION packages/agent/dist/VERSION
 
 FROM node:24-trixie-slim

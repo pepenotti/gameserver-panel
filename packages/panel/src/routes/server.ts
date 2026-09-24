@@ -1,4 +1,4 @@
-import { RconProtocolError } from '@pz/formats';
+import { RconProtocolError } from '@gsp/formats';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { COUNTDOWNS, type GameLang } from '../control/control';
 import { actor, HttpError } from '../http/context';

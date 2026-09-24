@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
-import type { AgentStatus, SeqEvent } from '@pz/shared';
+import type { AgentStatus, SeqEvent } from '@gsp/shared';
 import type { AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { Audit } from '../src/audit';
@@ -181,7 +181,7 @@ export class Client {
     const headers: Record<string, string> = { ...extra };
     if (this.origin) headers.origin = this.origin;
     if (this.cookie) headers.cookie = `${SESSION_COOKIE}=${this.cookie}`;
-    if (this.csrf && method !== 'GET') headers['x-pz-csrf'] = this.csrf;
+    if (this.csrf && method !== 'GET') headers['x-gsp-csrf'] = this.csrf;
     if (body !== undefined) headers['content-type'] = 'application/json';
     const res = await this.app.inject({ method, url, headers, payload: body === undefined ? undefined : JSON.stringify(body) });
     const set = res.cookies.find((c) => c.name === SESSION_COOKIE);

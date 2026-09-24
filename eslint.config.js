@@ -3,7 +3,8 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', 'coverage/**', 'fixtures/**', '.tmp/**'] },
+  // '.*/**': every top-level dot-directory (tool state, nested worktrees, .tmp).
+  { ignores: ['**/dist/**', '**/node_modules/**', 'coverage/**', 'fixtures/**', '.*/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

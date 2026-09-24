@@ -1,4 +1,4 @@
-import type { AgentEvent, SeqEvent } from '@pz/shared';
+import type { AgentEvent, SeqEvent } from '@gsp/shared';
 
 type Listener = (e: SeqEvent) => void;
 

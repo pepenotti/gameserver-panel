@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { ROLES, type Role } from '@pz/shared';
+import { ROLES, type Role } from '@gsp/shared';
 import { toPublic, type Lang } from '../auth/users';
 import { actor, HttpError } from '../http/context';
 import type { Deps } from '../http/deps';

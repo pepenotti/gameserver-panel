@@ -26,6 +26,10 @@ if [[ "$offline" == false ]]; then
   npm audit --omit=dev --audit-level=high
 fi
 
+step "privacy"
+# Home paths, personal e-mail addresses and the local pattern list (NFR-09).
+node scripts/check-private.mjs
+
 step "line endings"
 if git ls-files --eol | grep -E '^i/crlf' | grep -v 'fixtures/' ; then
   echo "CRLF files are committed; .gitattributes should prevent this." >&2

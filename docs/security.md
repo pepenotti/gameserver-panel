@@ -45,7 +45,7 @@ Only add mods you trust.
 
 ## Sessions
 
-- A random 256-bit token lives in a `__Host-pzsid` cookie: HttpOnly, Secure,
+- A random 256-bit token lives in a `__Host-gspsid` cookie: HttpOnly, Secure,
   SameSite=Strict. The database keeps only its SHA-256.
 - A session ends after 7 days unused or 30 days in total. Changing your
   password signs you out everywhere. Everyone can see and end their own
@@ -57,7 +57,7 @@ Only add mods you trust.
   would share its cookies, since cookies aren't separated by port. So every
   change and every websocket must come from an exact origin in
   `PANEL_ORIGINS` (scheme, host and port). Every change also needs the
-  `X-PZ-CSRF` header and a JSON body.
+  `X-GSP-CSRF` header and a JSON body.
 - **Permissions.** Every route and websocket topic checks the role matrix in
   `packages/shared/src/permissions.ts`. The UI only hides what the server
   refuses anyway.

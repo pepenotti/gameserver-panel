@@ -60,7 +60,7 @@ export function Backups() {
     const form = new FormData();
     form.append('file', file);
     try {
-      const res = await fetch('/api/backups/upload', { method: 'POST', body: form, headers: { 'x-pz-csrf': (await get<{ csrf: string }>('/api/session')).csrf } });
+      const res = await fetch('/api/backups/upload', { method: 'POST', body: form, headers: { 'x-gsp-csrf': (await get<{ csrf: string }>('/api/session')).csrf } });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new ApiError(res.status, body.error ?? 'generic');

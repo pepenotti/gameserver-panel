@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
-import type { AgentError as AgentErrorBody } from '@pz/shared';
+import type { AgentError as AgentErrorBody } from '@gsp/shared';
 import { AgentError, validateLaunch, type Agent } from './agent';
 import type { EventHub } from './events';
 

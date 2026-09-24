@@ -4,7 +4,7 @@ import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { requiresTotp } from '@pz/shared';
+import { requiresTotp } from '@gsp/shared';
 import { del, get, post } from '../api/http';
 import { useSession } from '../api/session';
 import type { DeviceSession } from '../api/types';

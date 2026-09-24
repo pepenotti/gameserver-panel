@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { can, type Permission } from '@pz/shared';
+import { can, type Permission } from '@gsp/shared';
 import type { ResetScope } from '../backups/flows';
 import { COUNTDOWNS } from '../control/control';
 import { actor, HttpError } from '../http/context';

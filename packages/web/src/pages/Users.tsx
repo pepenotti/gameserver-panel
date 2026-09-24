@@ -5,7 +5,7 @@ import { IconDots, IconUserPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Role } from '@pz/shared';
+import type { Role } from '@gsp/shared';
 import { del, get, patch, post } from '../api/http';
 import { useSession } from '../api/session';
 import type { PublicUser } from '../api/types';

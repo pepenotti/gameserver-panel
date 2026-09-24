@@ -71,7 +71,7 @@ export function verifyTotp(secretB32: string, code: string, nowMs = Date.now()):
   return null;
 }
 
-export function otpauthUri(secretB32: string, username: string, issuer = 'Zomboid Panel'): string {
+export function otpauthUri(secretB32: string, username: string, issuer = 'Game Server Panel'): string {
   const label = encodeURIComponent(`${issuer}:${username}`);
   return `otpauth://totp/${label}?secret=${secretB32}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=${DIGITS}&period=${STEP}`;
 }

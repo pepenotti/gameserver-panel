@@ -1,7 +1,7 @@
 import { Badge, Group, NumberInput, PasswordInput, Select, Stack, Switch, Text, TextInput, Tooltip } from '@mantine/core';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { OptionMeta } from '@pz/formats';
+import type { OptionMeta } from '@gsp/formats';
 
 export type Value = string | number | boolean | null;
 

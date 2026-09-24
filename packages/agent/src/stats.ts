@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statfsSync } from 'node:fs';
-import type { DiskStats, ProcessStats } from '@pz/shared';
+import type { DiskStats, ProcessStats } from '@gsp/shared';
 
 const CLK_TCK = 100;
 const PAGE = 4096;

@@ -22,7 +22,7 @@ import { wsRoutes } from './routes/ws';
 
 export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: opts.logger ? { level: 'info', redact: ['req.headers.cookie', 'req.headers.authorization', 'req.headers["x-pz-csrf"]'] } : false,
+    logger: opts.logger ? { level: 'info', redact: ['req.headers.cookie', 'req.headers.authorization', 'req.headers["x-gsp-csrf"]'] } : false,
     trustProxy: deps.env.trustProxy,
     bodyLimit: 256 * 1024,
   });

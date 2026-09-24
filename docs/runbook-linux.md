@@ -19,7 +19,7 @@ over from Windows.
    (docs.docker.com → Engine → your distro).
 2. Clone the repo and create `.env`:
    ```bash
-   git clone <repo> zomboid-server && cd zomboid-server
+   git clone <repo> gameserver-panel && cd gameserver-panel
    node scripts/init-env.mjs     # or copy .env.example and fill the three secrets by hand
    ```
 3. Edit `.env`:
@@ -72,7 +72,7 @@ for the options when 80/443 aren't free.
    keeps accounts, 2FA, settings, schedules and config history:
    ```bash
    docker compose create
-   docker run --rm -v zomboid_panel-data:/dst -v "$PWD":/src:ro alpine sh -c \
+   docker run --rm -v gameserver-panel_panel-data:/dst -v "$PWD":/src:ro alpine sh -c \
      "cp /src/panel-<time>.sqlite /dst/panel.db && chown 1000:1000 /dst/panel.db"
    docker compose up -d
    ```

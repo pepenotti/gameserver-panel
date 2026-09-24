@@ -5,7 +5,7 @@ import { Transform, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { createZstdCompress, createZstdDecompress } from 'node:zlib';
-import { getIniValue, parseIni } from '@pz/formats';
+import { getIniValue, parseIni } from '@gsp/formats';
 import type { AgentFeed } from '../http/deps';
 import { HttpError } from '../http/context';
 import type { PanelEnv } from '../env';

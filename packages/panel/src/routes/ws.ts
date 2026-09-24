@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
-import { can, type Permission, type SeqEvent } from '@pz/shared';
+import { can, type Permission, type SeqEvent } from '@gsp/shared';
 import type { Deps } from '../http/deps';
 
 /** Which permission each agent event needs before a browser may see it. */

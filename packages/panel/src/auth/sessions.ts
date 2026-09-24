@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Db } from '../db/db';
 
-export const SESSION_COOKIE = '__Host-pzsid';
+export const SESSION_COOKIE = '__Host-gspsid';
 const IDLE_MS = 7 * 24 * 3_600_000;
 const ABSOLUTE_MS = 30 * 24 * 3_600_000;
 /** Pending (password-only) sessions waiting for a 2FA code expire quickly. */

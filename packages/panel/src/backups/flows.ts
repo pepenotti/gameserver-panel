@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { parseLogLine, PZ_PATTERNS } from '@pz/formats';
-import type { AgentStatus } from '@pz/shared';
+import { parseLogLine, PZ_PATTERNS } from '@gsp/formats';
+import type { AgentStatus } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { Control, GameLang } from '../control/control';
 import type { AgentFeed } from '../http/deps';

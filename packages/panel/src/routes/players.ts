@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { can } from '@pz/shared';
+import { can } from '@gsp/shared';
 import { actor } from '../http/context';
 import type { Deps } from '../http/deps';
 import { ACCESS_LEVELS, type AccessLevel } from '../players/service';

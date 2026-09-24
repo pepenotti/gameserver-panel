@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from 'react';
-import type { Permission } from '@pz/shared';
+import type { Permission } from '@gsp/shared';
 import { setLang } from '../i18n';
 import { ApiError, get, post, setCsrf, setUnauthenticatedHandler } from './http';
 import type { SessionInfo } from './types';

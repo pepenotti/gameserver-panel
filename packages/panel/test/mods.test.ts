@@ -2,7 +2,7 @@ import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { getIniValue, parseIni } from '@pz/formats';
+import { getIniValue, parseIni } from '@gsp/formats';
 import { sortByDependencies } from '../src/mods/service';
 import { SteamWorkshop } from '../src/mods/steam';
 import { makePanel, ownerReady, type TestPanel } from './harness';

@@ -265,7 +265,7 @@ describe('download and upload', () => {
     const up = await p.app.inject({
       method: 'POST',
       url: '/api/backups/upload',
-      headers: { origin: 'https://panel.test:8443', cookie: `__Host-pzsid=${c.cookie}`, 'x-pz-csrf': c.csrf!, 'content-type': `multipart/form-data; boundary=${boundary}` },
+      headers: { origin: 'https://panel.test:8443', cookie: `__Host-gspsid=${c.cookie}`, 'x-gsp-csrf': c.csrf!, 'content-type': `multipart/form-data; boundary=${boundary}` },
       payload: body,
     });
     expect(up.statusCode).toBe(200);

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { LaunchParams } from '@pz/shared';
+import type { LaunchParams } from '@gsp/shared';
 
 /** What the agent must remember across container restarts. */
 export interface PersistedState {

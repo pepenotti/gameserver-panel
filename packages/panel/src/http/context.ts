@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { can, permissionsFor, requiresTotp, type Permission } from '@pz/shared';
+import { can, permissionsFor, requiresTotp, type Permission } from '@gsp/shared';
 import type { SessionRow } from '../auth/sessions';
 import { SESSION_COOKIE } from '../auth/sessions';
 import { toPublic, type PublicUser, type UserRow } from '../auth/users';
@@ -80,7 +80,7 @@ export function installGuards(app: FastifyInstance, deps: Deps): void {
     const a = req.auth;
     if (!a) throw new HttpError(401, 'unauthenticated');
     if (a.pending && !(cfg.allowPending ?? []).includes(a.pending)) throw new HttpError(403, 'pending', undefined, { pending: a.pending });
-    if (UNSAFE.has(req.method) && req.headers['x-pz-csrf'] !== a.session.csrf) throw new HttpError(403, 'bad-csrf');
+    if (UNSAFE.has(req.method) && req.headers['x-gsp-csrf'] !== a.session.csrf) throw new HttpError(403, 'bad-csrf');
     if (cfg.permission && (a.pending || !can(a.user.role, cfg.permission))) throw new HttpError(403, 'forbidden');
   });
 

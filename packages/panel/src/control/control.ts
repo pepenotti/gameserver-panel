@@ -1,5 +1,5 @@
-import { quoteArg } from '@pz/formats';
-import type { LaunchParams } from '@pz/shared';
+import { quoteArg } from '@gsp/formats';
+import type { LaunchParams } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { Audit } from '../audit';
 import type { PanelEnv } from '../env';

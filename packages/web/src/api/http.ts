@@ -23,7 +23,7 @@ export function setUnauthenticatedHandler(fn: () => void): void {
 export async function api<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['content-type'] = 'application/json';
-  if (method !== 'GET' && csrfToken) headers['x-pz-csrf'] = csrfToken;
+  if (method !== 'GET' && csrfToken) headers['x-gsp-csrf'] = csrfToken;
   let res: Response;
   try {
     res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin' });

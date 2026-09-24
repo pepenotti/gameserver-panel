@@ -26,7 +26,7 @@ running. Commands are for PowerShell in the repo folder unless noted.
 4. WSL stops a distro when nothing uses it. Add a Task Scheduler task at sign-in
    that runs `wsl.exe -d Ubuntu --exec sleep infinity` to keep it up. Check
    after a day or two that it stays running.
-5. Clone the repo inside WSL (`~/zomboid-server`), not under `/mnt/c`. Set
+5. Clone the repo inside WSL (`~/gameserver-panel`), not under `/mnt/c`. Set
    `BACKUP_DIR=/mnt/d/zomboid-backups` in `.env`.
 
 **Both options: memory.** The game, any other containers and WSL share one VM. Create
@@ -136,7 +136,7 @@ docker compose exec panel node /app/panelctl.mjs reset-password owner
 
 ```bash
 docker compose stop panel
-docker run --rm -v zomboid_panel-data:/dst -v <BACKUP_DIR>/panel:/src:ro alpine sh -c "rm -f /dst/panel.db-wal /dst/panel.db-shm && cp /src/panel-<time>.sqlite /dst/panel.db && chown 1000:1000 /dst/panel.db"
+docker run --rm -v gameserver-panel_panel-data:/dst -v <BACKUP_DIR>/panel:/src:ro alpine sh -c "rm -f /dst/panel.db-wal /dst/panel.db-shm && cp /src/panel-<time>.sqlite /dst/panel.db && chown 1000:1000 /dst/panel.db"
 docker compose start panel
 ```
 

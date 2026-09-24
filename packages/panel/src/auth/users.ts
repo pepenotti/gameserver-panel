@@ -1,4 +1,4 @@
-import { isRole, type Role } from '@pz/shared';
+import { isRole, type Role } from '@gsp/shared';
 import { nowIso, tx, type Db } from '../db/db';
 import { checkPasswordPolicy, hashPassword, type PasswordProblem } from './passwords';
 import { delayAfter } from './throttle';

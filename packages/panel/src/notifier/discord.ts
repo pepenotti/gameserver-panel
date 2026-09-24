@@ -123,7 +123,7 @@ export class DiscordNotifier {
     return this.doFetch(`${url}?wait=true`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: 'Zomboid', embeds: [{ ...embed, timestamp: new Date().toISOString() }], allowed_mentions: { parse: [] } }),
+      body: JSON.stringify({ username: 'Game Server Panel', embeds: [{ ...embed, timestamp: new Date().toISOString() }], allowed_mentions: { parse: [] } }),
       signal: AbortSignal.timeout(10_000),
     });
   }

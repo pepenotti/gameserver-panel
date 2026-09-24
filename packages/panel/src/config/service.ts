@@ -16,7 +16,7 @@ import {
   setLuaValues,
   type LuaEdit,
   type OptionMeta,
-} from '@pz/formats';
+} from '@gsp/formats';
 import type { AgentApi } from '../agent/client';
 import { nowIso, type Db } from '../db/db';
 import type { PanelEnv } from '../env';

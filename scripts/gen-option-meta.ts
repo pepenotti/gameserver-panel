@@ -4,7 +4,7 @@
 //
 //   npx tsx scripts/gen-option-meta.ts
 import { readFileSync, writeFileSync } from 'node:fs';
-import { iniOptions, mergeLanguages, parseIni, parseLuaData, sandboxOptions } from '@pz/formats';
+import { iniOptions, mergeLanguages, parseIni, parseLuaData, sandboxOptions } from '@gsp/formats';
 
 const read = (f: string) => readFileSync(new URL(`../fixtures/b42/config/${f}`, import.meta.url), 'utf8');
 

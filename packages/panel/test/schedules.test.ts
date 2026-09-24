@@ -11,7 +11,7 @@ import { fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 const HOOK = 'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz_ABCDEF-123';
 
 function fakeDiscord() {
-  const posts: { url: string; body: { embeds: { title: string; description?: string }[] } }[] = [];
+  const posts: { url: string; body: { username?: string; embeds: { title: string; description?: string }[] } }[] = [];
   let status = 204;
   const doFetch = (async (url: string, init: { body: string }) => {
     posts.push({ url, body: JSON.parse(init.body) });
@@ -81,6 +81,7 @@ describe('Discord notifications', () => {
     await configure(c);
     expect((await c.post('/api/notifications/test')).json()).toEqual({ ok: true });
     expect(d.posts.at(-1)!.body.embeds[0]!.title).toBe('✅ Mensaje de prueba');
+    expect(d.posts.at(-1)!.body.username).toBe('Game Server Panel');
   });
 });
 

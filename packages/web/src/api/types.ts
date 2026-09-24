@@ -1,4 +1,4 @@
-import type { Permission, Role } from '@pz/shared';
+import type { Permission, Role } from '@gsp/shared';
 
 export type Lang = 'en' | 'es';
 export type Pending = 'mfa' | 'password' | 'enrol';

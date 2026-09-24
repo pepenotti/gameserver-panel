@@ -1,5 +1,5 @@
 {
-  "name": "@pz/web",
+  "name": "@gsp/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -30,7 +30,7 @@
     "@mantine/hooks": "^9.6.2",
     "@mantine/modals": "^9.6.2",
     "@mantine/notifications": "^9.6.2",
-    "@pz/shared": "*",
+    "@gsp/shared": "*",
     "@tabler/icons-react": "^3.48.0",
     "@tanstack/react-query": "^5.103.2",
     "i18next": "^26.4.2",
@@ -39,6 +39,6 @@
     "react-dom": "^19.3.0",
     "react-i18next": "^17.0.15",
     "react-router": "^8.4.0",
-    "@pz/formats": "*"
+    "@gsp/formats": "*"
   }
 }

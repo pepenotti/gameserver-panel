@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { requiresTotp } from '@pz/shared';
+import { requiresTotp } from '@gsp/shared';
 import { burnPasswordCheck, verifyPassword } from '../auth/passwords';
 import { SESSION_COOKIE } from '../auth/sessions';
 import { otpauthUri } from '../auth/totp';

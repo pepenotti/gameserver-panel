@@ -1,4 +1,4 @@
-import type { Permission } from '@pz/shared';
+import type { Permission } from '@gsp/shared';
 
 /** A long-running panel operation (restart with countdown, update, backup, restore, reset). */
 export interface OpState {

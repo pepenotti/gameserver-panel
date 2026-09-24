@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildIni, isFatal, makeRedactor, parseAppManifest, parseLogLine, parsePlayers, PZ_PATTERNS, setIniValues } from '@pz/formats';
-import type { AgentStatus, AlertKind, AppInfoResponse, CommandResponse, JobInfo, JobKind, JobResult, LaunchParams, ServerState } from '@pz/shared';
+import { buildIni, isFatal, makeRedactor, parseAppManifest, parseLogLine, parsePlayers, PZ_PATTERNS, setIniValues } from '@gsp/formats';
+import type { AgentStatus, AlertKind, AppInfoResponse, CommandResponse, JobInfo, JobKind, JobResult, LaunchParams, ServerState } from '@gsp/shared';
 import type { AgentConfig } from './config';
 import type { EventHub } from './events';
 import { spawnGame, type GameProcess } from './process';

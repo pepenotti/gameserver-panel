@@ -1,6 +1,6 @@
 import { Badge, Loader } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import type { ServerState } from '@pz/shared';
+import type { ServerState } from '@gsp/shared';
 
 const COLOR: Record<ServerState, string> = {
   stopped: 'gray',

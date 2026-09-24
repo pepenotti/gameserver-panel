@@ -2,7 +2,7 @@ import { Button, Center, Loader, Stack, Text, Title } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router';
-import type { Permission } from '@pz/shared';
+import type { Permission } from '@gsp/shared';
 import { LiveProvider } from './api/live';
 import { useSession } from './api/session';
 import { Layout } from './components/Layout';

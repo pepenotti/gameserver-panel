@@ -3,13 +3,19 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AgentStatus, LaunchParams, SeqEvent } from '@pz/shared';
+import type { AgentStatus, LaunchParams, SeqEvent } from '@gsp/shared';
 import { Agent } from '../src/agent';
 import type { AgentConfig } from '../src/config';
 import { EventHub } from '../src/events';
 import { StateStore } from '../src/state-store';
 
 const tools = fileURLToPath(new URL('../../../tools/fake-pz/', import.meta.url));
+
+/**
+ * Stretches timeouts (not poll intervals) when the machine is busy, e.g.
+ * several worktrees testing at once: TEST_TIME_SCALE=2 doubles them.
+ */
+export const TIME_SCALE = Number(process.env.TEST_TIME_SCALE) || 1;
 
 export function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -62,9 +68,9 @@ export async function makeHarness(overrides: Partial<AgentConfig> = {}): Promise
     udpPort: 16262,
     rconPort: await freePort(),
     startCommand: [process.execPath, path.join(tools, 'server.mjs')],
-    readyTimeoutMs: 5_000,
-    stopTimeoutMs: 2_000,
-    termTimeoutMs: 1_000,
+    readyTimeoutMs: 5_000 * TIME_SCALE,
+    stopTimeoutMs: 2_000 * TIME_SCALE,
+    termTimeoutMs: 1_000 * TIME_SCALE,
     crashLoop: { count: 3, windowMs: 60_000 },
     restartDelayMs: 150,
     playersPollMs: 150,
@@ -90,7 +96,7 @@ function build(dir: string, cfg: AgentConfig): Harness {
     store,
     agent,
     events,
-    waitFor(pred, timeoutMs = 8_000) {
+    waitFor(pred, timeoutMs = 8_000 * TIME_SCALE) {
       return new Promise((resolve, reject) => {
         const check = () => {
           const s = agent.status();
@@ -108,7 +114,7 @@ function build(dir: string, cfg: AgentConfig): Harness {
         check();
       });
     },
-    waitEvent(pred, timeoutMs = 8_000) {
+    waitEvent(pred, timeoutMs = 8_000 * TIME_SCALE) {
       return new Promise((resolve, reject) => {
         const hit = events.find(pred);
         if (hit) return resolve(hit);

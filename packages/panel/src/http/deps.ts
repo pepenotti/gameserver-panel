@@ -1,4 +1,4 @@
-import type { AgentStatus, SeqEvent } from '@pz/shared';
+import type { AgentStatus, SeqEvent } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { Audit } from '../audit';
 import type { Sessions } from '../auth/sessions';

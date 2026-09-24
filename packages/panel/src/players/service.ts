@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { assertSteamId, assertUsername, quoteArg, RconProtocolError } from '@pz/formats';
+import { assertSteamId, assertUsername, quoteArg, RconProtocolError } from '@gsp/formats';
 import type { AgentApi } from '../agent/client';
 import { nowIso, type Db } from '../db/db';
 import type { PanelEnv } from '../env';

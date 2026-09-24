@@ -1,11 +1,11 @@
 {
-  "name": "zomboid-server",
+  "name": "gameserver-panel",
   "private": true,
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "workspaces": [
     "packages/shared",
-    "packages/pz-formats",
+    "packages/formats",
     "packages/agent",
     "packages/panel",
     "packages/web"

@@ -9,3 +9,6 @@ fixtures
 docs
 *.log
 .tmp
+# Every top-level dot-entry (.git, .env*, .tmp, tool state, nested worktrees):
+# the Dockerfiles copy an explicit list, and this keeps the context small.
+.*

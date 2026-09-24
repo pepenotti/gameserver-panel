@@ -4,7 +4,7 @@ import { notifications } from '@mantine/notifications';
 import { IconSearch } from '@tabler/icons-react';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { OptionMeta } from '@pz/formats';
+import type { OptionMeta } from '@gsp/formats';
 import { useErrorText } from '../../lib/format';
 import { ApiError } from '../../api/http';
 import { OptionRow, humanize, type ApplyResult, type Value } from './options';
