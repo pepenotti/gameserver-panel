@@ -15,7 +15,7 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
   const lang = (req: FastifyRequest): GameLang => (req.auth?.user.lang === 'en' ? 'en' : 'es');
 
-  app.get('/api/backups', { config: { permission: 'dashboard.view' } }, async () => ({
+  app.get('/api/backups', { config: { permission: 'server.view' } }, async () => ({
     backups: backups.list(),
     lastRestore: flows.lastRestore(),
   }));

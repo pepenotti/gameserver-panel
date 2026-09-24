@@ -23,12 +23,12 @@ export interface NavItem extends Need {
 
 /** Pages register here as milestones add them; App routes them with the same permission and needs. */
 export const NAV: NavItem[] = [
-  { to: '/', label: 'nav.dashboard', icon: IconGauge, permission: 'dashboard.view' },
+  { to: '/', label: 'nav.dashboard', icon: IconGauge, permission: 'server.view' },
   { to: '/players', label: 'nav.players', icon: IconUsersGroup, permission: 'players.view', capability: 'players' },
   { to: '/console', label: 'nav.console', icon: IconTerminal2, permission: 'log.view' },
   { to: '/config', label: 'nav.config', icon: IconSettings, permission: 'config.edit' },
   { to: '/mods', label: 'nav.mods', icon: IconPuzzle, permission: 'mods.manage', ...NEED_MODS },
-  { to: '/backups', label: 'nav.backups', icon: IconArchive, permission: 'dashboard.view' },
+  { to: '/backups', label: 'nav.backups', icon: IconArchive, permission: 'server.view' },
   { to: '/schedules', label: 'nav.schedules', icon: IconCalendarTime, permission: 'schedules.view' },
   { to: '/server', label: 'nav.server', icon: IconServer, permission: 'server.update' },
   { to: '/reset', label: 'nav.reset', icon: IconRestore, permission: 'reset.world', ...NEED_RESETS },

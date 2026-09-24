@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Deps } from '../http/deps';
 
 export function statusRoutes(app: FastifyInstance, deps: Deps): void {
-  app.get('/api/status', { config: { permission: 'dashboard.view' } }, async () => {
+  app.get('/api/status', { config: { permission: 'server.view' } }, async () => {
     let agent = deps.feed.status_;
     if (!agent) agent = await deps.agent.status().catch(() => null);
     const last = deps.backups.list()[0];

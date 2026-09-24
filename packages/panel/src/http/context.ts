@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Capability } from '@gsp/adapter-api';
-import { can, permissionsFor, requiresTotp, type Permission } from '@gsp/shared';
+import { canHost, hostPermissionsFor, requiresTotp, type Permission, type Principal } from '@gsp/shared';
 import type { SessionRow } from '../auth/sessions';
 import { SESSION_COOKIE } from '../auth/sessions';
 import { toPublic, type PublicUser, type UserRow } from '../auth/users';
@@ -49,8 +49,14 @@ export function pendingFor(session: SessionRow, user: UserRow): Pending | null {
   return null;
 }
 
+/** An account as the permission matrix sees it (every account has scope `all` until grants exist). */
+export function principal(user: UserRow): Principal {
+  return { role: user.role, scope: 'all' };
+}
+
+/** `permissions`: what the user holds on the host (host permissions, and server permissions on every server). */
 export function sessionView(a: AuthContext): { user: PublicUser; csrf: string; pending: Pending | null; permissions: Permission[] } {
-  return { user: toPublic(a.user), csrf: a.session.csrf, pending: a.pending, permissions: a.pending ? [] : permissionsFor(a.user.role) };
+  return { user: toPublic(a.user), csrf: a.session.csrf, pending: a.pending, permissions: a.pending ? [] : hostPermissionsFor(principal(a.user)) };
 }
 
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -85,7 +91,7 @@ export function installGuards(app: FastifyInstance, deps: Deps): void {
     if (!a) throw new HttpError(401, 'unauthenticated');
     if (a.pending && !(cfg.allowPending ?? []).includes(a.pending)) throw new HttpError(403, 'pending', undefined, { pending: a.pending });
     if (UNSAFE.has(req.method) && req.headers['x-gsp-csrf'] !== a.session.csrf) throw new HttpError(403, 'bad-csrf');
-    if (cfg.permission && (a.pending || !can(a.user.role, cfg.permission))) throw new HttpError(403, 'forbidden');
+    if (cfg.permission && (a.pending || !canHost(principal(a.user), cfg.permission))) throw new HttpError(403, 'forbidden');
     // One server until M2, so its flavour is the default (none).
     if (cfg.capability && !capabilitiesOf(deps.adapter, null).has(cfg.capability)) throw new HttpError(409, 'capability-unsupported', undefined, { capability: cfg.capability });
   });

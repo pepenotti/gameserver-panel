@@ -5,9 +5,9 @@ import type { Deps } from '../http/deps';
 
 /** Which permission each agent event needs before a browser may see it. */
 const TOPIC: Record<SeqEvent['event']['type'], Permission> = {
-  state: 'dashboard.view',
-  job: 'dashboard.view',
-  alert: 'dashboard.view',
+  state: 'server.view',
+  job: 'server.view',
+  alert: 'server.view',
   players: 'players.view',
   log: 'log.view',
 };
@@ -16,7 +16,7 @@ const SOFT_LIMIT = 1_000_000;
 const HARD_LIMIT = 8_000_000;
 
 export function wsRoutes(app: FastifyInstance, deps: Deps): void {
-  app.get('/api/ws', { websocket: true, config: { permission: 'dashboard.view' } }, (socket: WebSocket, req) => {
+  app.get('/api/ws', { websocket: true, config: { permission: 'server.view' } }, (socket: WebSocket, req) => {
     const a = req.auth!;
     let role = a.user.role;
     const sessionHash = a.session.id_hash;

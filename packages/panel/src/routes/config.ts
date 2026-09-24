@@ -19,7 +19,7 @@ export function configRoutes(app: FastifyInstance, deps: Deps): void {
   /** Schemas, declared files and presets: what the forms are built from (AST-04 reads it too). */
   app.get('/api/config/meta', { config: perm }, async () => config.meta());
 
-  app.get('/api/config/pending', { config: { permission: 'dashboard.view' } }, async () => config.pendingRestart());
+  app.get('/api/config/pending', { config: { permission: 'server.view' } }, async () => config.pendingRestart());
 
   /** A form's values, secrets masked. */
   app.get<{ Querystring: { id: string } }>(

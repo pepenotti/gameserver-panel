@@ -49,7 +49,7 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
   const lang = (req: FastifyRequest): GameLang => (req.auth?.user.lang === 'en' ? 'en' : 'es');
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
 
-  app.get('/api/ops/current', { config: { permission: 'dashboard.view' } }, async () => ops.busy ?? deps.bus.currentOp());
+  app.get('/api/ops/current', { config: { permission: 'server.view' } }, async () => ops.busy ?? deps.bus.currentOp());
 
   app.post<{ Params: { id: string } }>('/api/ops/:id/cancel', { config: { permission: 'server.control' } }, async (req) => {
     if (!ops.cancel(req.params.id)) throw new HttpError(409, 'not-cancellable');
@@ -121,7 +121,7 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.get('/api/server/launch', { config: { permission: 'dashboard.view' } }, async () => server.launchSettings());
+  app.get('/api/server/launch', { config: { permission: 'server.view' } }, async () => server.launchSettings());
 
   app.put<{ Body: Record<string, unknown> }>(
     '/api/server/launch',
