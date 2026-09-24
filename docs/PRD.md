@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.5 |
+| Status | Draft 0.6 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -285,7 +285,7 @@ on their own; only AST-05 is the assistant itself.
 | NFR-05 | Portability | Linux, Windows and macOS through Docker, on x86-64 and ARM64, within each adapter's declared architectures (HST-05). Nothing in the core depends on the host OS. |
 | NFR-06 | Footprint | Panel under 512 MB of RAM; agent overhead under 64 MB per server; the UI stays responsive with 10 servers. |
 | NFR-07 | Testability | Each adapter has fixtures captured from a real server and a fake server for integration tests, and passes the shared adapter contract suite. `scripts/verify.sh` gates every commit. |
-| NFR-08 | Maintainability | Adapters live in their own packages. The core never imports game-specific code, and a lint rule enforces it. |
+| NFR-08 | Maintainability | Adapters live in their own packages. The core never imports game-specific code or names a game; a lint rule and a test enforce it. |
 | NFR-09 | Privacy | No telemetry. Secrets live only in `.env` and the database. The repository names no real host, person, IP or hostname. No server data leaves the host unless the owner turns on an optional integration that needs it (Discord, a future assistant), and even then secrets are masked. |
 
 NFR-01's controls, carried over from zomboid-server:
@@ -464,3 +464,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.3 | 2026-09-24 | Answers to Q1–Q8: name confirmed; TShock in v1 (CON-04, MOD-06); Minecraft loader per server, with Forge and NeoForge as P1 (UPD-06…08); OS-agnostic hosts (HST-05/06, D10); PolyForm Noncommercial license (D9); live server stays on zomboid-server (HST-04 to P2); assistant providers planned (AST-06). Milestones M0, M3, M4, M5, M7 and M8 updated. |
 | 0.4 | 2026-09-24 | Execution review: every P0 requirement now appears in a milestone (M1, M2, M3, M5, M7, M8 "Covers"); `docs/traceability.md` added; D11 (server files only through the agent); NFR-03 spells out socket listeners; M3/M5/M6 may run in parallel after M2; macOS documented but untested (M7, §12). |
 | 0.5 | 2026-09-24 | M1 contract landed: §10 names the package layout (`adapter-api`, `adapter-<game>`, `adapters`) and where fixtures and verification notes live per game. |
+| 0.6 | 2026-09-24 | M1 closed: the adapter contract carries the server context panel-side adapter code needs, declared launch secrets and secret console arguments; NFR-08 is also enforced by tests (no game names in the core or the web). |
