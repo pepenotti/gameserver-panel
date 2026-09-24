@@ -203,6 +203,21 @@ export interface InstallCtx extends RuntimeCtx {
   onLine(line: string): void;
   /** Job progress; `percent` null when unknown. */
   progress(percent: number | null, message: string): void;
+  /** The agent's steamcmd driver, for adapters of the `steam` runtime family. */
+  steam?: SteamCmd;
+}
+
+/**
+ * The agent's steamcmd driver (retries, progress parsing and output go to the
+ * job). Adapters pass their own app ids; the agent knows none.
+ */
+export interface SteamCmd {
+  /** `app_update <appId> [-beta <branch>] [validate]` into the install root. */
+  appUpdate(o: { appId: string; branch: string | null; validate: boolean }): Promise<JobResult>;
+  /** Branches and build ids from `app_info_print`. */
+  branches(o: { appId: string }): Promise<VersionsResponse>;
+  /** `workshop_download_item <workshopAppId> <id>` for each id, into the data root's workshop cache. */
+  workshopDownload(o: { workshopAppId: string; ids: string[] }): Promise<JobResult>;
 }
 
 /** What one line of game output means. Everything but `message` is optional. */
@@ -289,6 +304,13 @@ export interface RuntimeAdapter<P = unknown> {
   /** What is installed, or null when nothing is. */
   installed(ctx: RuntimeCtx): InstalledInfo | null;
   install?(ctx: InstallCtx, p: P, o: { validate: boolean }): Promise<JobResult>;
+  /**
+   * Asked before every start (panel starts, crash restarts, resumed starts):
+   * 'required' = install first and fail the start if that fails (nothing
+   * installed, or a different branch/version); 'update' = try to update, and
+   * start the installed build if that fails; null = start as is.
+   */
+  installOnStart?(ctx: RuntimeCtx, p: P): 'required' | 'update' | null;
   /** Versions the server can be pinned to (a job: steamcmd output goes to the log). */
   versions?(ctx: InstallCtx, p: P): Promise<VersionsResponse>;
   /** Before every start: files the agent owns (ports, the control secret) are enforced here. */
