@@ -1,0 +1,32 @@
+import type { Translations } from '../en';
+
+export default {
+  title: 'Programación',
+  timezone: 'Zona horaria',
+  gameLang: 'Idioma de los avisos en el juego',
+  next: 'Próximo: {{when}}',
+  off: 'Apagado',
+  restarts: 'Reinicios diarios',
+  restartsHelp: 'Un reinicio regular mantiene estables las sesiones largas. Primero se avisa a los jugadores en el chat.',
+  times: 'Horarios (HH:MM)',
+  addTime: 'Agregar horario',
+  warnFor: 'Avisar a los jugadores durante',
+  backupWhileStopped: 'Hacer una copia mientras el servidor está apagado',
+  backupWhileStoppedHelp: 'La copia más segura: no se escribe nada mientras se hace.',
+  backups: 'Copias de seguridad',
+  everyHours: 'Cada {{n}} horas',
+  backupsHelp: 'Se hacen con el servidor prendido (antes se guarda el mundo). La del reinicio diario es la completa.',
+  gameUpdates: 'Actualizaciones del juego',
+  gameUpdatesHelp: 'Cuando Steam actualiza Project Zomboid, el juego de los jugadores también se actualiza y ya no pueden entrar a un servidor más viejo.',
+  modUpdates: 'Actualizaciones de mods',
+  modUpdatesHelp: 'Los jugadores con una versión de un mod más nueva que la del servidor no pueden entrar.',
+  checkEvery: 'Revisar cada (minutos)',
+  apply: 'Cuando haya una',
+  policies: {
+    'when-empty': 'Aplicarla cuando no haya nadie jugando',
+    'restart-countdown': 'Aplicarla enseguida (avisar 15 min a los jugadores)',
+    'notify-only': 'Solo avisar por Discord',
+  },
+  saved: 'Programación guardada.',
+  minutes: '{{n}} min',
+} satisfies Translations['schedules'];

@@ -1,0 +1,18 @@
+export default {
+  save: 'Save',
+  cancel: 'Cancel',
+  confirm: 'Confirm',
+  close: 'Close',
+  loading: 'Loading…',
+  retry: 'Try again',
+  copy: 'Copy',
+  copied: 'Copied',
+  delete: 'Delete',
+  create: 'Create',
+  edit: 'Edit',
+  never: 'Never',
+  yes: 'Yes',
+  no: 'No',
+  language: 'Language',
+  saved: 'Saved',
+} as const;

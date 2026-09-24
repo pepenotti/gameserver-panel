@@ -1,0 +1,15 @@
+export default {
+  title: 'My account',
+  languageHelp: 'The panel and the Discord messages you trigger use this language.',
+  security: 'Security',
+  twoFactor: 'Two-step verification (2FA)',
+  twoFactorOn: 'On',
+  twoFactorOff: 'Off',
+  enable2fa: 'Turn on 2FA',
+  disable2fa: 'Turn off 2FA',
+  disable2faConfirm: 'Enter your password to turn off 2FA.',
+  sessions: 'Signed-in devices',
+  thisDevice: 'This device',
+  lastSeen: 'Last active {{when}}',
+  signOutDevice: 'Sign out',
+} as const;

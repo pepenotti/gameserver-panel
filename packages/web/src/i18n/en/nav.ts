@@ -1,0 +1,15 @@
+export default {
+  dashboard: 'Dashboard',
+  console: 'Console',
+  server: 'Game server',
+  players: 'Players',
+  config: 'Configuration',
+  mods: 'Mods',
+  backups: 'Backups',
+  reset: 'Reset',
+  schedules: 'Schedules',
+  users: 'Users',
+  audit: 'Activity log',
+  profile: 'My account',
+  logout: 'Sign out',
+} as const;
