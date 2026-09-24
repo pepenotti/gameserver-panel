@@ -48,7 +48,7 @@ export default {
   worldHelp: 'World (sandbox) settings are read when the server starts. Several (zombie population, loot) only affect areas nobody has visited yet, or a new world.',
   files: {
     ini: 'Server settings (.ini)',
-    sandbox: 'World (SandboxVars.lua)',
+    sandbox: 'World settings',
     spawnregions: 'Spawn regions',
     spawnpoints: 'Spawn points',
   },

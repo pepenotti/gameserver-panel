@@ -5,7 +5,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { get, post, put } from '../api/http';
+import { NEED_MODS, type Need } from '../api/meta';
 import { useSession } from '../api/session';
+import { useMeta } from '../api/useMeta';
+import { UnsupportedNote } from '../components/Supported';
 import { formatDateTime, useErrorText } from '../lib/format';
 
 type Policy = 'when-empty' | 'restart-countdown' | 'notify-only';
@@ -30,6 +33,12 @@ interface DiscordView {
   lang: 'en' | 'es';
   events: Record<(typeof EVENTS)[number], boolean>;
 }
+
+/** Update checks, each shown only when the server's game has what it checks. */
+const UPDATE_CHECKS: ['gameUpdates' | 'modUpdates', Need][] = [
+  ['gameUpdates', { capability: 'updateCheck' }],
+  ['modUpdates', NEED_MODS],
+];
 
 // Every zone the browser knows (searchable in the select); older browsers get UTC only.
 const ZONES: string[] = ['UTC', ...(typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone').filter((z) => z !== 'UTC') : [])];
@@ -60,6 +69,7 @@ export function Schedules() {
   const errorText = useErrorText();
   const qc = useQueryClient();
   const { can } = useSession();
+  const { supports, gameName } = useMeta();
   const editable = can('schedules.manage');
   const q = useQuery({ queryKey: ['schedules'], queryFn: () => get<{ settings: ScheduleSettings; next: NextRuns }>('/api/schedules') });
   const discord = useQuery({ queryKey: ['notifications'], queryFn: () => get<DiscordView>('/api/notifications'), enabled: can('notifications.manage') });
@@ -151,14 +161,16 @@ export function Schedules() {
         <Select w={200} value={String(s.backups.everyHours)} disabled={!editable} allowDeselect={false} onChange={(v) => v && setS({ ...s, backups: { ...s.backups, everyHours: Number(v) } })} data={[1, 2, 3, 4, 6, 8, 12, 24].map((n) => ({ value: String(n), label: t('schedules.everyHours', { n }) }))} />
       </Section>
 
-      {(['gameUpdates', 'modUpdates'] as const).map((k) => (
-        <Section key={k} title={t(`schedules.${k}`)} help={t(`schedules.${k}Help`)} enabled={s[k].enabled} onToggle={editable ? (v) => setS({ ...s, [k]: { ...s[k], enabled: v } }) : undefined} next={q.data?.next[k === 'gameUpdates' ? 'gameCheck' : 'modCheck'] ?? null}>
+      {UPDATE_CHECKS.filter(([, need]) => supports(need)).map(([k]) => (
+        <Section key={k} title={t(`schedules.${k}`)} help={t(`schedules.${k}Help`, { game: gameName })} enabled={s[k].enabled} onToggle={editable ? (v) => setS({ ...s, [k]: { ...s[k], enabled: v } }) : undefined} next={q.data?.next[k === 'gameUpdates' ? 'gameCheck' : 'modCheck'] ?? null}>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <NumberInput label={t('schedules.checkEvery')} min={5} max={59} value={s[k].checkEveryMinutes} disabled={!editable} onChange={(v) => setS({ ...s, [k]: { ...s[k], checkEveryMinutes: Number(v) || 30 } })} />
             {policySelect(s[k].apply, (p) => setS({ ...s, [k]: { ...s[k], apply: p } }))}
           </SimpleGrid>
         </Section>
       ))}
+
+      <UnsupportedNote needs={UPDATE_CHECKS.map(([, need]) => need)} />
 
       {editable && (
         <Group>

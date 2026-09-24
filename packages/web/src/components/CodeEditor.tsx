@@ -74,7 +74,7 @@ export function CodeEditor({ value, onChange, highlight, readOnly = false, heigh
     },
   }));
 
-  // CodeMirror joins lines with \n unless told otherwise: a CRLF file (PZ on Windows) must come back as CRLF.
+  // CodeMirror joins lines with \n unless told otherwise: a CRLF file (written on Windows) must come back as CRLF.
   const [crlf] = useState(() => value.includes('\r\n'));
 
   useEffect(() => {

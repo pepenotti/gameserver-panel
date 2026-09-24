@@ -2,7 +2,7 @@ export default {
   title: 'Dashboard',
   server: 'Server',
   gameVersion: 'Game version',
-  buildOf: 'build {{build}} · {{branch}}',
+  build: 'build {{build}}',
   nextRestart: 'Next restart',
   lastBackup: 'Last backup',
   players: 'Players online',
@@ -16,4 +16,10 @@ export default {
   lock: 'Maintenance in progress: {{holder}}',
   noPlayers: 'Nobody online',
   clockDrift: 'The server clock differs from yours by {{seconds}} s. Schedules and 2FA may misbehave.',
+  channelDown: '{{channel}} is not connected',
+  channelDownHelp: 'The server is running, but the panel cannot reach its control channel: the player list, messages and commands may not work until it reconnects.',
+  channels: {
+    rcon: 'RCON',
+    rest: 'The REST API',
+  },
 } as const;

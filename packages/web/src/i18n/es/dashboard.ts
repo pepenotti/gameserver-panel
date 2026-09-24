@@ -4,7 +4,7 @@ export default {
   title: 'Inicio',
   server: 'Servidor',
   gameVersion: 'Versión del juego',
-  buildOf: 'build {{build}} · {{branch}}',
+  build: 'build {{build}}',
   nextRestart: 'Próximo reinicio',
   lastBackup: 'Última copia',
   players: 'Jugadores conectados',
@@ -18,4 +18,10 @@ export default {
   lock: 'Mantenimiento en curso: {{holder}}',
   noPlayers: 'No hay nadie conectado',
   clockDrift: 'El reloj del servidor difiere del tuyo en {{seconds}} s. La programación y el 2FA pueden fallar.',
+  channelDown: '{{channel}} no está conectado',
+  channelDownHelp: 'El servidor está prendido, pero el panel no llega a su canal de control: la lista de jugadores, los mensajes y los comandos pueden fallar hasta que se reconecte.',
+  channels: {
+    rcon: 'RCON',
+    rest: 'La API REST',
+  },
 } satisfies Translations['dashboard'];

@@ -15,7 +15,7 @@ export default {
   everyHours: 'Every {{n}} hours',
   backupsHelp: 'Taken while running (the world is saved first). The daily restart backup is the complete one.',
   gameUpdates: 'Game updates',
-  gameUpdatesHelp: 'When Steam updates Project Zomboid, players’ games update too and can no longer join an older server.',
+  gameUpdatesHelp: 'When {{game}} gets an update, players’ games usually update too and can no longer join an older server.',
   modUpdates: 'Mod updates',
   modUpdatesHelp: 'Players with a newer version of a mod than the server cannot join.',
   checkEvery: 'Check every (minutes)',

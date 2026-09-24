@@ -1,10 +1,12 @@
 // Spanish strings, one file per top-level namespace (es/<ns>.ts), typed
 // against the English ones.
 import type { Translations } from './en';
+import alerts from './es/alerts';
 import app from './es/app';
 import audit from './es/audit';
 import auth from './es/auth';
 import backups from './es/backups';
+import capabilities from './es/capabilities';
 import common from './es/common';
 import config from './es/config';
 import consoleNs from './es/console';
@@ -23,6 +25,7 @@ import roles from './es/roles';
 import schedules from './es/schedules';
 import server from './es/server';
 import state from './es/state';
+import support from './es/support';
 import time from './es/time';
 import users from './es/users';
 
@@ -51,4 +54,7 @@ export const es: Translations = {
   discord,
   time,
   files,
+  support,
+  capabilities,
+  alerts,
 };

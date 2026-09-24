@@ -47,8 +47,6 @@ export default {
   'too-large': 'El archivo es demasiado grande.',
   'unknown-preset': 'Preset desconocido.',
   'invalid-argument': 'Los nombres y motivos no pueden tener comillas dobles ni saltos de línea.',
-  'invalid-workshop-ref': 'Eso no es un link ni un ID del Workshop de Steam.',
-  'not-a-pz-mod': 'No es un elemento del Workshop de Project Zomboid (o es privado o fue borrado).',
   'unknown-mod': 'Mod desconocido.',
   'invalid-schedule': 'Esa programación no es válida.',
   'invalid-webhook': 'Esa no es una URL de webhook de Discord.',
