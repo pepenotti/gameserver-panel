@@ -70,7 +70,7 @@ export function assertSafeArg(value: string, what = 'argument'): void {
   if (/["\r\n\0]|[\x00-\x1f\x7f]/.test(value)) throw new RconProtocolError(`${what} contains a quote or control character`);
 }
 
-/** Quote an argument for a PZ command line (`servermsg "hello"`). */
+/** Quote an argument for a console command line (`say "hello"`). */
 export function quoteArg(value: string, what?: string): string {
   assertSafeArg(value, what);
   return `"${value}"`;

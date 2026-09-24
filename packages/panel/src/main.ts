@@ -1,87 +1,17 @@
-import { panelAdapter } from '@gsp/adapters/panel';
 import { AgentClient } from './agent/client';
 import { buildApp } from './app';
-import { Audit } from './audit';
 import { bootstrapOwner } from './auth/bootstrap';
-import { Sessions } from './auth/sessions';
-import { GlobalBreaker } from './auth/throttle';
-import { Users } from './auth/users';
 import { openDb } from './db/db';
 import { loadEnv } from './env';
-import type { Deps } from './http/deps';
-import { BackupFlows } from './backups/flows';
-import { backupPanelDb } from './backups/panel-db';
-import { BackupService } from './backups/service';
-import { ConfigService } from './config/service';
-import { Control } from './control/control';
-import { LocalServerFiles } from './files/local';
-import { PanelBus } from './ops/bus';
-import { OpRunner } from './ops/runner';
-import { ModsService } from './mods/service';
-import { DiscordNotifier } from './notifier/discord';
-import { wireNotifications } from './notifier/events';
-import { Scheduler } from './scheduler/scheduler';
-import { ServerHandle } from './server/handle';
-import { PlayersService } from './players/service';
-import { ConfigProposals } from './proposals/service';
-import { Settings } from './settings';
+import { createPanelDeps } from './wiring';
 
 const env = loadEnv();
 const db = openDb(env.dataDir);
-const audit = new Audit(db);
-const users = new Users(db);
 const agent = new AgentClient(env.agentUrl, env.agentToken);
-const settings = new Settings(db);
-const bus = new PanelBus();
-const ops = new OpRunner(bus);
-const notifier = new DiscordNotifier(settings);
-const deps: Deps = {
-  env,
-  db,
-  users,
-  sessions: new Sessions(db),
-  audit,
-  settings,
-  breaker: new GlobalBreaker((n) => {
-    const detail = `${n} failed logins in a minute; logins paused for 60 s`;
-    audit.log({ action: 'security.login-spike', detail, ok: false });
-    notifier.notify('security', { detail });
-  }),
-  agent,
-  feed: agent,
-  bus,
-  ops,
-  control: undefined as unknown as Control,
-  config: new ConfigService({ db, settings, agent, feed: agent, adapter: panelAdapter('pz'), srv: { id: 'default', gameName: env.serverName, flavour: null }, files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }) }),
-  backups: undefined as unknown as BackupService,
-  flows: undefined as unknown as BackupFlows,
-  players: undefined as unknown as PlayersService,
-  mods: undefined as unknown as ModsService,
-  notifier,
-  scheduler: undefined as unknown as Scheduler,
-  files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }),
-  changes: new ConfigProposals({ db, config: () => deps.config }),
-  adapter: panelAdapter('pz'),
-};
-const server = new ServerHandle({ env, agent, feed: agent, files: deps.files, settings, config: deps.config, adapter: deps.adapter });
-deps.players = new PlayersService({ db, feed: agent, server });
-deps.mods = new ModsService({ db, feed: agent, ops, settings, config: deps.config, server, sources: deps.adapter.mods ?? [] });
-deps.backups = new BackupService({ env, feed: agent, server, mods: deps.mods });
-deps.control = new Control({ agent, feed: agent, ops, server, backups: deps.backups });
-deps.flows = new BackupFlows({ agent, feed: agent, ops, control: deps.control, backups: deps.backups, settings, config: deps.config, server, dataDir: env.pzDataDir });
-deps.scheduler = new Scheduler({ settings, agent, feed: agent, ops, control: deps.control, flows: deps.flows, backups: deps.backups, mods: deps.mods, notifier, audit, backupPanelDb: () => backupPanelDb(db, deps.env.backupDir) });
-wireNotifications({ feed: agent, players: deps.players, bus, notifier });
-agent.onEvent((e) => {
-  if (e.event.type !== 'state' || e.event.status.state !== 'running') return;
-  // The server downloads mod updates when it starts; re-read them once it's up.
-  void deps.mods.rescan().catch(() => undefined);
-  // A restored world that runs no longer needs the files it replaced (the
-  // "before restore" backup still has them).
-  deps.flows.purgeTrash();
-});
-deps.scheduler.reload();
-deps.players.attach();
+const deps = createPanelDeps({ env, db, agent, feed: agent });
 
+// What only a running panel does: timers and the agent's event stream.
+deps.scheduler.reload();
 await bootstrapOwner(deps);
 agent.startStream();
 setInterval(() => deps.sessions.purgeExpired(), 3_600_000).unref();

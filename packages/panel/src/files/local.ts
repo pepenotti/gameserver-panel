@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, type Stats } from 'node:fs';
+import { constants, lstatSync, type Stats } from 'node:fs';
 import { lstat, mkdir, open, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { DirEntry, FileKind, FileRoots, FileStat, PackRequest, RootId, ServerFiles, ServerFilesErrorCode } from '@gsp/adapter-api';
@@ -47,14 +47,6 @@ const statOf = (st: Stats): FileStat => ({ kind: kindOf(st), size: st.size, mtim
 // Where the platform has it, the last component can't be swapped for a link between the check and the open.
 const READ_FLAGS = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0);
 
-/** The same file operations, synchronously (the config store's frozen methods are synchronous; see ConfigStore). */
-export interface SyncServerFiles {
-  statSync(root: RootId, rel: string): FileStat | null;
-  listSync(root: RootId, rel: string): DirEntry[];
-  readSync(root: RootId, rel: string, o?: { maxBytes?: number }): Buffer | null;
-  writeAtomicSync(root: RootId, rel: string, data: Buffer | string): void;
-}
-
 /**
  * `ServerFiles` on the panel's own disk, rooted at the folders the panel
  * mounts today (env data and install dirs). D11 moves file access behind
@@ -63,7 +55,7 @@ export interface SyncServerFiles {
  * Every path component below the root is checked with `lstat`: symbolic links
  * (and Windows junctions) are never followed, wherever they point (CFG-08).
  */
-export class LocalServerFiles implements ServerFiles, SyncServerFiles {
+export class LocalServerFiles implements ServerFiles {
   constructor(private readonly roots: FileRoots) {}
 
   private base(root: RootId): string {
@@ -167,69 +159,6 @@ export class LocalServerFiles implements ServerFiles, SyncServerFiles {
   async remove(root: RootId, rels: string[]): Promise<void> {
     const targets = rels.map((rel) => this.resolve(root, rel, { notRoot: true }));
     for (const abs of targets) await rm(abs, { recursive: true, force: true });
-  }
-
-  // ------------------------------------------------------------------- sync
-
-  statSync(root: RootId, rel: string): FileStat | null {
-    const abs = this.resolve(root, rel);
-    try {
-      return statOf(lstatSync(abs));
-    } catch (e) {
-      if (missing(e)) return null;
-      throw e;
-    }
-  }
-
-  listSync(root: RootId, rel: string): DirEntry[] {
-    const abs = this.resolve(root, rel);
-    let names: string[];
-    try {
-      names = readdirSync(abs);
-    } catch (e) {
-      if (missing(e)) return [];
-      if (code(e) === 'ENOTDIR') throw new ServerFilesError('not-a-dir', `Not a folder: ${rel}`);
-      throw e;
-    }
-    const out: DirEntry[] = [];
-    for (const name of names.sort()) {
-      try {
-        out.push({ name, ...statOf(lstatSync(path.join(abs, name))) });
-      } catch {
-        // Gone between readdir and lstat.
-      }
-    }
-    return out;
-  }
-
-  readSync(root: RootId, rel: string, o: { maxBytes?: number } = {}): Buffer | null {
-    const abs = this.resolve(root, rel, { notRoot: true });
-    try {
-      this.checkFile(lstatSync(abs), rel, o.maxBytes);
-    } catch (e) {
-      if (missing(e)) return null;
-      throw e;
-    }
-    const fd = openSync(abs, READ_FLAGS);
-    try {
-      this.checkFile(fstatSync(fd), rel, o.maxBytes);
-      return readFileSync(fd);
-    } finally {
-      closeSync(fd);
-    }
-  }
-
-  writeAtomicSync(root: RootId, rel: string, data: Buffer | string): void {
-    const abs = this.resolve(root, rel, { notRoot: true });
-    mkdirSync(path.dirname(abs), { recursive: true });
-    const tmp = `${abs}.${randomUUID()}.tmp`;
-    try {
-      writeFileSync(tmp, data, { flag: 'wx' });
-      renameSync(tmp, abs);
-    } catch (e) {
-      rmSync(tmp, { force: true });
-      throw e;
-    }
   }
 
   // Archives, staging and trash arrive with restores through the agent (M2).

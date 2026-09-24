@@ -86,7 +86,7 @@ const procs = [
       PANEL_ORIGINS: url,
       PANEL_OWNER_USERNAME: 'owner',
       PANEL_OWNER_PASSWORD: 'dev-owner-password',
-      PZ_ADMIN_PASSWORD: 'dev-admin-password',
+      GAME_SECRET_ADMIN_PASSWORD: 'dev-admin-password',
       PZ_DATA_DIR: path.join(tmp, 'data'),
       PZ_INSTALL_DIR: path.join(tmp, 'install'),
       BACKUP_DIR: path.join(tmp, 'backups'),

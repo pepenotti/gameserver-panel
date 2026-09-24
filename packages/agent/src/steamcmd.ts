@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import type { JobResult, SteamCmd, VersionsResponse } from '@gsp/adapter-api';
+import type { JobResult, SteamCmd, VersionInfo } from '@gsp/adapter-api';
 import { isRetryableSteamcmdError, parseAppInfoBranches, parseSteamcmdLine, stripAnsi } from '@gsp/formats';
 import { lineSplitter } from './process';
 
@@ -118,7 +118,7 @@ export class SteamcmdDriver implements SteamCmd {
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
 
-  async branches(req: { appId: string }): Promise<VersionsResponse> {
+  async branches(req: { appId: string }): Promise<VersionInfo[]> {
     if (!APP_ID.test(req.appId)) throw new Error('Invalid app id');
     // steamcmd serves app_info from a local cache that can be days stale; drop it first.
     rmSync(path.join(this.o.home, 'Steam', 'appcache', 'appinfo.vdf'), { force: true });
@@ -129,10 +129,7 @@ export class SteamcmdDriver implements SteamCmd {
       if (last.ok) {
         try {
           const branches = parseAppInfoBranches(last.output, req.appId);
-          return {
-            installed: null,
-            versions: branches.map((b) => ({ id: b.name, build: b.buildId, timeUpdated: b.timeUpdated, description: b.description, passwordRequired: b.passwordRequired })),
-          };
+          return branches.map((b) => ({ id: b.name, build: b.buildId, timeUpdated: b.timeUpdated, description: b.description, passwordRequired: b.passwordRequired }));
         } catch {
           // Empty or truncated print happens; retry once.
         }

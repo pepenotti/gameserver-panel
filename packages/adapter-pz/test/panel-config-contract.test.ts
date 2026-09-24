@@ -24,12 +24,19 @@ const captured = () => ({
 panelAdapterConfigSuite(pzPanelAdapter, { server, files: captured });
 
 function ctx(over: Partial<ServerCtx> = {}): ServerCtx {
+  const no = async (): Promise<never> => {
+    throw new Error('not used by config files');
+  };
   return {
     srv: server(),
     files: memoryServerFiles(captured()),
+    actor: null,
     status: () => null,
     command: async () => ({ via: 'rcon', output: '' }),
     action: async () => null,
+    versions: no,
+    launchSettings: () => pzPanelAdapter.launch.defaults(),
+    config: { set: no, seedIfMissing: no, applyPreset: no },
     onLog: () => () => undefined,
     ...over,
   };
@@ -38,6 +45,8 @@ function ctx(over: Partial<ServerCtx> = {}): ServerCtx {
 describe('Project Zomboid config files', () => {
   it('declares the ini, SandboxVars and spawn files under Server/<name>', () => {
     const files = pzPanelConfig.files({ id: 'x', gameName: 'pz2', flavour: null });
+    expect(files.every((f) => f.label?.en && f.label.es)).toBe(true);
+    expect(pzPanelConfig.presets?.fileId).toBe('sandbox');
     expect(files.map((f) => [f.id, f.rel, f.format])).toEqual([
       ['ini', 'Server/pz2.ini', 'ini'],
       ['sandbox', 'Server/pz2_SandboxVars.lua', 'lua-data'],

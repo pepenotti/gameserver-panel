@@ -62,7 +62,8 @@ services:
       AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}
       AGENT_URL: http://pz:8081
       PZ_SERVER_NAME: ${PZ_SERVER_NAME:-zomboid}
-      PZ_ADMIN_PASSWORD: ${PZ_ADMIN_PASSWORD:?run node scripts/init-env.mjs first}
+      # The adapter's launch secrets, as GAME_SECRET_<KEY> (the key in upper snake case).
+      GAME_SECRET_ADMIN_PASSWORD: ${PZ_ADMIN_PASSWORD:?run node scripts/init-env.mjs first}
       # Exactly the addresses people type; anything else is refused as cross-site.
       PANEL_ORIGINS: https://${PANEL_HOST:-localhost}:${PANEL_PORT:-8443},https://${LAN_IP:-127.0.0.1}:${PANEL_PORT:-8443},https://localhost:${PANEL_PORT:-8443}
       PANEL_OWNER_USERNAME: ${PANEL_OWNER_USERNAME:-}

@@ -1,6 +1,6 @@
 /**
- * Valve KeyValues text (VDF): `appmanifest_380870.acf` and the output of
- * `steamcmd +app_info_print 380870`.
+ * Valve KeyValues text (VDF): `appmanifest_<appid>.acf` and the output of
+ * `steamcmd +app_info_print <appid>`.
  */
 
 export type VdfValue = string | VdfObject;

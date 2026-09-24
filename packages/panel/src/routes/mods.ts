@@ -49,14 +49,14 @@ export function modRoutes(app: FastifyInstance, deps: Deps): void {
       },
     },
     async (req) => {
-      const r = mods.setEnabled(req.body.enabled, who(req));
+      const r = await mods.setEnabled(req.body.enabled, who(req));
       audit.log({ user: actor(req), action: 'mods.enabled', detail: req.body.enabled.map((e) => e.modId).join(', ').slice(0, 1000), ip: req.ip });
       return { ...r, enabled: mods.enabled(), issues: mods.issues(await mods.items()) };
     },
   );
 
   app.post('/api/mods/sort', { config: perm }, async (req) => {
-    const enabled = mods.autoSort(who(req));
+    const enabled = await mods.autoSort(who(req));
     audit.log({ user: actor(req), action: 'mods.sort', ip: req.ip });
     return { enabled, issues: mods.issues(await mods.items()) };
   });
@@ -74,7 +74,7 @@ export function modRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.delete<{ Params: { id: string } }>('/api/mods/:id', { config: perm, schema: { params: { type: 'object', required: ['id'], properties: { id: itemId } } } }, async (req) => {
-    const r = mods.remove(req.params.id, who(req));
+    const r = await mods.remove(req.params.id, who(req));
     audit.log({ user: actor(req), action: 'mods.remove', target: req.params.id, ip: req.ip });
     return r;
   });

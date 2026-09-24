@@ -53,7 +53,7 @@ function bundledVersion(): string {
 
 /**
  * The first of `keys` that is set. The agent's settings used to be named
- * after Project Zomboid (`PZ_*`); those names still work as fallbacks.
+ * after its first game (`PZ_*`); those names still work as fallbacks.
  */
 function pick(env: NodeJS.ProcessEnv, ...keys: string[]): { key: string; value: string } | null {
   for (const key of keys) {

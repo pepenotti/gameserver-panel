@@ -184,10 +184,11 @@ export class BackupFlows {
    * cold backup (and aborts if it can't), so a reset can always be undone by
    * restoring it; then the scope's parts are deleted and its `after` step runs.
    */
-  startReset(by: string | null, scope: ResetScope, opts: { countdownSec: number; lang: GameLang; newSeed: boolean; preset?: string }): OpState {
+  async startReset(by: string | null, scope: ResetScope, opts: { countdownSec: number; lang: GameLang; newSeed: boolean; preset?: string }): Promise<OpState> {
     const decl = this.resets().find((r) => r.id === scope);
     if (!decl) throw new HttpError(400, 'unknown-reset');
-    if (opts.preset && !this.d.config.presets().includes(opts.preset)) throw new HttpError(400, 'unknown-preset');
+    // Listed now, so a preset installed since the panel started is known; an unknown one is refused before anything is deleted.
+    if (opts.preset && !(await this.d.config.presets()).includes(opts.preset)) throw new HttpError(400, 'unknown-preset');
     return this.d.ops.start(
       'reset',
       by,

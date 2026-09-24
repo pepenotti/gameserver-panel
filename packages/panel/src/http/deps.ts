@@ -18,6 +18,7 @@ import type { DiscordNotifier } from '../notifier/discord';
 import type { Scheduler } from '../scheduler/scheduler';
 import type { PlayersService } from '../players/service';
 import type { ProposalService } from '../proposals/service';
+import type { ServerHandle } from '../server/handle';
 import type { Settings } from '../settings';
 
 /** The live agent mirror the websocket hub fans out. */
@@ -28,6 +29,7 @@ export interface AgentFeed {
   onEvent(l: (e: SeqEvent) => void): () => void;
 }
 
+/** Everything routes use; built only by `createPanelDeps` (wiring.ts). */
 export interface Deps {
   env: PanelEnv;
   db: Db;
@@ -40,6 +42,8 @@ export interface Deps {
   feed: AgentFeed;
   bus: PanelBus;
   ops: OpRunner;
+  /** The server (one until M2): its ref, adapter, launch settings, secrets and contexts; every service shares it. */
+  server: ServerHandle;
   control: Control;
   config: ConfigStore;
   backups: BackupService;
@@ -52,6 +56,6 @@ export interface Deps {
   files: ServerFiles;
   /** Change proposals (AST-03). */
   changes: ProposalService;
-  /** The game adapter's panel half (one server, Project Zomboid, until M2). */
+  /** The game adapter's panel half (the one server's, until M2). */
   adapter: PanelAdapter;
 }

@@ -3,7 +3,7 @@
  * on: the runtime adapter implements them, the panel adapter calls them.
  */
 
-/** Download workshop items with steamcmd (today's `POST /v1/steamcmd/workshop`). Replies with a `JobResult`. */
+/** Download workshop items with steamcmd, as a `workshop` job. Replies with a `JobResult`. */
 export const WORKSHOP_DOWNLOAD = 'workshop-download';
 
 export interface WorkshopDownloadInput {

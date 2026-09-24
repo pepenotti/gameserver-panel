@@ -214,8 +214,8 @@ export interface InstallCtx extends RuntimeCtx {
 export interface SteamCmd {
   /** `app_update <appId> [-beta <branch>] [validate]` into the install root. */
   appUpdate(o: { appId: string; branch: string | null; validate: boolean }): Promise<JobResult>;
-  /** Branches and build ids from `app_info_print`. */
-  branches(o: { appId: string }): Promise<VersionsResponse>;
+  /** Branches and build ids from `app_info_print` (what is installed is the adapter's `installed()`). */
+  branches(o: { appId: string }): Promise<VersionInfo[]>;
   /** `workshop_download_item <workshopAppId> <id>` for each id, into the data root's workshop cache. */
   workshopDownload(o: { workshopAppId: string; ids: string[] }): Promise<JobResult>;
 }
@@ -235,7 +235,7 @@ export interface LineSignal {
   channelReady?: boolean;
   /** Game version announced by this line. */
   version?: string;
-  /** The game is waiting for console input nobody will type; the agent kills it and says why. */
+  /** The game is waiting for console input nobody will type; the agent kills it and says why (alert `blocking-prompt`). */
   blockingPrompt?: string;
   /** The process is doomed even if it hasn't exited yet. */
   fatal?: boolean;
@@ -320,7 +320,8 @@ export interface RuntimeAdapter<P = unknown> {
   channel(ctx: RuntimeCtx, p: P): ChannelSpec;
   /** Ask the game to stop cleanly; the agent waits `budgetMs` for the exit, then escalates to signals. */
   stop(ctl: ControlHandle, o: { budgetMs: number }): Promise<void>;
-  save?(ctl: ControlHandle): Promise<void>;
+  /** Save the running world and resolve once the game says it finished; the agent reports a failure after `budgetMs`, so stop waiting by then. */
+  save?(ctl: ControlHandle, o: { budgetMs: number }): Promise<void>;
   /** Running-server backups: `before` makes the files consistent, `after` always runs. */
   hotCopy?: { before(ctl: ControlHandle): Promise<void>; after(ctl: ControlHandle): Promise<void>; sqlite?: string[] };
   /** Null when the reply wasn't understood. */
@@ -348,15 +349,37 @@ export type SecretBag = Readonly<Record<string, string>>;
 /** A console command for the agent (`POST /v1/command`). */
 export type AgentCommand = CommandRequest;
 
+/**
+ * The server's config files through the panel's settings service, acting for
+ * `ServerCtx.actor`: every write lands in the file's history (CFG-03). For
+ * resets and hooks, which run while the server is stopped: no managed-key or
+ * busy checks, and the running game isn't asked to re-read anything.
+ */
+export interface ConfigAccess {
+  /** Set keys of a declared config file (`ConfigFileDecl.id`); history note `note`. A file that doesn't exist yet is left alone. */
+  set(fileId: string, values: Record<string, Scalar>, note: string): Promise<void>;
+  /** Write each declared file's `seed` where that file doesn't exist yet; true if one was written. */
+  seedIfMissing(): Promise<boolean>;
+  /** Apply one of `config.presets` to the file it names (`presets.fileId`). */
+  applyPreset(name: string): Promise<void>;
+}
+
 /** A server at run time, for panel-side adapter code. */
 export interface ServerCtx {
   srv: ServerRef;
   files: ServerFiles;
+  /** Who the operation runs for (a panel user, `scheduler`), for settings history and the audit log; null for the panel itself. */
+  actor: string | null;
   /** Latest agent status; null while unknown. */
   status(): AgentStatus | null;
   command(cmd: AgentCommand): Promise<CommandResponse>;
   /** `POST /v1/actions/:name`. */
   action(name: string, input: unknown): Promise<unknown>;
+  /** `POST /v1/versions` for the server's stored launch settings. */
+  versions(): Promise<VersionsResponse>;
+  /** The launch settings the panel stores for the server (the adapter's `S`, over `launch.defaults()`). */
+  launchSettings(): unknown;
+  config: ConfigAccess;
   /** Each log line the server prints from now on (redacted); returns an unsubscribe. */
   onLog(listener: (line: string) => void): () => void;
 }
@@ -364,6 +387,8 @@ export interface ServerCtx {
 export interface ConfigFileDecl {
   /** Stable id (`ini`, `sandbox`); history and forms use it. */
   id: string;
+  /** What the editor and forms call the file; without it, the file name. */
+  label?: I18n;
   root: RootId;
   rel: string;
   format: FormatId;
@@ -406,9 +431,10 @@ export interface PanelAdapterConfig {
   schemas: Record<string, OptionMeta[]>;
   /** Values the panel sets for managed keys, by file id then key; managed keys not listed keep what is on disk. */
   managedValues(srv: ServerRef): Record<string, Record<string, string>>;
-  /** After the panel wrote a file of a running server (PZ: `reloadoptions`, then its log). */
+  /** After the panel wrote a file of a running server (e.g. the game's reload command, then its log). */
   afterWrite?(ctx: ServerCtx, fileId: string, keys: string[]): Promise<AfterWriteResult>;
-  presets?: { list(ctx: ServerCtx): Promise<string[]>; load(ctx: ServerCtx, name: string): Promise<Record<string, Scalar>> };
+  /** Settings presets (CFG-06): values for keys of the declared file `fileId`. */
+  presets?: { fileId: string; list(ctx: ServerCtx): Promise<string[]>; load(ctx: ServerCtx, name: string): Promise<Record<string, Scalar>> };
 }
 
 export interface BackupPartDecl {
@@ -416,7 +442,11 @@ export interface BackupPartDecl {
   label: I18n;
   /** Paths relative to the data root. */
   paths(srv: ServerRef): string[];
-  /** Globs of SQLite databases inside those paths. */
+  /**
+   * Globs of SQLite databases, relative to the data root like `paths` (e.g.
+   * `**` + `/*.db`), matched against the files those paths hold: copied as
+   * consistent snapshots while the game runs.
+   */
   sqlite?: string[];
 }
 
@@ -537,6 +567,20 @@ export interface CommandDoc {
   description: I18n;
   /** Lowest permission the panel asks for before sending it raw. */
   permission?: Permission;
+  /** Its arguments can hold secrets (passwords): the audit log keeps only the command name. */
+  secretArgs?: boolean;
+}
+
+/** A secret `launch.toAgent` needs in its `SecretBag` (PZ: the admin password). The panel holds it and never shows it. */
+export interface LaunchSecretDecl {
+  /** Key in the `SecretBag`. */
+  key: string;
+  label: I18n;
+}
+
+export interface ToAgentOptions {
+  /** The start follows an install the panel just ran: skip the pre-start update. */
+  afterInstall?: boolean;
 }
 
 export interface PanelAdapter<S = unknown> {
@@ -544,9 +588,11 @@ export interface PanelAdapter<S = unknown> {
   launch: {
     /** Launch settings form (memory, branch…). */
     schema: OptionMeta[];
+    /** Secrets `toAgent` needs; not part of the form or of `S`. */
+    secrets?: LaunchSecretDecl[];
     defaults(): S;
     /** Params for the agent (`LaunchEnvelope.params`), validated there by `RuntimeAdapter.parseLaunch`. */
-    toAgent(srv: ServerRef, s: S, secrets: SecretBag): unknown;
+    toAgent(srv: ServerRef, s: S, secrets: SecretBag, o?: ToAgentOptions): unknown;
   };
   config: PanelAdapterConfig;
   backups: { parts: BackupPartDecl[] };
@@ -558,7 +604,8 @@ export interface PanelAdapter<S = unknown> {
   };
   players?: PlayerOps;
   mods?: ModSource[];
-  updates?: { check(ctx: ServerCtx): Promise<UpdateInfo | null> };
+  /** Whether a newer build of what `launch` pins exists; null when it can't tell. */
+  updates?: { check(ctx: ServerCtx, launch: S): Promise<UpdateInfo | null> };
   consoleCatalog?: CommandDoc[];
   hooks?: { beforeStart?(ctx: ServerCtx): Promise<void> };
 }

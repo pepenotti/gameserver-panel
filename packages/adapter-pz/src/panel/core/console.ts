@@ -32,6 +32,7 @@ export const PZ_CONSOLE_CATALOG: CommandDoc[] = [
     syntax: 'adduser "<user>" "<password>"',
     description: { en: 'Adds a user to the whitelist.', es: 'Agrega un usuario a la lista blanca.' },
     permission: 'whitelist.manage',
+    secretArgs: true,
   },
   {
     name: 'removeuserfromwhitelist',
@@ -45,10 +46,11 @@ export const PZ_CONSOLE_CATALOG: CommandDoc[] = [
     description: { en: "Sets a player's access level.", es: 'Cambia el nivel de acceso de un jugador.' },
     permission: 'players.accessLevel',
   },
-  { name: 'setpassword', syntax: 'setpassword "<user>" "<new password>"', description: { en: "Changes a user's password.", es: 'Cambia la contraseña de un usuario.' } },
+  { name: 'setpassword', syntax: 'setpassword "<user>" "<new password>"', description: { en: "Changes a user's password.", es: 'Cambia la contraseña de un usuario.' }, secretArgs: true },
   { name: 'showoptions', syntax: 'showoptions', description: { en: 'Shows the server options and their values.', es: 'Muestra las opciones del servidor y sus valores.' } },
   { name: 'reloadoptions', syntax: 'reloadoptions', description: { en: 'Re-reads the server ini and sends it to the clients.', es: 'Vuelve a leer el ini del servidor y lo envía a los clientes.' } },
-  { name: 'changeoption', syntax: 'changeoption <option> <value>', description: { en: 'Changes one server option.', es: 'Cambia una opción del servidor.' } },
+  // Options include the join and Discord passwords.
+  { name: 'changeoption', syntax: 'changeoption <option> <value>', description: { en: 'Changes one server option.', es: 'Cambia una opción del servidor.' }, secretArgs: true },
   { name: 'checkModsNeedUpdate', syntax: 'checkModsNeedUpdate', description: { en: 'Says in the log whether a mod was updated.', es: 'Indica en el registro si se actualizó algún mod.' } },
   {
     name: 'additem',

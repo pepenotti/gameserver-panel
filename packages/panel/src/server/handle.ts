@@ -1,4 +1,4 @@
-import type { Capability, PanelAdapter, SecretBag, ServerCtx, ServerFiles, ServerRef } from '@gsp/adapter-api';
+import type { Capability, ConfigAccess, PanelAdapter, SecretBag, ServerCtx, ServerFiles, ServerRef, ToAgentOptions } from '@gsp/adapter-api';
 import type { LaunchEnvelope, VersionsResponse } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { ConfigStore } from '../config/store';
@@ -9,58 +9,36 @@ import type { Settings } from '../settings';
 /** Settings row with the adapter's launch settings (its `S`). */
 const LAUNCH_KEY = 'launch';
 
+/** The panel's one server until M2 (servers get ids of their own then). */
+export const DEFAULT_SERVER_ID = 'default';
+
 /** What a server can do: its flavour's capabilities, or the adapter's. */
 export function capabilitiesOf(adapter: PanelAdapter, flavour: string | null): Set<Capability> {
   const f = flavour === null ? undefined : adapter.meta.flavours.find((x) => x.id === flavour);
   return new Set(f?.capabilities ?? adapter.meta.capabilities);
 }
 
-/**
- * Members the panel's ServerCtx carries beyond the adapter contract until the
- * contract grows them (M1-B hand-off, contract requests); adapters read them
- * with a structural check, so they can move into `ServerCtx` without a
- * breaking change.
- */
-export interface ServerCtxBridge {
-  /** `POST /v1/versions` for the stored launch settings; one call per context. */
-  versions(): Promise<VersionsResponse>;
-  /** The launch settings stored for the server (the adapter's `S`). */
-  launchSettings(): unknown;
-  /** The server's settings (history, managed keys), for resets and hooks that change them. */
-  config: ConfigStore;
-  /** Who the operation runs for (settings history); null for the panel itself. */
-  actor: string | null;
-}
-
-export type PanelServerCtx = ServerCtx & ServerCtxBridge;
-
-/** Optional fourth argument of `launch.toAgent` until the contract has it (M1-B contract request). */
-export interface LaunchHints {
-  /** The start follows an install the panel just ran: skip the pre-start update. */
-  afterInstall?: boolean;
-}
-
-type ToAgent = (srv: ServerRef, s: unknown, secrets: SecretBag, hints?: LaunchHints) => unknown;
-
 export interface ServerHandleDeps {
-  env: PanelEnv;
+  env: Pick<PanelEnv, 'serverName' | 'secrets'>;
   agent: AgentApi;
   feed: AgentFeed;
   files: ServerFiles;
   settings: Settings;
-  config: ConfigStore;
+  /** The settings service; late-bound because it runs adapter code with this handle's contexts. */
+  config: () => ConfigStore;
   adapter: PanelAdapter;
 }
 
 /**
  * The one game server the panel runs (until M2): its adapter, its stored
  * launch settings and secrets, and the `ServerCtx` adapter code runs with.
+ * Every service shares its `ref`.
  */
 export class ServerHandle {
   readonly ref: ServerRef;
 
   constructor(private readonly d: ServerHandleDeps) {
-    this.ref = { id: 'default', gameName: d.env.serverName, flavour: null };
+    this.ref = { id: DEFAULT_SERVER_ID, gameName: d.env.serverName, flavour: null };
   }
 
   get adapter(): PanelAdapter {
@@ -85,35 +63,57 @@ export class ServerHandle {
     this.d.settings.setRaw(LAUNCH_KEY, s);
   }
 
-  /** Secrets the panel holds for the server: the admin password (PZ_ADMIN_PASSWORD until M2 keeps them per server). */
+  /** The secrets the adapter declares (`launch.secrets`) that the panel holds values for. */
   secrets(): SecretBag {
-    return { adminPassword: this.d.env.pzAdminPassword };
+    const out: Record<string, string> = {};
+    for (const s of this.d.adapter.launch.secrets ?? []) {
+      const v = this.d.env.secrets[s.key];
+      if (v) out[s.key] = v;
+    }
+    return out;
+  }
+
+  /** Declared secrets without a value: the panel can't start the server without them. */
+  missingSecrets(): string[] {
+    return (this.d.adapter.launch.secrets ?? []).map((s) => s.key).filter((k) => !this.d.env.secrets[k]);
   }
 
   /** Launch params for the agent; throws when the adapter can't turn `s` into params. */
-  launchEnvelope(hints: LaunchHints = {}, s: unknown = this.launchSettings()): LaunchEnvelope {
-    const toAgent = this.d.adapter.launch.toAgent as ToAgent;
-    return { adapter: this.d.adapter.meta.id, params: toAgent(this.ref, s, this.secrets(), hints) };
+  launchEnvelope(o: ToAgentOptions = {}, s: unknown = this.launchSettings()): LaunchEnvelope {
+    return { adapter: this.d.adapter.meta.id, params: this.d.adapter.launch.toAgent(this.ref, s, this.secrets(), o) };
+  }
+
+  /** The config files as adapter code writes them (resets, hooks): as `actor`, no busy checks. */
+  private configAccess(actor: string | null): ConfigAccess {
+    const store = this.d.config;
+    return {
+      set: (fileId, values, note) => store().setDirect(fileId, values, actor, note),
+      seedIfMissing: () => store().seedIfMissing(),
+      applyPreset: async (name) => {
+        await store().applyPreset(name, actor, { force: true });
+      },
+    };
   }
 
   /** A context for adapter code; `actor` is who the operation runs for. */
-  ctx(actor: string | null = null): PanelServerCtx {
+  ctx(actor: string | null = null): ServerCtx {
     const d = this.d;
     let versions: Promise<VersionsResponse> | null = null;
     return {
       srv: this.ref,
       files: d.files,
+      actor,
       status: () => d.feed.status_,
       command: (c) => d.agent.command(c.command, c.via),
       action: (name, input) => d.agent.action(name, input),
+      // One call per context: an update check and the route that shows it share the answer.
+      versions: () => (versions ??= d.agent.versions({ launch: this.launchEnvelope() })),
+      launchSettings: () => this.launchSettings(),
+      config: this.configAccess(actor),
       onLog: (listener) =>
         d.feed.onEvent((e) => {
           if (e.event.type === 'log') listener(e.event.line);
         }),
-      versions: () => (versions ??= d.agent.versions({ launch: this.launchEnvelope() })),
-      launchSettings: () => this.launchSettings(),
-      config: d.config,
-      actor,
     };
   }
 }

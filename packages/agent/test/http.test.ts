@@ -122,23 +122,14 @@ describe('adapter routes', () => {
     expect(status.installed).toEqual({ buildId: '24909800', branch: 'legacy41' });
   });
 
-  it('keeps the steamcmd routes as deprecated aliases on the stored launch', async () => {
+  it('no longer answers the pre-adapter steamcmd routes', async () => {
     await setup();
-    for (const path of ['/v1/steamcmd/install', '/v1/steamcmd/appinfo']) {
-      const r = await post(path);
-      expect(r.status).toBe(409);
-      expect(await r.json()).toMatchObject({ error: 'no-launch' });
+    await post('/v1/launch', envelope(), 'PUT');
+    for (const path of ['/v1/steamcmd/install', '/v1/steamcmd/appinfo', '/v1/steamcmd/workshop']) {
+      const r = await post(path, { ids: ['2503622437'] });
+      expect(r.status, path).toBe(404);
+      expect(await r.json()).toMatchObject({ code: 'not-found' });
     }
-    await post('/v1/launch', envelope({ branch: 'legacy41' }), 'PUT');
-    const inst = await post('/v1/steamcmd/install', { validate: true });
-    expect(inst.headers.get('deprecation')).toBe('true');
-    expect(await inst.json()).toEqual({ ok: true });
-    const info = await post('/v1/steamcmd/appinfo');
-    expect(await info.json()).toMatchObject({ installed: { buildId: '24909800', branch: 'legacy41' }, branches: [{ name: 'public', buildId: '24909800', passwordRequired: false }, { name: 'legacy41' }] });
-    // Workshop downloads need no launch.
-    const ws = await post('/v1/steamcmd/workshop', { ids: ['2503622437'] });
-    expect(await ws.json()).toEqual({ ok: true });
-    expect((await post('/v1/steamcmd/workshop', { ids: [] })).status).toBe(400);
   });
 
   it('runs adapter actions and saves', async () => {

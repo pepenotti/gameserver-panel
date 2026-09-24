@@ -19,9 +19,13 @@ const LANGS: Lang[] = ['en', 'es'];
 /** Arguments no game command may carry: quote breaks, line breaks, NUL. */
 const HOSTILE = ['x"; quit', 'x\nquit', 'x\rquit', 'x\0'];
 
-/** A server with no files and no agent: commands are recorded, everything else is refused. */
-function bareCtx(srv: ServerRef): ServerCtx & { commands: AgentCommand[] } {
+/**
+ * A server with no files and no agent: commands and config writes are
+ * recorded, the agent knows no versions, everything else is refused.
+ */
+function bareCtx<S>(adapter: PanelAdapter<S>, srv: ServerRef): ServerCtx & { commands: AgentCommand[]; configCalls: unknown[][] } {
   const commands: AgentCommand[] = [];
+  const configCalls: unknown[][] = [];
   const refuse = async (): Promise<never> => {
     throw new Error('not available in the contract suite');
   };
@@ -40,14 +44,23 @@ function bareCtx(srv: ServerRef): ServerCtx & { commands: AgentCommand[] } {
   return {
     srv,
     files,
+    actor: 'contract-suite',
     status: () => null,
     command: async (c) => {
       commands.push(c);
       return { via: 'rcon', output: '' };
     },
     action: refuse,
+    versions: async () => ({ installed: null, versions: [] }),
+    launchSettings: () => adapter.launch.defaults(),
+    config: {
+      set: async (fileId, values, note) => void configCalls.push(['set', fileId, values, note]),
+      seedIfMissing: async () => (configCalls.push(['seedIfMissing']), false),
+      applyPreset: async (name) => void configCalls.push(['applyPreset', name]),
+    },
     onLog: () => () => undefined,
     commands,
+    configCalls,
   };
 }
 
@@ -104,6 +117,20 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       expect(Object.keys(defaults as object).sort()).toEqual([...keys].sort());
     });
 
+    it('launch secrets are labelled, unique and not part of the settings form', () => {
+      const secrets = adapter.launch.secrets ?? [];
+      expectUnique(
+        secrets.map((s) => s.key),
+        'launch secret keys',
+      );
+      for (const s of secrets) {
+        expect(s.key).toMatch(/^[A-Za-z][A-Za-z0-9]{0,63}$/);
+        expectI18n(s.label, `launch secret ${s.key}`);
+        // The form (and the settings the panel shows) never holds a secret.
+        expect(adapter.launch.schema.map((o) => o.key), `launch secret ${s.key}`).not.toContain(s.key);
+      }
+    });
+
     it('announces every countdown in both languages; broadcasts are commands', () => {
       const canShow = caps().has('broadcast');
       for (const lang of LANGS) {
@@ -129,6 +156,7 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         expect(c.syntax.trim(), `syntax of ${c.name}`).not.toBe('');
         expectI18n(c.description, `console command ${c.name}`);
         if (c.permission) expect(Object.keys(PERMISSIONS), `permission of ${c.name}`).toContain(c.permission);
+        if (c.secretArgs !== undefined) expect(typeof c.secretArgs, `secretArgs of ${c.name}`).toBe('boolean');
       }
     });
 
@@ -151,7 +179,7 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       const p = adapter.players;
       if (!p) return;
       if (p.accessLevels) expectUnique(p.accessLevels, 'access levels');
-      const ctx = bareCtx(server());
+      const ctx = bareCtx(adapter, server());
       for (const bad of HOSTILE) {
         if (p.kick) await expect(p.kick(ctx, bad), `kick ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
         if (p.kick) await expect(p.kick(ctx, 'bob', bad), `kick reason ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
@@ -180,7 +208,30 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       it('mod sources find nothing on a server without files', async () => {
         for (const m of adapter.mods ?? []) {
           const ref = m.parseRef('1234567890');
-          if (ref) expect(await m.scan(bareCtx(srv()), ref, '')).toBeNull();
+          if (ref) expect(await m.scan(bareCtx(adapter, srv()), ref, '')).toBeNull();
+        }
+      });
+
+      it('update checks answer, or say they cannot tell, when the agent lists no versions', async () => {
+        if (!adapter.updates) return;
+        const r = await adapter.updates.check(bareCtx(adapter, srv()), adapter.launch.defaults());
+        if (r !== null) expect(typeof r.available).toBe('boolean');
+      });
+
+      it('resets and the first-start hook change only declared config files, through the panel', async () => {
+        const declared = adapter.config.files(srv()).map((f) => f.id);
+        const presetFile = adapter.config.presets?.fileId;
+        const runs: [string, (ctx: ServerCtx) => Promise<void>][] = adapter.resets.map((r) => [`reset ${r.id}`, (ctx) => r.after?.(ctx, { newSeed: true }) ?? Promise.resolve()]);
+        if (adapter.hooks?.beforeStart) runs.push(['beforeStart', adapter.hooks.beforeStart.bind(adapter.hooks)]);
+        for (const [what, run] of runs) {
+          const ctx = bareCtx(adapter, srv());
+          await run(ctx);
+          for (const call of ctx.configCalls) {
+            if (call[0] === 'set') expect(declared, `${what} sets keys of ${String(call[1])}`).toContain(call[1]);
+            if (call[0] === 'applyPreset') expect(presetFile, `${what} applies a preset without config.presets`).toBeDefined();
+          }
+          // Files change through ctx.config (history, actor), never behind the panel's back.
+          expect(ctx.commands, `${what} sends commands to a stopped server`).toEqual([]);
         }
       });
 

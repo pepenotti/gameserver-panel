@@ -1,7 +1,7 @@
 /**
  * Option metadata (type, range, default, enum labels, description) that the
- * settings forms are built from. Adapters derive it per language (Project
- * Zomboid from the comments in its own files) and merge the languages here.
+ * settings forms are built from. Adapters derive it per language (e.g. from
+ * the comments in the game's own files) and merge the languages here.
  */
 
 export type Lang = 'en' | 'es';

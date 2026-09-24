@@ -17,7 +17,11 @@ export interface PanelEnv {
   pzInstallDir: string;
   backupDir: string;
   serverName: string;
-  pzAdminPassword: string;
+  /**
+   * Secrets for the server's adapter, by `LaunchSecretDecl.key` (one server
+   * until M2 keeps them per server); see `secretEnvName`.
+   */
+  secrets: Readonly<Record<string, string>>;
   /** Exact origins (scheme://host:port) allowed to change anything. */
   origins: string[];
   owner: { username: string; password: string } | null;
@@ -26,6 +30,29 @@ export interface PanelEnv {
   /** Set false when clients may all share one proxy IP (Docker Desktop). */
   clientIpTrustworthy: boolean;
   secureCookies: boolean;
+}
+
+/** `adminPassword` → `ADMIN_PASSWORD`. */
+const upperSnake = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase();
+/** `ADMIN_PASSWORD` → `adminPassword`. */
+const camel = (name: string) => name.toLowerCase().replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+
+/**
+ * The environment variable a secret comes from: `GAME_SECRET_<KEY>`, the key
+ * in upper snake case (`adminPassword` → `GAME_SECRET_ADMIN_PASSWORD`).
+ * Compose and the dev loop fill it from the `.env` names (`PZ_ADMIN_PASSWORD`).
+ */
+export function secretEnvName(key: string): string {
+  return `GAME_SECRET_${upperSnake(key)}`;
+}
+
+function loadSecrets(env: NodeJS.ProcessEnv): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [name, value] of Object.entries(env)) {
+    const m = /^GAME_SECRET_([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*)$/.exec(name);
+    if (m && value) out[camel(m[1]!)] = value;
+  }
+  return out;
 }
 
 function bundledVersion(): string {
@@ -71,7 +98,8 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): PanelEnv {
     pzInstallDir: env.PZ_INSTALL_DIR ?? '/opt/pz',
     backupDir: env.BACKUP_DIR ?? '/backups',
     serverName,
-    pzAdminPassword: need('PZ_ADMIN_PASSWORD'),
+    // Which ones the adapter needs is checked when the panel is wired (wiring.ts).
+    secrets: loadSecrets(env),
     origins,
     owner: ownerUser && ownerPass ? { username: ownerUser, password: ownerPass } : null,
     trustProxy: env.TRUST_PROXY ?? 'loopback,uniquelocal',

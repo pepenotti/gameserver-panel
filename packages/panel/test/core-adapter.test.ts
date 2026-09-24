@@ -60,7 +60,7 @@ describe('GET /api/meta', () => {
       adapter: { id: string; name: { en: string } };
       server: { gameName: string };
       capabilities: string[];
-      launch: { schema: { key: string }[] };
+      launch: { schema: { key: string }[]; secrets: { key: string; label: { en: string } }[] };
       backupParts: { id: string; label: { en: string; es: string } }[];
       resets: { id: string; permission: string; removeParts: string[] }[];
       accessLevels: string[];
@@ -68,9 +68,12 @@ describe('GET /api/meta', () => {
       consoleCatalog: { name: string }[];
     };
     expect(m.adapter).toMatchObject({ id: 'pz', name: { en: 'Project Zomboid' } });
-    expect(m.server).toEqual({ gameName: 'zomboid', flavour: null });
+    expect(m.server).toEqual({ id: 'default', gameName: 'zomboid', flavour: null });
     expect(m.capabilities).toEqual(expect.arrayContaining(['kick', 'ban', 'whitelist', 'broadcast', 'mods:workshop', 'updateCheck']));
     expect(m.launch.schema.map((o) => o.key)).toEqual(['memoryMb', 'branch', 'updateOnStart']);
+    // Which secrets the server needs, never their values.
+    expect(m.launch.secrets).toEqual([{ key: 'adminPassword', label: expect.objectContaining({ en: expect.any(String) }) }]);
+    expect(JSON.stringify(m)).not.toContain('AdminPw-123456');
     expect(m.backupParts.map((x) => x.id)).toEqual(['world', 'accounts', 'configs']);
     expect(m.resets).toEqual([
       expect.objectContaining({ id: 'world', permission: 'reset.world', removeParts: ['world'] }),

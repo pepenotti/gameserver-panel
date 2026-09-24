@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { loadEnv } from '../src/env';
+import { loadEnv, secretEnvName } from '../src/env';
 
-const base = { AGENT_TOKEN: 'x'.repeat(40), PZ_ADMIN_PASSWORD: 'secret' };
+const base = { AGENT_TOKEN: 'x'.repeat(40), GAME_SECRET_ADMIN_PASSWORD: 'secret' };
 
 describe('loadEnv', () => {
   it('keeps origins exact, dropping default ports the way browsers do', () => {
@@ -15,8 +15,15 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...base, PANEL_ORIGINS: 'https://user@panel.example.net:8443' })).toThrow(/exact origin/);
   });
 
+  it("reads the adapter's secrets by key from GAME_SECRET_<KEY>", () => {
+    const env = loadEnv({ ...base, GAME_SECRET_RCON_TOKEN: 'tok', GAME_SECRET_EMPTY: '', GAME_SECRET_: 'x', SECRET_OTHER: 'y' });
+    expect(env.secrets).toEqual({ adminPassword: 'secret', rconToken: 'tok' });
+    expect(secretEnvName('adminPassword')).toBe('GAME_SECRET_ADMIN_PASSWORD');
+    expect(secretEnvName('rconToken')).toBe('GAME_SECRET_RCON_TOKEN');
+  });
+
   it('requires the secrets and a safe server name', () => {
-    expect(() => loadEnv({ PZ_ADMIN_PASSWORD: 'x' })).toThrow(/AGENT_TOKEN/);
+    expect(() => loadEnv({ GAME_SECRET_ADMIN_PASSWORD: 'x' })).toThrow(/AGENT_TOKEN/);
     expect(() => loadEnv({ ...base, AGENT_TOKEN: 'short' })).toThrow(/32/);
     expect(() => loadEnv({ ...base, PZ_SERVER_NAME: '../etc' })).toThrow(/PZ_SERVER_NAME/);
   });

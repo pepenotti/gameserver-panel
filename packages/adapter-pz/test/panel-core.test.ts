@@ -3,12 +3,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { AgentCommand, DirEntry, RootId, ServerCtx, ServerFiles, ServerRef, VersionsResponse } from '@gsp/adapter-api';
+import type { AgentCommand, ConfigAccess, DirEntry, RootId, ServerCtx, ServerFiles, ServerRef, VersionsResponse } from '@gsp/adapter-api';
 import { RconProtocolError } from '@gsp/formats';
 import { pzPanelAdapter } from '../src/panel';
-import { parseAccounts, parseBans, PZ_LAUNCH_DEFAULTS } from '../src/panel/core';
+import { parseAccounts, parseBans, PZ_LAUNCH_DEFAULTS, PZ_LAUNCH_SECRETS } from '../src/panel/core';
 import { PZ_BACKUP_PARTS, PZ_RESETS, pzBeforeStart } from '../src/panel/core/backups';
-import type { PanelExtras, SettingsAccess } from '../src/panel/core/ctx';
+import { PZ_CONSOLE_CATALOG } from '../src/panel/core/console';
 import { pzToAgent } from '../src/panel/core/launch';
 import { pzAnnounce, pzBroadcast } from '../src/panel/core/messages';
 import { pzPlayers } from '../src/panel/core/players';
@@ -66,12 +66,16 @@ interface FakeCtx extends ServerCtx {
   actions: { name: string; input: unknown }[];
 }
 
-function ctx(o: { files?: ServerFiles; reply?: (cmd: string) => string; action?: (name: string, input: unknown) => unknown; extras?: Partial<PanelExtras> } = {}): FakeCtx {
+function ctx(o: { files?: ServerFiles; reply?: (cmd: string) => string; action?: (name: string, input: unknown) => unknown; extras?: Partial<ServerCtx> } = {}): FakeCtx {
   const commands: AgentCommand[] = [];
   const actions: { name: string; input: unknown }[] = [];
+  const no = async (): Promise<never> => {
+    throw new Error('not in this test');
+  };
   return {
     srv: SRV,
     files: o.files ?? folderFiles({}),
+    actor: null,
     status: () => null,
     command: async (c) => {
       commands.push(c);
@@ -81,6 +85,9 @@ function ctx(o: { files?: ServerFiles; reply?: (cmd: string) => string; action?:
       actions.push({ name, input });
       return o.action?.(name, input);
     },
+    versions: no,
+    launchSettings: () => ({ ...PZ_LAUNCH_DEFAULTS }),
+    config: { set: no, seedIfMissing: no, applyPreset: no },
     onLog: () => () => undefined,
     commands,
     actions,
@@ -88,13 +95,13 @@ function ctx(o: { files?: ServerFiles; reply?: (cmd: string) => string; action?:
   };
 }
 
-function settingsSpy(): SettingsAccess & { calls: unknown[][] } {
+function configSpy(): ConfigAccess & { calls: unknown[][] } {
   const calls: unknown[][] = [];
   return {
     calls,
-    seedIniIfMissing: () => (calls.push(['seed']), true),
-    setIniDirect: (changes, by, note) => void calls.push(['ini', changes, by, note]),
-    applyPreset: (name, by, opts) => calls.push(['preset', name, by, opts]),
+    seedIfMissing: async () => (calls.push(['seed']), true),
+    set: async (fileId, values, note) => void calls.push(['set', fileId, values, note]),
+    applyPreset: async (name) => void calls.push(['preset', name]),
   };
 }
 
@@ -195,37 +202,46 @@ describe('backup parts and resets', () => {
     });
   });
 
-  it('gives a new world a new ResetID, maybe a seed and a preset, as the person who reset', async () => {
-    const config = settingsSpy();
+  it('gives a new world a new ResetID, maybe a seed and a preset, through the settings service', async () => {
+    const config = configSpy();
     const world = PZ_RESETS.find((r) => r.id === 'world')!;
     await world.after!(ctx({ extras: { config, actor: 'alice' } }), { newSeed: true, preset: 'Apocalypse' });
-    const [ini, preset] = config.calls as [[string, Record<string, string>, string, string], unknown[]];
-    expect(ini[0]).toBe('ini');
-    expect(ini[1].ResetID).toMatch(/^[1-9]\d{8}$/);
-    expect(ini[1].Seed).toMatch(/^[A-Za-z]{16}$/);
-    expect(ini.slice(2)).toEqual(['alice', 'reset (world)']);
-    expect(preset).toEqual(['preset', 'Apocalypse', 'alice', { force: true }]);
+    const [ini, preset] = config.calls as [[string, string, Record<string, string>, string], unknown[]];
+    expect(ini.slice(0, 2)).toEqual(['set', 'ini']);
+    expect(ini[2].ResetID).toMatch(/^[1-9]\d{8}$/);
+    expect(ini[2].Seed).toMatch(/^[A-Za-z]{16}$/);
+    // The panel records ctx.actor ('alice') in the history.
+    expect(ini[3]).toBe('reset (world)');
+    expect(preset).toEqual(['preset', 'Apocalypse']);
 
-    const again = settingsSpy();
+    const again = configSpy();
     await PZ_RESETS.find((r) => r.id === 'full')!.after!(ctx({ extras: { config: again, actor: 'alice' } }), { newSeed: false });
     expect(again.calls).toHaveLength(1);
-    expect(Object.keys(again.calls[0]![1] as object)).toEqual(['ResetID']);
+    expect(Object.keys(again.calls[0]![2] as object)).toEqual(['ResetID']);
   });
 
   it('writes the first-run settings after a factory reset and before a first start', async () => {
-    const config = settingsSpy();
-    await PZ_RESETS.find((r) => r.id === 'factory')!.after!(ctx({ extras: { config, actor: null } }), { newSeed: false });
+    const config = configSpy();
+    await PZ_RESETS.find((r) => r.id === 'factory')!.after!(ctx({ extras: { config } }), { newSeed: false });
     await pzBeforeStart(ctx({ extras: { config } }));
     expect(config.calls).toEqual([['seed'], ['seed']]);
-    // Without the panel's settings service a start still goes ahead; a reset can't.
-    await expect(pzBeforeStart(ctx())).resolves.toBeUndefined();
-    await expect(PZ_RESETS[0]!.after!(ctx(), { newSeed: false })).rejects.toThrow(/config/);
+  });
+});
+
+describe('launch secrets and the console catalog', () => {
+  it('declares the admin password the agent params need', () => {
+    expect(PZ_LAUNCH_SECRETS.map((s) => s.key)).toEqual(['adminPassword']);
+    expect(pzPanelAdapter.launch.secrets).toBe(PZ_LAUNCH_SECRETS);
+  });
+
+  it('marks the commands whose arguments hold passwords', () => {
+    expect(PZ_CONSOLE_CATALOG.filter((c) => c.secretArgs).map((c) => c.name)).toEqual(['adduser', 'setpassword', 'changeoption']);
   });
 });
 
 describe('update check', () => {
   const versions = (installed: VersionsResponse['installed']): VersionsResponse => ({ installed, versions: [{ id: 'public', build: '200' }, { id: 'legacy41', build: '50' }] });
-  const check = (s: object, v: VersionsResponse) => pzCheckUpdate(ctx({ extras: { launchSettings: () => s, versions: async () => v } }));
+  const check = (s: object, v: VersionsResponse) => pzCheckUpdate(ctx({ extras: { versions: async () => v } }), { ...PZ_LAUNCH_DEFAULTS, ...s });
 
   it('compares the installed build with the pinned branch', async () => {
     expect(await check({ branch: 'public' }, versions({ version: null, channel: 'public', build: '100' }))).toEqual({ available: true, current: '100', latest: '200', channel: 'public' });
@@ -235,9 +251,8 @@ describe('update check', () => {
     expect(await check({ branch: 'public' }, versions(null))).toMatchObject({ available: true, current: null });
   });
 
-  it('says nothing for an unknown branch or without the panel', async () => {
+  it('says nothing for an unknown branch', async () => {
     expect(await check({ branch: 'nope' }, versions(null))).toBeNull();
-    expect(await pzCheckUpdate(ctx())).toBeNull();
   });
 });
 
