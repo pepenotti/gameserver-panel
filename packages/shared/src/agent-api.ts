@@ -91,6 +91,10 @@ export interface AgentStatus {
   installed: { buildId: string; branch: string } | null;
   players: { count: number; names: string[]; at: string } | null;
   rcon: { connected: boolean; lastError: string | null };
+  /** The adapter's control channel (M1; `rcon` stays until every reader uses this). */
+  control?: { kind: ControlKind; connected: boolean; lastError: string | null };
+  /** What is installed, in adapter-neutral terms (M1; `installed` stays until every reader uses this). */
+  installedInfo?: InstalledInfo;
   lock: { holder: string; expiresAt: string } | null;
   job: JobInfo | null;
   /** Timestamps of crashes inside the crash-loop window. */
@@ -158,10 +162,49 @@ export interface VersionInfo {
   passwordRequired?: boolean;
 }
 
-/** `POST /v1/versions`. */
+/** How the agent talks to the game besides stdin (a runtime adapter's `channel()`). */
+export type ControlKind = 'rcon' | 'stdin' | 'rest' | 'none';
+
+/**
+ * Launch body for `PUT /v1/launch` and `POST /v1/start` once the agent runs
+ * adapters: the adapter id and that adapter's params (its `parseLaunch`
+ * validates them).
+ */
+export interface LaunchEnvelope {
+  adapter: string;
+  params: unknown;
+}
+
+/** `POST /v1/install`: install, update or validate while the server is stopped. */
+export interface InstallRequest {
+  validate?: boolean;
+  /** Install for these params (a new branch or version); default: the stored launch. */
+  launch?: LaunchEnvelope;
+}
+export type InstallResponse = JobResult;
+
+/** `POST /v1/versions`: what the server could be pinned to. */
+export interface VersionsRequest {
+  /** List for these params (another flavour or loader); default: the stored launch. */
+  launch?: LaunchEnvelope;
+}
 export interface VersionsResponse {
   installed: InstalledInfo | null;
   versions: VersionInfo[];
+}
+
+/** `POST /v1/save`: save the running world and wait for the game to finish. */
+export interface SaveRequest {
+  timeoutMs?: number;
+}
+export type SaveResponse = JobResult;
+
+/** `POST /v1/actions/:name`: an adapter-specific action (a runtime adapter's `actions`). */
+export interface ActionRequest {
+  input: unknown;
+}
+export interface ActionResponse {
+  result: unknown;
 }
 
 /** Error body for every non-2xx agent response. */
