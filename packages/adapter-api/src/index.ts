@@ -16,20 +16,29 @@ import type {
   AgentStatus,
   CommandRequest,
   CommandResponse,
+  CpuArch,
+  DirEntry,
+  FileKind,
+  FileStat,
   InstalledInfo,
   JobKind,
   JobResult,
+  PackRequest,
   Permission,
+  RootId,
+  RuntimeFamily,
+  ServerFilesErrorCode,
   VersionInfo,
   VersionsResponse,
 } from '@gsp/shared';
 
 export type { AgentStatus, CommandResponse, FormatId, InstalledInfo, JobKind, JobResult, Lang, OptionMeta, Permission, Scalar, VersionInfo, VersionsResponse };
+// The file shapes are the agent API's (`/v1/fs/*`, `/v1/archive/*`, D11), so the wire and the contract can't drift.
+export type { DirEntry, FileKind, FileStat, PackRequest, RootId, RuntimeFamily, ServerFilesErrorCode };
 
 // =================================================================== common
 
-export type Arch = 'amd64' | 'arm64';
-export type RuntimeFamily = 'steam' | 'java' | 'native';
+export type Arch = CpuArch;
 export type I18n = { en: string; es: string };
 
 export type Capability =
@@ -96,9 +105,6 @@ export interface AdapterMeta {
 
 // ============================================================== server files
 
-/** A file root of a server: `data` and `install`, plus any `FileRoots.extra` key. */
-export type RootId = 'data' | 'install' | (string & Record<never, never>);
-
 /** Absolute, in-container folders a server's files live in. */
 export interface FileRoots {
   /** World, configs, logs: everything backups cover. */
@@ -108,38 +114,13 @@ export interface FileRoots {
   extra?: Record<string, string>;
 }
 
-export type FileKind = 'file' | 'dir' | 'symlink' | 'other';
-
-export interface FileStat {
-  kind: FileKind;
-  size: number;
-  mtimeMs: number;
-}
-
-export interface DirEntry extends FileStat {
-  name: string;
-}
-
-export interface PackRequest {
-  root: RootId;
-  /** Files or folders under `root`; folders are walked, missing paths skipped. */
-  rels: string[];
-  /** Globs (relative to `root`) of SQLite databases, copied as consistent snapshots while the game runs. */
-  sqlite?: string[];
-  /** Path prefix inside the archive (today's backups use `data/`). */
-  prefix?: string;
-}
-
-/**
- * `code` of the errors `ServerFiles` implementations throw. Paths are always
- * relative to a root; absolute paths, `..` and symlinks leading out are refused.
- */
-export type ServerFilesErrorCode = 'invalid-path' | 'outside-root' | 'not-a-file' | 'not-a-dir' | 'too-large' | 'unknown-root';
-
 /**
  * A server's files as the panel reaches them (D11: through that server's
- * agent). Staging, swap and trash work in the `data` root; an uncompressed
- * tar stream is what `pack` produces and `stage` consumes.
+ * agent, `/v1/fs/*` and `/v1/archive/*` in `@gsp/shared`'s agent API, one
+ * route per method). Paths are always relative to a root; absolute paths,
+ * `..` and symlinks leading out are refused with a `ServerFilesErrorCode`.
+ * Staging, swap and trash work in the `data` root; an uncompressed tar
+ * stream is what `pack` produces and `stage` consumes.
  */
 export interface ServerFiles {
   /** Null when nothing is there. */

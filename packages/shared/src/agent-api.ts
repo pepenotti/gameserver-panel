@@ -221,4 +221,120 @@ export interface ActionResponse {
 export interface AgentError {
   error: string;
   code: 'unauthorized' | 'bad-request' | 'not-found' | 'conflict' | 'locked' | 'unavailable' | 'internal';
+  /** Why a file or archive request was refused (`/v1/fs/*`, `/v1/archive/*`). */
+  reason?: ServerFilesErrorCode;
+}
+
+// ------------------------------------------ server files through the agent (D11)
+//
+// The panel reaches a server's files only through that server's agent (D11):
+// these routes mirror `ServerFiles` in the adapter contract one to one, and
+// the adapter contract re-exports the shapes below. Paths are always relative
+// to a root (`data`, `install`, or an adapter's extra root); absolute paths,
+// `..`, and symlinks leading out of the root are refused (`reason`
+// `outside-root` or `invalid-path`). The agent's own state folder is never a
+// root. JSON bodies unless noted; file contents travel as
+// `application/octet-stream`, archives as an uncompressed tar
+// (`application/x-tar`).
+//
+//   POST /v1/fs/stat        FsPathRequest → FsStatResponse
+//   POST /v1/fs/list        FsPathRequest → FsListResponse
+//   POST /v1/fs/read        FsReadRequest → 200 octet-stream | 404 not-found (no such file)
+//   PUT  /v1/fs/write?root=&rel=    octet-stream body (≤ FS_WRITE_MAX_BYTES) → FsOkResponse
+//   POST /v1/fs/remove      FsRemoveRequest → FsOkResponse
+//   POST /v1/archive/pack   PackRequest → 200 x-tar stream
+//   POST /v1/archive/stage?allow=<rel>&allow=<rel>…   x-tar body → StageResponse
+//   POST /v1/archive/swap   SwapRequest → SwapResponse
+//   POST /v1/archive/undo   UndoRequest → FsOkResponse
+//   POST /v1/archive/purge  PurgeRequest → FsOkResponse
+
+/** A file root of a server: `data` and `install`, plus any adapter-declared extra root. */
+export type RootId = 'data' | 'install' | (string & Record<never, never>);
+
+export type FileKind = 'file' | 'dir' | 'symlink' | 'other';
+
+export interface FileStat {
+  kind: FileKind;
+  size: number;
+  mtimeMs: number;
+}
+
+export interface DirEntry extends FileStat {
+  name: string;
+}
+
+/**
+ * Why a `ServerFiles` call was refused: the `code` of the errors
+ * implementations throw, and `AgentError.reason` over HTTP.
+ */
+export type ServerFilesErrorCode = 'invalid-path' | 'outside-root' | 'not-a-file' | 'not-a-dir' | 'too-large' | 'unknown-root';
+
+/** `POST /v1/archive/pack`: an uncompressed tar of files under one root. */
+export interface PackRequest {
+  root: RootId;
+  /** Files or folders under `root`; folders are walked, missing paths skipped, symlinks never followed. */
+  rels: string[];
+  /** Globs (relative to `root`) of SQLite databases, copied as consistent snapshots while the game runs. */
+  sqlite?: string[];
+  /** Path prefix inside the archive (today's backups use `data/`). */
+  prefix?: string;
+}
+
+/** Largest body `PUT /v1/fs/write` takes. */
+export const FS_WRITE_MAX_BYTES = 16 * 1024 * 1024;
+
+export interface FsPathRequest {
+  root: RootId;
+  rel: string;
+}
+
+export interface FsStatResponse {
+  /** Null when nothing is there. */
+  stat: FileStat | null;
+}
+
+export interface FsListResponse {
+  /** Sorted by name; empty when the folder doesn't exist. */
+  entries: DirEntry[];
+}
+
+export interface FsReadRequest extends FsPathRequest {
+  /** Refuse (`reason: too-large`) a file bigger than this. */
+  maxBytes?: number;
+}
+
+export interface FsRemoveRequest {
+  root: RootId;
+  /** Files or folders (removed recursively); missing ones are fine. */
+  rels: string[];
+}
+
+export interface FsOkResponse {
+  ok: true;
+}
+
+/** `POST /v1/archive/stage`: the tar was unpacked into a staging folder of the data root. */
+export interface StageResponse {
+  stagingId: string;
+  entries: number;
+}
+
+/** `POST /v1/archive/swap`: move staged `rels` (data-root paths) into place; what they replace goes to a trash folder. */
+export interface SwapRequest {
+  stagingId: string;
+  rels: string[];
+}
+
+export interface SwapResponse {
+  trashId: string;
+}
+
+/** `POST /v1/archive/undo`: put a trash folder's files back. */
+export interface UndoRequest {
+  trashId: string;
+}
+
+/** `POST /v1/archive/purge`: drop one trash folder, or all of them. */
+export interface PurgeRequest {
+  trashId?: string;
 }
