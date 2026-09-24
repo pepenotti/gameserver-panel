@@ -1,7 +1,7 @@
 /**
- * The contract between the panel and the agent that runs inside the `pz`
- * container. The agent owns the game process, RCON and steamcmd; the panel
- * only ever talks to it through these shapes.
+ * The contract between the panel and the agent that runs inside each
+ * server's container. The agent owns the game process, its control channel
+ * and its installer; the panel only ever talks to it through these shapes.
  */
 
 export type ServerState =
@@ -19,20 +19,12 @@ export type ServerState =
   /** Gave up (crash loop, start failure, blocking prompt); needs a manual start. */
   | 'failed';
 
-export interface LaunchParams {
-  /** `-servername`; names the ini, sandbox and save folder. Fixed per deployment. */
-  serverName: string;
-  adminUsername: string;
-  adminPassword: string;
-  /** Heap size for both -Xms and -Xmx, in MiB. */
-  memoryMb: number;
-  /** Steam branch of the game's dedicated-server app: `public`, `legacy41`, `42.19`, … */
-  branch: string;
-  /** Run steamcmd app_update before every start. */
-  updateOnStart: boolean;
-}
-
-export type PublicLaunchParams = Omit<LaunchParams, 'adminPassword'>;
+/**
+ * The launch params the agent keeps, as its status shows them: the
+ * adapter's own shape (`LaunchEnvelope.params`) without the values the
+ * runtime adapter's `secrets()` names.
+ */
+export type PublicLaunch = Readonly<Record<string, unknown>>;
 
 export type JobKind = 'install' | 'validate' | 'appinfo' | 'workshop';
 
@@ -86,25 +78,16 @@ export interface AgentStatus {
   lastExit: ExitInfo | null;
   /** Why the state is `failed`. */
   failure: string | null;
-  /**
-   * From the game's version line of the current or last run.
-   * @deprecated Read `installedInfo.version`; removed in M2's contract step.
-   */
-  gameVersion: string | null;
-  /** @deprecated Read `installedInfo` (`build`, `channel`); removed in M2's contract step. */
-  installed: { buildId: string; branch: string } | null;
   players: { count: number; names: string[]; at: string } | null;
-  /** @deprecated Read `control`; removed in M2's contract step. */
-  rcon: { connected: boolean; lastError: string | null };
-  /** The adapter's control channel (M1; `rcon` stays until every reader uses this). */
-  control?: { kind: ControlKind; connected: boolean; lastError: string | null };
-  /** What is installed, in adapter-neutral terms (M1; `installed` stays until every reader uses this). */
-  installedInfo?: InstalledInfo;
+  /** The adapter's control channel. */
+  control: { kind: ControlKind; connected: boolean; lastError: string | null };
+  /** What is installed, in adapter-neutral terms (`version` once the game has announced it); null when nothing is. */
+  installedInfo: InstalledInfo | null;
   lock: { holder: string; expiresAt: string } | null;
   job: JobInfo | null;
   /** Timestamps of crashes inside the crash-loop window. */
   recentCrashes: string[];
-  launch: PublicLaunchParams | null;
+  launch: PublicLaunch | null;
   process: ProcessStats | null;
   disks: DiskStats[];
   /** Agent wall clock, so the panel can spot drift after the PC sleeps. */
@@ -117,8 +100,6 @@ export type AlertKind =
   | 'unresponsive'
   /** The game waited for console input nobody will type (a runtime adapter's `blockingPrompt`); the agent killed it. */
   | 'blocking-prompt'
-  /** @deprecated The agent sends `blocking-prompt`; kept until the web reads that, removed in M2's contract step. */
-  | 'admin-prompt'
   | 'fatal'
   | 'start-timeout'
   | 'start-failed';

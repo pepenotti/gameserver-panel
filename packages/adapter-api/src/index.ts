@@ -405,11 +405,21 @@ export interface AfterWriteResult {
   warnings: string[];
 }
 
+/** A group of a settings form (CFG-10); options name theirs in `OptionMeta.group`. */
+export interface OptionGroup {
+  id: string;
+  label: I18n;
+  /** Shown behind "Advanced" rather than with the common settings. */
+  advanced?: boolean;
+}
+
 export interface PanelAdapterConfig {
   files(srv: ServerRef): ConfigFileDecl[];
   roots(srv: ServerRef): EditableRoot[];
   /** Form schemas by `ConfigFileDecl.schemaId`. */
   schemas: Record<string, OptionMeta[]>;
+  /** Each schema's groups, in the order forms show them (by schema id); options without a known group go last. */
+  groups?: Record<string, OptionGroup[]>;
   /** Values the panel sets for managed keys, by file id then key; managed keys not listed keep what is on disk. */
   managedValues(srv: ServerRef): Record<string, Record<string, string>>;
   /** After the panel wrote a file of a running server (e.g. the game's reload command, then its log). */
@@ -443,6 +453,8 @@ export interface ResetDecl {
   permission: Permission;
   /** `backups.parts` ids deleted by this reset (after a safety backup). */
   removeParts: string[];
+  /** The `ResetOptions` this scope uses (a new seed, a preset); the others are ignored. */
+  options?: { newSeed?: boolean; preset?: boolean };
   after?(ctx: ServerCtx, o: ResetOptions): Promise<void>;
 }
 
@@ -452,6 +464,16 @@ export type AnnounceKind = 'restart' | 'stop' | 'update' | 'restore' | 'reset';
 export interface PlayerTarget {
   username?: string;
   steamId?: string;
+  ip?: string;
+}
+
+/** What a ban can name: `PlayerTarget`'s fields. */
+export type BanTarget = 'username' | 'steamId' | 'ip';
+
+/** An access level `setAccess` takes, with its name for people. */
+export interface AccessLevel {
+  id: string;
+  label: I18n;
 }
 
 export interface PlayerAccount {
@@ -472,8 +494,10 @@ export interface BanList {
  * can't take are refused with `RconProtocolError` from `@gsp/formats`.
  */
 export interface PlayerOps {
-  /** Levels `setAccess` accepts. */
-  accessLevels?: readonly string[];
+  /** Levels `setAccess` accepts, lowest first. */
+  accessLevels?: readonly AccessLevel[];
+  /** The `PlayerTarget` fields `ban` and `unban` accept; a UI offers only these. */
+  banTargets?: readonly BanTarget[];
   kick?(ctx: ServerCtx, username: string, reason?: string): Promise<string>;
   ban?(ctx: ServerCtx, target: PlayerTarget, reason?: string): Promise<string>;
   unban?(ctx: ServerCtx, target: PlayerTarget): Promise<string>;
@@ -564,11 +588,21 @@ export interface ToAgentOptions {
   afterInstall?: boolean;
 }
 
+/** A launch setting (memory, version…): an option plus what the server pages need to know about it. */
+export interface LaunchOption extends OptionMeta {
+  /** `version`: pins what gets installed (UPD-02); `memory`: sizes the game (SRV-05 adds `meta.memory.overheadMb` for the container). */
+  role?: 'version' | 'memory';
+  /** Unit of a number, shown next to it (`MiB`). */
+  unit?: string;
+  /** Increment a number must be a multiple of. */
+  step?: number;
+}
+
 export interface PanelAdapter<S = unknown> {
   meta: AdapterMeta;
   launch: {
     /** Launch settings form (memory, branch…). */
-    schema: OptionMeta[];
+    schema: LaunchOption[];
     /** Secrets `toAgent` needs; not part of the form or of `S`. */
     secrets?: LaunchSecretDecl[];
     defaults(): S;

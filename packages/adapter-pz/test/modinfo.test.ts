@@ -54,7 +54,7 @@ describe('version folders', () => {
   });
 
   it('flags mods that will not load on this build', () => {
-    expect(checkCompat(folders('2725378876/mods/TheyKnew'), '42.20.4')).toEqual({ folder: null, compatible: false, reason: 'no-b42-folder' });
+    expect(checkCompat(folders('2725378876/mods/TheyKnew'), '42.20.4')).toEqual({ folder: null, compatible: false, reason: 'no-matching-folder' });
     expect(checkCompat(['42.21'], '42.20.4')).toMatchObject({ compatible: false, reason: 'needs-newer-game' });
     expect(checkCompat(['42.19', '42.20.1', 'common'], '42.20.1', { versionMin: '42.20.2' })).toMatchObject({ compatible: false, reason: 'needs-newer-game' });
     expect(checkCompat(['42.19', '42.20.1', 'common'], '42.20.4', { versionMin: '42.20.2' })).toEqual({ folder: '42.20.1', compatible: true });

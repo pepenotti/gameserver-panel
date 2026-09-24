@@ -1,4 +1,4 @@
-import type { BanList, PlayerAccount, PlayerOps, PlayerTarget } from '@gsp/adapter-api';
+import type { AccessLevel, BanList, PlayerAccount, PlayerOps, PlayerTarget } from '@gsp/adapter-api';
 import { RconProtocolError } from '@gsp/formats';
 import { nowIso, type Db } from '../db/db';
 import { HttpError } from '../http/context';
@@ -93,7 +93,7 @@ export class PlayersService {
   }
 
   /** Access levels `setAccess` takes (empty when the game has none). */
-  accessLevels(): readonly string[] {
+  accessLevels(): readonly AccessLevel[] {
     return this.ops?.accessLevels ?? [];
   }
 

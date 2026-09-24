@@ -3,9 +3,6 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLive } from '../api/live';
 
-/** The game waits for console input nobody will type; older agents call it `admin-prompt`. */
-const LEGACY_KIND: Record<string, string> = { 'admin-prompt': 'blocking-prompt' };
-
 const ALERT_COLOR: Record<string, string> = {
   crash: 'orange',
   'crash-loop': 'red',
@@ -32,8 +29,7 @@ export function LiveToasts() {
     for (const a of alerts) {
       if (a.seq <= seenAlert.current) continue;
       seenAlert.current = a.seq;
-      const kind = LEGACY_KIND[a.kind] ?? a.kind;
-      notifications.show({ color: ALERT_COLOR[kind] ?? 'gray', title: t(`alerts.${kind}`, { defaultValue: kind }), message: a.message, autoClose: 10_000 });
+      notifications.show({ color: ALERT_COLOR[a.kind] ?? 'gray', title: t(`alerts.${a.kind}`, { defaultValue: a.kind }), message: a.message, autoClose: 10_000 });
     }
   }, [alerts, t]);
 

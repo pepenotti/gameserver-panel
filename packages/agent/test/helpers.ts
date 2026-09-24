@@ -5,7 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RuntimeAdapter } from '@gsp/adapter-api';
 import { runtimeAdapter } from '@gsp/adapters/runtime';
-import type { AgentStatus, LaunchParams, SeqEvent } from '@gsp/shared';
+import type { PzLaunch } from '@gsp/adapter-pz/shared';
+import type { AgentStatus, SeqEvent } from '@gsp/shared';
 import { Agent } from '../src/agent';
 import type { AgentConfig } from '../src/config';
 import { EventHub } from '../src/events';
@@ -32,7 +33,7 @@ export function freePort(): Promise<number> {
   });
 }
 
-export const launch: LaunchParams = {
+export const launch: PzLaunch = {
   serverName: 'testsrv',
   adminUsername: 'admin',
   adminPassword: 'Adm1nPassw0rd!',
@@ -42,7 +43,7 @@ export const launch: LaunchParams = {
 };
 
 /** The same launch, as the panel sends it once it runs adapters. */
-export const envelope = (params: Partial<LaunchParams> = {}) => ({ adapter: 'pz', params: { ...launch, ...params } });
+export const envelope = (params: Partial<PzLaunch> = {}) => ({ adapter: 'pz', params: { ...launch, ...params } });
 
 export interface Harness {
   dir: string;

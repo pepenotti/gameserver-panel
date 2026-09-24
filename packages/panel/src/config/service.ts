@@ -396,6 +396,7 @@ export class ConfigService implements ConfigStore {
         restartKeys: f.restartKeys,
       })),
       schemas: this.d.adapter.config.schemas,
+      groups: this.d.adapter.config.groups ?? {},
       presets,
       presetFile: this.d.adapter.config.presets?.fileId ?? null,
     };

@@ -62,8 +62,9 @@ describe('GET /api/meta', () => {
       capabilities: string[];
       launch: { schema: { key: string }[]; secrets: { key: string; label: { en: string } }[] };
       backupParts: { id: string; label: { en: string; es: string } }[];
-      resets: { id: string; permission: string; removeParts: string[] }[];
-      accessLevels: string[];
+      resets: { id: string; permission: string; removeParts: string[]; options: { newSeed?: boolean; preset?: boolean } }[];
+      accessLevels: { id: string; label: { en: string; es: string } }[];
+      banTargets: string[];
       modSources: { id: string; capability: string }[];
       consoleCatalog: { name: string }[];
     };
@@ -76,11 +77,13 @@ describe('GET /api/meta', () => {
     expect(JSON.stringify(m)).not.toContain('AdminPw-123456');
     expect(m.backupParts.map((x) => x.id)).toEqual(['world', 'accounts', 'configs']);
     expect(m.resets).toEqual([
-      expect.objectContaining({ id: 'world', permission: 'reset.world', removeParts: ['world'] }),
-      expect.objectContaining({ id: 'full', permission: 'reset.full', removeParts: ['world', 'accounts'] }),
-      expect.objectContaining({ id: 'factory', permission: 'reset.factory', removeParts: ['world', 'accounts', 'configs'] }),
+      expect.objectContaining({ id: 'world', permission: 'reset.world', removeParts: ['world'], options: { newSeed: true, preset: true } }),
+      expect.objectContaining({ id: 'full', permission: 'reset.full', removeParts: ['world', 'accounts'], options: { newSeed: true, preset: true } }),
+      expect.objectContaining({ id: 'factory', permission: 'reset.factory', removeParts: ['world', 'accounts', 'configs'], options: {} }),
     ]);
-    expect(m.accessLevels).toEqual(['none', 'observer', 'gm', 'overseer', 'moderator', 'admin']);
+    expect(m.accessLevels.map((l) => l.id)).toEqual(['none', 'observer', 'gm', 'overseer', 'moderator', 'admin']);
+    expect(m.accessLevels[0]).toEqual({ id: 'none', label: { en: 'Player', es: 'Jugador' } });
+    expect(m.banTargets).toEqual(['username', 'steamId']);
     expect(m.modSources).toEqual([expect.objectContaining({ id: 'workshop', capability: 'mods:workshop' })]);
     expect(m.consoleCatalog.map((x) => x.name)).toContain('servermsg');
 

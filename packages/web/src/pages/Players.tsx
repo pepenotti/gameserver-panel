@@ -47,7 +47,7 @@ export function Players() {
   const qc = useQueryClient();
   const { can: canRole } = useSession();
   const live = useLive();
-  const { meta, has } = useMeta();
+  const { meta, has, l } = useMeta();
   const q = useQuery({ queryKey: ['players'], queryFn: () => get<PlayersResponse>('/api/players'), refetchInterval: 30_000 });
   const history = useQuery({ queryKey: ['players', 'history'], queryFn: () => get<Session[]>('/api/players/history?limit=50'), enabled: canRole('accounts.view') && has('playerHistory') });
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -65,8 +65,11 @@ export function Players() {
     whitelist: canRole('whitelist.manage') && has('whitelist'),
   };
   const anyAction = can.kick || can.ban || can.access || can.whitelist;
-  /** Access level names: the adapter gives ids only, so known ones are translated here and others shown as they are. */
-  const levelLabel = (l: string) => t(`players.levels.${l}`, { defaultValue: l });
+  /** Access level names: the adapter's, else the web's own for roles it doesn't list, else the id. */
+  const levelLabel = (id: string) => {
+    const known = levels.find((x) => x.id === id);
+    return known ? l(known.label) : t(`players.levels.${id}`, { defaultValue: id });
+  };
   const steamIds = !!q.data?.accounts?.some((a) => a.steamId);
 
   // Presence changes arrive over the websocket; refresh the lists when they do.
@@ -100,7 +103,7 @@ export function Players() {
       <Menu.Dropdown>
         {can.kick && onlineNow && <Menu.Item onClick={() => setDialog({ kind: 'kick', name, steamId })}>{t('players.kick')}</Menu.Item>}
         {can.ban && <Menu.Item onClick={() => { setBySteam(!!steamId); setDialog({ kind: 'ban', name, steamId }); }}>{t('players.ban')}</Menu.Item>}
-        {can.access && <Menu.Item onClick={() => { setLevel(levels[0] ?? null); setDialog({ kind: 'access', name }); }}>{t('players.access')}</Menu.Item>}
+        {can.access && <Menu.Item onClick={() => { setLevel(levels[0]?.id ?? null); setDialog({ kind: 'access', name }); }}>{t('players.access')}</Menu.Item>}
         {can.whitelist && (
           <Menu.Item
             color="red"
@@ -352,7 +355,7 @@ export function Players() {
             <Text size="sm" c="dimmed">
               {t('players.accessHelp')}
             </Text>
-            <Select data={levels.map((l) => ({ value: l, label: levelLabel(l) }))} value={level} onChange={(v) => v && setLevel(v)} allowDeselect={false} aria-label={t('players.access')} />
+            <Select data={levels.map((x) => ({ value: x.id, label: l(x.label) }))} value={level} onChange={(v) => v && setLevel(v)} allowDeselect={false} aria-label={t('players.access')} />
             <Button disabled={!level} onClick={() => void act(() => post('/api/players/access', { username: dialog.name, level }))}>
               {t('common.save')}
             </Button>

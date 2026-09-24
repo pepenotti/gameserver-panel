@@ -46,7 +46,7 @@ export function Dashboard() {
   const players = live.players ?? s?.players ?? null;
   const dataDisk = s?.disks[0];
   const drift = s ? Math.round((new Date(s.now).getTime() - Date.now()) / 1000) : 0;
-  // Adapter-neutral fields (M1); the legacy `gameVersion`, `installed` and `rcon` are deprecated.
+  // Adapter-neutral: what is installed and the control channel, whatever the game.
   const installed = s?.installedInfo ?? null;
   const control = s?.control;
   // The panel talks to a running game through its control channel (RCON, REST); stdin has no connection to lose.

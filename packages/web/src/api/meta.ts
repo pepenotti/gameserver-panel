@@ -64,8 +64,11 @@ export interface Meta {
   capabilities: Capability[];
   launch: { schema: OptionMeta[] };
   backupParts: { id: string; label: I18n }[];
-  resets: { id: string; label: I18n; permission: Permission; removeParts: string[] }[];
-  accessLevels: string[];
+  resets: { id: string; label: I18n; permission: Permission; removeParts: string[]; options?: { newSeed?: boolean; preset?: boolean } }[];
+  /** Lowest first. */
+  accessLevels: { id: string; label: I18n }[];
+  /** What a ban can name. */
+  banTargets?: ('username' | 'steamId' | 'ip')[];
   modSources: { id: string; capability: Capability; label: I18n }[];
   consoleCatalog: CommandDoc[];
 }

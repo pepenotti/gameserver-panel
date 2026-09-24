@@ -124,7 +124,7 @@ export class BackupFlows {
   startRestore(by: string | null, name: string, parts: BackupPart[], opts: { countdownSec: number; lang: GameLang }): OpState {
     const info = this.d.backups.get(name);
     const status = this.d.feed.status_;
-    const installedBuild = status?.installedInfo?.build ?? status?.installed?.buildId;
+    const installedBuild = status?.installedInfo?.build;
     const newerBuild = info.manifest.buildId && installedBuild && Number(info.manifest.buildId) > Number(installedBuild);
     if (newerBuild) throw new HttpError(409, 'backup-from-newer-build');
     const known = this.d.backups.parts();

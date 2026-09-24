@@ -17,8 +17,9 @@ export function metaRoutes(app: FastifyInstance, deps: Deps): void {
       // Which secrets the server needs, never their values.
       launch: { schema: a.launch.schema, secrets: (a.launch.secrets ?? []).map((s) => ({ key: s.key, label: s.label })) },
       backupParts: a.backups.parts.map((p) => ({ id: p.id, label: p.label })),
-      resets: a.resets.map((r) => ({ id: r.id, label: r.label, permission: r.permission, removeParts: r.removeParts })),
+      resets: a.resets.map((r) => ({ id: r.id, label: r.label, permission: r.permission, removeParts: r.removeParts, options: r.options ?? {} })),
       accessLevels: a.players?.accessLevels ?? [],
+      banTargets: a.players?.banTargets ?? [],
       modSources: (a.mods ?? []).map((m) => ({ id: m.id, capability: m.capability, label: m.label })),
       consoleCatalog: a.consoleCatalog ?? [],
     };

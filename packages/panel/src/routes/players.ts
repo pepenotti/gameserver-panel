@@ -76,7 +76,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     '/api/players/access',
     {
       config: { permission: 'players.accessLevel', capability: 'accessLevels' },
-      schema: { body: { type: 'object', required: ['username', 'level'], additionalProperties: false, properties: { username, level: levels.length ? { enum: [...levels] } : { type: 'string', maxLength: 32 } } } },
+      schema: { body: { type: 'object', required: ['username', 'level'], additionalProperties: false, properties: { username, level: levels.length ? { enum: levels.map((l) => l.id) } : { type: 'string', maxLength: 32 } } } },
     },
     async (req) => {
       const output = await players.setAccess(who(req), req.body.username, req.body.level);

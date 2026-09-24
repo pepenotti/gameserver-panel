@@ -102,6 +102,7 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         expect(r.removeParts.filter((x) => !parts.includes(x)), `reset ${r.id} removes unknown parts`).toEqual([]);
         expect(r.removeParts.length, `reset ${r.id} removes nothing`).toBeGreaterThan(0);
         expect(Object.keys(PERMISSIONS), `reset ${r.id} permission`).toContain(r.permission);
+        expect(Object.keys(r.options ?? {}).filter((k) => k !== 'newSeed' && k !== 'preset'), `reset ${r.id} options`).toEqual([]);
       }
     });
 
@@ -111,7 +112,10 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       for (const o of adapter.launch.schema) {
         expect(o.description.en?.trim(), `launch setting ${o.key} (en)`).toBeTruthy();
         expect(o.description.es?.trim(), `launch setting ${o.key} (es)`).toBeTruthy();
+        if (o.step !== undefined) expect(o.step, `launch setting ${o.key} step`).toBeGreaterThan(0);
+        if (o.role === 'memory') expect(o.type, `launch setting ${o.key} (memory) type`).toBe('integer');
       }
+      for (const role of ['version', 'memory'] as const) expect(adapter.launch.schema.filter((o) => o.role === role).length, `launch settings with role ${role}`).toBeLessThanOrEqual(1);
       const defaults = adapter.launch.defaults();
       expect(defaults !== null && typeof defaults === 'object', 'launch defaults are an object').toBe(true);
       expect(Object.keys(defaults as object).sort()).toEqual([...keys].sort());
@@ -178,7 +182,15 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
     it('player moderation refuses arguments the game cannot take, sending nothing', async () => {
       const p = adapter.players;
       if (!p) return;
-      if (p.accessLevels) expectUnique(p.accessLevels, 'access levels');
+      if (p.accessLevels) {
+        expectUnique(
+          p.accessLevels.map((l) => l.id),
+          'access levels',
+        );
+        for (const l of p.accessLevels) expectI18n(l.label, `access level ${l.id}`);
+      }
+      expect([...(p.banTargets ?? [])].filter((t) => !['username', 'steamId', 'ip'].includes(t)), 'ban targets').toEqual([]);
+      if (p.ban) expect(p.banTargets?.length ?? 0, 'players.ban without banTargets').toBeGreaterThan(0);
       const ctx = bareCtx(adapter, server());
       for (const bad of HOSTILE) {
         if (p.kick) await expect(p.kick(ctx, bad), `kick ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
@@ -187,7 +199,7 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         if (p.unban) await expect(p.unban(ctx, { username: bad }), `unban ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
         if (p.whitelistAdd) await expect(p.whitelistAdd(ctx, bad, 'secret-pw'), `whitelistAdd ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
         if (p.whitelistRemove) await expect(p.whitelistRemove(ctx, bad), `whitelistRemove ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.setAccess) await expect(p.setAccess(ctx, bad, p.accessLevels?.[0] ?? 'x'), `setAccess ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
+        if (p.setAccess) await expect(p.setAccess(ctx, bad, p.accessLevels?.[0]?.id ?? 'x'), `setAccess ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
       }
       if (p.ban) await expect(p.ban(ctx, {}), 'ban without a target').rejects.toBeInstanceOf(RconProtocolError);
       if (p.setAccess) await expect(p.setAccess(ctx, 'bob', 'not-a-level; quit'), 'unknown access level').rejects.toBeInstanceOf(RconProtocolError);

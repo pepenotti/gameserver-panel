@@ -13,7 +13,7 @@ export function modRoutes(app: FastifyInstance, deps: Deps): void {
   app.get('/api/mods', { config: perm }, async () => {
     await mods.importFromConfig();
     const items = await mods.items();
-    return { items, enabled: mods.enabled(), issues: mods.issues(items), lines: mods.configValues().values, gameVersion: deps.feed.status_?.gameVersion ?? null };
+    return { items, enabled: mods.enabled(), issues: mods.issues(items), lines: mods.configValues().values, gameVersion: deps.feed.status_?.installedInfo?.version ?? null };
   });
 
   app.post<{ Body: { refs: string[] } }>(

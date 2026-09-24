@@ -23,13 +23,13 @@ import type {
   VersionsResponse,
 } from '@gsp/adapter-api';
 import { buildIni, isFatal, parseAppManifest, setIniValues } from '@gsp/formats';
-import type { LaunchParams } from '@gsp/shared';
+import type { PzLaunch } from '../shared/launch';
 import { ACCOUNTS, BANS, WORKSHOP_DOWNLOAD, type ServerDbInput, type WorkshopDownloadInput } from '../shared/actions';
 import { parseLogLine, parsePlayers, PZ_PATTERNS } from '../shared/log';
 import { PZ_META } from '../shared/meta';
 
-/** Launch params the panel sends; today's `LaunchParams`. */
-export type PzLaunch = LaunchParams;
+/** Launch params the panel sends (`LaunchEnvelope.params`). */
+export type { PzLaunch };
 
 /** Steam app of the dedicated server (`PZ_APP_ID` in the agent's environment overrides it). */
 export const PZ_APP_ID = '380870';

@@ -112,7 +112,7 @@ describe('health checks', () => {
     const issues = ((await c.get('/api/mods')).json() as { issues: { kind: string; modId?: string; requires?: string }[] }).issues;
     expect(issues).toEqual(
       expect.arrayContaining([
-        { kind: 'not-b42', modId: 'TheyKnew', reason: 'no-b42-folder' },
+        { kind: 'incompatible-version', modId: 'TheyKnew', reason: 'no-matching-folder' },
         { kind: 'missing-dependency', modId: 'SkillRecoveryJournal', requires: 'ChuckleberryFinnAlertSystem', availableIn: null },
         { kind: 'missing-dependency', modId: 'SkillRecoveryJournal', requires: 'errorMagnifier', availableIn: null },
       ]),

@@ -34,24 +34,15 @@ const PZ_ONLY: [string, RegExp][] = [
   ['B42', /b42/i],
 ];
 
-/**
- * Codes the panel's HTTP API sends and the web must match until the API
- * renames them (the API is frozen during the wave): the mods issue kind
- * `not-b42` and the PZ mod scan's reason `no-b42-folder`.
- */
-const API_CODES = ['not-b42', 'no-b42-folder'];
-
 function hits(text: string): string[] {
-  let scrubbed = text;
-  for (const code of API_CODES) scrubbed = scrubbed.split(code).join('');
-  return PZ_ONLY.filter(([, re]) => re.test(scrubbed)).map(([token]) => token);
+  return PZ_ONLY.filter(([, re]) => re.test(text)).map(([token]) => token);
 }
 
 describe('game-neutral web', () => {
   it('finds the tokens it looks for', () => {
     expect(hits('Welcome to Muldraugh')).toEqual(['Muldraugh']);
     expect(hits('Build 42 (b42)')).toEqual(['B42']);
-    expect(hits("{ 'not-b42': 'x', 'no-b42-folder': 'y' }")).toEqual([]);
+    expect(hits("{ 'not-b42': 'x' }")).toEqual(['B42']);
     expect(hits('type ServerMsg = …; send `servermsg "hi"`')).toEqual(['servermsg']);
     expect(hits('server name zomboid')).toEqual(['Zomboid']);
   });
@@ -116,11 +107,13 @@ describe('capabilities', () => {
 });
 
 describe('alerts', () => {
-  it('every agent alert kind has a title (`admin-prompt` shows as the generic `blocking-prompt`)', () => {
-    const src = readFileSync(path.join(packages, 'shared', 'src', 'agent-api.ts'), 'utf8');
+  it('every agent alert kind has a title', () => {
+    // Without comments: they may hold a `;` or a quoted word.
+    const src = readFileSync(path.join(packages, 'shared', 'src', 'agent-api.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const kinds = [...(/export type AlertKind =([^;]+);/.exec(src)?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1]!);
     expect(kinds).toContain('crash');
+    expect(kinds).toContain('blocking-prompt');
     const titles = en.alerts as Record<string, string>;
-    for (const k of [...kinds.map((x) => (x === 'admin-prompt' ? 'blocking-prompt' : x)), 'blocking-prompt']) expect(titles[k], k).toBeTruthy();
+    for (const k of kinds) expect(titles[k], k).toBeTruthy();
   });
 });

@@ -336,7 +336,7 @@ describe('Steam Workshop source', () => {
     // On an older build the game loads an older folder.
     expect(await source.scan(c, '2503622437', '42.19.2')).toEqual([expect.objectContaining({ versionFolder: '42.19' })]);
     // Found in the server's own downloads; B41-only.
-    expect(await source.scan(c, '2725378876', '')).toEqual([expect.objectContaining({ modId: 'TheyKnew', compatible: false, reason: 'no-b42-folder' })]);
+    expect(await source.scan(c, '2725378876', '')).toEqual([expect.objectContaining({ modId: 'TheyKnew', compatible: false, reason: 'no-matching-folder' })]);
     expect(await source.scan(c, '2946364542', '42.20.4')).toBeNull();
     expect(await source.scan(c, '../../etc', '42.20.4')).toBeNull();
   });

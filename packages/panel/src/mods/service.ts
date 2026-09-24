@@ -33,8 +33,8 @@ export type ModIssue =
   | { kind: 'missing-dependency'; modId: string; requires: string; availableIn: string | null }
   | { kind: 'order'; modId: string; requires: string }
   | { kind: 'incompatible'; modId: string; with: string }
-  // The kind keeps the name today's web UI translates; the mod can't load on this game version.
-  | { kind: 'not-b42'; modId: string; reason: string | null }
+  // The mod can't load on the game version the server runs; `reason` is the mod source's code.
+  | { kind: 'incompatible-version'; modId: string; reason: string | null }
   | { kind: 'not-downloaded'; workshopId: string };
 
 interface Row {
@@ -103,7 +103,7 @@ export class ModsService {
   }
 
   private gameVersion(): string {
-    return this.d.feed.status_?.gameVersion ?? '';
+    return this.d.feed.status_?.installedInfo?.version ?? '';
   }
 
   private rows(): Row[] {
@@ -303,7 +303,7 @@ export class ModsService {
     for (const e of enabled) {
       const k = known.get(e.modId);
       if (!k) continue;
-      if (!k.mod.compatible) out.push({ kind: 'not-b42', modId: e.modId, reason: k.mod.reason });
+      if (!k.mod.compatible) out.push({ kind: 'incompatible-version', modId: e.modId, reason: k.mod.reason });
       for (const r of k.mod.require) {
         if (!pos.has(r)) out.push({ kind: 'missing-dependency', modId: e.modId, requires: r, availableIn: known.get(r)?.workshopId ?? null });
         else if (pos.get(r)! > pos.get(e.modId)!) out.push({ kind: 'order', modId: e.modId, requires: r });

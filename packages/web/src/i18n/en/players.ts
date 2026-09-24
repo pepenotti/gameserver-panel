@@ -13,7 +13,7 @@ export default {
   banBySteam: 'Ban their Steam account (recommended)',
   access: 'Access level',
   accessHelp: 'In-game powers. Admins can use every admin command in game.',
-  // Names for access levels the adapter lists by id only (GET /api/meta `accessLevels`);
+  // Names for the game's account roles when the adapter's access levels (GET /api/meta) don't list them;
   // an id without one here is shown as it is.
   levels: {
     none: 'Player',
