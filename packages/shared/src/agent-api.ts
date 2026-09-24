@@ -148,11 +148,6 @@ export interface CommandResponse {
   output: string | null;
 }
 
-export interface AppInfoResponse {
-  installed: { buildId: string; branch: string } | null;
-  branches: { name: string; buildId: string; timeUpdated?: number; description?: string; passwordRequired: boolean }[];
-}
-
 // ------------------------------------------------ adapter-neutral (M1, D4)
 
 /** What is installed, in any game's terms (a runtime adapter's `installed()`). */

@@ -749,12 +749,6 @@ export class Agent {
     });
   }
 
-  /** The adapter's action that runs jobs of `kind`, if any (the deprecated `/v1/steamcmd/workshop`). */
-  actionFor(kind: JobKind): string | null {
-    const actions = this.adapter.actions ?? {};
-    return Object.keys(actions).find((name) => actions[name]!.job === kind) ?? null;
-  }
-
   /** `POST /v1/actions/:name`. Actions with a job kind run as jobs, one at a time. */
   async action(name: string, input: unknown): Promise<unknown> {
     const actions = this.adapter.actions ?? {};

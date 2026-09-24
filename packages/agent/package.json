@@ -8,8 +8,12 @@
     "build": "esbuild src/main.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/agent.mjs --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\""
   },
   "dependencies": {
-    "@gsp/adapter-pz": "*",
-    "@gsp/shared": "*",
-    "@gsp/formats": "*"
+    "@gsp/adapter-api": "*",
+    "@gsp/adapters": "*",
+    "@gsp/formats": "*",
+    "@gsp/shared": "*"
+  },
+  "devDependencies": {
+    "@gsp/adapter-pz": "*"
   }
 }

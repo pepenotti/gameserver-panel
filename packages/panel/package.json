@@ -13,7 +13,6 @@
     "@fastify/static": "^10.1.4",
     "@fastify/websocket": "^11.3.1",
     "@gsp/adapter-api": "*",
-    "@gsp/adapter-pz": "*",
     "@gsp/adapters": "*",
     "@gsp/formats": "*",
     "@gsp/shared": "*",
@@ -21,6 +20,7 @@
     "fastify": "^5.12.5"
   },
   "devDependencies": {
+    "@gsp/adapter-pz": "*",
     "@types/ws": "^8.18.1"
   }
 }

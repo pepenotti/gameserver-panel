@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
-import type { AgentError as AgentErrorBody, AppInfoResponse, VersionsResponse } from '@gsp/shared';
+import type { AgentError as AgentErrorBody } from '@gsp/shared';
 import { AgentError, type Agent } from './agent';
 import type { EventHub } from './events';
 
@@ -57,18 +57,6 @@ function send(res: http.ServerResponse, status: number, body: unknown, headers: 
   const text = JSON.stringify(body ?? {});
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'content-length': Buffer.byteLength(text), ...headers });
   res.end(text);
-}
-
-/** Routes kept for the panel until it moves to the adapter-neutral ones (M1). */
-const DEPRECATED = { deprecation: 'true' };
-
-/** `/v1/steamcmd/appinfo`'s shape, from `POST /v1/versions`'s. */
-function toAppInfo(r: VersionsResponse): AppInfoResponse {
-  const i = r.installed;
-  return {
-    installed: i ? { buildId: i.build ?? '', branch: i.channel ?? '' } : null,
-    branches: r.versions.map((v) => ({ name: v.id, buildId: v.build ?? '', timeUpdated: v.timeUpdated, description: v.description, passwordRequired: v.passwordRequired ?? false })),
-  };
 }
 
 function streamEvents(req: http.IncomingMessage, res: http.ServerResponse, hub: EventHub, since: number): void {
@@ -147,18 +135,6 @@ export function createAgentServer(agent: Agent, hub: EventHub, token: string): h
             const timeoutMs = typeof body.timeoutMs === 'number' ? Math.min(Math.max(body.timeoutMs, 1_000), 600_000) : undefined;
             return send(res, 200, await agent.save(timeoutMs));
           }
-          // ---- deprecated: the stored launch picks the branch; answer 409 `no-launch` without one.
-          case 'POST /v1/steamcmd/install':
-            return send(res, 200, await agent.install({ validate: body.validate === true }, lockId), DEPRECATED);
-          case 'POST /v1/steamcmd/appinfo':
-            return send(res, 200, toAppInfo(await agent.versions()), DEPRECATED);
-          case 'POST /v1/steamcmd/workshop': {
-            const name = agent.actionFor('workshop');
-            if (!name) throw new HttpError(404, 'not-found', 'This game has no workshop');
-            const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === 'string') : [];
-            return send(res, 200, await agent.action(name, { ids }), DEPRECATED);
-          }
-          // ----
           case 'POST /v1/lock': {
             const holder = typeof body.holder === 'string' ? body.holder : '';
             const ttlMs = typeof body.ttlMs === 'number' ? body.ttlMs : 30 * 60_000;
