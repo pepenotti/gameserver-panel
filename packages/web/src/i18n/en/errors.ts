@@ -64,4 +64,10 @@ export default {
   'save-failed': 'The server did not finish saving. Check the log.',
   'unknown-reset': 'Unknown reset type.',
   'unknown-part': 'Unknown backup part.',
+  'unknown-file': 'That is not one of this server’s config files.',
+  'not-editable': 'That file cannot be edited here.',
+  'invalid-path': 'That path is not valid.',
+  stale: 'The file changed since you opened it. Reload it and make your change again.',
+  expired: 'That change is too old to apply. Make it again.',
+  'not-pending': 'That change was already applied or discarded.',
 } as const;

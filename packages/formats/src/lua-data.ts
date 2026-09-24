@@ -17,12 +17,16 @@
  */
 
 export class LuaDataError extends Error {
+  /** The message without the position, for editors that show the position themselves. */
+  readonly reason: string;
+
   constructor(
     message: string,
     readonly offset: number,
     readonly lineNumber: number,
   ) {
     super(`${message} (line ${lineNumber})`);
+    this.reason = message;
   }
 }
 
@@ -52,6 +56,12 @@ export interface LuaField {
   /** Offsets of the value's source text. */
   valueStart: number;
   valueEnd: number;
+  /** Offset of the field's first token (its key, or the value for a positional entry). */
+  start: number;
+  /** Offset just after the field's `,` or `;`, or `valueEnd` when it has none. */
+  end: number;
+  /** 1-based line of the value. */
+  line: number;
 }
 
 export interface LuaDataFile {
@@ -358,10 +368,12 @@ class Parser {
       const valueStart = this.peek().s;
       const value = this.parseValue();
       const valueEnd = value.type === 'table' ? value.end : this.toks[this.p - 1]!.e;
-      fields.push({ key, value, comments, valueStart, valueEnd });
+      const field: LuaField = { key, value, comments, valueStart, valueEnd, start: t.s, end: valueEnd, line: this.lines.at(valueStart) };
+      fields.push(field);
       const sep = this.peek();
       if (sep.t === 'sym' && (sep.v === ',' || sep.v === ';')) {
         this.next();
+        field.end = sep.e;
         continue;
       }
       if (sep.t === 'sym' && sep.v === '}') break;
@@ -451,6 +463,20 @@ export function luaNumber(n: number, like?: string): string {
 
 export type LuaEdit = string | number | boolean;
 
+/** A scalar as Lua source. */
+export function luaLiteral(v: LuaEdit): string {
+  if (typeof v === 'string') return luaString(v);
+  if (typeof v === 'number') return luaNumber(v);
+  return String(v);
+}
+
+const LUA_KEYWORDS = new Set(['and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for', 'function', 'goto', 'if', 'in', 'local', 'nil', 'not', 'or', 'repeat', 'return', 'then', 'true', 'until', 'while']);
+
+/** A table key as Lua source: `Name`, or `["any text"]`. */
+export function luaKey(key: string): string {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && !LUA_KEYWORDS.has(key) ? key : `[${luaString(key)}]`;
+}
+
 /**
  * Apply scalar edits by dotted path, replacing only each value's source text,
  * so comments and layout survive. The value keeps its original Lua type: a
@@ -473,10 +499,13 @@ export function setLuaValues(src: string, edits: Record<string, LuaEdit>): strin
       if (!Number.isFinite(n)) throw new Error(`${path} expects a number`);
       text = luaNumber(n, cur.raw);
     } else if (cur.type === 'boolean') {
-      if (typeof next !== 'boolean') throw new Error(`${path} expects true or false`);
-      text = String(next);
+      const b = next === 'true' ? true : next === 'false' ? false : next;
+      if (typeof b !== 'boolean') throw new Error(`${path} expects true or false`);
+      text = String(b);
+    } else if (cur.type === 'nil') {
+      text = luaLiteral(next);
     } else {
-      throw new Error(`${path} cannot be edited`);
+      throw new Error(`${path} is a table, not a single value`);
     }
     replacements.push({ start: field.valueStart, end: field.valueEnd, text });
   }
@@ -484,5 +513,108 @@ export function setLuaValues(src: string, edits: Record<string, LuaEdit>): strin
   let out = src;
   for (const r of replacements) out = out.slice(0, r.start) + r.text + out.slice(r.end);
   validateLuaData(out);
+  return out;
+}
+
+/** Leading whitespace of the line `offset` is on. */
+function indentAt(src: string, offset: number): string {
+  const lineStart = src.lastIndexOf('\n', offset - 1) + 1;
+  return /^[ \t]*/.exec(src.slice(lineStart))![0];
+}
+
+/** End of the line `offset` is on (before its `\r\n` or `\n`). */
+function lineEndAt(src: string, offset: number): number {
+  const nl = src.indexOf('\n', offset);
+  if (nl < 0) return src.length;
+  return src[nl - 1] === '\r' ? nl - 1 : nl;
+}
+
+/** A trailing `--` comment that ends on its own line (not a `--[[` block). */
+const isLineComment = (rest: string) => rest.startsWith('--') && !/^--\[=*\[/.test(rest);
+
+/** Add `key = <valueText>,` as the table's last field, following its layout. */
+function insertField(src: string, table: LuaTable, key: string, valueText: string): string {
+  const eol = src.includes('\r\n') ? '\r\n' : '\n';
+  const entry = `${luaKey(key)} = ${valueText},`;
+  const last = table.fields.at(-1);
+  if (!last) {
+    const open = table.start + 1;
+    const close = table.end - 1;
+    const base = indentAt(src, table.start);
+    if (src.slice(open, close).trim() === '') return `${src.slice(0, open)}${eol}${base}    ${entry}${eol}${base}${src.slice(close)}`;
+    // Only comments inside: the entry goes on its own line before the closing brace.
+    const closeLineStart = src.lastIndexOf('\n', close - 1) + 1;
+    if (src.slice(closeLineStart, close).trim() === '') return `${src.slice(0, closeLineStart)}${base}    ${entry}${eol}${src.slice(closeLineStart)}`;
+    return `${src.slice(0, close)} ${entry} ${src.slice(close)}`;
+  }
+  let out = src;
+  let at = last.end;
+  if (last.end === last.valueEnd) {
+    out = `${out.slice(0, last.valueEnd)},${out.slice(last.valueEnd)}`;
+    at = last.valueEnd + 1;
+  }
+  const lineEnd = lineEndAt(out, at);
+  const rest = out.slice(at, lineEnd).trim();
+  if (rest === '' || isLineComment(rest)) return `${out.slice(0, lineEnd)}${eol}${indentAt(out, last.start)}${entry}${out.slice(lineEnd)}`;
+  // A one-line table: stay on that line.
+  return `${out.slice(0, at)} ${entry}${out.slice(at)}`;
+}
+
+/** Add a scalar at a dotted path that doesn't exist yet, creating the tables on the way. */
+function insertPath(src: string, path: string, value: LuaEdit): string {
+  const parts = path.split('.');
+  let table = parseLuaData(src).table;
+  let i = 0;
+  for (; i < parts.length - 1; i++) {
+    const f = getField(table, parts[i]!);
+    if (!f) break;
+    if (f.value.type !== 'table') throw new Error(`${parts.slice(0, i + 1).join('.')} is not a table`);
+    table = f.value;
+  }
+  let valueText = luaLiteral(value);
+  for (let j = parts.length - 1; j > i; j--) valueText = `{ ${luaKey(parts[j]!)} = ${valueText} }`;
+  return insertField(src, table, parts[i]!, valueText);
+}
+
+/** Remove the field at a dotted path, with its own line(s) and the comment lines directly above it. */
+function removePath(src: string, path: string): string {
+  const f = getPath(parseLuaData(src).table, path);
+  if (!f) return src;
+  let from = f.start;
+  let to = f.end;
+  const lineStart = src.lastIndexOf('\n', from - 1) + 1;
+  const lineEnd = lineEndAt(src, to);
+  const rest = src.slice(to, lineEnd).trim();
+  if (src.slice(lineStart, from).trim() === '' && (rest === '' || isLineComment(rest))) {
+    from = lineStart;
+    const nl = src.indexOf('\n', to);
+    to = nl < 0 ? src.length : nl + 1;
+    for (let k = 0; k < f.comments.length && from > 0; k++) from = src.lastIndexOf('\n', from - 2) + 1;
+  } else {
+    while (src[to] === ' ' || src[to] === '\t') to++;
+  }
+  return src.slice(0, from) + src.slice(to);
+}
+
+/**
+ * Edits by dotted path that keep comments and layout: existing scalars are
+ * replaced in place (keeping their type, as `setLuaValues`), new paths are
+ * added as the last field of their table, and `null` removes a field with
+ * the comments above it. The result is checked to still be data-only.
+ */
+export function editLuaData(src: string, changes: Record<string, LuaEdit | null>): string {
+  const table = parseLuaData(src).table;
+  const sets: Record<string, LuaEdit> = {};
+  const rest: [string, LuaEdit | null][] = [];
+  for (const [path, v] of Object.entries(changes)) {
+    const f = getPath(table, path);
+    if (v !== null && f) {
+      if (f.value.type === 'table') throw new Error(`${path} is a table, not a single value`);
+      sets[path] = v;
+    } else rest.push([path, v]);
+  }
+  let out = Object.keys(sets).length ? setLuaValues(src, sets) : src;
+  for (const [path, v] of rest) out = v === null ? removePath(out, path) : insertPath(out, path, v);
+  if (rest.length) validateLuaData(out);
   return out;
 }

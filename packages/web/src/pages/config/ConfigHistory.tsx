@@ -1,52 +1,22 @@
-import { Badge, Box, Button, Group, Modal, ScrollArea, Select, Stack, Table, Text } from '@mantine/core';
-import { modals } from '@mantine/modals';
+import { Badge, Button, Group, Modal, Select, Stack, Table, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { diffLines, withContext } from '@gsp/shared';
-import { get, post } from '../../api/http';
+import { get } from '../../api/http';
 import { formatDateTime, useErrorText } from '../../lib/format';
-
-type FileKey = 'ini' | 'sandbox' | 'spawnregions' | 'spawnpoints';
+import { propose, useFileLabel, type FileDecl, type ProposalPreview } from './api';
+import { DiffView } from './DiffView';
+import { ProposalModal } from './ProposalModal';
 
 interface VersionRow {
   id: number;
-  file: FileKey;
+  file: string;
   at: string;
   username: string | null;
   note: string | null;
   size: number;
-}
-
-function Diff({ before, after }: { before: string | null; after: string }) {
-  const { t } = useTranslation();
-  const lines = useMemo(() => withContext(diffLines(before ?? '', after)), [before, after]);
-  if (!lines.some((l) => l && l.kind !== 'same')) return <Text c="dimmed">{t('config.history.noDiff')}</Text>;
-  return (
-    <ScrollArea h="60vh" type="auto">
-      <Box ff="monospace" fz={12} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {lines.map((l, i) =>
-          l === null ? (
-            <Text key={i} c="dimmed" ff="monospace" fz={12}>
-              ⋯
-            </Text>
-          ) : (
-            <div
-              key={i}
-              style={{
-                background: l.kind === 'add' ? 'rgba(64, 192, 87, 0.15)' : l.kind === 'del' ? 'rgba(250, 82, 82, 0.15)' : undefined,
-                color: l.kind === 'same' ? 'var(--mantine-color-dimmed)' : undefined,
-              }}
-            >
-              {l.kind === 'add' ? '+ ' : l.kind === 'del' ? '- ' : '  '}
-              {l.text}
-            </div>
-          ),
-        )}
-      </Box>
-    </ScrollArea>
-  );
 }
 
 /** Server-side notes are English and structured; show them in the user's language. */
@@ -61,50 +31,39 @@ function useNoteText(): (note: string | null) => string {
     if (m) return t('config.history.changed', { keys: m[1] });
     m = /^revert to version (\d+)$/.exec(note);
     if (m) return t('config.history.revertedTo', { id: m[1] });
+    m = /^preset (.+)$/.exec(note);
+    if (m) return t('config.history.preset', { name: m[1] });
     return note;
   };
 }
 
-export function ConfigHistory() {
+/** One file's versions: each one's diff against the one before, and a revert that is previewed like any change (CFG-03). */
+export function FileHistory({ fileId }: { fileId: string }) {
   const { t, i18n } = useTranslation();
   const errorText = useErrorText();
   const noteText = useNoteText();
-  const qc = useQueryClient();
-  const [file, setFile] = useState<FileKey>('ini');
   const [viewing, setViewing] = useState<number | null>(null);
-  const list = useQuery({ queryKey: ['config', 'history', file], queryFn: () => get<VersionRow[]>(`/api/config/history?file=${file}`) });
+  const [revert, setRevert] = useState<ProposalPreview | null>(null);
+  const list = useQuery({ queryKey: ['config', 'history', fileId], queryFn: () => get<VersionRow[]>(`/api/config/history?file=${encodeURIComponent(fileId)}`) });
   const version = useQuery({
     queryKey: ['config', 'version', viewing],
     queryFn: () => get<{ row: VersionRow; content: string; previous: string | null }>(`/api/config/history/${viewing}`),
     enabled: viewing !== null,
   });
+  const lines = useMemo(() => (version.data ? withContext(diffLines(version.data.previous ?? '', version.data.content)) : []), [version.data]);
 
-  const revert = (id: number) =>
-    modals.openConfirmModal({
-      title: t('config.history.revert'),
-      children: <Text size="sm">{t('config.history.revertConfirm')}</Text>,
-      labels: { confirm: t('config.history.revert'), cancel: t('common.cancel') },
-      onConfirm: () =>
-        void post(`/api/config/history/${id}/revert`).then(
-          () => {
-            notifications.show({ color: 'green', message: t('config.history.reverted') });
-            setViewing(null);
-            void qc.invalidateQueries({ queryKey: ['config'] });
-          },
-          (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }),
-        ),
-    });
+  const previewRevert = (id: number) =>
+    void propose({ fileId, revert: id }).then(
+      (p) => {
+        setViewing(null);
+        setRevert(p);
+      },
+      (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }),
+    );
 
+  if (list.error) return <Text c="red">{errorText(list.error)}</Text>;
   return (
     <Stack>
-      <Select
-        w={280}
-        label={t('config.history.file')}
-        value={file}
-        onChange={(v) => v && setFile(v as FileKey)}
-        allowDeselect={false}
-        data={(['ini', 'sandbox', 'spawnregions', 'spawnpoints'] as FileKey[]).map((k) => ({ value: k, label: t(`config.files.${k}`) }))}
-      />
       {list.data?.length === 0 ? (
         <Text c="dimmed">{t('config.history.empty')}</Text>
       ) : (
@@ -122,7 +81,13 @@ export function ConfigHistory() {
               {list.data?.map((v) => (
                 <Table.Tr key={v.id}>
                   <Table.Td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(v.at, i18n.language)}</Table.Td>
-                  <Table.Td>{v.username ?? <Badge size="xs" variant="outline" color="gray">{t('config.history.external')}</Badge>}</Table.Td>
+                  <Table.Td>
+                    {v.username ?? (
+                      <Badge size="xs" variant="outline" color="gray">
+                        {t('config.history.external')}
+                      </Badge>
+                    )}
+                  </Table.Td>
                   <Table.Td>
                     <Text size="sm" lineClamp={1}>
                       {noteText(v.note)}
@@ -142,13 +107,27 @@ export function ConfigHistory() {
       <Modal opened={viewing !== null} onClose={() => setViewing(null)} size="xl" title={version.data ? `${formatDateTime(version.data.row.at, i18n.language)} — ${noteText(version.data.row.note)}` : ''}>
         {version.data && (
           <Stack>
-            <Diff before={version.data.previous} after={version.data.content} />
+            <DiffView lines={lines} height="60vh" />
             <Group justify="flex-end">
-              <Button onClick={() => revert(version.data.row.id)}>{t('config.history.revert')}</Button>
+              <Button onClick={() => previewRevert(version.data.row.id)}>{t('config.history.revert')}</Button>
             </Group>
           </Stack>
         )}
       </Modal>
+      <ProposalModal preview={revert} title={t('config.history.revertPreview')} onClose={() => setRevert(null)} onApplied={() => setRevert(null)} />
+    </Stack>
+  );
+}
+
+/** The history tab: pick a declared file. The editor shows the history of any file it opens. */
+export function ConfigHistory({ files }: { files: FileDecl[] }) {
+  const { t } = useTranslation();
+  const fileLabel = useFileLabel();
+  const [file, setFile] = useState<string>(files[0]?.id ?? '');
+  return (
+    <Stack>
+      <Select w={280} label={t('config.history.file')} value={file} onChange={(v) => v && setFile(v)} allowDeselect={false} data={files.map((f) => ({ value: f.id, label: fileLabel(f.id) }))} />
+      {file && <FileHistory fileId={file} />}
     </Stack>
   );
 }

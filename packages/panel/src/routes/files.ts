@@ -1,20 +1,21 @@
 import type { FastifyInstance } from 'fastify';
-import { HttpError } from '../http/context';
 import type { Deps } from '../http/deps';
+import { FILE_ID } from './config';
 
 /**
- * The config-folder browser and text editor (CFG-07, CFG-08). Reserved
- * until it lands (M1-C): every call answers 501.
+ * The text editor's files (CFG-07, CFG-08): the declared config files and a
+ * tree of the adapter's editable folders, each entry editable or not with a
+ * reason, and one file's text (secrets masked). Saving goes through
+ * proposals (routes/proposals.ts).
  */
-export function fileRoutes(app: FastifyInstance, _deps: Deps): void {
-  for (const url of ['/api/files', '/api/files/*']) {
-    app.route({
-      method: ['GET', 'POST', 'PUT', 'DELETE'],
-      url,
-      config: { permission: 'config.edit' },
-      handler: async () => {
-        throw new HttpError(501, 'not-implemented');
-      },
-    });
-  }
+export function fileRoutes(app: FastifyInstance, deps: Deps): void {
+  const perm = { permission: 'config.edit' as const };
+
+  app.get('/api/config/files', { config: perm }, async () => deps.config.listFiles());
+
+  app.get<{ Querystring: { id: string } }>(
+    '/api/config/files/content',
+    { config: perm, schema: { querystring: { type: 'object', required: ['id'], properties: { id: FILE_ID } } } },
+    async (req) => deps.config.content(req.query.id),
+  );
 }
