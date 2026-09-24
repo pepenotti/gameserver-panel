@@ -114,3 +114,13 @@ describe('capabilities', () => {
     expect(supports(meta({ resets: [{ id: 'w', label: { en: 'W', es: 'W' }, permission: 'reset.world', removeParts: [] }] }), NEED_RESETS)).toBe(true);
   });
 });
+
+describe('alerts', () => {
+  it('every agent alert kind has a title (`admin-prompt` shows as the generic `blocking-prompt`)', () => {
+    const src = readFileSync(path.join(packages, 'shared', 'src', 'agent-api.ts'), 'utf8');
+    const kinds = [...(/export type AlertKind =([^;]+);/.exec(src)?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+    expect(kinds).toContain('crash');
+    const titles = en.alerts as Record<string, string>;
+    for (const k of [...kinds.map((x) => (x === 'admin-prompt' ? 'blocking-prompt' : x)), 'blocking-prompt']) expect(titles[k], k).toBeTruthy();
+  });
+});
