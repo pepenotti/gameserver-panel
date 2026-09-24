@@ -1,0 +1,144 @@
+# Project Zomboid server + management panel.
+#   node scripts/init-env.mjs     # once: creates .env with fresh secrets
+#   docker compose up -d --build
+#
+# Published ports: game UDP ${PZ_GAME_PORT}/${PZ_UDP_PORT} and the panel on
+# ${PANEL_PORT} (HTTPS). Nothing else leaves the host: RCON and the agent API
+# stay on the internal `backend` network.
+name: zomboid
+
+x-hardening: &hardening
+  restart: unless-stopped
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: "3" }
+
+services:
+  pz:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: docker/pz/Dockerfile
+    image: zomboid/pz:local
+    # Room for `save` + `quit` on a big world before Docker kills it.
+    stop_grace_period: 240s
+    environment:
+      AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}
+      PZ_GAME_PORT: ${PZ_GAME_PORT:-16261}
+      PZ_UDP_PORT: ${PZ_UDP_PORT:-16262}
+      TZ: ${TZ:-UTC}
+    ports:
+      # Same port inside and out: PZ advertises its own port to clients.
+      - "${PZ_GAME_PORT:-16261}:${PZ_GAME_PORT:-16261}/udp"
+      - "${PZ_UDP_PORT:-16262}:${PZ_UDP_PORT:-16262}/udp"
+    volumes:
+      - pz-install:/opt/pz
+      - pz-data:/data
+      - steam-home:/home/node/Steam
+    networks: [backend]
+    mem_limit: ${PZ_MEM_LIMIT:-12g}
+
+  panel:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: docker/panel/Dockerfile
+    image: zomboid/panel:local
+    read_only: true
+    tmpfs: [/tmp]
+    environment:
+      AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}
+      AGENT_URL: http://pz:8081
+      PZ_SERVER_NAME: ${PZ_SERVER_NAME:-zomboid}
+      PZ_ADMIN_PASSWORD: ${PZ_ADMIN_PASSWORD:?run node scripts/init-env.mjs first}
+      # Exactly the addresses people type; anything else is refused as cross-site.
+      PANEL_ORIGINS: https://${PANEL_HOST:-localhost}:${PANEL_PORT:-8443},https://${LAN_IP:-127.0.0.1}:${PANEL_PORT:-8443},https://localhost:${PANEL_PORT:-8443}
+      PANEL_OWNER_USERNAME: ${PANEL_OWNER_USERNAME:-}
+      PANEL_OWNER_PASSWORD: ${PANEL_OWNER_PASSWORD:-}
+      CLIENT_IP_TRUSTWORTHY: ${CLIENT_IP_TRUSTWORTHY:-false}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - panel-data:/var/lib/panel
+      - pz-data:/data
+      - pz-install:/opt/pz:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    networks: [edge, backend]
+    depends_on: [pz]
+    mem_limit: 1g
+
+  caddy:
+    <<: *hardening
+    # caddy:2-alpine plus the DuckDNS DNS provider (for PANEL_TLS=duckdns).
+    build: docker/caddy
+    image: zomboid/caddy:local
+    read_only: true
+    # The official caddy binary carries this file capability; without it in
+    # the bounding set the kernel refuses to run it at all.
+    cap_add: [NET_BIND_SERVICE]
+    environment:
+      PANEL_HOST: ${PANEL_HOST:-localhost}
+      LAN_IP: ${LAN_IP:-127.0.0.1}
+      PANEL_PORT: ${PANEL_PORT:-8443}
+      PANEL_TLS: ${PANEL_TLS:-internal}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:-}
+    ports:
+      - "${PANEL_PORT:-8443}:${PANEL_PORT:-8443}"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Holds Caddy's local CA and certificates: keep it, or every device sees a new certificate.
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+    depends_on: [panel]
+    mem_limit: 256m
+
+  # With PANEL_TLS=duckdns: keeps <DUCKDNS_SUBDOMAIN>.duckdns.org pointing at
+  # this network's public IP (an empty ip= makes DuckDNS use the caller's).
+  # Enabled by COMPOSE_PROFILES=duckdns in .env. Never prints the token.
+  duckdns:
+    <<: *hardening
+    image: alpine:3
+    profiles: [duckdns]
+    read_only: true
+    user: "65534:65534"
+    environment:
+      DUCKDNS_SUBDOMAIN: ${DUCKDNS_SUBDOMAIN:-}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:-}
+    command:
+      - sh
+      - -c
+      - |
+        last=
+        while true; do
+          r=$$(wget -qO- "https://www.duckdns.org/update?domains=$${DUCKDNS_SUBDOMAIN}&token=$${DUCKDNS_TOKEN}&ip=" 2>/dev/null) || r="no answer"
+          [ "$$r" != "$$last" ] && echo "$$(date -Iseconds) DuckDNS update for $${DUCKDNS_SUBDOMAIN}: $$r"
+          last=$$r
+          sleep 300
+        done
+    mem_limit: 32m
+
+  # Optional: a No-IP updater, for a PANEL_HOST on No-IP that nothing else
+  # keeps pointing at this network.   docker compose --profile public up -d
+  ddns:
+    <<: *hardening
+    image: ghcr.io/noipcom/noip-duc:3.1.1
+    profiles: [public]
+    environment:
+      NOIP_USERNAME: ${NOIP_USERNAME:-}
+      NOIP_PASSWORD: ${NOIP_PASSWORD:-}
+      NOIP_HOSTNAMES: ${NOIP_HOSTNAMES:-all.ddnskey.com}
+    mem_limit: 64m
+
+networks:
+  edge: {}
+  backend: {}
+
+volumes:
+  pz-install:
+  pz-data:
+  steam-home:
+  panel-data:
+  caddy-data:
+  caddy-config:

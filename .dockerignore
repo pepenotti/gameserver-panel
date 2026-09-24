@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+.git
+.env
+.env.*
+backups
+coverage
+fixtures
+docs
+*.log
+.tmp

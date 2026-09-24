@@ -1,0 +1,56 @@
+# HTTPS front door for the panel on its own port, so 80/443 stay free for
+# another web server on the same host.
+#
+# PANEL_TLS picks the certificate for PANEL_HOST:
+#   internal  Caddy's own CA signs it; browsers warn until each person accepts it.
+#   duckdns   Let's Encrypt, proven through a DuckDNS TXT record (DNS-01), so no
+#             warning. PANEL_HOST must be <name>.duckdns.org and DUCKDNS_TOKEN set.
+# The LAN IP and localhost always use the internal CA: public CAs don't issue
+# for those.
+#
+# Never add HSTS here: it would cover the whole hostname, including any other
+# site served on 443 under the same name.
+{
+	admin off
+	auto_https disable_redirects
+	skip_install_trust
+	# Clients connecting by IP send no SNI; serve them the LAN-IP certificate.
+	default_sni {$LAN_IP}
+	servers {
+		protocols h1 h2
+	}
+}
+
+(tls-internal) {
+	# By default an internal certificate lives 12 h, and a new certificate means a
+	# new warning in browsers that remember exceptions per certificate (Firefox,
+	# Safari). Signing with the 10-year root lets the certificate live ~6 months.
+	tls {
+		issuer internal {
+			lifetime 180d
+			sign_with_root
+		}
+	}
+}
+
+(tls-duckdns) {
+	tls {
+		dns duckdns {env.DUCKDNS_TOKEN}
+	}
+}
+
+(panel) {
+	encode zstd gzip
+	header -Server
+	reverse_proxy panel:8080
+}
+
+{$PANEL_HOST}:{$PANEL_PORT} {
+	import tls-{$PANEL_TLS:internal}
+	import panel
+}
+
+{$LAN_IP}:{$PANEL_PORT}, localhost:{$PANEL_PORT} {
+	import tls-internal
+	import panel
+}

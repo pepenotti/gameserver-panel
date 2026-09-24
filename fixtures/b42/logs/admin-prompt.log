@@ -1,0 +1,93 @@
+Picked up _JAVA_OPTIONS: 
+LOG  : General      f:0 st:35,338,251> SLF4J(W): No SLF4J providers were found.
+LOG  : General      f:0 st:35,338,253> SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+LOG  : General      f:0 st:35,338,253> SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+LOG  : General      f:0 st:35,338,349> Logs configuration:
+LOG  : General      f:0 st:35,338,353>      General: General
+LOG  : General      f:0 st:35,338,353>      Network: General
+LOG  : General      f:0 st:35,338,354>          Lua: General
+LOG  : General      f:0 st:35,338,355>          Mod: General
+LOG  : General      f:0 st:35,338,355>  Multiplayer: General
+LOG  : General      f:0 st:35,338,355>       Packet: Warning
+LOG  : General      f:0 st:35,338,356> NetworkFileDebug: Warning
+LOG  : General      f:0 st:35,338,356>         ZNet: Warning
+LOG  : General      f:0 st:35,338,357> DetailedInfo: Warning
+LOG  : General      f:0 st:35,338,357>    LuaObject: Warning
+LOG  : General      f:0 st:35,338,357>   GameOption: Warning
+LOG  : General      f:0 st:35,338,358>        Sound: Warning
+LOG  : General      f:0 st:35,338,358>       Zombie: Warning
+LOG  : General      f:0 st:35,338,359>       Combat: Warning
+LOG  : General      f:0 st:35,338,359>      Objects: Warning
+LOG  : General      f:0 st:35,338,360>    Fireplace: Warning
+LOG  : General      f:0 st:35,338,360>        Radio: Warning
+LOG  : General      f:0 st:35,338,361>   MapLoading: Warning
+LOG  : General      f:0 st:35,338,361>     Clothing: Warning
+LOG  : General      f:0 st:35,338,362>    Animation: Warning
+LOG  : General      f:0 st:35,338,362> AnimationDetailed: Warning
+LOG  : General      f:0 st:35,338,362> AnimationLayers: Warning
+LOG  : General      f:0 st:35,338,363>        Asset: Warning
+LOG  : General      f:0 st:35,338,363>       Script: Warning
+LOG  : General      f:0 st:35,338,363>       Shader: Warning
+LOG  : General      f:0 st:35,338,364>       Sprite: Warning
+LOG  : General      f:0 st:35,338,364>        Input: Warning
+LOG  : General      f:0 st:35,338,365>       Recipe: Warning
+LOG  : General      f:0 st:35,338,365> ActionSystem: Warning
+LOG  : General      f:0 st:35,338,365> ActionSystemEvents: Warning
+LOG  : General      f:0 st:35,338,366>    IsoRegion: Warning
+LOG  : General      f:0 st:35,338,366>       FileIO: Warning
+LOG  : General      f:0 st:35,338,366>       Damage: Warning
+LOG  : General      f:0 st:35,338,367>        Death: Warning
+LOG  : General      f:0 st:35,338,367>      Discord: Warning
+LOG  : General      f:0 st:35,338,367>    Statistic: Warning
+LOG  : General      f:0 st:35,338,368>      Vehicle: Warning
+LOG  : General      f:0 st:35,338,368>   VehicleHit: Warning
+LOG  : General      f:0 st:35,338,369>        Voice: Warning
+LOG  : General      f:0 st:35,338,369>     Checksum: Warning
+LOG  : General      f:0 st:35,338,370>       Animal: Warning
+LOG  : General      f:0 st:35,338,370>   ItemPicker: Warning
+LOG  : General      f:0 st:35,338,370>   CraftLogic: Warning
+LOG  : General      f:0 st:35,338,371>       Action: Warning
+LOG  : General      f:0 st:35,338,371>       Entity: Warning
+LOG  : General      f:0 st:35,338,372>    Lightning: Warning
+LOG  : General      f:0 st:35,338,372>      Grapple: Warning
+LOG  : General      f:0 st:35,338,372>    ExitDebug: Warning
+LOG  : General      f:0 st:35,338,373>   BodyDamage: Warning
+LOG  : General      f:0 st:35,338,373>          Xml: Warning
+LOG  : General      f:0 st:35,338,373>      Physics: Warning
+LOG  : General      f:0 st:35,338,374>   Ballistics: Warning
+LOG  : General      f:0 st:35,338,374>      Ragdoll: Warning
+LOG  : General      f:0 st:35,338,374>     PZBullet: Warning
+LOG  : General      f:0 st:35,338,375> ModelManager: Warning
+LOG  : General      f:0 st:35,338,375> LoadAnimation: Warning
+LOG  : General      f:0 st:35,338,376>         Zone: Warning
+LOG  : General      f:0 st:35,338,376>     WorldGen: Warning
+LOG  : General      f:0 st:35,338,377>     Foraging: Warning
+LOG  : General      f:0 st:35,338,377>       Saving: Warning
+LOG  : General      f:0 st:35,338,378>        Fluid: Warning
+LOG  : General      f:0 st:35,338,378>       Energy: Warning
+LOG  : General      f:0 st:35,338,378>  Translation: Warning
+LOG  : General      f:0 st:35,338,379>     Moveable: Warning
+LOG  : General      f:0 st:35,338,379>     Basement: Warning
+LOG  : General      f:0 st:35,338,379>   FallDamage: Warning
+LOG  : General      f:0 st:35,338,380>        ImGui: Warning
+LOG  : General      f:0 st:35,338,380> CharacterTrait: Warning
+LOG  : General      f:0 st:35,338,380>         ISUI: Warning
+LOG  : General      f:0 st:35,338,381> ISUIStackTrace: Warning
+LOG  : General      f:0 st:35,338,381> FaceLocationFix: Warning
+LOG  : General      f:0 st:35,338,381>      Context: Warning
+LOG  : General      f:0 st:35,338,381> AnimationRecorder: Warning
+LOG  : General      f:0 st:35,338,382>      Default: Warning
+LOG  : General      f:0 st:35,338,382> version=42.20.4 b0bbce05d5 demo=false
+LOG  : General      f:0 st:35,338,383> revision=b0bbce05d5
+LOG  : General      f:0 st:35,338,388> map_t.bin does not exist, cannot determine the server's WorldVersion.  This is ok the first time a server is started.
+LOG  : General      f:0 st:35,338,390> Loading networking libraries...
+LOG  : General      f:0 st:35,338,391> Loading RakNet64...
+LOG  : General      f:0 st:35,338,397> Loading ZNetNoSteam64...
+LOG  : General      f:0 st:35,338,419> SteamUtils started without Steam
+LOG  : General      f:0 st:35,354,115> LightingFPS set to 15
+LOG  : General      f:0 st:35,354,340> compressionElapsed=126ms, mergingElapsed=51ms
+LOG  : General      f:0 st:35,354,344> Backup made in 186 ms
+LOG  : General      f:0 st:35,354,613> User 'admin' not found, creating it 
+LOG  : General      f:0 st:35,354,613> Command line admin password: null
+LOG  : General      f:0 st:35,354,614> Enter new administrator password: 
+LOG  : General      f:0 st:35,367,571> Confirm the password: 

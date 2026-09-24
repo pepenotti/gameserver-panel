@@ -1,0 +1,16 @@
+steamcmd.sh[70]: Starting  /opt/steamcmd/linux32/steamcmd
+WARNING: setlocale('en_US.UTF-8') failed, using locale: 'C'. International characters may not work.
+Redirecting stderr to '/home/node/Steam/logs/stderr.txt'
+Logging directory: '/home/node/Steam/logs'
+[  0%] Checking for available updates...
+[----] Verifying installation...
+UpdateUI: skip show logo
+Steam Console Client (c) Valve Corporation - version 1788292693
+-- type 'quit' to exit --
+Loading Steam API...[0mOK
+[0m
+Connecting anonymously to Steam Public...[0mOK
+[0mWaiting for client config...[0mOK
+[0mWaiting for user info...[0mOK
+[0mERROR! Failed to install app '380870' (Missing configuration)
+[0mUnloading Steam API...[0mOK

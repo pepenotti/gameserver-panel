@@ -1,0 +1,23 @@
+{
+  "name": "@pz/panel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "esbuild panel=src/main.ts panelctl=src/cli/panelctl.ts --bundle --platform=node --target=node24 --format=esm --outdir=dist --out-extension:.js=.mjs --external:bufferutil --external:utf-8-validate --external:pino-pretty --banner:js=\"import{createRequire}from'node:module';const require=createRequire(import.meta.url);\""
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/multipart": "^10.1.2",
+    "@fastify/static": "^10.1.4",
+    "@fastify/websocket": "^11.3.1",
+    "@pz/formats": "*",
+    "@pz/shared": "*",
+    "croner": "^10.0.1",
+    "fastify": "^5.12.5"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
+  }
+}

@@ -1,0 +1,7269 @@
+{
+ "source": "Project Zomboid 42.20.4 (b0bbce05d5)",
+ "ini": [
+  {
+   "key": "PVP",
+   "type": "boolean",
+   "description": {
+    "en": "Players can hurt and kill other players",
+    "es": "Los jugadores pueden herir y matar a otros jugadores."
+   }
+  },
+  {
+   "key": "PVPLogToolChat",
+   "type": "boolean",
+   "description": {
+    "en": "PVP is logged to admin chat",
+    "es": "El PvP se registra en el chat de administración."
+   }
+  },
+  {
+   "key": "PVPLogToolFile",
+   "type": "boolean",
+   "description": {
+    "en": "PVP is logged to file",
+    "es": "El PvP se registra en un archivo."
+   }
+  },
+  {
+   "key": "PauseEmpty",
+   "type": "boolean",
+   "description": {
+    "en": "Game time stops when there are no players online",
+    "es": "El tiempo de juego se detiene cuando no hay jugadores conectados."
+   }
+  },
+  {
+   "key": "GlobalChat",
+   "type": "boolean",
+   "description": {
+    "en": "Toggles global chat on or off.",
+    "es": "Permitir o no el uso de /all en el chat global."
+   }
+  },
+  {
+   "key": "ChatStreams",
+   "type": "string",
+   "description": {}
+  },
+  {
+   "key": "Open",
+   "type": "boolean",
+   "description": {
+    "en": "Clients may join without already having an account in the whitelist. If set to false, administrators must manually create username/password combos.",
+    "es": "Los clientes pueden unirse sin tener ya una cuenta en la lista blanca. Si se establece en false, los administradores deben crear manualmente combinaciones de nombre de usuario y contraseña."
+   }
+  },
+  {
+   "key": "ServerWelcomeMessage",
+   "type": "string",
+   "description": {
+    "en": "The first welcome message visible in the chat panel. This will be displayed immediately after player login. you can use RGB colours to chance the colour of the welcome message. You can also use < LINE>, without the space, to create a separate lines within your text. Use: \\<RGB:1,0,0> This message will show up red!",
+    "es": "El primer mensaje de bienvenida visible en el panel de chat. Se mostrará inmediatamente después de que el jugador inicie la sesión. Puede utilizar colores RGB para cambiar el color del mensaje de bienvenida. También puede utilizar <LINE> para crear una línea separada dentro del texto. Utilice: <RGB:1,0,0> ¡Este mensaje se mostrará en rojo!"
+   }
+  },
+  {
+   "key": "DisplayUserName",
+   "type": "boolean",
+   "description": {
+    "en": "Display usernames above player's heads in-game.",
+    "es": "Mostrar nombres de usuarios encima de la cabeza del personaje en el juego."
+   }
+  },
+  {
+   "key": "ShowFirstAndLastName",
+   "type": "boolean",
+   "description": {
+    "en": "Display first & last name above player's heads.",
+    "es": "Mostrar el nombre y el apellido sobre los jugadores en lugar del nombre de usuario."
+   }
+  },
+  {
+   "key": "UsernameDisguises",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "HideDisguisedUserName",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "SwitchZombiesOwnershipEachUpdate",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "SpawnPoint",
+   "type": "string",
+   "description": {
+    "en": "Force every new player to spawn at these set x,y,z world coordinates. Find desired coordinates at map.projectzomboid.com. (Ignored when 0,0,0)",
+    "es": "Obliga a cada nuevo jugador a aparecer en estas coordenadas de mundo x,y,z establecidas. Encuentra las coordenadas deseadas en map.projectzomboid.com. (Se ignora cuando es 0,0,0)."
+   }
+  },
+  {
+   "key": "SafetySystem",
+   "type": "boolean",
+   "description": {
+    "en": "Players can enter and leave PVP on an individual basis. A player can only hurt another player when at least one of them is in PVP mode - as shown by the unobscured skull and crossbones on the left of the screen. When SafetySystem=false, players are free to hurt each other at any time if PVP is enabled.",
+    "es": "Los jugadores pueden entrar y salir del PVP de forma individual. Un jugador sólo puede herir a otro cuando al menos uno de ellos está en modo PVP, como se muestra en la calavera y los huesos cruzados no ocultos de la izquierda de la pantalla. Cuando SafetySystem=false, los jugadores son libres de herir a los demás en cualquier momento si el PVP está activado."
+   }
+  },
+  {
+   "key": "ShowSafety",
+   "type": "boolean",
+   "description": {
+    "en": "Display a skull icon over the head of players who have entered PVP mode",
+    "es": "Mostrar un icono de calavera sobre la cabeza de los jugadores que han entrado en el modo PVP."
+   }
+  },
+  {
+   "key": "SafetyToggleTimer",
+   "type": "integer",
+   "description": {
+    "en": "The time it takes for a player to enter and leave PVP mode",
+    "es": "El tiempo que tarda un jugador en entrar y salir del modo PVP."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "2"
+  },
+  {
+   "key": "SafetyCooldownTimer",
+   "type": "integer",
+   "description": {
+    "en": "The delay before a player can enter or leave PVP mode again, having recently done so",
+    "es": "La rapidez con la que un jugador puede volver a entrar o salir del modo PVP, después de haberlo hecho recientemente."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "3"
+  },
+  {
+   "key": "SafetyDisconnectDelay",
+   "type": "integer",
+   "description": {},
+   "min": 0,
+   "max": 60,
+   "default": "60"
+  },
+  {
+   "key": "SpawnItems",
+   "type": "string",
+   "description": {
+    "en": "Item types new players spawn with. Separate multiple item types with commas. Example: Base.Axe,Base.Bag_BigHikingBag",
+    "es": "Tipos de objetos con los que aparecen los nuevos jugadores. Separa varios tipos de objetos con comas. Ejemplo: Base.Axe,Base.Bag_BigHikingBag"
+   }
+  },
+  {
+   "key": "DefaultPort",
+   "type": "integer",
+   "description": {
+    "en": "Default starting port for player data. If UDP, this is this one of two ports used.",
+    "es": "Puerto inicial por defecto para los datos del jugador. Si es UDP, este es uno de los dos puertos utilizados."
+   },
+   "min": 0,
+   "max": 65535,
+   "default": "16261"
+  },
+  {
+   "key": "UDPPort",
+   "type": "integer",
+   "description": {},
+   "min": 0,
+   "max": 65535,
+   "default": "16262"
+  },
+  {
+   "key": "ResetID",
+   "type": "integer",
+   "description": {
+    "en": "Reset ID determines if the server has undergone a soft-reset. If this number does match the client, the client must create a new character. Used in conjunction with PlayerServerID. It is strongly advised that you backup these IDs somewhere",
+    "es": "El reinicio de ID determina si el servidor ha sufrido un reinicio simple. Si este número coincide con el del cliente, éste debe crear un nuevo personaje. Se utiliza junto con PlayerServerID. Se recomienda encarecidamente hacer una copia de seguridad de estos ID en algún lugar"
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "998883608"
+  },
+  {
+   "key": "Mods",
+   "type": "string",
+   "description": {
+    "en": "Enter the mod loading ID here. It can be found in \\Steam\\steamapps\\workshop\\modID\\mods\\modName\\info.txt",
+    "es": "Introduce aquí el ID de carga del mod. Puede encontrarse en \\Steam\\steamapps\\workshop\\modID\\mods\\modName\\info.txt"
+   }
+  },
+  {
+   "key": "Map",
+   "type": "string",
+   "description": {
+    "en": "Enter the foldername of the mod found in \\Steam\\steamapps\\workshop\\modID\\mods\\modName\\media\\maps\\",
+    "es": "Introduce el nombre de la carpeta del mod que se encuentra en \\Steam\\steamapps\\workshop\\modID\\mods\\modName\\media\\maps\\"
+   }
+  },
+  {
+   "key": "DoLuaChecksum",
+   "type": "boolean",
+   "description": {
+    "en": "Kick clients whose game files don't match the server's.",
+    "es": "Expulsa a los jugadores que sus archivos de juego no coinciden con los del servidor."
+   }
+  },
+  {
+   "key": "DenyLoginOnOverloadedServer",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "Public",
+   "type": "boolean",
+   "description": {
+    "en": "Shows the server on the in-game browser. (Note: Steam-enabled servers are always visible in the Steam server browser)",
+    "es": "Muestra el servidor en el navegador del juego. (Nota: los servidores habilitados para Steam siempre son visibles en el navegador de servidores de Steam)."
+   }
+  },
+  {
+   "key": "PublicName",
+   "type": "string",
+   "description": {
+    "en": "Name of the server displayed in the in-game browser and, if applicable, the Steam browser",
+    "es": "Nombre del servidor que se muestra en el navegador del juego y, en su caso, en el navegador de Steam."
+   }
+  },
+  {
+   "key": "PublicDescription",
+   "type": "string",
+   "description": {
+    "en": "Description displayed in the in-game public server browser. Typing   will create a new line in your description",
+    "es": "Descripción mostrada en el navegador del servidor público del juego. Al escribir   se creará una nueva línea en su descripción."
+   }
+  },
+  {
+   "key": "MaxPlayers",
+   "type": "integer",
+   "description": {
+    "en": "Maximum number of players that can be on the server at one time. This excludes admins. WARNING: Server player counts above 32 will potentially result in poor map streaming and desync. Please advance with caution.",
+    "es": "Número máximo de jugadores que pueden estar en el servidor al mismo tiempo. Esto no incluye a los administradores. ADVERTENCIA: Un número de jugadores superior a 32 puede provocar problemas en la carga del mapa y desincronización. Procede con precaución."
+   },
+   "min": 1,
+   "max": 254,
+   "default": "32"
+  },
+  {
+   "key": "PingLimit",
+   "type": "integer",
+   "description": {
+    "en": "Ping limit, in milliseconds, before a player is kicked from the server. (Set to 0 to disable)",
+    "es": "Límite de ping, en milisegundos, antes de que un jugador sea expulsado del servidor. (Establecer en 0 para desactivar)"
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "0"
+  },
+  {
+   "key": "SafehousePreventsLootRespawn",
+   "type": "boolean",
+   "description": {
+    "en": "Items will not respawn in buildings that players have claimed as a safehouse",
+    "es": "Los objetos no reaparecerán en edificios reclamados como refugios seguros por los jugadores."
+   }
+  },
+  {
+   "key": "DropOffWhiteListAfterDeath",
+   "type": "boolean",
+   "description": {
+    "en": "Remove player accounts from the whitelist after death. This prevents players creating a new character after death on Open=false servers",
+    "es": "Eliminar las cuentas de los jugadores de la lista blanca después de la muerte. Esto evita que los jugadores creen un nuevo personaje después de la muerte en los servidores Open=false"
+   }
+  },
+  {
+   "key": "NoFire",
+   "type": "boolean",
+   "description": {
+    "en": "All forms of fire are disabled - except for campfires",
+    "es": "Se desactivan todas las formas de fuego, excepto las hogueras"
+   }
+  },
+  {
+   "key": "AnnounceDeath",
+   "type": "boolean",
+   "description": {
+    "en": "If checked, every time a player dies a global message will be displayed in the chat",
+    "es": "Si está activado, cada vez que un jugador muera se mostrará un mensaje global en el chat."
+   }
+  },
+  {
+   "key": "AnnounceAnimalDeath",
+   "type": "boolean",
+   "description": {
+    "en": "If checked, every time an animal dies a global message will be displayed in the chat",
+    "es": "Si está activado, cada vez que muera un animal se mostrará un mensaje global en el chat."
+   }
+  },
+  {
+   "key": "SaveWorldEveryMinutes",
+   "type": "integer",
+   "description": {
+    "en": "Loaded parts of the map are saved after this set number of real-world minutes have passed. (The map is usually saved only after clients leave a loaded area)",
+    "es": "Las partes cargadas del mapa se guardan después de que haya pasado este número de minutos en el mundo real. (El mapa suele guardarse sólo cuando los clientes abandonan una zona cargada)."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "0"
+  },
+  {
+   "key": "PlayerSafehouse",
+   "type": "boolean",
+   "description": {
+    "en": "Both admins and players can claim safehouses",
+    "es": "Tanto los administradores como los jugadores pueden reclamar refugios."
+   }
+  },
+  {
+   "key": "AdminSafehouse",
+   "type": "boolean",
+   "description": {
+    "en": "Only admins can claim safehouses",
+    "es": "Sólo los administradores pueden reclamar refugios"
+   }
+  },
+  {
+   "key": "SafehouseAllowTrepass",
+   "type": "boolean",
+   "description": {
+    "en": "Allow non-members to enter a safehouse without being invited",
+    "es": "Permitir que los miembros ajenos al refugio entren en él sin ser invitados."
+   }
+  },
+  {
+   "key": "SafehouseAllowFire",
+   "type": "boolean",
+   "description": {
+    "en": "Allow fire to damage safehouses",
+    "es": "Permitir que el fuego dañe los refugios."
+   }
+  },
+  {
+   "key": "SafehouseAllowLoot",
+   "type": "boolean",
+   "description": {
+    "en": "Allow non-members to take items from safehouses",
+    "es": "Permitir que los miembros ajenos al refugio se puedan llevar objetos del mismo."
+   }
+  },
+  {
+   "key": "SafehouseAllowRespawn",
+   "type": "boolean",
+   "description": {
+    "en": "Players will respawn in a safehouse that they were a member of before they died",
+    "es": "Los jugadores reaparecerán en el refugio del que formaban parte antes de morir."
+   }
+  },
+  {
+   "key": "SafehouseDaySurvivedToClaim",
+   "type": "integer",
+   "description": {
+    "en": "Players must have survived this number of in-game days before they are allowed to claim a safehouse",
+    "es": "Los jugadores deben haber sobrevivido este número de días en el juego antes de poder reclamar un refugio."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "0"
+  },
+  {
+   "key": "SafeHouseRemovalTime",
+   "type": "integer",
+   "description": {
+    "en": "Players are automatically removed from a safehouse they have not visited for this many real-world hours",
+    "es": "Los jugadores son eliminados automáticamente de un refugio que no hayan visitado durante tantas horas del mundo real."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "144"
+  },
+  {
+   "key": "SafehouseAllowNonResidential",
+   "type": "boolean",
+   "description": {
+    "en": "Governs whether players can claim non-residential buildings.",
+    "es": "Controla si los jugadores pueden reclamar edificios no residenciales."
+   }
+  },
+  {
+   "key": "SafehouseDisableDisguises",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "MaxSafezoneSize",
+   "type": "integer",
+   "description": {},
+   "min": 0,
+   "max": 2147483647,
+   "default": "20000"
+  },
+  {
+   "key": "AllowDestructionBySledgehammer",
+   "type": "boolean",
+   "description": {
+    "en": "Allow players to destroy world objects with sledgehammers",
+    "es": "Permitir a los jugadores destruir objetos del mundo con almádenas"
+   }
+  },
+  {
+   "key": "SledgehammerOnlyInSafehouse",
+   "type": "boolean",
+   "description": {
+    "en": "Allow players to destroy world objects only in their safehouse (require AllowDestructionBySledgehammer to true).",
+    "es": "Permite a los jugadores destruir objetos del mundo sólo en su refugio (requiere que AllowDestructionBySledgehammer sea verdadero)."
+   }
+  },
+  {
+   "key": "War",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "WarStartDelay",
+   "type": "integer",
+   "description": {
+    "en": "Time in seconds before the war starts.",
+    "es": "Tiempo en segundos antes de que comience la guerra."
+   },
+   "min": 60,
+   "max": 2147483647,
+   "default": "600"
+  },
+  {
+   "key": "WarDuration",
+   "type": "integer",
+   "description": {
+    "en": "War duration in seconds.",
+    "es": "Duración de la guerra en segundos."
+   },
+   "min": 60,
+   "max": 2147483647,
+   "default": "3600"
+  },
+  {
+   "key": "WarSafehouseHitPoints",
+   "type": "integer",
+   "description": {
+    "en": "Safehouse hit points limit.",
+    "es": "Límite de puntos de impacto del refugio seguro."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "3"
+  },
+  {
+   "key": "ServerPlayerID",
+   "type": "integer",
+   "description": {
+    "en": "ServerPlayerID determines if a character is from another server, or single player. This value may be changed by soft resets. If this number does match the client, the client must create a new character. This is used in conjunction with ResetID. It is strongly advised that you backup these IDs somewhere",
+    "es": "ServerPlayerID determina si un personaje es de otro servidor, o de un solo jugador. Este valor puede cambiarse mediante reinicios simples. Si este número coincide con el cliente, el cliente debe crear un nuevo personaje. Esto se utiliza junto con ResetID. Se recomienda encarecidamente hacer una copia de seguridad de estos ID en algún lugar."
+   }
+  },
+  {
+   "key": "RCONPort",
+   "type": "integer",
+   "description": {
+    "en": "The port for the RCON (Remote Console)",
+    "es": "Puerto para el RCON (Consola remota)"
+   },
+   "min": 0,
+   "max": 65535,
+   "default": "27015"
+  },
+  {
+   "key": "RCONPassword",
+   "type": "string",
+   "description": {
+    "en": "RCON password (Pick a strong password)",
+    "es": "Contraseña del RCON (Elige una contraseña segura)"
+   }
+  },
+  {
+   "key": "DiscordEnable",
+   "type": "boolean",
+   "description": {
+    "en": "Enables global text chat integration with a Discord channel",
+    "es": "Activa la integración del chat de texto global con un canal de Discord"
+   }
+  },
+  {
+   "key": "DiscordToken",
+   "type": "string",
+   "description": {
+    "en": "Discord bot access token",
+    "es": "Token de acceso del bot de Discord"
+   }
+  },
+  {
+   "key": "DiscordChatChannel",
+   "type": "string",
+   "description": {
+    "en": "The Discord chat channel name",
+    "es": "Nombre del canal de chat de Discord."
+   }
+  },
+  {
+   "key": "DiscordLogChannel",
+   "type": "string",
+   "description": {
+    "en": "The Discord logs channel name",
+    "es": "Nombre del canal de registros de Discord."
+   }
+  },
+  {
+   "key": "DiscordCommandChannel",
+   "type": "string",
+   "description": {
+    "en": "The Discord commands channel name",
+    "es": "Nombre del canal de comandos de Discord."
+   }
+  },
+  {
+   "key": "WebhookAddress",
+   "type": "string",
+   "description": {
+    "en": "The Slack incoming webhook URL",
+    "es": "La URL del webhook entrante de Slack"
+   }
+  },
+  {
+   "key": "Password",
+   "type": "string",
+   "description": {
+    "en": "Clients must know this password to join the server. (Ignored when hosting a server via the Host button)",
+    "es": "Los clientes deben conocer esta contraseña para unirse al servidor. (Se ignora cuando se aloja un servidor mediante el botón Anfitrión)."
+   }
+  },
+  {
+   "key": "MaxAccountsPerUser",
+   "type": "integer",
+   "description": {
+    "en": "Limits the number of different accounts a single Steam user may create on this server. Ignored when using the Hosts button.",
+    "es": "Limita el número de cuentas diferentes que un solo jugador de Steam puede crear en este servidor. Se ignora cuando sea un servidor de Steam."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "0"
+  },
+  {
+   "key": "AllowCoop",
+   "type": "boolean",
+   "description": {
+    "en": "Allow co-op/splitscreen players",
+    "es": "Habilitar el modo de juego cooperativo o de pantalla dividida"
+   }
+  },
+  {
+   "key": "SleepAllowed",
+   "type": "boolean",
+   "description": {
+    "en": "Players are allowed to sleep when their survivor becomes tired, but they do not NEED to sleep",
+    "es": "Los jugadores pueden dormir cuando su superviviente esté cansado, pero no necesitan dormir."
+   }
+  },
+  {
+   "key": "SleepNeeded",
+   "type": "boolean",
+   "description": {
+    "en": "Players get tired and need to sleep. (Ignored if SleepAllowed=false)",
+    "es": "Los jugadores se cansan y necesitan dormir. (Se ignora si SleepAllowed=false)."
+   }
+  },
+  {
+   "key": "KnockedDownAllowed",
+   "type": "boolean",
+   "description": {
+    "en": "WIP: Activating this setting may cause visual desynchronization of player positions.",
+    "es": "WIP: Activar esta opción puede causar desincronización visual en la posición de los jugadores."
+   }
+  },
+  {
+   "key": "SneakModeHideFromOtherPlayers",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "UltraSpeedDoesnotAffectToAnimals",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "WorkshopItems",
+   "type": "string",
+   "description": {
+    "en": "List Workshop Mod IDs for the server to download. Each must be separated by a semicolon. Example: WorkshopItems=514427485;513111049",
+    "es": "Lista los ID de mods del Workshop que el servidor debe descargar. Cada uno debe estar separado por un punto y coma. Ejemplo: WorkshopItems=514427485;513111049"
+   }
+  },
+  {
+   "key": "SteamScoreboard",
+   "type": "boolean",
+   "description": {
+    "en": "Show Steam usernames and avatars in the Players list.",
+    "es": "Mostrar los nombres de usuario y avatares de Steam en la lista de jugadores. Puede ser true (visible para todos), false (no visible para nadie), o admin (visible sólo para los administradores)."
+   }
+  },
+  {
+   "key": "SteamVAC",
+   "type": "boolean",
+   "description": {
+    "en": "Enable the Steam VAC system",
+    "es": "Activa el sistema Steam VAC"
+   }
+  },
+  {
+   "key": "UPnP",
+   "type": "boolean",
+   "description": {
+    "en": "Attempt to configure a UPnP-enabled internet gateway to automatically setup port forwarding rules. The server will fall back to default ports if this fails",
+    "es": "Intenta configurar una puerta de enlace a internet con UPnP para que establezca automáticamente reglas de reenvío de puertos. El servidor volverá a los puertos por defecto si esto falla."
+   }
+  },
+  {
+   "key": "VoiceEnable",
+   "type": "boolean",
+   "description": {
+    "en": "VOIP is enabled when checked",
+    "es": "El VOIP está habilitado cuando está marcado."
+   }
+  },
+  {
+   "key": "VoiceMinDistance",
+   "type": "decimal",
+   "description": {
+    "en": "The minimum tile distance over which VOIP sounds can be heard.",
+    "es": "La distancia mínima en casillas a la que se puede oír el VOIP."
+   },
+   "min": 0,
+   "max": 100000,
+   "default": "10.00"
+  },
+  {
+   "key": "VoiceMaxDistance",
+   "type": "decimal",
+   "description": {
+    "en": "The maximum tile distance over which VOIP sounds can be heard.",
+    "es": "La distancia máxima en casillas a la que se puede oír el VOIP."
+   },
+   "min": 0,
+   "max": 100000,
+   "default": "100.00"
+  },
+  {
+   "key": "Voice3D",
+   "type": "boolean",
+   "description": {
+    "en": "Toggle directional audio for VOIP",
+    "es": "Activa o desactiva el audio direccional para el VOIP."
+   }
+  },
+  {
+   "key": "SpeedLimit",
+   "type": "decimal",
+   "description": {},
+   "min": 10,
+   "max": 150,
+   "default": "70.00"
+  },
+  {
+   "key": "LoginQueueEnabled",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "LoginQueueConnectTimeout",
+   "type": "integer",
+   "description": {},
+   "min": 20,
+   "max": 1200,
+   "default": "60"
+  },
+  {
+   "key": "server_browser_announced_ip",
+   "type": "string",
+   "description": {
+    "en": "Set the IP from which the server is broadcast. This is for network configurations with multiple IP addresses, such as server farms",
+    "es": "Establece la IP desde la que se anuncia el servidor. Esto es para configuraciones de red con múltiples direcciones IP, como granjas de servidores."
+   }
+  },
+  {
+   "key": "PlayerRespawnWithSelf",
+   "type": "boolean",
+   "description": {
+    "en": "Players can respawn in-game at the coordinates where they died",
+    "es": "Los jugadores pueden reaparecer en el juego en las coordenadas donde murieron."
+   }
+  },
+  {
+   "key": "PlayerRespawnWithOther",
+   "type": "boolean",
+   "description": {
+    "en": "Players can respawn in-game at a split screen / Remote Play player's location",
+    "es": "Los jugadores pueden reaparecer en el juego en la ubicación de otro jugador en pantalla dividida/Remote Play."
+   }
+  },
+  {
+   "key": "FastForwardMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "Governs how fast time passes while players sleep. Value multiplies the speed of the time that passes during sleeping.",
+    "es": "Determina qué tan rápido pasa el tiempo mientras los jugadores duermen. El valor multiplica la velocidad del tiempo durante el sueño."
+   },
+   "min": 1,
+   "max": 100,
+   "default": "40.00"
+  },
+  {
+   "key": "DisableSafehouseWhenOwnerConnected",
+   "type": "boolean",
+   "description": {
+    "en": "Safehouse acts like a normal house if an owner of the safehouse is connected (so secure when the owner is offline)",
+    "es": "El refugio actúa como una casa normal si el propietario de la casa segura está conectado (por lo que queda protegida cuando el propietario está desconectado)"
+   }
+  },
+  {
+   "key": "Faction",
+   "type": "boolean",
+   "description": {
+    "en": "Players can create factions when true",
+    "es": "Los jugadores pueden crear facciones cuando está activado."
+   }
+  },
+  {
+   "key": "FactionDaySurvivedToCreate",
+   "type": "integer",
+   "description": {
+    "en": "Players must survive this number of in-game days before being allowed to create a faction",
+    "es": "Los jugadores deben sobrevivir este número de días en el juego antes de poder crear una facción."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "0"
+  },
+  {
+   "key": "FactionPlayersRequiredForTag",
+   "type": "integer",
+   "description": {
+    "en": "Number of players required as faction members before the faction owner can create a group tag",
+    "es": "Número de jugadores necesarios como miembros de la facción antes de que el líder pueda crear una etiqueta de grupo."
+   },
+   "min": 1,
+   "max": 2147483647,
+   "default": "1"
+  },
+  {
+   "key": "DisableRadioStaff",
+   "type": "boolean",
+   "description": {
+    "en": "Disables radio transmissions from players with an access level",
+    "es": "Desactiva las transmisiones de radio de los jugadores con un nivel de acceso"
+   }
+  },
+  {
+   "key": "DisableRadioAdmin",
+   "type": "boolean",
+   "description": {
+    "en": "Disables radio transmissions from players with 'admin' access level",
+    "es": "Desactiva las transmisiones de radio de los jugadores con nivel de acceso 'admin'"
+   }
+  },
+  {
+   "key": "DisableRadioGM",
+   "type": "boolean",
+   "description": {
+    "en": "Disables radio transmissions from players with 'gm' access level",
+    "es": "Desactiva las transmisiones de radio de los jugadores con nivel de acceso 'gm'"
+   }
+  },
+  {
+   "key": "DisableRadioOverseer",
+   "type": "boolean",
+   "description": {
+    "en": "Disables radio transmissions from players with 'overseer' access level",
+    "es": "Desactiva las transmisiones de radio de los jugadores con nivel de acceso 'overseer'"
+   }
+  },
+  {
+   "key": "DisableRadioModerator",
+   "type": "boolean",
+   "description": {
+    "en": "Disables radio transmissions from players with 'moderator' access level",
+    "es": "Desactiva las transmisiones de radio de los jugadores con nivel de acceso 'moderador'"
+   }
+  },
+  {
+   "key": "DisableRadioInvisible",
+   "type": "boolean",
+   "description": {
+    "en": "Disables radio transmissions from invisible players",
+    "es": "Desactiva las transmisiones de radio de los jugadores invisibles"
+   }
+  },
+  {
+   "key": "ClientCommandFilter",
+   "type": "string",
+   "description": {
+    "en": "Semicolon-separated list of commands that will not be written to the cmd.txt server log. For example:  -vehicle. Inputting * means do NOT write any vehicle command. Inputting:  +vehicle.installPart means DO write that command",
+    "es": "Lista separada por punto y coma de los comandos que no se escribirán en el registro del servidor cmd.txt. Por ejemplo:  -vehicle. Introducir * significa NO escribir ningún comando de vehículo. Introduciendo:  +vehicle.installPart significa que SI se escribe ese comando"
+   }
+  },
+  {
+   "key": "ClientActionLogs",
+   "type": "string",
+   "description": {
+    "en": "Semicolon-separated list of actions that will be written to the ClientActionLogs.txt server log.",
+    "es": "Lista separada por punto y coma de las acciones que se escribirán en el registro del servidor ClientActionLogs.txt."
+   }
+  },
+  {
+   "key": "PerkLogs",
+   "type": "boolean",
+   "description": {
+    "en": "Track changes in player perk levels in PerkLog.txt server log",
+    "es": "Seguimiento de los cambios en los niveles de habilidades de los jugadores en el registro del servidor PerkLog.txt"
+   }
+  },
+  {
+   "key": "ItemNumbersLimitPerContainer",
+   "type": "integer",
+   "description": {
+    "en": "Maximum number of items that can be placed in a container.  Zero means there is no limit. (PLEASE NOTE: This includes individual small items such as nails. A limit of 50 will mean only 50 nails can be stored.)",
+    "es": "Número máximo de artículos que se pueden colocar en un contenedor.  Cero significa que no hay límite. (NOTA: Esto incluye artículos individuales pequeños como clavos. Un límite de 50 significará que sólo se pueden almacenar 50 clavos)."
+   },
+   "min": 0,
+   "max": 9000,
+   "default": "0"
+  },
+  {
+   "key": "BloodSplatLifespanDays",
+   "type": "integer",
+   "description": {
+    "en": "Number of days before old blood splats are removed. Removal happens when map chunks are loaded. Zero means they will never disappear",
+    "es": "Número de días antes de que se eliminen las manchas de sangre antiguas. La eliminación se produce cuando se cargan los trozos de mapa. Cero significa que nunca desaparecerán"
+   },
+   "min": 0,
+   "max": 365,
+   "default": "0"
+  },
+  {
+   "key": "AllowNonAsciiUsername",
+   "type": "boolean",
+   "description": {
+    "en": "Allow use of non-ASCII (cyrillic etc) characters in usernames",
+    "es": "Permitir el uso de caracteres no ASCII (cirílico, etc.) en los nombres de usuario"
+   }
+  },
+  {
+   "key": "BanKickGlobalSound",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "RemovePlayerCorpsesOnCorpseRemoval",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, when HoursForCorpseRemoval triggers, it will also remove player's corpses from the ground.",
+    "es": "Si se activa, cuando HoursForCorpseRemoval se activa, también eliminará los cadáveres de los jugadores del suelo."
+   }
+  },
+  {
+   "key": "TrashDeleteAll",
+   "type": "boolean",
+   "description": {
+    "en": "If true, player can use the \"delete all\" button on bins.",
+    "es": "Si es activado, el jugador puede utilizar el botón \"eliminar todo\" en las papeleras."
+   }
+  },
+  {
+   "key": "PVPMeleeWhileHitReaction",
+   "type": "boolean",
+   "description": {
+    "en": "If true, player can hit again when struck by another player.",
+    "es": "Si es activado, el jugador puede volver a golpear cuando es golpeado por otro jugador."
+   }
+  },
+  {
+   "key": "MouseOverToSeeDisplayName",
+   "type": "boolean",
+   "description": {
+    "en": "If true, players will have to mouse over someone to see their display name.",
+    "es": "Si está activado, los jugadores tendrán que pasar el ratón por encima de alguien para ver su nombre."
+   }
+  },
+  {
+   "key": "HidePlayersBehindYou",
+   "type": "boolean",
+   "description": {
+    "en": "If true, automatically hide the player you can't see (like zombies).",
+    "es": "Si está activado, oculta automáticamente al jugador que no puedes ver (como los zombis)."
+   }
+  },
+  {
+   "key": "PVPMeleeDamageModifier",
+   "type": "decimal",
+   "description": {
+    "en": "Damage multiplier for PVP melee attacks.",
+    "es": "Daño añadido a los ataques cuerpo a cuerpo en PVP."
+   },
+   "min": 0,
+   "max": 500,
+   "default": "30.00"
+  },
+  {
+   "key": "PVPFirearmDamageModifier",
+   "type": "decimal",
+   "description": {
+    "en": "Damage multiplier for PVP ranged attacks.",
+    "es": "Daño añadido a los ataques a distancia en PVP."
+   },
+   "min": 0,
+   "max": 500,
+   "default": "50.00"
+  },
+  {
+   "key": "CarEngineAttractionModifier",
+   "type": "decimal",
+   "description": {
+    "en": "Modify the range of zombie attraction to cars. (Lower values can help with lag.)",
+    "es": "Modifica el rango de atracción de los zombis hacia los coches. (Los valores más bajos pueden ayudar con el retraso)."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "0.50"
+  },
+  {
+   "key": "PlayerBumpPlayer",
+   "type": "boolean",
+   "description": {
+    "en": "Governs whether players bump (and knock over) other players when running through them.",
+    "es": "Controla si los jugadores chocan (y derriban) a otros jugadores cuando corren entre ellos."
+   }
+  },
+  {
+   "key": "MapRemotePlayerVisibility",
+   "type": "integer",
+   "description": {
+    "en": "Controls display of remote players on the in-game map. 1=Hidden 2=Friends 3=Friends and nearby players 4=Everyone",
+    "es": "Controla la visualización de los jugadores remotos en el mapa del juego. 1=Oculto 2=Amigos 3=Todos"
+   },
+   "min": 1,
+   "max": 4,
+   "default": "1"
+  },
+  {
+   "key": "BackupsCount",
+   "type": "integer",
+   "description": {},
+   "min": 1,
+   "max": 300,
+   "default": "5"
+  },
+  {
+   "key": "BackupsOnStart",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "BackupsOnVersionChange",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "BackupsPeriod",
+   "type": "integer",
+   "description": {},
+   "min": 0,
+   "max": 1500,
+   "default": "0"
+  },
+  {
+   "key": "DisableVehicleTowing",
+   "type": "boolean",
+   "description": {
+    "en": "Disables vehicle towing",
+    "es": "Desactiva el remolque de vehículos."
+   }
+  },
+  {
+   "key": "DisableTrailerTowing",
+   "type": "boolean",
+   "description": {
+    "en": "Disables trailer towing",
+    "es": "Desactiva el remolque de remolques."
+   }
+  },
+  {
+   "key": "DisableBurntTowing",
+   "type": "boolean",
+   "description": {
+    "en": "Disables burnt vehicle towing",
+    "es": "Desactiva el remolque de vehículos quemados."
+   }
+  },
+  {
+   "key": "BadWordListFile",
+   "type": "string",
+   "description": {
+    "en": "Path to the file with the list of words to be prohibited. Each word must be on a separate line",
+    "es": "Ruta al archivo con la lista de palabras prohibidas. Cada palabra debe estar en una línea separada"
+   }
+  },
+  {
+   "key": "GoodWordListFile",
+   "type": "string",
+   "description": {
+    "en": "Path to the file with the list of words that should be allowed, even if they contain bad word. Each word should be on a separate line.",
+    "es": "Ruta al archivo con la lista de palabras permitidas, incluso si contienen palabras prohibidas. Cada palabra debe estar en una línea separada."
+   }
+  },
+  {
+   "key": "BadWordPolicy",
+   "type": "integer",
+   "description": {
+    "en": "What to do with the sender of a bad word in the chat: 1 - ban, 2 - kick, 3 - record the violation in the database, 4 - mute",
+    "es": "Qué hacer con quien diga una mala palabra en el chat: 1 - banear, 2 - expulsar, 3 - registrar la infracción en la base de datos, 4 - silenciar"
+   }
+  },
+  {
+   "key": "BadWordReplacement",
+   "type": "string",
+   "description": {
+    "en": "The symbol or piece of text that will replace the bad word",
+    "es": "Símbolo o texto que reemplazará la palabra prohibida"
+   }
+  },
+  {
+   "key": "AntiCheatSafety",
+   "type": "integer",
+   "description": {
+    "en": "Disables safety system anti-cheat protection.",
+    "es": "Desactiva la protección anti-trampas del sistema de seguridad."
+   }
+  },
+  {
+   "key": "AntiCheatSpeed",
+   "type": "integer",
+   "description": {
+    "en": "Disables character speed anti-cheat protection.",
+    "es": "Desactiva la protección anti-trampas de velocidad del personaje."
+   }
+  },
+  {
+   "key": "AntiCheatNoClip",
+   "type": "integer",
+   "description": {
+    "en": "Disables character no-clipping anti-cheat protection.",
+    "es": "Desactiva la protección antitrampas contra no-clipping del personaje."
+   }
+  },
+  {
+   "key": "AntiCheatHit",
+   "type": "integer",
+   "description": {
+    "en": "Disables character hit anti-cheat protection.",
+    "es": "Desactiva la protección anti-trampas de golpes del personaje."
+   }
+  },
+  {
+   "key": "AntiCheatPacketException",
+   "type": "integer",
+   "description": {
+    "en": "Disables packet exception checks anti-cheat protection.",
+    "es": "Desactiva la protección antitrampas de comprobaciones de excepciones de paquetes."
+   }
+  },
+  {
+   "key": "AntiCheatPermission",
+   "type": "integer",
+   "description": {
+    "en": "Disables player permissions anti-cheat protection.",
+    "es": "Desactiva la protección anti-trampas de permisos de jugador."
+   }
+  },
+  {
+   "key": "AntiCheatXP",
+   "type": "integer",
+   "description": {
+    "en": "Disables player XP anti-cheat protection.",
+    "es": "Desactiva la protección anti-trampas de experiencia del jugador."
+   }
+  },
+  {
+   "key": "AntiCheatSafeHouse",
+   "type": "integer",
+   "description": {
+    "en": "Disables safehouse anti-cheat protection.",
+    "es": "Desactiva la protección anti-trampas de refugio seguro."
+   }
+  },
+  {
+   "key": "AntiCheatPlayer",
+   "type": "integer",
+   "description": {
+    "en": "Disables player anti-cheat protection.",
+    "es": "Desactiva la protección antitrampas del jugador."
+   }
+  },
+  {
+   "key": "AntiCheatChecksum",
+   "type": "integer",
+   "description": {
+    "en": "Disables checksum anti-cheat protection.",
+    "es": "Desactiva la protección anti-trampas de suma de comprobación."
+   }
+  },
+  {
+   "key": "MultiplayerStatisticsPeriod",
+   "type": "integer",
+   "description": {
+    "en": "Sets the multiplayer update period in seconds. Statistics is disabled if value is 0.",
+    "es": "Establece el intervalo de actualización multijugador en segundos. Las estadísticas se desactivan si el valor es 0."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "1"
+  },
+  {
+   "key": "DisableScoreboard",
+   "type": "boolean",
+   "description": {
+    "en": "Disables scoreboard.",
+    "es": "Desactiva el marcador."
+   }
+  },
+  {
+   "key": "HideAdminsInPlayerList",
+   "type": "boolean",
+   "description": {
+    "en": "Hides admins in the player list.",
+    "es": "Oculta a los administradores en la lista de jugadores."
+   }
+  },
+  {
+   "key": "MaxPacketsPerSecond",
+   "type": "integer",
+   "description": {
+    "en": "Sets the limit for processing network packets from each client on the server.",
+    "es": "Establece el límite de paquetes de red que el servidor procesa por cada cliente."
+   },
+   "min": 100,
+   "max": 1000,
+   "default": "300"
+  },
+  {
+   "key": "ShowCoordinates",
+   "type": "boolean",
+   "description": {
+    "en": "Shows player character coordinates in the lower right corner.",
+    "es": "Muestra las coordenadas del personaje del jugador en la esquina inferior derecha."
+   }
+  },
+  {
+   "key": "Seed",
+   "type": "string",
+   "description": {
+    "en": "The worldgen seed used to generate the world. If you want to change this, put a new value in and delete map_worldgen.bin in your save directory.",
+    "es": "La semilla de generación del mundo utilizada para crear el mundo. Si deseas cambiar esto, introduce un nuevo valor y elimina map_worldgen.bin en tu directorio de guardado."
+   }
+  },
+  {
+   "key": "UsePhysicsHitReaction",
+   "type": "boolean",
+   "description": {}
+  },
+  {
+   "key": "ChatMessageCharacterLimit",
+   "type": "integer",
+   "description": {},
+   "min": 64,
+   "max": 1024,
+   "default": "200"
+  },
+  {
+   "key": "ChatMessageSlowModeTime",
+   "type": "integer",
+   "description": {},
+   "min": 1,
+   "max": 30,
+   "default": "3"
+  }
+ ],
+ "sandbox": [
+  {
+   "key": "VERSION",
+   "type": "integer",
+   "description": {}
+  },
+  {
+   "key": "Zombies",
+   "type": "enum",
+   "description": {
+    "en": "Changing this also sets the \"Population Multiplier\" in Advanced Zombie Options.",
+    "es": "Cambiando esto se establece la opción avanzada \\Multiplicador de Población\\."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Insane",
+      "es": "Zombicidio"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very High",
+      "es": "Muy alto"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "None",
+      "es": "Nada"
+     }
+    }
+   ]
+  },
+  {
+   "key": "Distribution",
+   "type": "enum",
+   "description": {
+    "en": "How zombies are distributed across the map.",
+    "es": "Cómo se distribuyen los zombis en el mapa."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Urban Focused",
+      "es": "Enfoque urbano"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Uniform",
+      "es": "Uniforme"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieVoronoiNoise",
+   "type": "boolean",
+   "description": {
+    "en": "Controls whether some randomization is applied to zombie distribution.",
+    "es": "Controla si se aplica cierta aleatoriedad a la distribución de los zombis."
+   }
+  },
+  {
+   "key": "ZombieRespawn",
+   "type": "enum",
+   "description": {
+    "en": "How frequently new zombies are added to the world.",
+    "es": "La frecuencia con la que se añaden nuevos zombis al mundo."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "None",
+      "es": "Ninguno"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieMigrate",
+   "type": "boolean",
+   "description": {
+    "en": "Zombie allowed to migrate to empty cells.",
+    "es": "Permitir que los zombis migren a celdas vacías."
+   }
+  },
+  {
+   "key": "DayLength",
+   "type": "enum",
+   "description": {},
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "15 Minutes",
+      "es": "15 Minutos"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "30 Minutes",
+      "es": "30 Minutos"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "1 Hour",
+      "es": "1 Hora"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "1 Hour, 30 Minutes",
+      "es": "1 Hora, 30 Minutos"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "2 Hours",
+      "es": "2 Horas"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "3 Hours",
+      "es": "3 Horas"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "4 Hours",
+      "es": "4 Horas"
+     }
+    },
+    {
+     "value": 8,
+     "label": {
+      "en": "5 Hours",
+      "es": "5 Horas"
+     }
+    },
+    {
+     "value": 9,
+     "label": {
+      "en": "6 Hours",
+      "es": "6 Horas"
+     }
+    },
+    {
+     "value": 10,
+     "label": {
+      "en": "7 Hours",
+      "es": "7 Horas"
+     }
+    },
+    {
+     "value": 11,
+     "label": {
+      "en": "8 Hours",
+      "es": "8 Horas"
+     }
+    },
+    {
+     "value": 12,
+     "label": {
+      "en": "9 Hours",
+      "es": "9 Horas"
+     }
+    },
+    {
+     "value": 13,
+     "label": {
+      "en": "10 Hours",
+      "es": "10 Horas"
+     }
+    },
+    {
+     "value": 14,
+     "label": {
+      "en": "11 Hours",
+      "es": "11 Horas"
+     }
+    },
+    {
+     "value": 15,
+     "label": {
+      "en": "12 Hours",
+      "es": "12 Horas"
+     }
+    },
+    {
+     "value": 16,
+     "label": {
+      "en": "13 Hours",
+      "es": "13 Horas"
+     }
+    },
+    {
+     "value": 17,
+     "label": {
+      "en": "14 Hours",
+      "es": "14 Horas"
+     }
+    },
+    {
+     "value": 18,
+     "label": {
+      "en": "15 Hours",
+      "es": "15 Horas"
+     }
+    },
+    {
+     "value": 19,
+     "label": {
+      "en": "16 Hours",
+      "es": "16 Horas"
+     }
+    },
+    {
+     "value": 20,
+     "label": {
+      "en": "17 Hours",
+      "es": "17 Horas"
+     }
+    },
+    {
+     "value": 21,
+     "label": {
+      "en": "18 Hours",
+      "es": "18 Horas"
+     }
+    },
+    {
+     "value": 22,
+     "label": {
+      "en": "19 Hours",
+      "es": "19 Horas"
+     }
+    },
+    {
+     "value": 23,
+     "label": {
+      "en": "20 Hours",
+      "es": "20 Horas"
+     }
+    },
+    {
+     "value": 24,
+     "label": {
+      "en": "21 Hours",
+      "es": "21 Horas"
+     }
+    },
+    {
+     "value": 25,
+     "label": {
+      "en": "22 Hours",
+      "es": "22 Horas"
+     }
+    },
+    {
+     "value": 26,
+     "label": {
+      "en": "23 Hours",
+      "es": "23 Horas"
+     }
+    },
+    {
+     "value": 27,
+     "label": {
+      "en": "Real-time",
+      "es": "Tiempo real"
+     }
+    }
+   ]
+  },
+  {
+   "key": "StartYear",
+   "type": "integer",
+   "description": {}
+  },
+  {
+   "key": "StartMonth",
+   "type": "enum",
+   "description": {
+    "en": "Month in which the game starts.",
+    "es": "Mes en el que comienza el juego."
+   },
+   "default": "7",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "January",
+      "es": "Enero"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "February",
+      "es": "Febrero"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "March",
+      "es": "Marzo"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "April",
+      "es": "Abril"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "May",
+      "es": "Mayo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "June",
+      "es": "Junio"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "July",
+      "es": "Julio"
+     }
+    },
+    {
+     "value": 8,
+     "label": {
+      "en": "August",
+      "es": "Agosto"
+     }
+    },
+    {
+     "value": 9,
+     "label": {
+      "en": "September",
+      "es": "Septiembre"
+     }
+    },
+    {
+     "value": 10,
+     "label": {
+      "en": "October",
+      "es": "Octubre"
+     }
+    },
+    {
+     "value": 11,
+     "label": {
+      "en": "November",
+      "es": "Noviembre"
+     }
+    },
+    {
+     "value": 12,
+     "label": {
+      "en": "December",
+      "es": "Diciembre"
+     }
+    }
+   ]
+  },
+  {
+   "key": "StartDay",
+   "type": "integer",
+   "description": {
+    "en": "Day of the month in which the games starts.",
+    "es": "Día del mes en el que comienza el juego."
+   }
+  },
+  {
+   "key": "StartTime",
+   "type": "enum",
+   "description": {
+    "en": "Hour of the day in which the game starts.",
+    "es": "Hora del día en la que comienza el juego."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "7 AM",
+      "es": "7 AM"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "9 AM",
+      "es": "9 AM"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "12 PM",
+      "es": "12 PM"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "2 PM",
+      "es": "2 PM"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "5 PM",
+      "es": "5 PM"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "9 PM",
+      "es": "9 PM"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "12 AM",
+      "es": "12 AM"
+     }
+    },
+    {
+     "value": 8,
+     "label": {
+      "en": "2 AM",
+      "es": "2 AM"
+     }
+    },
+    {
+     "value": 9,
+     "label": {
+      "en": "5 AM",
+      "es": "5 AM"
+     }
+    }
+   ]
+  },
+  {
+   "key": "DayNightCycle",
+   "type": "enum",
+   "description": {
+    "en": "Whether the time of day changes naturally, or it's always day/night.",
+    "es": "Determina si la hora del día cambia de forma natural o si siempre es de día/noche."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Endless Day",
+      "es": "Día Infinito"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Endless Night",
+      "es": "Noche Infinita"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ClimateCycle",
+   "type": "enum",
+   "description": {
+    "en": "Whether weather changes or remains at a single state.",
+    "es": "Determina si el clima cambia o permanece en un solo estado."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "No Weather",
+      "es": "Sin Clima"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Endless Rain",
+      "es": "Lluvia Infinita"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Endless Storm",
+      "es": "Tormenta Infinita"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Endless Snow",
+      "es": "Nieve Infinita"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Endless Blizzard",
+      "es": "Ventisca Infinita"
+     }
+    }
+   ]
+  },
+  {
+   "key": "FogCycle",
+   "type": "enum",
+   "description": {
+    "en": "Whether fog occurs naturally, never occurs, or is always present.",
+    "es": "Determina si la niebla aparece de forma natural, nunca aparece o siempre está presente."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "No Fog",
+      "es": "Sin Niebla"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Endless Fog",
+      "es": "Niebla Infinita"
+     }
+    }
+   ]
+  },
+  {
+   "key": "WaterShut",
+   "type": "enum",
+   "description": {
+    "en": "How long after the default start date (July 9, 1993) that plumbing fixtures (eg. sinks) stop being infinite sources of water.",
+    "es": "Tiempo después de la fecha de inicio predeterminada (9 de julio de 1993) en que los grifos dejan de ser fuentes infinitas de agua."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Instant",
+      "es": "Instantáneo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "0 - 30 Days",
+      "es": "0 - 30 días"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "0 - 2 Months",
+      "es": "0 - 2 meses"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "0 - 6 Months",
+      "es": "0 - 6 meses"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "0 - 1 Year",
+      "es": "0 - 1 año"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "0 - 5 Years",
+      "es": "0 - 5 años"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "2 - 6 Months",
+      "es": "2 - 6 meses"
+     }
+    },
+    {
+     "value": 8,
+     "label": {
+      "en": "6 - 12 Months",
+      "es": "6 - 12 meses"
+     }
+    },
+    {
+     "value": 9,
+     "label": {
+      "en": "Disabled",
+      "es": "Desactivado"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ElecShut",
+   "type": "enum",
+   "description": {
+    "en": "How long after the default start date (July 9, 1993) that the world's electricity turns off for good.",
+    "es": "Tiempo después de la fecha de inicio predeterminada (9 de julio de 1993) en que la electricidad mundial se corta de forma permanente."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Instant",
+      "es": "Instantáneo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "14 - 30 Days",
+      "es": "14 - 30 días"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "14 Days - 2 Months",
+      "es": "14 días - 2 meses"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "14 Days - 6 Months",
+      "es": "14 días - 6 meses"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "14 Days - 1 Year",
+      "es": "14 días - 1 año"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "14 Days - 5 Years",
+      "es": "14 días - 5 años"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "2 - 6 Months",
+      "es": "2 - 6 meses"
+     }
+    },
+    {
+     "value": 8,
+     "label": {
+      "en": "6 - 12 Months",
+      "es": "6 - 12 meses"
+     }
+    },
+    {
+     "value": 9,
+     "label": {
+      "en": "Disabled",
+      "es": "Desactivado"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AlarmDecay",
+   "type": "enum",
+   "description": {
+    "en": "How long alarm batteries can last for after the power shuts off.",
+    "es": "Cuánto tiempo duran las baterías de alarma después de que se corta la electricidad."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Instant",
+      "es": "Instantáneo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "0 - 30 Days",
+      "es": "0 - 30 días"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "0 - 2 Months",
+      "es": "0 - 2 meses"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "0 - 6 Months",
+      "es": "0 - 6 meses"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "0 - 1 Year",
+      "es": "0 - 1 año"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "0 - 5 Years",
+      "es": "0 - 5 años"
+     }
+    }
+   ]
+  },
+  {
+   "key": "WaterShutModifier",
+   "type": "integer",
+   "description": {
+    "en": "How long after the default start date (July 9, 1993) that plumbing fixtures (eg. sinks) stop being infinite sources of water.",
+    "es": "Tiempo después de la fecha de inicio predeterminada (9 de julio de 1993) en que los grifos dejan de ser fuentes infinitas de agua."
+   },
+   "min": -1,
+   "max": 2147483647,
+   "default": "14"
+  },
+  {
+   "key": "ElecShutModifier",
+   "type": "integer",
+   "description": {
+    "en": "How long after the default start date (July 9, 1993) that the world's electricity turns off for good.",
+    "es": "Tiempo después de la fecha de inicio predeterminada (9 de julio de 1993) en que la electricidad mundial se corta de forma permanente."
+   },
+   "min": -1,
+   "max": 2147483647,
+   "default": "14"
+  },
+  {
+   "key": "AlarmDecayModifier",
+   "type": "integer",
+   "description": {
+    "en": "How long alarm batteries can last for after the power shuts off.",
+    "es": "Cuánto tiempo duran las baterías de alarma después de que se corta la electricidad."
+   },
+   "min": -1,
+   "max": 2147483647,
+   "default": "14"
+  },
+  {
+   "key": "FoodLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Any food that can rot or spoil.",
+    "es": "Cualquier alimento que pueda pudrirse o estropearse."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.80"
+  },
+  {
+   "key": "LiteratureLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "All other items that can be read, including books, fliers, and newspapers.",
+    "es": "Todos los objetos que se pueden leer, incluidos folletos."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "SkillBookLoot",
+   "type": "decimal",
+   "description": {
+    "en": "Books that provide skill XP multipliers.",
+    "es": "Libros que proporcionan multiplicadores de XP para habilidades."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "RecipeResourceLoot",
+   "type": "decimal",
+   "description": {
+    "en": "Items that teach recipes.",
+    "es": "Objetos que enseñan recetas."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "MedicalLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Medicine, bandages and first aid tools.",
+    "es": "Medicinas, vendajes y herramientas de primeros auxilios."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "SurvivalGearsLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Fishing Rods, Tents, camping gear etc.",
+    "es": "Cañas de pescar, tiendas de campaña, equipo de camping, etc."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "CannedFoodLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Canned and dried food, beverages.",
+    "es": "Comida enlatada y deshidratada, bebidas."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "WeaponLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Weapons that are not tools in other categories.",
+    "es": "Armas que no son herramientas de otras categorías."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "RangedWeaponLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Also includes weapon attachments.",
+    "es": "Incluye accesorios para armas."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "1.20"
+  },
+  {
+   "key": "AmmoLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Loose ammo, boxes and magazines.",
+    "es": "Munición suelta, cajas y cargadores."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "MechanicsLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Vehicle parts and the tools needed to install them.",
+    "es": "Piezas de vehículos y las herramientas necesarias para instalarlas."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "OtherLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Everything else. Also affects foraging for all items in Town/Road zones.",
+    "es": "Todo lo demás. También afecta la búsqueda de objetos en zonas de ciudad/carretera."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.80"
+  },
+  {
+   "key": "ClothingLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "All wearable items that are not containers.",
+    "es": "Todas las prendas que no son contenedores."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "ContainerLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Backpacks and other wearable/equippable containers, eg. cases.",
+    "es": "Mochilas y otros contenedores portátiles, como maletas."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "KeyLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Keys for buildings/cars, key rings, and locks.",
+    "es": "Llaves de edificios/autos, llaveros y cerraduras."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.40"
+  },
+  {
+   "key": "MediaLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "VHS tapes and CDs.",
+    "es": "Cintas VHS y CD."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "MementoLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Spiffo items, plushies, and other collectible keepsake items eg. Photos.",
+    "es": "Objetos de Spiffo, peluches y otros objetos coleccionables, como fotos."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "CookwareLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Items that are used in cooking, including those (eg. knives) which can be weapons. Does not include food. Includes both usable and unusable items.",
+    "es": "Artículos utilizados en la cocina, incluidos aquellos (como cuchillos) que también pueden ser armas. No incluye comida."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "MaterialLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Items and weapons that are used as ingredients for crafting or building. This is a general category that does not include items belonging to other categories such as Cookware or Medical. Does not include Tools.",
+    "es": "Artículos y armas que se utilizan como ingredientes para fabricar o construir. Esta categoría general no incluye objetos de otras categorías como utensilios de cocina o médicos."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "FarmingLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Items and weapons which are used in both animal and plant agriculture, such as Seeds, Trowels, or Shovels.",
+    "es": "Artículos y herramientas utilizadas tanto para la agricultura animal como vegetal, como semillas, palas o azadas."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "ToolLootNew",
+   "type": "decimal",
+   "description": {
+    "en": "Items and weapons which are Tools but don't fit in other categories such as Mechanics or Farming.",
+    "es": "Artículos y armas que son herramientas, pero no encajan en otras categorías como Mecánica o Agricultura."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.60"
+  },
+  {
+   "key": "RollsMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "<BHC> [!] It is recommended that you DO NOT change this. [!] <RGB:1,1,1>   Can be used to adjust the number of rolls made on loot tables when spawning loot. Will not reduce the number of rolls below 1. Can negatively affect performance if set to high values. It is highly recommended that this not be changed.",
+    "es": "<BHC> [!] Se recomienda que NO cambies esto. [!] <RGB:1,1,1>   Puede usarse para ajustar el número de tiradas realizadas en las tablas de botín al generar objetos. No reducirá el número de tiradas por debajo de 1. Puede afectar negativamente al rendimiento si se configura con valores altos. Se recomienda encarecidamente no cambiarlo."
+   },
+   "min": 0.1,
+   "max": 100,
+   "default": "1.00"
+  },
+  {
+   "key": "LootItemRemovalList",
+   "type": "string",
+   "description": {
+    "en": "A comma-separated list of item types that won't spawn as ordinary loot.",
+    "es": "Lista separada por comas de tipos de objetos que no aparecerán como botín ordinario."
+   }
+  },
+  {
+   "key": "RemoveStoryLoot",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, items on the Loot Item Removal List, or that have their rarity set to 'None', will not spawn in randomised world stories.",
+    "es": "Si está habilitado, los objetos en la lista de eliminación de botín o aquellos con rareza configurada como 'Ninguno' no aparecerán en historias aleatorias del mundo."
+   }
+  },
+  {
+   "key": "RemoveZombieLoot",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, items on the Loot Item Removal List, or that have their rarity set to 'None', will not spawn worn by, or attached to, zombies.",
+    "es": "Si está habilitado, los objetos en la lista de eliminación de botín o aquellos con rareza configurada como 'Ninguno' no aparecerán como equipamiento de zombis."
+   }
+  },
+  {
+   "key": "ZombiePopLootEffect",
+   "type": "integer",
+   "description": {
+    "en": "If greater than 0, the spawn of loot is increased relative to the number of nearby zombies,  with the effect multiplied by this number.",
+    "es": "Si es mayor que 0, la generación de botín aumenta en relación con el número de zombis cercanos, con el efecto multiplicado por este número."
+   },
+   "min": 0,
+   "max": 20,
+   "default": "0"
+  },
+  {
+   "key": "InsaneLootFactor",
+   "type": "decimal",
+   "description": {},
+   "min": 0,
+   "max": 0.2,
+   "default": "0.05"
+  },
+  {
+   "key": "ExtremeLootFactor",
+   "type": "decimal",
+   "description": {},
+   "min": 0.05,
+   "max": 0.6,
+   "default": "0.20"
+  },
+  {
+   "key": "RareLootFactor",
+   "type": "decimal",
+   "description": {},
+   "min": 0.2,
+   "max": 1,
+   "default": "0.60"
+  },
+  {
+   "key": "NormalLootFactor",
+   "type": "decimal",
+   "description": {},
+   "min": 0.6,
+   "max": 2,
+   "default": "1.00"
+  },
+  {
+   "key": "CommonLootFactor",
+   "type": "decimal",
+   "description": {},
+   "min": 1,
+   "max": 3,
+   "default": "2.00"
+  },
+  {
+   "key": "AbundantLootFactor",
+   "type": "decimal",
+   "description": {},
+   "min": 2,
+   "max": 4,
+   "default": "3.00"
+  },
+  {
+   "key": "Temperature",
+   "type": "enum",
+   "description": {
+    "en": "The global temperature.",
+    "es": "Controla la temperatura global."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Cold",
+      "es": "Mucho frío"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Cold",
+      "es": "Frío"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Hot",
+      "es": "Calor"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Hot",
+      "es": "Mucho calor"
+     }
+    }
+   ]
+  },
+  {
+   "key": "Rain",
+   "type": "enum",
+   "description": {
+    "en": "How often it rains.",
+    "es": "Controla la frecuencia de las lluvias."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Dry",
+      "es": "Muy seco"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Dry",
+      "es": "Seco"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Rainy",
+      "es": "Lluvioso"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Rainy",
+      "es": "Muy lluvioso"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ErosionSpeed",
+   "type": "enum",
+   "description": {
+    "en": "Number of days until the erosion system (which adds vines, long grass, new trees etc. to the world) will reach 100% growth.",
+    "es": "Número de días hasta el 100% de crecimiento."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Fast (20 Days)",
+      "es": "Muy rápido (20 días)"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Fast (50 Days)",
+      "es": "Rápido (50 días)"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal (100 Days)",
+      "es": "Normal (100 días)"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Slow (200 Days)",
+      "es": "Lento (200 días)"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Slow (500 Days)",
+      "es": "Muy lento (500 días)"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ErosionDays",
+   "type": "integer",
+   "description": {
+    "en": "For a custom Erosion Speed. Zero means use the Erosion Speed option. Maximum is 36,500 days (approximately 100 years).",
+    "es": "Número de días hasta el 100% de expansión. -1 significa que no hay incremento. Cero usará la opción de velocidad de erosión. Máximo 36.500 (100 años)."
+   },
+   "min": -1,
+   "max": 36500,
+   "default": "0"
+  },
+  {
+   "key": "Farming",
+   "type": "enum",
+   "description": {
+    "en": "The speed of plant growth.",
+    "es": "Controla la velocidad de crecimiento de las plantas."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy rápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "CompostTime",
+   "type": "enum",
+   "description": {
+    "en": "How long it takes for food to break down in a composter.",
+    "es": "Controla el tiempo que tardan los alimentos en descomponerse en un compostador."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "1 Week",
+      "es": "1 Semana"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "2 Weeks",
+      "es": "2 Semanas"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "3 Weeks",
+      "es": "3 Semanas"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "4 Weeks",
+      "es": "4 Semanas"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "6 Weeks",
+      "es": "6 Semanas"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "8 Weeks",
+      "es": "8 Semanas"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "10 Weeks",
+      "es": "10 Semanas"
+     }
+    },
+    {
+     "value": 8,
+     "label": {
+      "en": "12 Weeks",
+      "es": "12 Semanas"
+     }
+    }
+   ]
+  },
+  {
+   "key": "StatsDecrease",
+   "type": "enum",
+   "description": {
+    "en": "How fast the player's hunger, thirst, and fatigue will decrease.",
+    "es": "La rapidez con que disminuyen el hambre, la sed y el cansancio del personaje."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy rápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "NatureAbundance",
+   "type": "enum",
+   "description": {
+    "en": "The abundance of items found in Foraging mode.",
+    "es": "Controla la abundancia de peces y en general al rebuscar."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Poor",
+      "es": "Muy pobre"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Poor",
+      "es": "Pobre"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Abundant",
+      "es": "Abundante"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Abundant",
+      "es": "Muy abundante"
+     }
+    }
+   ]
+  },
+  {
+   "key": "Alarm",
+   "type": "enum",
+   "description": {
+    "en": "How likely the player is to activate a house alarm when breaking into a new house.",
+    "es": "Probabilidad de que el jugador active una alarma al entrar en una nueva casa."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    }
+   ]
+  },
+  {
+   "key": "LockedHouses",
+   "type": "enum",
+   "description": {
+    "en": "How frequently the doors of homes and buildings will be locked when discovered.",
+    "es": "Con qué frecuencia se encontrarán las casas y los edificios cerrados con llave."
+   },
+   "default": "6",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    }
+   ]
+  },
+  {
+   "key": "StarterKit",
+   "type": "boolean",
+   "description": {
+    "en": "Spawn with Chips, a Water Bottle, a Small Backpack, a Baseball Bat, and a Hammer.",
+    "es": "Apareces con patatas fritas, una botella de agua, una mochila escolar, un bate de béisbol y un martillo."
+   }
+  },
+  {
+   "key": "Nutrition",
+   "type": "boolean",
+   "description": {
+    "en": "Nutritional value of food affects the player's condition. Turning this off will stop the player gaining or losing weight.",
+    "es": "El valor nutricional de los alimentos afecta a la condición del jugador."
+   }
+  },
+  {
+   "key": "FoodRotSpeed",
+   "type": "enum",
+   "description": {
+    "en": "How fast that food will spoil, inside or outside of a fridge.",
+    "es": "Define lo rápido que se estropeará la comida dentro o fuera de la nevera."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy rápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "FridgeFactor",
+   "type": "enum",
+   "description": {
+    "en": "How effective a fridge will be at keeping food fresh for longer.",
+    "es": "Establece la eficacia del frigorífico."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Low",
+      "es": "Muy baja"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Baja"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alta"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very High",
+      "es": "Muy alta"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "No decay",
+      "es": "Sin deterioro"
+     }
+    }
+   ]
+  },
+  {
+   "key": "SeenHoursPreventLootRespawn",
+   "type": "integer",
+   "description": {
+    "en": "When greater than 0, loot will not respawn in zones that have been visited within this number of in-game hours.",
+    "es": "Cuando es > 0, el botín no reaparecerá en las zonas que hayan sido visitadas dentro de este número de horas de juego."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "0"
+  },
+  {
+   "key": "HoursForLootRespawn",
+   "type": "integer",
+   "description": {
+    "en": "When greater than 0, after X hours, all containers in towns and trailer parks in the world will respawn loot. To spawn loot a container must have been looted at least once. Loot respawn is not impacted by visibility or subsequent looting.",
+    "es": "Cuando es mayor que 0, después de X horas, todos los contenedores en pueblos y parques de remolques reaparecerán botín. Para generar botín, un contenedor debe haber sido saqueado al menos una vez."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "0"
+  },
+  {
+   "key": "MaxItemsForLootRespawn",
+   "type": "integer",
+   "description": {
+    "en": "Containers with a number of items greater, or equal to, this setting will not respawn.",
+    "es": "Los contenedores con un número de objetos mayor o igual a este valor no reaparecerán botín."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "5"
+  },
+  {
+   "key": "ConstructionPreventsLootRespawn",
+   "type": "boolean",
+   "description": {
+    "en": "Items will not respawn in buildings that players have barricaded or built in.",
+    "es": "Los objetos no reaparecerán en edificios que los jugadores hayan barricadeado o construido."
+   }
+  },
+  {
+   "key": "WorldItemRemovalList",
+   "type": "string",
+   "description": {
+    "en": "A comma-separated list of item types that will be removed after HoursForWorldItemRemoval hours.",
+    "es": "Lista de objetos, separados por comas, que se eliminarán después de las horas especificadas."
+   }
+  },
+  {
+   "key": "HoursForWorldItemRemoval",
+   "type": "decimal",
+   "description": {
+    "en": "Number of hours since an item was dropped on the ground before it is removed.  Items are removed the next time that part of the map is loaded.   Zero means items are not removed.",
+    "es": "Número de horas transcurridas desde que un objeto cayó al suelo antes de ser eliminado.  Los objetos se eliminan la próxima vez que se carga esa parte del mapa.  Cero significa que los objetos no se eliminan."
+   },
+   "min": 0,
+   "max": 2147483647,
+   "default": "24.00"
+  },
+  {
+   "key": "ItemRemovalListBlacklistToggle",
+   "type": "boolean",
+   "description": {
+    "en": "If true, any items *not* in WorldItemRemovalList will be removed.",
+    "es": "Si está activado, cualquier objeto que NO esté en la lista de eliminación será eliminado."
+   }
+  },
+  {
+   "key": "TimeSinceApo",
+   "type": "enum",
+   "description": {
+    "en": "How long after the end of the world to begin. This will affect starting world erosion and food spoilage. Does not affect the starting date.",
+    "es": "Afectará a la erosión inicial del mundo y al deterioro de los alimentos."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "0",
+      "es": "0"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "1",
+      "es": "1"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "2",
+      "es": "2"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "3",
+      "es": "3"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "4",
+      "es": "4"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "5",
+      "es": "5"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "6",
+      "es": "6"
+     }
+    },
+    {
+     "value": 8,
+     "label": {
+      "en": "7",
+      "es": "7"
+     }
+    },
+    {
+     "value": 9,
+     "label": {
+      "en": "8",
+      "es": "8"
+     }
+    },
+    {
+     "value": 10,
+     "label": {
+      "en": "9",
+      "es": "9"
+     }
+    },
+    {
+     "value": 11,
+     "label": {
+      "en": "10",
+      "es": "10"
+     }
+    },
+    {
+     "value": 12,
+     "label": {
+      "en": "11",
+      "es": "11"
+     }
+    },
+    {
+     "value": 13,
+     "label": {
+      "en": "12",
+      "es": "12"
+     }
+    }
+   ]
+  },
+  {
+   "key": "PlantResilience",
+   "type": "enum",
+   "description": {
+    "en": "How much water plants will lose per day, and their ability to avoid disease.",
+    "es": "Influirá en la cantidad de agua que la planta perderá por día y en su capacidad para evitar enfermedades."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very High",
+      "es": "Muy alto"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Low",
+      "es": "Muy bajo"
+     }
+    }
+   ]
+  },
+  {
+   "key": "PlantAbundance",
+   "type": "enum",
+   "description": {
+    "en": "The yield of plants when harvested.",
+    "es": "Controla la producción de las plantas cuando se cosechan."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Poor",
+      "es": "Muy Pobre"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Poor",
+      "es": "Pobre"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Abundant",
+      "es": "Abundante"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Abundant",
+      "es": "Muy Abundante"
+     }
+    }
+   ]
+  },
+  {
+   "key": "EndRegen",
+   "type": "enum",
+   "description": {
+    "en": "Recovery from being tired after performing actions.",
+    "es": "Recuperación del cansancio por realizar acciones"
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy rápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "Helicopter",
+   "type": "enum",
+   "description": {
+    "en": "How regularly a helicopter passes over the Event Zone.",
+    "es": "Con qué frecuencia pasan los helicópteros por la zona de eventos."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Once",
+      "es": "Una vez"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    }
+   ]
+  },
+  {
+   "key": "MetaEvent",
+   "type": "enum",
+   "description": {
+    "en": "How often zombie-attracting metagame events like distant gunshots will occur.",
+    "es": "Con qué frecuencia se producirán eventos que atraigan a los zombis, como disparos lejanos."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    }
+   ]
+  },
+  {
+   "key": "SleepingEvent",
+   "type": "enum",
+   "description": {
+    "en": "How often events during the player's sleep, like nightmares, occur.",
+    "es": "Regula los eventos nocturnos mientras el personaje duerme."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    }
+   ]
+  },
+  {
+   "key": "GeneratorFuelConsumption",
+   "type": "decimal",
+   "description": {
+    "en": "How much fuel is consumed by generators per in-game hour.",
+    "es": "Cuánto combustible se consume por hora de juego."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "0.10"
+  },
+  {
+   "key": "GeneratorSpawning",
+   "type": "enum",
+   "description": {
+    "en": "The chance of electrical generators spawning on the map.",
+    "es": "Aumenta o disminuye la probabilidad de aparición en el mapa de generadores eléctricos."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "None (not recommended)",
+      "es": "Ninguno (no recomendado)"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Insanely Rare",
+      "es": "Extremadamente Raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Common",
+      "es": "Común"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "Abundant",
+      "es": "Abundante"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnnotatedMapChance",
+   "type": "enum",
+   "description": {
+    "en": "How often a looted map will have notes on it, written by a deceased survivor.",
+    "es": "Determina la frecuencia con la que un mapa puede tener anotaciones de un superviviente muerto."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    }
+   ]
+  },
+  {
+   "key": "CharacterFreePoints",
+   "type": "integer",
+   "description": {
+    "en": "Adds free points during character creation.",
+    "es": "Añade puntos gratis durante la creación del personaje."
+   },
+   "min": -100,
+   "max": 100,
+   "default": "0"
+  },
+  {
+   "key": "ConstructionBonusPoints",
+   "type": "enum",
+   "description": {
+    "en": "Gives player-built constructions extra hit points so they are  more resistant to zombie damage.",
+    "es": "Proporciona a las construcciones creadas por los jugadores puntos de impacto adicionales para que sean más resistentes al daño de los zombis."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Low",
+      "es": "Muy bajo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very High",
+      "es": "Muy alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "NightDarkness",
+   "type": "enum",
+   "description": {
+    "en": "The level of ambient lighting at night.",
+    "es": "Controla la iluminación ambiental por la noche."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Pitch Black",
+      "es": "Noche cerrada"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Dark",
+      "es": "Oscuro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Bright",
+      "es": "Claro"
+     }
+    }
+   ]
+  },
+  {
+   "key": "NightLength",
+   "type": "enum",
+   "description": {
+    "en": "The time from dusk to dawn.",
+    "es": "Controla el tiempo desde el atardecer hasta el amanecer."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Always Night",
+      "es": "Siempre de noche"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Long",
+      "es": "Largo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Short",
+      "es": "Corto"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Always Day",
+      "es": "Siempre de día"
+     }
+    }
+   ]
+  },
+  {
+   "key": "BoneFracture",
+   "type": "boolean",
+   "description": {
+    "en": "If survivors can get broken limbs from impacts, zombie damage, falls etc.",
+    "es": "Habilita o deshabilita la posibilidad de fracturas óseas cuando los personajes sufren lesiones por impactos, daños por zombis o caídas."
+   }
+  },
+  {
+   "key": "InjurySeverity",
+   "type": "enum",
+   "description": {
+    "en": "The impact that injuries have on your body, and their healing time.",
+    "es": "Aumenta o disminuye el impacto de las lesiones en tu cuerpo, así como el tiempo de curación."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "HoursForCorpseRemoval",
+   "type": "decimal",
+   "description": {
+    "en": "How long, in hours, before dead zombie bodies disappear from the world.  If 0, maggots will not spawn on corpses.",
+    "es": "Cuánto tiempo antes de que desaparezcan los cuerpos de los zombis."
+   },
+   "min": -1,
+   "max": 2147483647,
+   "default": "216.00"
+  },
+  {
+   "key": "DecayingCorpseHealthImpact",
+   "type": "enum",
+   "description": {
+    "en": "The impact that nearby decaying bodies has on the player's health and emotions.",
+    "es": "Ajusta el impacto que tendrá en la salud y las emociones del personaje los cadáveres en descomposición cercanos a él."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "None",
+      "es": "Ninguno"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Insane",
+      "es": "Insano"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieHealthImpact",
+   "type": "boolean",
+   "description": {
+    "en": "Whether nearby \"living\" zombies have the same impact on the player's health and emotions.",
+    "es": "Si los zombis \"vivos\" cercanos tienen el mismo impacto en la salud y emociones del jugador."
+   }
+  },
+  {
+   "key": "BloodLevel",
+   "type": "enum",
+   "description": {
+    "en": "How much blood is sprayed on floors and walls by injuries.",
+    "es": "La cantidad de sangre que salpica el suelo y las paredes."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "None",
+      "es": "Ninguno"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Ultra Gore",
+      "es": "Sangriento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ClothingDegradation",
+   "type": "enum",
+   "description": {
+    "en": "How quickly clothing degrades, becomes dirty, and bloodied.",
+    "es": "Controla la rapidez con la que la ropa se deteriora, se ensucia y se llena de sangre."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Disabled",
+      "es": "Deshabilitado"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    }
+   ]
+  },
+  {
+   "key": "FireSpread",
+   "type": "boolean",
+   "description": {
+    "en": "If fires spread when started.",
+    "es": "Si los incendios se propagan cuando se inician."
+   }
+  },
+  {
+   "key": "DaysForRottenFoodRemoval",
+   "type": "integer",
+   "description": {
+    "en": "Number of in-game days before rotten food is removed from the map.  -1 means rotten food is never removed.",
+    "es": "Número de días de juego antes de que los alimentos podridos sean retirados del mapa. -1 significa que los alimentos podridos nunca se eliminan."
+   },
+   "min": -1,
+   "max": 2147483647,
+   "default": "-1"
+  },
+  {
+   "key": "AllowExteriorGenerator",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, generators will work on exterior tiles.  This will allow, for example, the powering of gas pumps.",
+    "es": "Si está activado, los generadores funcionarán en el exterior, permitiendo por ejemplo, alimentar gasolineras."
+   }
+  },
+  {
+   "key": "MaxFogIntensity",
+   "type": "enum",
+   "description": {
+    "en": "Maximum intensity of fog.",
+    "es": "Controla la intensidad máxima de la niebla."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Moderate",
+      "es": "Moderada"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Low",
+      "es": "Baja"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "None",
+      "es": "Ninguna"
+     }
+    }
+   ]
+  },
+  {
+   "key": "MaxRainFxIntensity",
+   "type": "enum",
+   "description": {
+    "en": "Maximum intensity of rain.",
+    "es": "Controla la intensidad máxima de la lluvia."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Moderate",
+      "es": "Moderado"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    }
+   ]
+  },
+  {
+   "key": "EnableSnowOnGround",
+   "type": "boolean",
+   "description": {
+    "en": "If snow will accumulate on the ground.  If disabled, snow will still show on vegetation and rooftops.",
+    "es": "Si está desactivado, la nieve no se acumulará en el suelo, pero seguirá siendo visible en la vegetación y en los tejados."
+   }
+  },
+  {
+   "key": "AttackBlockMovements",
+   "type": "boolean",
+   "description": {
+    "en": "If melee attacking slows you down.",
+    "es": "Desactivar para caminar sin problemas al atacar cuerpo a cuerpo."
+   }
+  },
+  {
+   "key": "SurvivorHouseChance",
+   "type": "enum",
+   "description": {
+    "en": "The chance of finding randomized buildings on the map (eg. burnt out houses,  ones containing loot stashes or dead bodies).",
+    "es": "Aumentar/disminuir la probabilidad de descubrir refugios aleatorios en el mapa: ya sea quemados, que contengan reservas secretas, cadáveres de supervivientes, etc."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "Always Tries",
+      "es": "Siempre Intenta"
+     }
+    }
+   ]
+  },
+  {
+   "key": "VehicleStoryChance",
+   "type": "enum",
+   "description": {
+    "en": "The chance of road stories (eg. police roadblocks) spawning.",
+    "es": "La probabilidad de que aparezcan historias en la carretera (por ejemplo, bloqueos policiales)."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "Always Tries",
+      "es": "Siempre Intenta"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZoneStoryChance",
+   "type": "enum",
+   "description": {
+    "en": "The chance of stories specific to map zones (eg. a campsite in a forest) spawning.",
+    "es": "La probabilidad de que aparezcan historias específicas de zonas del mapa (por ejemplo, un campamento en un bosque)."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "Always Tries",
+      "es": "Siempre Intenta"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AllClothesUnlocked",
+   "type": "boolean",
+   "description": {
+    "en": "Allows you to select from every piece of clothing in the game when customizing your character",
+    "es": "Permite seleccionar cualquier prenda de ropa del juego al personalizar el personaje."
+   }
+  },
+  {
+   "key": "EnableTaintedWaterText",
+   "type": "boolean",
+   "description": {
+    "en": "If tainted water will show a warning marking it as such.",
+    "es": "Si está desactivado, no habrá una advertencia que indique que el agua está contaminada."
+   }
+  },
+  {
+   "key": "EnableVehicles",
+   "type": "boolean",
+   "description": {
+    "en": "If vehicles will spawn.",
+    "es": "Permite la aparición de vehículos."
+   }
+  },
+  {
+   "key": "CarSpawnRate",
+   "type": "enum",
+   "description": {
+    "en": "How frequently vehicles can be discovered on the map.",
+    "es": "Regula la frecuencia con la que se encuentran los coches en el mapa."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "None",
+      "es": "Ninguno"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very Low",
+      "es": "Muy bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieAttractionMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "General engine loudness to zombies.",
+    "es": "Se usa para multiplicar o reducir el volumen general del motor."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "1.00"
+  },
+  {
+   "key": "VehicleEasyUse",
+   "type": "boolean",
+   "description": {
+    "en": "Whether found vehicles are locked, need keys to start etc.",
+    "es": "Controla si los coches están cerrados, necesitan llaves para arrancar, etc."
+   }
+  },
+  {
+   "key": "InitialGas",
+   "type": "enum",
+   "description": {
+    "en": "How full the gas tank of discovered vehicles will be.",
+    "es": "Determina qué tan llenos estarán los tanques de gasolina en los vehículos encontrados."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Low",
+      "es": "Muy bajo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very High",
+      "es": "Muy alto"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Full",
+      "es": "Lleno"
+     }
+    }
+   ]
+  },
+  {
+   "key": "FuelStationGasInfinite",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, gas pumps will never run out of fuel",
+    "es": "Si está habilitado, las bombas de gasolina nunca se quedarán sin combustible."
+   }
+  },
+  {
+   "key": "FuelStationGasMin",
+   "type": "decimal",
+   "description": {
+    "en": "The minimum amount of gasoline that can spawn in gas pumps. Check the \"Advanced\" box below to use a custom amount.",
+    "es": "La cantidad mínima de gasolina que puede aparecer en las bombas de gasolina. Marca la casilla \"Avanzado\" para usar una cantidad personalizada."
+   },
+   "min": 0,
+   "max": 1,
+   "default": "0.00"
+  },
+  {
+   "key": "FuelStationGasMax",
+   "type": "decimal",
+   "description": {
+    "en": "The maximum amount of gasoline that can spawn in gas pumps. Check the \"Advanced\" box below to use a custom amount.",
+    "es": "La cantidad máxima de gasolina que puede aparecer en las bombas de gasolina. Marca la casilla \"Avanzado\" para usar una cantidad personalizada."
+   },
+   "min": 0,
+   "max": 1,
+   "default": "0.80"
+  },
+  {
+   "key": "FuelStationGasEmptyChance",
+   "type": "integer",
+   "description": {
+    "en": "The chance, as a percentage, that individual gas pumps will initially have no fuel.",
+    "es": "La probabilidad, como porcentaje, de que las bombas de gasolina estén vacías al inicio."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "20"
+  },
+  {
+   "key": "LockedCar",
+   "type": "enum",
+   "description": {
+    "en": "How likely cars will be locked",
+    "es": "Probabilidad de que los autos estén cerrados con llave."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    }
+   ]
+  },
+  {
+   "key": "CarGasConsumption",
+   "type": "decimal",
+   "description": {
+    "en": "How gas-hungry vehicles are.",
+    "es": "Cuánta gasolina tienen los vehículos en el mapa."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "1.00"
+  },
+  {
+   "key": "CarGeneralCondition",
+   "type": "enum",
+   "description": {
+    "en": "General condition discovered vehicles will be in.",
+    "es": "Estado general de los vehículos encontrados en el mapa."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Low",
+      "es": "Muy bajo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very High",
+      "es": "Muy alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "CarDamageOnImpact",
+   "type": "enum",
+   "description": {
+    "en": "The amount of damage dealt to vehicles that crash.",
+    "es": "Determina la cantidad de daños causados a los vehículos en caso de colisión."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Low",
+      "es": "Muy bajo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very High",
+      "es": "Muy alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "DamageToPlayerFromHitByACar",
+   "type": "enum",
+   "description": {
+    "en": "Damage received by the player from being crashed into.",
+    "es": "Daño que recibe el jugador del vehículo en una colisión."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "None",
+      "es": "Ninguno"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very High",
+      "es": "Muy alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "TrafficJam",
+   "type": "boolean",
+   "description": {
+    "en": "If traffic jams consisting of wrecked cars  will appear on main roads.",
+    "es": "Activar o desactivar los bloqueos de tráfico que se producen en las principales carreteras del mapa."
+   }
+  },
+  {
+   "key": "CarAlarm",
+   "type": "enum",
+   "description": {
+    "en": "How frequently discovered vehicles have active alarms.",
+    "es": "Frecuencia con la que se descubren coches con alarma."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    }
+   ]
+  },
+  {
+   "key": "PlayerDamageFromCrash",
+   "type": "boolean",
+   "description": {
+    "en": "If the player can get injured from being in a car accident.",
+    "es": "Permite o impide que el jugador reciba daños por sufrir un accidente de coche."
+   }
+  },
+  {
+   "key": "SirenShutoffHours",
+   "type": "decimal",
+   "description": {
+    "en": "How many in-game hours before a wailing siren shuts off.",
+    "es": "Cuántas horas en el juego antes de que se apague la alarma."
+   },
+   "min": 0,
+   "max": 168,
+   "default": "0.00"
+  },
+  {
+   "key": "ChanceHasGas",
+   "type": "enum",
+   "description": {
+    "en": "The chance of finding a vehicle with gas in its tank.",
+    "es": "Determina la probabilidad de encontrar vehículos con combustible en el depósito."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "RecentlySurvivorVehicles",
+   "type": "enum",
+   "description": {
+    "en": "Whether a player can discover a car that has been cared for  after the Knox infection struck.",
+    "es": "Determina si el jugador puede encontrar un vehículo que haya sido conservado y acondicionado después de que se haya producido la infección."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "None",
+      "es": "Ninguno"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "MultiHitZombies",
+   "type": "boolean",
+   "description": {
+    "en": "If certain melee weapons will be able to strike multiple zombies in one hit.",
+    "es": "Al activarse, ciertas armas de combate cuerpo a cuerpo serán capaces de golpear a varios zombis en un solo golpe."
+   }
+  },
+  {
+   "key": "RearVulnerability",
+   "type": "enum",
+   "description": {
+    "en": "Chance of being bitten when a zombie attacks from behind.",
+    "es": "Posibilidad de ser mordido cuando un zombi ataca por detrás."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Low",
+      "es": "Bajo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Medium",
+      "es": "Medio"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "High",
+      "es": "Alto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "SirenEffectsZombies",
+   "type": "boolean",
+   "description": {
+    "en": "If zombies will head towards the sound of vehicle sirens.",
+    "es": "Si los zombis se dirigirán hacia el sonido de las sirenas de vehículos."
+   }
+  },
+  {
+   "key": "AnimalStatsModifier",
+   "type": "enum",
+   "description": {
+    "en": "Speed at which animals stats (hunger, thirst etc.) reduce.",
+    "es": "Velocidad a la que se reducen las estadísticas de los animales (hambre, sed, etc.)."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Ultra Fast",
+      "es": "Ultrarrápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy Lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalMetaStatsModifier",
+   "type": "enum",
+   "description": {
+    "en": "Speed at which animals stats (hunger, thirst etc.) reduce while in meta.",
+    "es": "Velocidad a la que se reducen las estadísticas de los animales mientras están en metadatos (meta)."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Ultra Fast",
+      "es": "Ultrarrápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy Lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalPregnancyTime",
+   "type": "enum",
+   "description": {
+    "en": "How long animals will be pregnant for before giving birth.",
+    "es": "Tiempo que los animales estarán embarazados antes de dar a luz."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Ultra Fast",
+      "es": "Ultrarrápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy Lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalAgeModifier",
+   "type": "enum",
+   "description": {
+    "en": "Speed at which animals age.",
+    "es": "Velocidad a la que envejecen los animales."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Ultra Fast",
+      "es": "Ultrarrápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy Lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalMilkIncModifier",
+   "type": "enum",
+   "description": {},
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Ultra Fast",
+      "es": "Ultrarrápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy Lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalWoolIncModifier",
+   "type": "enum",
+   "description": {},
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Ultra Fast",
+      "es": "Ultrarrápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy Lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalRanchChance",
+   "type": "enum",
+   "description": {
+    "en": "The chance of finding animals in farm.",
+    "es": "La probabilidad de encontrar animales en una granja."
+   },
+   "default": "5",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Extremadamente Rara"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Rara"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A Veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "Frecuente"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy Frecuente"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "Always",
+      "es": "Siempre"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalGrassRegrowTime",
+   "type": "integer",
+   "description": {
+    "en": "The number of hours grass will regrow after being  eaten by an animal or cut by the player.",
+    "es": "El número de horas en que el pasto se regenerará después de ser comido por un animal o cortado por el jugador."
+   },
+   "min": 1,
+   "max": 9999,
+   "default": "240"
+  },
+  {
+   "key": "AnimalMetaPredator",
+   "type": "boolean",
+   "description": {
+    "en": "If a meta (ie. not actually visible in-game) fox may attack  your chickens if the hutch's door is left open at night.",
+    "es": "Si un zorro meta (es decir, no visible en el juego) puede atacar  a tus gallinas si la puerta del gallinero se deja abierta por la noche."
+   }
+  },
+  {
+   "key": "AnimalMatingSeason",
+   "type": "boolean",
+   "description": {
+    "en": "If on, animals will only mate during their breeding season (if any).  Otherwise they can reproduce/lay eggs all year round.",
+    "es": "Si los animales con una temporada de apareamiento respetarán esa temporada. De lo contrario, pueden reproducirse/poner huevos durante todo el año."
+   }
+  },
+  {
+   "key": "AnimalEggHatch",
+   "type": "enum",
+   "description": {
+    "en": "How long before baby animals will hatch from eggs.",
+    "es": "Tiempo antes de que los animales bebés nazcan de los huevos."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Ultra Fast",
+      "es": "Ultrarrápido"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Very Fast",
+      "es": "Muy Rápido"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Fast",
+      "es": "Rápido"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Slow",
+      "es": "Lento"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Slow",
+      "es": "Muy Lento"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalSoundAttractZombies",
+   "type": "boolean",
+   "description": {
+    "en": "If true, animal calls will attract nearby zombies.",
+    "es": "Si está habilitado, los sonidos de los animales atraerán a los zombis cercanos."
+   }
+  },
+  {
+   "key": "AnimalTrackChance",
+   "type": "enum",
+   "description": {
+    "en": "The chance of animals leaving tracks.",
+    "es": "La probabilidad de que los animales dejen huellas."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    }
+   ]
+  },
+  {
+   "key": "AnimalPathChance",
+   "type": "enum",
+   "description": {
+    "en": "The chance of creating a path for animals to be hunted.",
+    "es": "La probabilidad de que se generen sendas donde puedan cazarse animales."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Muy raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy frecuentemente"
+     }
+    }
+   ]
+  },
+  {
+   "key": "MaximumRatIndex",
+   "type": "integer",
+   "description": {
+    "en": "The frequency and intensity of eg. rats in infested buildings.",
+    "es": "La frecuencia e intensidad, por ejemplo, de ratas en edificios infestados."
+   },
+   "min": 0,
+   "max": 50,
+   "default": "25"
+  },
+  {
+   "key": "DaysUntilMaximumRatIndex",
+   "type": "integer",
+   "description": {
+    "en": "How long it takes for the Maximum Vermin Index to be reached.",
+    "es": "Cuánto tiempo tarda en alcanzarse el índice máximo de plagas."
+   },
+   "min": 0,
+   "max": 365,
+   "default": "90"
+  },
+  {
+   "key": "MetaKnowledge",
+   "type": "enum",
+   "description": {
+    "en": "If a piece of media hasn't been fully seen or read, this setting determines whether it's displayed fully, displayed as \"???\", or hidden completely.",
+    "es": "Si una pieza de medios no se ha visto o leído completamente, esta configuración determina si se muestra completa, como \"???\" o se oculta por completo."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Fully revealed",
+      "es": "Totalmente revelado"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Shown as ???",
+      "es": "Mostrado como ???"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Completely hidden",
+      "es": "Completamente oculto"
+     }
+    }
+   ]
+  },
+  {
+   "key": "SeeNotLearntRecipe",
+   "type": "boolean",
+   "description": {
+    "en": "If true, you will be able to see any recipes that can be done with a station, even if you haven't learnt them yet.",
+    "es": "Si está habilitado, podrás ver recetas que pueden hacerse con una estación, incluso si aún no las has aprendido."
+   }
+  },
+  {
+   "key": "MaximumLootedBuildingRooms",
+   "type": "integer",
+   "description": {
+    "en": "If a building has more than this amount of rooms it will not be looted.",
+    "es": "Si un edificio tiene más de esta cantidad de habitaciones, no será saqueado."
+   },
+   "min": 0,
+   "max": 200,
+   "default": "50"
+  },
+  {
+   "key": "EnablePoisoning",
+   "type": "enum",
+   "description": {
+    "en": "If poison can be added to food.",
+    "es": "Determina si se habilita el envenenamiento de los alimentos."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "True",
+      "es": "Verdadero"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "False",
+      "es": "Falso"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Only bleach poisoning is disabled",
+      "es": "Sólo está deshabilitado el envenenamiento por lejía"
+     }
+    }
+   ]
+  },
+  {
+   "key": "MaggotSpawn",
+   "type": "enum",
+   "description": {
+    "en": "If/when maggots can spawn in corpses.",
+    "es": "Si/cuándo pueden aparecer gusanos en los cadáveres."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "In and Around Bodies",
+      "es": "Dentro y alrededor de los cuerpos"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "In Bodies Only",
+      "es": "Sólo dentro de los cuerpos"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    }
+   ]
+  },
+  {
+   "key": "LightBulbLifespan",
+   "type": "decimal",
+   "description": {
+    "en": "The higher the value, the longer lightbulbs last before breaking.  If 0, lightbulbs will never break.  Does not affect vehicle headlights.",
+    "es": "Cuanto más alto sea el valor, más tiempo durarán las bombillas antes de romperse. Si es 0, las bombillas no se romperán nunca. No afecta a los faros del vehículo."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "2.00"
+  },
+  {
+   "key": "FishAbundance",
+   "type": "enum",
+   "description": {
+    "en": "The abundance of fish in rivers and lakes.",
+    "es": "La abundancia de peces en ríos y lagos."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Very Poor",
+      "es": "Muy Pobre"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Poor",
+      "es": "Pobre"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Abundant",
+      "es": "Abundante"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Very Abundant",
+      "es": "Muy Abundante"
+     }
+    }
+   ]
+  },
+  {
+   "key": "LevelForMediaXPCutoff",
+   "type": "integer",
+   "description": {
+    "en": "When a skill is at this level or above, television/VHS/other media  will not provide XP for it.",
+    "es": "Cuando una habilidad alcanza este nivel o más, la televisión/VHS/otros medios no proporcionarán XP para esa habilidad."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "3"
+  },
+  {
+   "key": "LevelForDismantleXPCutoff",
+   "type": "integer",
+   "description": {
+    "en": "When a skill is at this level or above, scrapping furniture does not provide XP for the relevant skill. Does not apply to Electrical.",
+    "es": "Cuando una habilidad alcanza este nivel o más, desmantelar muebles no proporciona XP para la habilidad relevante. No se aplica a Electricidad."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "0"
+  },
+  {
+   "key": "BloodSplatLifespanDays",
+   "type": "integer",
+   "description": {
+    "en": "Number of days before old blood splats are removed. Removal happens when map chunks are loaded. 0 means they will never disappear.",
+    "es": "Número de días antes de que se eliminen las salpicaduras de sangre viejas. La eliminación ocurre cuando se cargan fragmentos del mapa. Un valor de 0 significa que nunca desaparecerán."
+   },
+   "min": 0,
+   "max": 365,
+   "default": "0"
+  },
+  {
+   "key": "LiteratureCooldown",
+   "type": "integer",
+   "description": {
+    "en": "Number of days before one can benefit from reading previously read literature items.",
+    "es": "Número de días antes de que se pueda beneficiar de nuevo de leer elementos literarios previamente leídos."
+   },
+   "min": 1,
+   "max": 365,
+   "default": "45"
+  },
+  {
+   "key": "NegativeTraitsPenalty",
+   "type": "enum",
+   "description": {
+    "en": "If there are diminishing returns on bonus trait points provided from selecting multiple negative traits.",
+    "es": "Si hay retornos decrecientes en los puntos de bonificación otorgados al seleccionar múltiples rasgos negativos."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "None",
+      "es": "Ninguna"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "1 point penalty for every 3 negative traits selected",
+      "es": "1 punto de penalización por cada 3 rasgos negativos seleccionados"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "1 point penalty for every 2 negative traits selected",
+      "es": "1 punto de penalización por cada 2 rasgos negativos seleccionados"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "1 point penalty for every negative trait selected after the first",
+      "es": "1 punto de penalización por cada rasgo negativo seleccionado después del primero"
+     }
+    }
+   ]
+  },
+  {
+   "key": "MinutesPerPage",
+   "type": "decimal",
+   "description": {
+    "en": "The number of in-game minutes it takes to read one page of a skill book.",
+    "es": "Número de minutos en el juego que toma leer una página de un libro de habilidades."
+   },
+   "min": 0,
+   "max": 60,
+   "default": "2.00"
+  },
+  {
+   "key": "KillInsideCrops",
+   "type": "boolean",
+   "description": {
+    "en": "When enabled, crops and herbs grown inside buildings will die. Does not affect houseplants.",
+    "es": "Cuando está habilitado, los cultivos y hierbas cultivados dentro de edificios morirán. No afecta a plantas de interior decorativas."
+   }
+  },
+  {
+   "key": "PlantGrowingSeasons",
+   "type": "boolean",
+   "description": {
+    "en": "When enabled, the growth of plants is affected by seasons.",
+    "es": "Cuando está habilitado, el crecimiento de las plantas se ve afectado por las estaciones."
+   }
+  },
+  {
+   "key": "PlaceDirtAboveground",
+   "type": "boolean",
+   "description": {
+    "en": "<BHC> [!] It is recommended that you DO NOT change this. Changing this can result in performance issues. [!] <RGB:1,1,1>   When enabled, dirt can be placed, and farming performed on other than the ground level.",
+    "es": "<BHC> [!] Se recomienda que NO cambies esto. Cambiarlo puede provocar problemas de rendimiento. [!] <RGB:1,1,1>   Cuando está habilitado, se puede colocar tierra y realizar actividades agrícolas en niveles distintos al suelo."
+   }
+  },
+  {
+   "key": "FarmingSpeedNew",
+   "type": "decimal",
+   "description": {
+    "en": "The speed of plant growth.",
+    "es": "La velocidad de crecimiento de las plantas."
+   },
+   "min": 0.1,
+   "max": 100,
+   "default": "1.00"
+  },
+  {
+   "key": "FarmingAmountNew",
+   "type": "decimal",
+   "description": {
+    "en": "The abundance of harvested crops.",
+    "es": "La abundancia de cultivos cosechados."
+   },
+   "min": 0.1,
+   "max": 10,
+   "default": "1.00"
+  },
+  {
+   "key": "MaximumLooted",
+   "type": "integer",
+   "description": {
+    "en": "The chance that any building will already be looted when found. Check the \"Advanced\" box below to use a custom number.",
+    "es": "La probabilidad de que cualquier edificio ya haya sido saqueado cuando se encuentre. Marca la casilla \"Avanzado\" para usar un número personalizado."
+   },
+   "min": 0,
+   "max": 200,
+   "default": "25"
+  },
+  {
+   "key": "DaysUntilMaximumLooted",
+   "type": "integer",
+   "description": {
+    "en": "How long it takes for Maximum Looted Building Chance to be reached.",
+    "es": "Cuánto tiempo toma alcanzar la probabilidad máxima de edificios saqueados."
+   },
+   "min": 0,
+   "max": 3650,
+   "default": "90"
+  },
+  {
+   "key": "RuralLooted",
+   "type": "decimal",
+   "description": {
+    "en": "The chance that any rural building will already be looted when found. Check the \"Advanced\" box below to use a custom number.",
+    "es": "La probabilidad de que cualquier edificio rural ya haya sido saqueado cuando se encuentre. Marca la casilla \"Avanzado\" para usar un número personalizado."
+   },
+   "min": 0,
+   "max": 2,
+   "default": "0.50"
+  },
+  {
+   "key": "MaximumDiminishedLoot",
+   "type": "integer",
+   "description": {
+    "en": "The maximum loot that won't spawn when Days Until Maximum Diminished Loot is reached. Check the \"Advanced\" box below to use an exact percentage.",
+    "es": "El máximo de botín que no aparecerá cuando se alcance el límite de días para botín reducido. Marca la casilla \"Avanzado\" para usar un porcentaje exacto."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "20"
+  },
+  {
+   "key": "DaysUntilMaximumDiminishedLoot",
+   "type": "integer",
+   "description": {
+    "en": "How long it takes for Maximum Diminished Loot Percentage to be reached.",
+    "es": "Días hasta que se alcance el máximo de botín reducido."
+   },
+   "min": 0,
+   "max": 3650,
+   "default": "3650"
+  },
+  {
+   "key": "MuscleStrainFactor",
+   "type": "decimal",
+   "description": {
+    "en": "Functions as a multiplier when applying muscle strain from swinging weapons or carrying heavy loads.",
+    "es": "Funciona como multiplicador al aplicar tensión muscular por balanceo de armas o carga de peso."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "0.70"
+  },
+  {
+   "key": "DiscomfortFactor",
+   "type": "decimal",
+   "description": {
+    "en": "Functions as a multiplier when applying discomfort from worn items.",
+    "es": "Funciona como un multiplicador al aplicar incomodidad por los artículos usados."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "0.80"
+  },
+  {
+   "key": "WoundInfectionFactor",
+   "type": "decimal",
+   "description": {
+    "en": "If greater than zero damage can be taken from serious wound infections.",
+    "es": "Si es mayor que cero, puede recibirse daño por infecciones graves en heridas."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "1.00"
+  },
+  {
+   "key": "NoBlackClothes",
+   "type": "boolean",
+   "description": {
+    "en": "If true clothing with randomized tints will not be so dark to be virtually black.",
+    "es": "Si está habilitado, la ropa con tonos aleatorios no será tan oscura como para parecer negra."
+   }
+  },
+  {
+   "key": "EasyClimbing",
+   "type": "boolean",
+   "description": {
+    "en": "Disables the failure chances when climbing sheet ropes or over walls.",
+    "es": "Desactiva las posibilidades de fallar al escalar cuerdas de sábana o saltar paredes."
+   }
+  },
+  {
+   "key": "MaximumFireFuelHours",
+   "type": "integer",
+   "description": {
+    "en": "The maximum hours of fuel that can be placed in a campfire, wood stove etc.",
+    "es": "Las horas máximas de combustible que se pueden colocar en una fogata, estufa de leña, etc."
+   },
+   "min": 1,
+   "max": 168,
+   "default": "8"
+  },
+  {
+   "key": "FirearmUseDamageChance",
+   "type": "enum",
+   "description": {
+    "en": "Replaces Chance-To-Hit mechanics with Chance-To-Damage calculations.  This mode prioritizes player aiming.",
+    "es": "Sustituye la mecánica de probabilidad de acierto por cálculos de probabilidad de daño. Este modo prioriza la puntería del jugador."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Disabled",
+      "es": "Desactivado"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Zombies only",
+      "es": "Solo zombis"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "All types of target",
+      "es": "Todos los tipos de objetivo"
+     }
+    }
+   ]
+  },
+  {
+   "key": "FirearmNoiseMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "A multiplier for the distance at which zombies can hear gunshots.",
+    "es": "Un multiplicador para la distancia a la que los zombis pueden escuchar disparos."
+   },
+   "min": 0.2,
+   "max": 2,
+   "default": "1.00"
+  },
+  {
+   "key": "FirearmJamMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "Multiplier for firearm jamming chance. 0 disables jamming.",
+    "es": "Multiplicador para la probabilidad de que las armas de fuego se atasquen. Un valor de 0 desactiva los atascos."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "1.00"
+  },
+  {
+   "key": "FirearmMoodleMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "Multiplier for Moodle effects on hit chance. 0 disables Moodle penalty.",
+    "es": "Multiplicador para los efectos de estado de ánimo en la precisión de disparos. Un valor de 0 desactiva la penalización por estado de ánimo."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "1.00"
+  },
+  {
+   "key": "FirearmWeatherMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "Multiplier for the effects of weather (wind, rain and fog) on hit chance. 0 disables weather effect.",
+    "es": "Multiplicador para los efectos del clima (viento, lluvia y niebla) en la precisión de disparos. Un valor de 0 desactiva el efecto del clima."
+   },
+   "min": 0,
+   "max": 10,
+   "default": "1.00"
+  },
+  {
+   "key": "FirearmHeadGearEffect",
+   "type": "boolean",
+   "description": {
+    "en": "Enable to have headgear like welding masks affect hit chance",
+    "es": "Habilita que la protección para la cabeza, como máscaras de soldadura, afecten la precisión de disparos."
+   }
+  },
+  {
+   "key": "ClayLakeChance",
+   "type": "decimal",
+   "description": {
+    "en": "Chance to turn a dirt floor into a clay floor. Applies to lakes.",
+    "es": "Probabilidad de convertir un suelo de tierra en un suelo de arcilla. Se aplica a los lagos."
+   },
+   "min": 0,
+   "max": 1,
+   "default": "0.05"
+  },
+  {
+   "key": "ClayRiverChance",
+   "type": "decimal",
+   "description": {
+    "en": "Chance to turn a dirt floor into a clay floor. Applies to rivers.",
+    "es": "Probabilidad de convertir un suelo de tierra en un suelo de arcilla. Se aplica a los ríos."
+   },
+   "min": 0,
+   "max": 1,
+   "default": "0.05"
+  },
+  {
+   "key": "GeneratorTileRange",
+   "type": "integer",
+   "description": {},
+   "min": 1,
+   "max": 100,
+   "default": "20"
+  },
+  {
+   "key": "GeneratorVerticalPowerRange",
+   "type": "integer",
+   "description": {
+    "en": "How many levels both above and below a generator it can provide with electricity.",
+    "es": "Cuántos pisos hacia arriba y hacia abajo puede alimentar con electricidad un generador."
+   },
+   "min": 1,
+   "max": 15,
+   "default": "3"
+  },
+  {
+   "key": "Basement.SpawnFrequency",
+   "type": "enum",
+   "description": {
+    "en": "How frequently basements spawn at random locations.",
+    "es": "Con qué frecuencia aparecen sótanos en ubicaciones aleatorias."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Extremadamente Rara"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Rara"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A Veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "Frecuente"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy Frecuente"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "Always",
+      "es": "Siempre"
+     }
+    }
+   ]
+  },
+  {
+   "key": "Map.AllowMiniMap",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, a mini-map window will be available.",
+    "es": "Si está habilitado, estará disponible una ventana de minimapa."
+   }
+  },
+  {
+   "key": "Map.AllowWorldMap",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, the world map can be accessed.",
+    "es": "Si está habilitado, se puede acceder al mapa mundial."
+   }
+  },
+  {
+   "key": "Map.MapAllKnown",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, the world map will be completely filled in on starting the game.",
+    "es": "Si está habilitado, el mapa mundial estará completamente revelado al comenzar el juego."
+   }
+  },
+  {
+   "key": "Map.MapNeedsLight",
+   "type": "boolean",
+   "description": {
+    "en": "If enabled, maps can't be read unless there's a source of light available.",
+    "es": "Si está habilitado, los mapas no se pueden leer a menos que haya una fuente de luz disponible."
+   }
+  },
+  {
+   "key": "ZombieLore.Speed",
+   "type": "enum",
+   "description": {
+    "en": "How fast zombies move.",
+    "es": "Controla la velocidad de movimiento de los zombis."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Sprinters",
+      "es": "Velocistas"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Fast Shamblers",
+      "es": "Tambaleantes veloces"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Shamblers",
+      "es": "Tambaleantes"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Random",
+      "es": "Aleatorio"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.SprinterPercentage",
+   "type": "integer",
+   "description": {
+    "en": "If Random Speed is enabled, this controls what percentage of zombies are Sprinters. Check the \"Advanced\" box below to use a custom percentage.",
+    "es": "Si Velocidad aleatoria está activada, esto controla qué porcentaje de zombis son Sprinters. Marca la casilla \"Avanzado\" de abajo para usar un porcentaje personalizado."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "0"
+  },
+  {
+   "key": "ZombieLore.Strength",
+   "type": "enum",
+   "description": {
+    "en": "The damage zombies inflict per attack.",
+    "es": "Controla el daño que infligen los zombis por ataque."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Superhuman",
+      "es": "Superhumano"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Weak",
+      "es": "Débil"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Random",
+      "es": "Aleatorio"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.Toughness",
+   "type": "enum",
+   "description": {
+    "en": "The difficulty of killing a zombie.",
+    "es": "Controla la dificultad para matar zombis."
+   },
+   "default": "4",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Tough",
+      "es": "Duro"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Fragile",
+      "es": "Frágil"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Random",
+      "es": "Aleatorio"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.Transmission",
+   "type": "enum",
+   "description": {
+    "en": "How the Knox Virus spreads.",
+    "es": "Controla cómo se propaga el virus zombi."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Blood and Saliva",
+      "es": "Sangre + saliva"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Saliva Only",
+      "es": "Sólo saliva"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Everyone's Infected",
+      "es": "Todos están infectados"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "None",
+      "es": "Ninguno"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.Mortality",
+   "type": "enum",
+   "description": {
+    "en": "How quickly the infection takes effect.",
+    "es": "Controla la rapidez con la que la infección hace efecto."
+   },
+   "default": "5",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Instant",
+      "es": "Instantáneo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "0-30 Seconds",
+      "es": "0-30 segundos"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "0-1 Minutes",
+      "es": "0-1 minuto"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "0-12 Hours",
+      "es": "0-12 horas"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "2-3 Days",
+      "es": "2-3 días"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "1-2 Weeks",
+      "es": "1-2 semanas"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "Never",
+      "es": "Nunca"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.Reanimate",
+   "type": "enum",
+   "description": {
+    "en": "How quickly infected corpses rise as zombies.",
+    "es": "Controla la rapidez con la que los cadáveres se levantan como zombis."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Instant",
+      "es": "Instantáneo"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "0-30 Seconds",
+      "es": "0-30 segundos"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "0-1 Minutes",
+      "es": "0-1 minuto"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "0-12 Hours",
+      "es": "0-12 horas"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "2-3 Days",
+      "es": "2-3 días"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "1-2 Weeks",
+      "es": "1-2 semanas"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.Cognition",
+   "type": "enum",
+   "description": {
+    "en": "Zombie intelligence.",
+    "es": "Controla la inteligencia de los zombis."
+   },
+   "default": "3",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Navigate and Use Doors",
+      "es": "Exploración + usar las puertas"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Navigate",
+      "es": "Exploración"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Basic Navigation",
+      "es": "Exploración básica"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Random",
+      "es": "Aleatorio"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.DoorOpeningPercentage",
+   "type": "integer",
+   "description": {},
+   "min": 0,
+   "max": 100,
+   "default": "0"
+  },
+  {
+   "key": "ZombieLore.CrawlUnderVehicle",
+   "type": "enum",
+   "description": {
+    "en": "How often zombies can crawl under parked vehicles.",
+    "es": "Controla qué zombis pueden arrastrarse bajo los vehículos."
+   },
+   "default": "5",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Crawlers Only",
+      "es": "Sólo reptantes"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Extremely Rare",
+      "es": "Extremadamente raro"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Rare",
+      "es": "Raro"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Sometimes",
+      "es": "A veces"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Often",
+      "es": "A menudo"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Very Often",
+      "es": "Muy a menudo"
+     }
+    },
+    {
+     "value": 7,
+     "label": {
+      "en": "Always",
+      "es": "Siempre"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.Memory",
+   "type": "enum",
+   "description": {
+    "en": "How long zombies remember a player after seeing or hearing them.",
+    "es": "Controla durante cuánto tiempo los zombis recuerdan a los jugadores después de haberlos visto o escuchado."
+   },
+   "default": "2",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Long",
+      "es": "Larga"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Short",
+      "es": "Corta"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "None",
+      "es": "Ninguna"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Random",
+      "es": "Aleatoria"
+     }
+    },
+    {
+     "value": 6,
+     "label": {
+      "en": "Random between Normal and None",
+      "es": "Aleatorio entre Normal y Ninguno"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.Sight",
+   "type": "enum",
+   "description": {
+    "en": "Zombie vision radius.",
+    "es": "Controla el radio de visión de los zombis."
+   },
+   "default": "5",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Eagle",
+      "es": "Águila"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Poor",
+      "es": "Mala"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Random",
+      "es": "Aleatoria"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Random between Normal and Poor",
+      "es": "Aleatorio entre Normal y Pobre"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.Hearing",
+   "type": "enum",
+   "description": {
+    "en": "Zombie hearing radius.",
+    "es": "Controla el radio de audición de los zombis."
+   },
+   "default": "5",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Pinpoint",
+      "es": "Precisa"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Normal",
+      "es": "Normal"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Poor",
+      "es": "Mala"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Random",
+      "es": "Aleatoria"
+     }
+    },
+    {
+     "value": 5,
+     "label": {
+      "en": "Random between Normal and Poor",
+      "es": "Aleatorio entre Normal y Pobre"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.SpottedLogic",
+   "type": "boolean",
+   "description": {
+    "en": "Activates the new advanced stealth mechanics, which allows you to hide from zombies behind cars, takes traits and weather into account, and much more.",
+    "es": "Activa las nuevas mecánicas avanzadas de sigilo, que permiten esconderse de los zombis detrás de autos, teniendo en cuenta rasgos, clima y más."
+   }
+  },
+  {
+   "key": "ZombieLore.ThumpNoChasing",
+   "type": "boolean",
+   "description": {
+    "en": "If zombies that have not seen/heard player can attack doors and constructions while roaming.",
+    "es": "Los zombis que no han visto/escuchado al jugador pueden atacar puertas y construcciones mientras deambulan."
+   }
+  },
+  {
+   "key": "ZombieLore.ThumpOnConstruction",
+   "type": "boolean",
+   "description": {
+    "en": "If zombies can destroy player constructions and defenses.",
+    "es": "Determina si los zombis pueden o no destruir las construcciones y defensas de los jugadores."
+   }
+  },
+  {
+   "key": "ZombieLore.ActiveOnly",
+   "type": "enum",
+   "description": {
+    "en": "Whether zombies are more \"active\" during the day or night.  \"Active\" zombies will use the speed set in the \"Speed\" setting.  \"Inactive\" zombies will be slower, and tend not to give chase.",
+    "es": "Controla si los zombis son más activos durante el día o si actúan más de noche.  Los zombis activos utilizarán la velocidad establecida en el ajuste \"Velocidad\". Los zombis inactivos serán más lentos y tenderán a no perseguir."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Both",
+      "es": "Ambos"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Night",
+      "es": "Noche"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Day",
+      "es": "Día"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.TriggerHouseAlarm",
+   "type": "boolean",
+   "description": {
+    "en": "If zombies trigger house alarms when breaking through windows or doors.",
+    "es": "Permite a los zombis activar las alarmas de las casas al atravesar ventanas y puertas."
+   }
+  },
+  {
+   "key": "ZombieLore.ZombiesDragDown",
+   "type": "boolean",
+   "description": {
+    "en": "If multiple attacking zombies can drag you down and kill you.  Dependent on zombie strength.",
+    "es": "Cuando se activa, si varios zombis atacan, pueden derribarte. Depende de la fuerza del zombi."
+   }
+  },
+  {
+   "key": "ZombieLore.ZombiesCrawlersDragDown",
+   "type": "boolean",
+   "description": {
+    "en": "If crawler zombies beside a player contribute to the chance of being dragged down and killed by a group of zombies.",
+    "es": "Si los zombis reptantes junto al jugador contribuyen a la probabilidad de ser derribado y asesinado por un grupo de zombis."
+   }
+  },
+  {
+   "key": "ZombieLore.ZombiesFenceLunge",
+   "type": "boolean",
+   "description": {
+    "en": "If zombies have a chance to lunge at you after climbing over a fence or through a window if you're too close.",
+    "es": "Cuando esté habilitado, los zombis tendrán la oportunidad de arremeter después de pasar por encima de una valla si estás demasiado cerca."
+   }
+  },
+  {
+   "key": "ZombieLore.ZombiesArmorFactor",
+   "type": "decimal",
+   "description": {
+    "en": "Serves as a multiplier when determining the effectiveness of armor worn by zombies.",
+    "es": "Sirve como multiplicador al determinar la efectividad de la armadura que usan los zombis."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "2.00"
+  },
+  {
+   "key": "ZombieLore.ZombiesMaxDefense",
+   "type": "integer",
+   "description": {
+    "en": "The maximum defense percentage that any worn protective garments can provide to a zombie.",
+    "es": "El porcentaje máximo de defensa que cualquier prenda protectora puede proporcionar a un zombi."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "85"
+  },
+  {
+   "key": "ZombieLore.ChanceOfAttachedWeapon",
+   "type": "integer",
+   "description": {
+    "en": "Percentage chance of having a random attached weapon.",
+    "es": "Porcentaje de probabilidad de que un zombi tenga un arma adjunta aleatoria."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "6"
+  },
+  {
+   "key": "ZombieLore.ZombiesFallDamage",
+   "type": "decimal",
+   "description": {
+    "en": "How much damage zombies take when falling from height.",
+    "es": "Cuánto daño reciben los zombis al caer desde una altura."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "1.00"
+  },
+  {
+   "key": "ZombieLore.DisableFakeDead",
+   "type": "enum",
+   "description": {
+    "en": "Whether some dead-looking zombies will reanimate and attack the player.",
+    "es": "Si algunos zombis que parecen muertos reaniman y atacan al jugador."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "World Zombies",
+      "es": "Algunos zombis del mundo se harán pasar por muertos"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "World and Combat Zombies",
+      "es": "Algunos zombis del mundo, así como algunos que \"matas\", pueden fingir estar muertos"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Never",
+      "es": "Los zombis nunca fingirán estar muertos"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.PlayerSpawnZombieRemoval",
+   "type": "enum",
+   "description": {
+    "en": "Zombies will not spawn where players spawn.",
+    "es": "Los zombis no aparecerán donde los jugadores aparecen."
+   },
+   "default": "1",
+   "options": [
+    {
+     "value": 1,
+     "label": {
+      "en": "Inside the building and around it",
+      "es": "Dentro del edificio y alrededor"
+     }
+    },
+    {
+     "value": 2,
+     "label": {
+      "en": "Inside the building",
+      "es": "Dentro del edificio"
+     }
+    },
+    {
+     "value": 3,
+     "label": {
+      "en": "Inside the room",
+      "es": "Dentro de la habitación"
+     }
+    },
+    {
+     "value": 4,
+     "label": {
+      "en": "Zombies can spawn anywhere",
+      "es": "Los zombis pueden aparecer en cualquier lugar"
+     }
+    }
+   ]
+  },
+  {
+   "key": "ZombieLore.FenceThumpersRequired",
+   "type": "integer",
+   "description": {
+    "en": "How many zombies it takes to damage a tall fence.",
+    "es": "Cuántos zombis se necesitan para dañar una valla alta."
+   },
+   "min": -1,
+   "max": 100,
+   "default": "25"
+  },
+  {
+   "key": "ZombieLore.FenceDamageMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "How quickly zombies damage tall fences.",
+    "es": "Qué tan rápido dañan las vallas altas los zombis."
+   },
+   "min": 0.01,
+   "max": 100,
+   "default": "1.00"
+  },
+  {
+   "key": "ZombieConfig.PopulationMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "Set by the \"Zombie Count\" population option, or by a custom number here. Insane = 2.5, Very High = 1.6, High = 1.2, Normal = 0.65, Low = 0.15, None = 0.0.",
+    "es": "Se establece mediante la opción de población \"Cantidad de zombis\", o mediante un número personalizado aquí. Insano= 2.5, Muy alta = 1.6, Alta = 1.2, Normal = 0.65, Baja = 0.15, Ninguna = 0.0."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "0.65"
+  },
+  {
+   "key": "ZombieConfig.PopulationStartMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "A multiplier for the desired zombie population at the start of the game. Insane = 3.0, Very High = 2.0, High = 1.5, Normal = 1.0, Low = 0.5, None = 0.0.",
+    "es": "Un multiplicador para la población de zombis deseada al inicio de la partida. Insano= 3.0, Muy alta = 2.0, Alta = 1.5, Normal = 1.0, Baja = 0.5, Ninguna = 0.0."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "1.00"
+  },
+  {
+   "key": "ZombieConfig.PopulationPeakMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "A multiplier for the desired zombie population on the peak day. Insane = 3.0, Very High = 2.0, High = 1.5, Normal = 1.0, Low = 0.5, None = 0.0.",
+    "es": "Un multiplicador para la población de zombis deseada en el día pico. Insano= 3.0, Muy alta = 2.0, Alta = 1.5, Normal = 1.0, Baja = 0.5, Ninguna = 0.0."
+   },
+   "min": 0,
+   "max": 4,
+   "default": "1.50"
+  },
+  {
+   "key": "ZombieConfig.PopulationPeakDay",
+   "type": "integer",
+   "description": {
+    "en": "The day when the population reaches its peak.",
+    "es": "El día cuando la población llega a su punto máximo."
+   },
+   "min": 1,
+   "max": 365,
+   "default": "28"
+  },
+  {
+   "key": "ZombieConfig.RespawnHours",
+   "type": "decimal",
+   "description": {
+    "en": "The number of hours that must pass before zombies may respawn in a cell. If 0, spawning is disabled.",
+    "es": "El número de horas que debe transcurrir antes de que los zombis pueden reaparecer en una celda. Si es cero, la reaparición se desactiva."
+   },
+   "min": 0,
+   "max": 8760,
+   "default": "0.00"
+  },
+  {
+   "key": "ZombieConfig.RespawnUnseenHours",
+   "type": "decimal",
+   "description": {
+    "en": "The number of hours that a chunk must be unseen before zombies may respawn in it.",
+    "es": "El número de horas que una zona no debe ser visitada antes que los zombis puedan reaparecer en la misma."
+   },
+   "min": 0,
+   "max": 8760,
+   "default": "0.00"
+  },
+  {
+   "key": "ZombieConfig.RespawnMultiplier",
+   "type": "decimal",
+   "description": {
+    "en": "The fraction of a cell's desired population that may respawn every RespawnHours.",
+    "es": "La fracción de la población deseada de una celda que puede reaparecer cada Horas para reaparición."
+   },
+   "min": 0,
+   "max": 1,
+   "default": "0.00"
+  },
+  {
+   "key": "ZombieConfig.RedistributeHours",
+   "type": "decimal",
+   "description": {
+    "en": "The number of hours that must pass before zombies migrate  to empty parts of the same cell. If 0, migration is disabled.",
+    "es": "El número de horas que deben pasar para que los zombis migren a partes vacía de la misma celda. Si es cero, la migración se desactiva."
+   },
+   "min": 0,
+   "max": 8760,
+   "default": "12.00"
+  },
+  {
+   "key": "ZombieConfig.FollowSoundDistance",
+   "type": "integer",
+   "description": {
+    "en": "The distance a zombie will try to walk towards the last sound it heard.",
+    "es": "La distancia a la que un zombi intentará caminar hacia el último sonido que escuchó."
+   },
+   "min": 10,
+   "max": 1000,
+   "default": "100"
+  },
+  {
+   "key": "ZombieConfig.RallyGroupSize",
+   "type": "integer",
+   "description": {
+    "en": "The size of groups real zombies form when idle. 0 means zombies don't form groups. Groups don't form inside buildings or forest zones.",
+    "es": "El tamaño de los grupos de zombis reales que se forman cuando están inactivos. Cero significa que no forman grupos. Los grupos no se forman en edificios ni bosques."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "20"
+  },
+  {
+   "key": "ZombieConfig.RallyGroupSizeVariance",
+   "type": "integer",
+   "description": {
+    "en": "The amount, as a percentage, that zombie groups can vary in size from the default (both larger and smaller).   For example, at 50% variance with a default group size of 20, groups will vary in size from 10-30.",
+    "es": "El porcentaje en que los grupos de zombis pueden variar en tamaño desde el valor predeterminado (tanto más grandes como más pequeños). Por ejemplo, con un 50% de varianza y un tamaño de grupo predeterminado de 20, los grupos variarán entre 10-30."
+   },
+   "min": 0,
+   "max": 100,
+   "default": "50"
+  },
+  {
+   "key": "ZombieConfig.RallyTravelDistance",
+   "type": "integer",
+   "description": {
+    "en": "The distance real zombies travel to form groups when idle.",
+    "es": "Distancia real que recorren los zombis para formar grupos cuando están inactivos."
+   },
+   "min": 5,
+   "max": 50,
+   "default": "20"
+  },
+  {
+   "key": "ZombieConfig.RallyGroupSeparation",
+   "type": "integer",
+   "description": {
+    "en": "The distance between zombie groups.",
+    "es": "La distancia entre los grupos de zombies."
+   },
+   "min": 5,
+   "max": 25,
+   "default": "15"
+  },
+  {
+   "key": "ZombieConfig.RallyGroupRadius",
+   "type": "integer",
+   "description": {
+    "en": "How close members of a zombie group stay to the group's \"leader\".",
+    "es": "Cercanía que mantienen los miembros del grupo con el líder del mismo."
+   },
+   "min": 1,
+   "max": 10,
+   "default": "3"
+  },
+  {
+   "key": "ZombieConfig.ZombiesCountBeforeDelete",
+   "type": "integer",
+   "description": {
+    "en": "Controls the maximum number of zombies tracked before cleanup occurs. 0 means zombies will not be cleaned up. The default value (300) is strongly recommended. Increasing this value or setting to 0 may cause severe performance problems. For troubleshooting and bug-report purposes, please reproduce any issue with the default setting before submitting a report.",
+    "es": "Controla el número máximo de zombis rastreados antes de que se produzca la limpieza. 0 significa que los zombis no se limpiarán. El valor predeterminado (300) es muy recomendable. Aumentar este valor o establecerlo en 0 puede causar graves problemas de rendimiento. Para fines de resolución de problemas e informes de errores, reproduce cualquier problema con la configuración predeterminada antes de enviar un informe."
+   },
+   "min": 0,
+   "max": 5000,
+   "default": "300"
+  },
+  {
+   "key": "MultiplierConfig.Global",
+   "type": "decimal",
+   "description": {
+    "en": "The rate at which all skills level up.",
+    "es": "La tasa a la que se suben de nivel todas las habilidades."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.GlobalToggle",
+   "type": "boolean",
+   "description": {
+    "en": "When enabled, all skills will use the Global Multiplier.",
+    "es": "Cuando está habilitado, todas las habilidades usarán el multiplicador global."
+   }
+  },
+  {
+   "key": "MultiplierConfig.Fitness",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Fitness skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Estado Físico"
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Strength",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Strength skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Fuerza."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Sprinting",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Sprinting skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Carrera."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Lightfoot",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Lightfooted skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Pies Ligeros."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Nimble",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Nimble skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Destreza."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Sneak",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Sneaking skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Sigilo."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Axe",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Axe skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Hacha."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Blunt",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Long Blunt skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Armas Largas Contundentes."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.SmallBlunt",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Short Blunt skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Armas Cortas Contundentes ."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.LongBlade",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Long Blade skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Armas de Hoja Larga."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.SmallBlade",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Short Blade skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Armas de Hoja Corta."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Spear",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Spear skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Lanza."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Maintenance",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Maintenance skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Mantenimiento."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Woodwork",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Carpentry skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Carpintería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Cooking",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Cooking skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Cocina."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Farming",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Agriculture skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Agricultura."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Doctor",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which First Aid skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Primeros Auxilios."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Electricity",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Electrical skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Electricidad."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.MetalWelding",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Welding skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Metalistería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Mechanics",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Mechanics skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Mecánica."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Tailoring",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Tailoring skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Sastrería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Aiming",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Aiming skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Puntería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Reloading",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Reloading skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Recarga."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Fishing",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Fishing skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Pesca."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Trapping",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Trapping skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Trampas."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.PlantScavenging",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Foraging skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Recolección."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.FlintKnapping",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Knapping skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Labrar Piedra"
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Masonry",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Masonry skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Albañilería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Pottery",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Pottery skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Alfarería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Carving",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Carving skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Tallar."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Husbandry",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Animal Care skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Cuidado Animal."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Tracking",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Tracking skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Rastrear."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Blacksmith",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Blacksmithing skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Herrería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Butchering",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Butchering skill levels up.",
+    "es": "Tasa a la que se sube de nivel la habilidad de Carnicería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  },
+  {
+   "key": "MultiplierConfig.Glassmaking",
+   "type": "decimal",
+   "description": {
+    "en": "Rate at which Glassmaking skill levels up.",
+    "es": "Velocidad a la que sube de nivel la habilidad de Cristalería."
+   },
+   "min": 0,
+   "max": 1000,
+   "default": "1.00"
+  }
+ ]
+}

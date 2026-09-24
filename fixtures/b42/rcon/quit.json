@@ -1,0 +1,61 @@
+[
+ {
+  "t": 0.005,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.005,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 0.006,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 3.019,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "quit"
+ },
+ {
+  "t": 3.019,
+  "dir": "out",
+  "kind": "sentinel",
+  "id": 11
+ },
+ {
+  "t": 3.07,
+  "dir": "in",
+  "size": 14,
+  "id": 10,
+  "type": 0,
+  "body": "Quit"
+ },
+ {
+  "t": 3.071,
+  "dir": "in",
+  "size": 10,
+  "id": 11,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 3.071,
+  "dir": "in",
+  "size": 10,
+  "id": 11,
+  "type": 0,
+  "body": ""
+ }
+]
