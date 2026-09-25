@@ -38,10 +38,7 @@ function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
         </Alert>
       )}
       <OptionsForm
-        // FALLBACK: `VERSION` is a file-format key one adapter's schema lists as a setting. Left out of the
-        // schema here, it shows only behind Advanced (a setting the schema doesn't describe) until the adapter
-        // marks it managed or drops it from the schema.
-        metas={(meta.schemas[file.schemaId!] ?? []).filter((m) => m.key !== 'VERSION')}
+        metas={meta.schemas[file.schemaId!] ?? []}
         values={q.data.values}
         groups={meta.groups[file.schemaId!] ?? []}
         managed={new Set(file.managedKeys)}

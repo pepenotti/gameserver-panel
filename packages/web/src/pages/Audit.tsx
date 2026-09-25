@@ -10,7 +10,7 @@ import type { AuditEntry } from '../api/types';
 import { formatDateTime } from '../lib/format';
 
 const PAGE = 100;
-/** The filter values that aren't a server id. */
+/** The filter values that aren't a server id; `-` is also what the API takes for the panel's own entries. */
 const ALL = '*';
 const HOST = '-';
 
@@ -28,7 +28,8 @@ export function Audit() {
   const [filter, setFilter] = useState('');
   const [server, setServer] = useState<string>(ALL);
   const [debounced] = useDebouncedValue(filter.trim().toLowerCase().replace(/[^a-z0-9.-]/g, ''), 300);
-  const byServer = server !== ALL && server !== HOST ? server : null;
+  // A server id, or HOST: entries about no server, filtered by the API like a server's.
+  const byServer = server !== ALL ? server : null;
   const q = useInfiniteQuery({
     queryKey: ['audit', debounced, byServer],
     initialPageParam: 0,
@@ -39,8 +40,7 @@ export function Audit() {
       ),
     getNextPageParam: (last) => (last.length === PAGE ? last[last.length - 1]!.id : undefined),
   });
-  // FALLBACK: the API has no "host entries only" filter yet; the loaded pages are narrowed here instead.
-  const rows = (q.data?.pages.flat() ?? []).filter((r) => server !== HOST || r.serverId === null);
+  const rows = q.data?.pages.flat() ?? [];
   const nameOf = (sid: string) => servers.data?.find((s) => s.id === sid)?.name ?? sid;
   // Everyone sees the servers they may audit; the panel's own entries only with the permission everywhere.
   const options = [

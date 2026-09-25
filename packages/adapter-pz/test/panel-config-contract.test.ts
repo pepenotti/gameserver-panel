@@ -60,6 +60,19 @@ describe('Project Zomboid config files', () => {
     expect(ini.seed).toEqual({ SaveWorldEveryMinutes: '10' });
   });
 
+  it('locks the sandbox file’s VERSION, the file format’s and not a setting (CFG-04, CFG-01)', () => {
+    const sandbox = pzPanelConfig.files(server()).find((f) => f.id === 'sandbox')!;
+    expect(sandbox.managedKeys).toEqual(['VERSION']);
+    // The game writes it: nothing the panel sets, so a raw save keeps what is on disk.
+    expect(pzPanelConfig.managedValues(server()).sandbox).toBeUndefined();
+    // The form shows it locked, behind Advanced, described as what it is in both languages.
+    const meta = pzPanelConfig.schemas.sandbox!.find((o) => o.key === 'VERSION')!;
+    expect(meta).toMatchObject({ type: 'integer', advanced: true, group: 'general' });
+    expect(meta.label?.en && meta.label.es && meta.description.en && meta.description.es).toBeTruthy();
+    // Only VERSION changed: every other sandbox option is as the game's files describe it.
+    expect(pzPanelConfig.schemas.sandbox!.filter((o) => o.key !== 'VERSION').every((o) => o.advanced === undefined && o.label === undefined)).toBe(true);
+  });
+
   it('lets the editor browse only this server’s files and mod settings', () => {
     const [serverFolder, mods] = pzPanelConfig.roots(server());
     expect(serverFolder).toMatchObject({ root: 'data', rel: 'Server', include: ['zomboid.ini', 'zomboid_*'] });

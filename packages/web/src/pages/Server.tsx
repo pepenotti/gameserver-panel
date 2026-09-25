@@ -6,8 +6,6 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../api/http';
-import type { AdaptersResponse } from '../api/meta';
 import { SERVERS_KEY, useServerApi, useServerScope, withServer, type ServerSummary } from '../api/server';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
@@ -28,6 +26,12 @@ interface Updates {
   latest: { name: string; buildId: string | null; timeUpdated?: number } | null;
   branches: { name: string; buildId: string | null; timeUpdated: number | null }[];
   updateAvailable: boolean;
+}
+
+/** `GET /api/servers/:sid/limits` (mirrors `ServerLimits` in packages/panel/src/routes/servers.ts); null: the host doesn't say. */
+interface ServerLimits {
+  maxMemMb: number | null;
+  cpus: number | null;
 }
 
 /** The server's name and id (SRV-02), renamed in place; the id stays (addresses, folders). */
@@ -56,19 +60,20 @@ function NameCard() {
 
 /**
  * The server's container limits (SRV-05): memory and CPUs, changed through
- * `PATCH /api/servers/:sid`. A stopped server's container is recreated with
- * them at once; a running one's at its game's next start (the list says so
- * until then). The stack's own server has Compose's limits.
+ * `PATCH /api/servers/:sid`, within the most the host gives one server
+ * (`GET /api/servers/:sid/limits`). A stopped server's container is
+ * recreated with them at once; a running one's at its game's next start
+ * (the list says so until then). The stack's own server has Compose's limits.
  */
 function ContainerCard({ server, needMb }: { server: ServerSummary; needMb: number | null }) {
   const { t } = useTranslation();
   const errorText = useErrorText();
   const qc = useQueryClient();
   const sapi = useServerApi();
-  const { canHost } = useSession();
-  // What the host gives one server; only those who may create servers can ask (the API refuses more anyway).
-  const adapters = useQuery({ queryKey: ['adapters'], queryFn: () => api<AdaptersResponse>('GET', '/api/adapters'), enabled: canHost('servers.create'), staleTime: 60_000 });
-  const host = adapters.data?.host ?? null;
+  const { can } = useSession();
+  // The most the host gives one server: anyone who may change this server's limits can ask.
+  const limits = useQuery({ queryKey: ['limits', sapi.sid], queryFn: () => sapi<ServerLimits>('GET', '/limits'), enabled: server.managed && can('server.update'), staleTime: 60_000 });
+  const host = limits.data ?? null;
   const [mem, setMem] = useState<number | null>(server.memLimitMb);
   const [cpus, setCpus] = useState<number | null>(server.cpus);
   const [saving, setSaving] = useState(false);

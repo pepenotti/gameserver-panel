@@ -14,7 +14,7 @@ export default {
   issues: '{{count}} problem(s) to fix before saving',
   line: 'Line {{line}}',
   lineCol: 'Line {{line}}, column {{col}}',
-  managedNote: 'Set by the panel, put back when you save: {{keys}}',
+  managedNote: 'Managed by the panel or the game, put back when you save: {{keys}}',
   secretNote: 'Passwords show as ••••••••. Leave them like that to keep them.',
   unsavedTitle: 'Unsaved changes',
   unsaved: 'This file has changes you haven’t saved. Discard them?',

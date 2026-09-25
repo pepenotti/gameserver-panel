@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -142,6 +142,22 @@ describe('output lines', () => {
     expect(pz.classify('java.lang.OutOfMemoryError: Java heap space').fatal).toBe(true);
     expect(pz.classify('* additem : Give an item')).toEqual({ message: '* additem : Give an item' });
   });
+
+  it('marks the exception PZ logs when its boot dies as fatal, and nothing in a good boot (SRV-07)', () => {
+    // Methods the M2 acceptance run saw when boots died, in the header shape measured on 42.20.4 (the exact lines weren't captured).
+    for (const l of ['ERROR: General      f:0 st:1,234,567> GameServer.main> Exception thrown', 'ERROR: General      f:0 st:1,234,568> ServerWorldDatabase.create> Exception thrown']) {
+      expect(pz.classify(l), l).toMatchObject({ fatal: true, message: expect.stringMatching(/> Exception thrown$/) });
+    }
+    // Good boots log caught exceptions of other methods too, with GameServer.main in their stacks: never fatal.
+    for (const rel of ['logs/first-boot.log', 'logs/boot-with-rcon.log', 'logs/console-session.log']) {
+      expect(lines(rel).filter((l) => l.includes('Exception thrown')).length, rel).toBeGreaterThan(0);
+      expect(lines(rel).filter((l) => pz.classify(l).fatal), rel).toEqual([]);
+    }
+    expect(lines('logs/first-boot.log').some((l) => l.includes('zombie.network.GameServer.main('))).toBe(true);
+    // Not a stack frame, not another method's exception.
+    expect(pz.classify('\t\tzombie.network.GameServer.main(GameServer.java:804)').fatal).toBeUndefined();
+    expect(pz.classify('ERROR: General      f:0 st:1,234,569> GameServer.mainLoop> Exception thrown').fatal).toBeUndefined();
+  });
 });
 
 describe('install', () => {
@@ -204,6 +220,42 @@ describe('start', () => {
     await new Promise((r) => setTimeout(r, 20));
     await pz.prepare(c, launch);
     expect(statSync(iniFile()).mtimeMs).toBe(before);
+  });
+
+  it('removes the empty game database a failed first boot left, and nothing else (SRV-03)', async () => {
+    const { c, logs } = ctx();
+    const dbDir = path.join(dir, 'data', 'db');
+    const dbFile = path.join(dbDir, 'testsrv.db');
+    // No database yet (a first start): nothing to do, nothing created.
+    await pz.prepare(c, launch);
+    expect(existsSync(dbDir)).toBe(false);
+    expect(logs).toEqual([]);
+
+    // 0 bytes: the game would never create its tables in it, and every start would fail.
+    mkdirSync(dbDir, { recursive: true });
+    writeFileSync(dbFile, '');
+    await pz.prepare(c, launch);
+    expect(existsSync(dbFile)).toBe(false);
+    expect(logs).toEqual(['Removed the empty game database db/testsrv.db that a failed start left behind; the game creates it again.']);
+
+    // Anything with content, another server's database, or a folder by that name: never touched.
+    const game = new DatabaseSync(dbFile);
+    game.exec("CREATE TABLE whitelist (username TEXT); INSERT INTO whitelist VALUES ('rick')");
+    game.close();
+    const bytes = readFileSync(dbFile);
+    writeFileSync(path.join(dbDir, 'other.db'), '');
+    await pz.prepare(c, launch);
+    expect(readFileSync(dbFile)).toEqual(bytes);
+    rmSync(dbFile);
+    writeFileSync(dbFile, 'x');
+    await pz.prepare(c, launch);
+    expect(readFileSync(dbFile, 'utf8')).toBe('x');
+    rmSync(dbFile);
+    mkdirSync(dbFile);
+    await pz.prepare(c, launch);
+    expect(statSync(dbFile).isDirectory()).toBe(true);
+    expect(statSync(path.join(dbDir, 'other.db')).size).toBe(0);
+    expect(logs).toHaveLength(1);
   });
 
   it('puts JVM flags before "--" and game flags after', () => {
@@ -320,6 +372,23 @@ describe('actions', () => {
       steamIds: [{ steamId: '76561198000000009', reason: 'griefing' }],
       ips: [{ ip: '192.168.1.50', username: 'alice', reason: null }],
     });
+  });
+
+  it('never creates or changes the game database when reading it (SRV-03)', async () => {
+    const { c } = ctx();
+    const input = a[ACCOUNTS]!.parse({ serverName: 'testsrv' });
+    const dbDir = path.join(dir, 'data', 'db');
+    // Before the game made one: nothing, and still no file (the game creates its tables only in a new file).
+    expect(await a[ACCOUNTS]!.run(c, null, input)).toEqual([]);
+    expect(await a[BANS]!.run(c, null, input)).toEqual({ steamIds: [], ips: [] });
+    expect(existsSync(dbDir)).toBe(false);
+    // The empty one a failed first boot leaves: read as nothing, left exactly as it was (the next start removes it).
+    mkdirSync(dbDir, { recursive: true });
+    writeFileSync(path.join(dbDir, 'testsrv.db'), '');
+    expect(await a[ACCOUNTS]!.run(c, null, input)).toEqual([]);
+    expect(await a[BANS]!.run(c, null, input)).toEqual({ steamIds: [], ips: [] });
+    expect(readdirSync(dbDir)).toEqual(['testsrv.db']);
+    expect(statSync(path.join(dbDir, 'testsrv.db')).size).toBe(0);
   });
 
   it('falls back to nothing, and says why, when the database is unreadable', async () => {

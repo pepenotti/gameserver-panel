@@ -46,6 +46,19 @@ export interface HostSummary {
   maxMemMb: number | null;
 }
 
+/**
+ * `GET /api/servers/:sid/limits` (SRV-05): the most this host lets one
+ * server's container have, for whoever may change that server's limits.
+ * Each is null when the orchestrator doesn't say (or can't be asked); then
+ * only its refusal tells.
+ */
+export interface ServerLimits {
+  /** The most memory one server may be given, MiB (`ORCH_MAX_MEM_MB`). */
+  maxMemMb: number | null;
+  /** The host's CPUs: the most a server's CPU limit may be. */
+  cpus: number | null;
+}
+
 /** A game servers can be created from (`GET /api/adapters`). */
 export interface AdapterSummary {
   id: string;
@@ -178,12 +191,18 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
 /**
  * Changing and removing one server (under `/api/servers/:sid`, so the guard
  * resolves it and checks the permission there): rename, reorder or change
- * its memory and CPU limits (SRV-05) with `server.update`; remove (SRV-04)
- * with `server.delete`, after typing its name. Deleting its backups too,
- * skipping the final backup, or forcing out a server that won't stop or
- * run, is the owner's choice alone.
+ * its memory and CPU limits (SRV-05) with `server.update`, which also reads
+ * the most the host allows; remove (SRV-04) with `server.delete`, after
+ * typing its name. Deleting its backups too, skipping the final backup, or
+ * forcing out a server that won't stop or run, is the owner's choice alone.
  */
 export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
+  // What `GET /api/adapters` tells those who create servers, for an admin of this server alone too.
+  app.get('/limits', { config: { permission: 'server.update' } }, async (): Promise<ServerLimits> => {
+    const host = await deps.orchestrator.host().catch(() => null);
+    return { maxMemMb: host?.maxMemMb ?? null, cpus: host?.cpus ?? null };
+  });
+
   app.patch<{ Body: { name?: string; sort?: number; memLimitMb?: number; cpus?: number | null } }>(
     '',
     {

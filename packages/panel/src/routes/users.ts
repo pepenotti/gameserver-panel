@@ -7,6 +7,9 @@ import type { Deps } from '../http/deps';
 
 const idParam = { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } } as const;
 
+/** `GET /api/audit?server=-`: only the entries about no server (ACC-03). Never a server id (ids start with a letter). */
+export const AUDIT_HOST_ENTRIES = '-';
+
 /** An account in `GET /api/users`: its scope, account role and per-server grants. */
 export type UserWithGrants = PublicUser & { grants: ServerGrant[] };
 
@@ -212,7 +215,9 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
   /**
    * The audit log (ACC-03), filterable by server. Admins on every server see
    * all of it; an admin on some servers sees only those servers' entries,
-   * and a server they can't see is "not found".
+   * and a server they can't see is "not found". `server=-` asks for the
+   * host's own entries (sign-ins, accounts, host settings: about no server),
+   * which only an admin on every server sees; anyone else gets none.
    */
   app.get<{ Querystring: { before?: number; action?: string; limit?: number; server?: string } }>(
     '/api/audit',
@@ -226,7 +231,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
             before: { type: 'integer', minimum: 1 },
             action: { type: 'string', maxLength: 40, pattern: '^[a-z0-9.-]*$' },
             limit: { type: 'integer', minimum: 1, maximum: 500 },
-            server: { type: 'string', pattern: SERVER_ID_PATTERN.source },
+            server: { type: 'string', anyOf: [{ const: AUDIT_HOST_ENTRIES }, { pattern: SERVER_ID_PATTERN.source }] },
           },
         },
       },
@@ -236,6 +241,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
       const q = { beforeId: req.query.before, action: req.query.action, limit: req.query.limit };
       const everywhere = canHost(principal(user), 'audit.view');
       const mine = everywhere ? null : serversAllowing(deps, user, 'audit.view');
+      if (req.query.server === AUDIT_HOST_ENTRIES) return mine ? [] : audit.list({ ...q, serverId: null });
       if (req.query.server !== undefined) {
         // Entries outlive deleted servers, so an admin on every server may ask for any id.
         if (mine && !mine.includes(req.query.server)) throw new HttpError(404, 'server-not-found');
