@@ -46,6 +46,8 @@ export interface DockerNetwork {
   Id: string;
   Name: string;
   Labels: Labels;
+  /** Attached containers by id (on inspect). */
+  Containers?: Record<string, unknown> | null;
 }
 
 export interface DockerVolume {

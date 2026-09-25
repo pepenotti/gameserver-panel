@@ -173,7 +173,8 @@ export class DockerBackend implements Backend {
           await this.docker.call('DELETE', `/containers/${c.Id}`, { query: { force: true } });
         }
         if (net) {
-          const full = await this.docker.find<DockerNetwork & { Containers?: Record<string, unknown> | null }>(`/networks/${net.Id}`);
+          // Inspected again: the server's own endpoint went with its container.
+          const full = await this.docker.find<DockerNetwork>(`/networks/${net.Id}`);
           for (const attached of Object.keys(full?.Containers ?? {})) {
             await this.docker.call('POST', `/networks/${net.Id}/disconnect`, { body: { Container: attached, Force: true } });
           }
