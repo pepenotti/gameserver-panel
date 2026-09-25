@@ -18,16 +18,17 @@ RUN npm ci --ignore-scripts --no-audit --no-fund \
  && cp -r packages/web/dist packages/panel/dist/public
 
 FROM node:24-trixie-slim
-# tar + zstd for backups; tini to reap tar/zstd children.
+# Backups are packed by each server's agent and compressed in-process (zstd
+# from node:zlib): no archivers here. tini as PID 1.
 # /run/panel is the mount point of the panel-sock volume: a fresh volume takes
 # this directory's owner, so the panel (node) can create its socket there.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends tar zstd tini ca-certificates tzdata \
+ && apt-get install -y --no-install-recommends tini ca-certificates tzdata \
  && rm -rf /var/lib/apt/lists/* \
- && mkdir -p /var/lib/panel /backups /data /opt/pz /run/panel \
- && chown node:node /var/lib/panel /backups /data /opt/pz /run/panel
+ && mkdir -p /var/lib/panel /backups /run/panel \
+ && chown node:node /var/lib/panel /backups /run/panel
 USER node
-ENV NODE_ENV=production PANEL_DATA_DIR=/var/lib/panel PZ_DATA_DIR=/data PZ_INSTALL_DIR=/opt/pz BACKUP_DIR=/backups
+ENV NODE_ENV=production PANEL_DATA_DIR=/var/lib/panel BACKUP_DIR=/backups
 COPY --from=build --chown=node:node /src/packages/panel/dist/ /app/
 EXPOSE 8080
 # On its socket when PANEL_LISTEN=unix:<path>, else on 127.0.0.1:8080.

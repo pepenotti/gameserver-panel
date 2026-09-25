@@ -32,8 +32,6 @@ export function slotOverrides(slot) {
     LAN_IP: '127.0.0.1',
     PANEL_MEM_LIMIT: '512m',
     PANEL_PORT: String(b.stackHttps),
-    PZ_GAME_PORT: String(b.gamePorts[11]),
-    PZ_UDP_PORT: String(b.gamePorts[12]),
     ORCH_HOST_PORTS: slotGamePorts(slot),
     // Room for a Project Zomboid server with a 2-3 GiB heap (its smallest is 2 GiB + 3 GiB for the rest).
     ORCH_MAX_MEM_MB: '6144',

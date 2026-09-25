@@ -12,8 +12,12 @@
 #   runtime  gsp/steam       Valve's steamcmd (the default)
 #   fake     gsp/steam-fake  fake games and a fake steamcmd, no download; the
 #                            orchestrator runs it only with ORCH_ALLOW_FAKE=1
-# Build from the repo root through Compose's build-only services:
-#   docker compose build steam steam-fake
+# The orchestrator runs gsp/steam[-fake]:<its own image tag>, so build them
+# with the stack's IMAGE_TAG, through Compose's build-only services:
+#   docker compose build steam steam-fake                (a host)
+#   node scripts/stack.mjs build steam steam-fake        (a development worktree)
+# The agent's file and archive routes need nothing beyond Node 24: tar is
+# JavaScript, zstd is node:zlib, SQLite snapshots are node:sqlite.
 
 FROM node:24-trixie-slim AS build
 WORKDIR /src
