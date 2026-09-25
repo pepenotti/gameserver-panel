@@ -142,6 +142,22 @@ describe('output lines', () => {
     expect(pz.classify('java.lang.OutOfMemoryError: Java heap space').fatal).toBe(true);
     expect(pz.classify('* additem : Give an item')).toEqual({ message: '* additem : Give an item' });
   });
+
+  it('marks the exception PZ logs when its boot dies as fatal, and nothing in a good boot (SRV-07)', () => {
+    // Methods the M2 acceptance run saw when boots died, in the header shape measured on 42.20.4 (the exact lines weren't captured).
+    for (const l of ['ERROR: General      f:0 st:1,234,567> GameServer.main> Exception thrown', 'ERROR: General      f:0 st:1,234,568> ServerWorldDatabase.create> Exception thrown']) {
+      expect(pz.classify(l), l).toMatchObject({ fatal: true, message: expect.stringMatching(/> Exception thrown$/) });
+    }
+    // Good boots log caught exceptions of other methods too, with GameServer.main in their stacks: never fatal.
+    for (const rel of ['logs/first-boot.log', 'logs/boot-with-rcon.log', 'logs/console-session.log']) {
+      expect(lines(rel).filter((l) => l.includes('Exception thrown')).length, rel).toBeGreaterThan(0);
+      expect(lines(rel).filter((l) => pz.classify(l).fatal), rel).toEqual([]);
+    }
+    expect(lines('logs/first-boot.log').some((l) => l.includes('zombie.network.GameServer.main('))).toBe(true);
+    // Not a stack frame, not another method's exception.
+    expect(pz.classify('\t\tzombie.network.GameServer.main(GameServer.java:804)').fatal).toBeUndefined();
+    expect(pz.classify('ERROR: General      f:0 st:1,234,569> GameServer.mainLoop> Exception thrown').fatal).toBeUndefined();
+  });
 });
 
 describe('install', () => {

@@ -120,7 +120,8 @@ export function classify(raw: string): LineSignal {
   // Without -adminpassword on a fresh world the server blocks on stdin for one.
   if (PZ_PATTERNS.adminPrompt.test(message)) s.blockingPrompt = ADMIN_PROMPT;
   if (PZ_PATTERNS.saveFinished.test(message)) s.saved = true;
-  if (isFatal(raw)) s.fatal = true;
+  // The JVM's own fatal lines, and the exception PZ logs when its boot dies.
+  if (isFatal(raw) || PZ_PATTERNS.bootFailed.test(message)) s.fatal = true;
   return s;
 }
 

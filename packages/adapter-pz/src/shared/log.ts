@@ -40,6 +40,16 @@ export const PZ_PATTERNS = {
   optionRangeError: /^ERROR: \w+ConfigOption\.setValue\(\) "([^"]+)" (.*)$/,
   consoleCommand: /^command entered via server console \(System\.in\): "(.*)"$/,
   noSteam: /^\*\*\* Steam is not enabled/,
+  /**
+   * The boot itself threw: the server's main method, or creating its
+   * database. PZ logs a caught exception as `<Class.method>> Exception
+   * thrown`, then the exception and its stack on the lines below (shape
+   * measured on 42.20.4, fixtures/pz/b42/logs). These two methods are the
+   * ones the M2 acceptance run saw when boots died (their exact lines were
+   * not captured); the same shape from other methods (e.g.
+   * `IsoPropertyType.lookupOrDefaultStr`) appears in every good boot.
+   */
+  bootFailed: /^(?:GameServer\.main|ServerWorldDatabase\.create)> Exception thrown\b/,
 } as const;
 
 /**
