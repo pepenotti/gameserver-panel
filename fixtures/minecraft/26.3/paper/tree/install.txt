@@ -1,0 +1,4 @@
+f 65176386 ./paper.jar
+d 82690147 ./libraries (files: 103)
+d 30862978 ./versions (files: 1)
+d 62294556 ./cache (files: 1)

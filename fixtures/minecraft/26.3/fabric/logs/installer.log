@@ -1,0 +1,14 @@
+Loading Fabric Installer: 1.1.2
+Installing Fabric Loader 0.19.5(26.3) on the server
+Downloading required files
+Downloading library org.ow2.asm:asm:9.10.1
+Downloading library org.ow2.asm:asm-analysis:9.10.1
+Downloading library org.ow2.asm:asm-commons:9.10.1
+Downloading library org.ow2.asm:asm-tree:9.10.1
+Downloading library org.ow2.asm:asm-util:9.10.1
+Downloading library net.fabricmc:sponge-mixin:0.17.4+mixin.0.8.7
+Downloading library net.fabricmc:fabric-loader:0.19.5
+Generating server launch JAR
+Downloading Minecraft server
+Done
+Done, start server by running fabric-server-launch.jar

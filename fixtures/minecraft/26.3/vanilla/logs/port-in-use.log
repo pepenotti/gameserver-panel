@@ -1,0 +1,28 @@
+Starting net.minecraft.server.Main
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by com.sun.jna.Native in an unnamed module (file:/opt/game/libraries/net/java/dev/jna/jna/5.17.0/jna-5.17.0.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/opt/game/libraries/org/joml/joml/1.10.9/joml-1.10.9.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[19:40:15] [ServerMain/INFO]: Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[19:40:17] [Worker-Main-6/INFO]: Loaded 1866 advancements
+[19:40:17] [Server thread/INFO]: Starting minecraft server version 26.3
+[19:40:17] [Server thread/INFO]: Loading properties
+[19:40:17] [Server thread/INFO]: Default game type: SURVIVAL
+[19:40:17] [Server thread/INFO]: Generating keypair
+[19:40:18] [Server thread/INFO]: Starting Minecraft server on *:25565
+[19:40:18] [Server thread/WARN]: **** FAILED TO BIND TO PORT!
+[19:40:18] [Server thread/WARN]: The exception was: io.netty.channel.unix.Errors$NativeIoException: bind(..) failed with error(-98): Address already in use
+[19:40:18] [Server thread/WARN]: Perhaps a server is already running on that port?
+[19:40:18] [Server thread/ERROR]: Encountered an unexpected exception
+java.lang.IllegalStateException: Failed to initialize server
+	at net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:774)
+	at net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:310)
+	at java.base/java.lang.Thread.run(Unknown Source)
+[19:40:18] [Server thread/ERROR]: This crash report has been saved to: /data/crash-reports/crash-2026-09-25_19.40.18-server.txt
+[19:40:18] [Server thread/INFO]: Stopping server
+[19:40:18] [Server thread/INFO]: Saving worlds

@@ -1,0 +1,48 @@
+[
+ {
+  "t": 0.002,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.008,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 0.414,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "save-off",
+  "type": 2
+ },
+ {
+  "t": 0.428,
+  "dir": "in",
+  "size": 42,
+  "id": 10,
+  "type": 0,
+  "body": "Automatic saving is now disabled"
+ },
+ {
+  "t": 0.653,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 20,
+  "body": "save-all flush",
+  "type": 2
+ },
+ {
+  "t": 1.23,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 30,
+  "body": "save-on",
+  "type": 2
+ }
+]

@@ -1,0 +1,13 @@
+Starting org.bukkit.craftbukkit.Main
+2026-09-25T19:42:18.778645519Z ServerMain WARN Advanced terminal features are not available in this environment
+[19:42:19 INFO]: [bootstrap] Running Java 25 (OpenJDK 64-Bit Server VM 25.0.4+7-LTS; Eclipse Adoptium Temurin-25.0.4+7) on Linux <kernel release> (amd64)
+[19:42:19 INFO]: [bootstrap] Loading Paper 26.3-41-main@a15fed9 (2026-09-25T03:26:20Z) for Minecraft 26.3
+[19:42:19 INFO]: [PluginInitializerManager] Initializing plugins...
+[19:42:19 INFO]: [PluginInitializerManager] Initialized 0 plugins
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/opt/game/libraries/org/joml/joml/1.10.9/joml-1.10.9.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[19:42:25 INFO]: [ca.spottedleaf.dataconverter.minecraft.datatypes.MCTypeRegistry] Initialising converters for DataConverter...
+[19:42:25 WARN]: Failed to load eula.txt
+[19:42:25 INFO]: You need to agree to the EULA in order to run the server. Go to eula.txt for more info.

@@ -1,0 +1,3 @@
+f 62294556 ./server.jar
+d 42901556 ./libraries (files: 39)
+d 26652008 ./versions (files: 1)

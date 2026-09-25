@@ -1,0 +1,68 @@
+[
+  {
+    "id": 129,
+    "time": "2026-09-23T18:49:01Z",
+    "channel": "STABLE",
+    "commits": [
+      {
+        "sha": "9240f586a4aa2623b3581e331817d527cbae2723",
+        "time": "2026-09-23T18:48:33Z",
+        "message": "Fix golem target block check\n"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.2-129.jar",
+        "checksums": {
+          "sha256": "b1d8f6bfa1b6101fa8e947b53041cb3bdf5540e7b83b6547ca19ba7edefeb083"
+        },
+        "size": 64522678,
+        "url": "https://fill-data.papermc.io/v1/objects/b1d8f6bfa1b6101fa8e947b53041cb3bdf5540e7b83b6547ca19ba7edefeb083/paper-26.2-129.jar"
+      }
+    }
+  },
+  {
+    "id": 82,
+    "time": "2026-07-26T13:34:22Z",
+    "channel": "BETA",
+    "commits": [
+      {
+        "sha": "05277d49495b2d054e8273f84b058397bd1dce4c",
+        "time": "2026-07-26T13:33:34Z",
+        "message": "Expose relative parameters to setRotation (#13901)"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.2-82.jar",
+        "checksums": {
+          "sha256": "3a21273692b2659696d1a22e394612b3ff732e231a10b1466975824d3e29dad8"
+        },
+        "size": 61754996,
+        "url": "https://fill-data.papermc.io/v1/objects/3a21273692b2659696d1a22e394612b3ff732e231a10b1466975824d3e29dad8/paper-26.2-82.jar"
+      }
+    }
+  },
+  {
+    "id": 58,
+    "time": "2026-07-12T13:42:35Z",
+    "channel": "ALPHA",
+    "commits": [
+      {
+        "sha": "aaa6591bebb502ac07f04455f4269085f0cf5794",
+        "time": "2026-07-12T13:41:43Z",
+        "message": "Do not delay when running minor file fix (#14054)"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.2-58.jar",
+        "checksums": {
+          "sha256": "c04d23d61ed3d6fc2873cad3817c535f8913fcf4d4869691091a28b9f99b3421"
+        },
+        "size": 61742555,
+        "url": "https://fill-data.papermc.io/v1/objects/c04d23d61ed3d6fc2873cad3817c535f8913fcf4d4869691091a28b9f99b3421/paper-26.2-58.jar"
+      }
+    }
+  }
+]

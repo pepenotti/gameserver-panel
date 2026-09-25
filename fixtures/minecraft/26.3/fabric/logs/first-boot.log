@@ -1,0 +1,405 @@
+Starting net.fabricmc.loader.impl.game.minecraft.BundlerClassPathCapture
+[19:51:23] [main/INFO]: Loading Minecraft 26.3 with Fabric Loader 0.19.5
+[19:51:23] [main/INFO]: Mappings not present!
+[19:51:24] [main/INFO]: Loading 4 mods:
+	- fabricloader 0.19.5
+	   \-- mixinextras 0.5.5
+	- java 25
+	- minecraft 26.3
+[19:51:24] [main/INFO]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/opt/game/libraries/net/fabricmc/sponge-mixin/0.17.4+mixin.0.8.7/sponge-mixin-0.17.4+mixin.0.8.7.jar Service=Knot/Fabric Env=SERVER
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by com.sun.jna.Native in an unnamed module (file:/opt/game/libraries/net/java/dev/jna/jna/5.17.0/jna-5.17.0.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/opt/game/libraries/org/joml/joml/1.10.9/joml-1.10.9.jar)
+WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+[19:51:32] [main/INFO]: Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[19:51:33] [Worker-Main-2/INFO]: No existing world data, creating new world
+[19:51:34] [Worker-Main-2/INFO]: Loaded 1866 advancements
+[19:51:35] [Server thread/INFO]: Starting minecraft server version 26.3
+[19:51:35] [Server thread/INFO]: Loading properties
+[19:51:35] [Server thread/INFO]: Default game type: SURVIVAL
+[19:51:35] [Server thread/INFO]: Generating keypair
+[19:51:35] [Server thread/INFO]: Starting Minecraft server on *:25565
+[19:51:35] [Server thread/INFO]: Preparing level "world"
+[19:51:35] [Server thread/INFO]: Selecting global world spawn...
+[19:51:41] [Server thread/INFO]: Loading 0 persistent chunks...
+[19:51:41] [Server thread/INFO]: Preparing spawn area: 100%
+[19:51:41] [Server thread/INFO]: Time elapsed: 5268 ms
+[19:51:41] [Server thread/INFO]: Done (5.643s)! For help, type "help"
+[19:51:41] [Server thread/INFO]: Starting remote control listener
+[19:51:41] [Server thread/INFO]: Thread RCON Listener started
+[19:51:41] [Server thread/INFO]: RCON running on 0.0.0.0:25575
+[19:51:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[19:51:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[19:51:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[19:51:43] [Server thread/INFO]: System chat: There are 0 of a max of 20 players online: 
+[19:51:45] [Server thread/INFO]: System chat: There are 0 of a max of 20 players online: 
+[19:51:46] [Server thread/INFO]: [Not Secure] [Server] hello from the console
+[19:51:47] [Server thread/INFO]: System chat: Unknown or incomplete command. See below for error
+[19:51:47] [Server thread/INFO]: System chat: notacommand<--[HERE]
+[19:51:48] [Server thread/INFO]: System chat: There are no whitelisted players
+[19:51:49] [Server thread/INFO]: System chat: Server version info:
+[19:51:49] [Server thread/INFO]: System chat: id = 26.3
+[19:51:49] [Server thread/INFO]: System chat: name = 26.3
+[19:51:49] [Server thread/INFO]: System chat: data = 5023
+[19:51:49] [Server thread/INFO]: System chat: series = main
+[19:51:49] [Server thread/INFO]: System chat: protocol = 777 (0x309)
+[19:51:49] [Server thread/INFO]: System chat: build_time = Tue Sep 15 11:20:48 UTC 2026
+[19:51:49] [Server thread/INFO]: System chat: pack_resource = 97.1
+[19:51:49] [Server thread/INFO]: System chat: pack_data = 121.0
+[19:51:49] [Server thread/INFO]: System chat: stable = yes
+[19:51:51] [Server thread/INFO]: System chat: /advancement (grant|revoke)
+[19:51:51] [Server thread/INFO]: System chat: /attribute <target> <attribute> (get|base|modifier)
+[19:51:51] [Server thread/INFO]: System chat: /execute (run|if|unless|as|at|store|positioned|rotated|facing|align|anchored|in|summon|on)
+[19:51:51] [Server thread/INFO]: System chat: /bossbar (add|remove|list|set|get)
+[19:51:51] [Server thread/INFO]: System chat: /clear [<targets>]
+[19:51:51] [Server thread/INFO]: System chat: /clone (<begin>|from)
+[19:51:51] [Server thread/INFO]: System chat: /compute (default|block|entity)
+[19:51:51] [Server thread/INFO]: System chat: /damage <target> <amount> [<damageType>]
+[19:51:51] [Server thread/INFO]: System chat: /data (merge|get|remove|modify)
+[19:51:51] [Server thread/INFO]: System chat: /datapack (enable|disable|list|create)
+[19:51:51] [Server thread/INFO]: System chat: /debug (start|stop|function)
+[19:51:51] [Server thread/INFO]: System chat: /defaultgamemode <gamemode>
+[19:51:51] [Server thread/INFO]: System chat: /dialog (show|clear)
+[19:51:51] [Server thread/INFO]: System chat: /difficulty [peaceful|easy|normal|hard]
+[19:51:51] [Server thread/INFO]: System chat: /effect (clear|give)
+[19:51:51] [Server thread/INFO]: System chat: /me <action>
+[19:51:51] [Server thread/INFO]: System chat: /enchant <targets> <enchantment> [<level>]
+[19:51:51] [Server thread/INFO]: System chat: /experience (add|set|query)
+[19:51:51] [Server thread/INFO]: System chat: /xp -> experience
+[19:51:51] [Server thread/INFO]: System chat: /fill <from> <to> <block> [outline|hollow|destroy|strict|replace|keep]
+[19:51:51] [Server thread/INFO]: System chat: /fillbiome <from> <to> <biome> [replace]
+[19:51:51] [Server thread/INFO]: System chat: /forceload (add|remove|query)
+[19:51:51] [Server thread/INFO]: System chat: /function <name> [<arguments>|with]
+[19:51:51] [Server thread/INFO]: System chat: /gamemode <gamemode> [<target>]
+[19:51:51] [Server thread/INFO]: System chat: /gamerule (tnt_explodes|minecraft:tnt_explodes|pvp|minecraft:pvp|fire_damage|minecraft:fire_damage|players_sleeping_percentage|minecraft:players_sleeping_percentage|spawn_wardens|minecraft:spawn_wardens|block_explosion_drop_decay|minecraft:block_explosion_drop_decay|ender_pearls_vanish_on_death|minecraft:ender_pearls_vanish_on_death|mob_drops|minecraft:mob_drops|spawn_wandering_traders|minecraft:spawn_wandering_traders|advance_weather|minecraft:advance_weather|tnt_explosion_drop_decay|minecraft:tnt_explosion_drop_decay|reduced_debug_info|minecraft:reduced_debug_info|allow_entering_nether_using_portals|minecraft:allow_entering_nether_using_portals|locator_bar|minecraft:locator_bar|players_nether_portal_default_delay|minecraft:players_nether_portal_default_delay|block_drops|minecraft:block_drops|log_admin_commands|minecraft:log_admin_commands|forgive_dead_players|minecraft:forgive_dead_players|mob_explosion_drop_decay|minecraft:mob_explosion_drop_decay|max_snow_accumulation_height|minecraft:max_snow_accumulation_height|spawn_monsters|minecraft:spawn_monsters|send_command_feedback|minecraft:send_command_feedback|command_block_output|minecraft:command_block_output|max_entity_cramming|minecraft:max_entity_cramming|water_source_conversion|minecraft:water_source_conversion|raids|minecraft:raids|mob_griefing|minecraft:mob_griefing|spawner_blocks_work|minecraft:spawner_blocks_work|player_movement_check|minecraft:player_movement_check|global_sound_events|minecraft:global_sound_events|spawn_mobs|minecraft:spawn_mobs|max_block_modifications|minecraft:max_block_modifications|advance_time|minecraft:advance_time|spawn_patrols|minecraft:spawn_patrols|command_blocks_work|minecraft:command_blocks_work|fall_damage|minecraft:fall_damage|elytra_movement_check|minecraft:elytra_movement_check|show_advancement_messages|minecraft:show_advancement_messages|projectiles_can_break_blocks|minecraft:projectiles_can_break_blocks|universal_anger|minecraft:universal_anger|random_tick_speed|minecraft:random_tick_speed|spawn_phantoms|minecraft:spawn_phantoms|spread_vines|minecraft:spread_vines|max_command_sequence_length|minecraft:max_command_sequence_length|keep_inventory|minecraft:keep_inventory|immediate_respawn|minecraft:immediate_respawn|freeze_damage|minecraft:freeze_damage|respawn_radius|minecraft:respawn_radius|lava_source_conversion|minecraft:lava_source_conversion|drowning_damage|minecraft:drowning_damage|show_death_messages|minecraft:show_death_messages|fire_spread_radius_around_player|minecraft:fire_spread_radius_around_player|limited_crafting|minecraft:limited_crafting|natural_health_regeneration|minecraft:natural_health_regeneration|players_nether_portal_creative_delay|minecraft:players_nether_portal_creative_delay|spectators_generate_chunks|minecraft:spectators_generate_chunks|max_command_forks|minecraft:max_command_forks|entity_drops|minecraft:entity_drops)
+[19:51:51] [Server thread/INFO]: System chat: /give <targets> <item> [<count>]
+[19:51:51] [Server thread/INFO]: System chat: /help [<command>]
+[19:51:51] [Server thread/INFO]: System chat: /item (replace|fill|override|modify)
+[19:51:51] [Server thread/INFO]: System chat: /kick <targets> [<reason>]
+[19:51:51] [Server thread/INFO]: System chat: /kill [<targets>]
+[19:51:51] [Server thread/INFO]: System chat: /list [uuids]
+[19:51:51] [Server thread/INFO]: System chat: /locate (structure|biome|poi)
+[19:51:51] [Server thread/INFO]: System chat: /loot (replace|insert|give|spawn)
+[19:51:51] [Server thread/INFO]: System chat: /msg <targets> <message>
+[19:51:51] [Server thread/INFO]: System chat: /tell -> msg
+[19:51:51] [Server thread/INFO]: System chat: /w -> msg
+[19:51:51] [Server thread/INFO]: System chat: /swing [<targets>]
+[19:51:51] [Server thread/INFO]: System chat: /particle <name> [<pos>]
+[19:51:51] [Server thread/INFO]: System chat: /place (feature|jigsaw|structure|template)
+[19:51:51] [Server thread/INFO]: System chat: /playsound <sound> [master|music|record|weather|block|hostile|neutral|player|ambient|voice|ui]
+[19:51:51] [Server thread/INFO]: System chat: /posteffect (add|clear|list|remove)
+[19:51:51] [Server thread/INFO]: System chat: /random (value|roll|reset)
+[19:51:51] [Server thread/INFO]: System chat: /reload
+[19:51:51] [Server thread/INFO]: System chat: /recipe (give|take)
+[19:51:51] [Server thread/INFO]: System chat: /fetchprofile (name|id|entity)
+[19:51:51] [Server thread/INFO]: System chat: /return (<value>|fail|run)
+[19:51:51] [Server thread/INFO]: System chat: /ride <target> (mount|dismount)
+[19:51:51] [Server thread/INFO]: System chat: /rotate <target> (<rotation>|facing)
+[19:51:51] [Server thread/INFO]: System chat: /say <message>
+[19:51:51] [Server thread/INFO]: System chat: /schedule (function|clear)
+[19:51:51] [Server thread/INFO]: System chat: /scoreboard (objectives|players)
+[19:51:51] [Server thread/INFO]: System chat: /seed
+[19:51:51] [Server thread/INFO]: System chat: /version
+[19:51:51] [Server thread/INFO]: System chat: /setblock <pos> <block> [destroy|keep|replace|strict]
+[19:51:51] [Server thread/INFO]: System chat: /spawnpoint [<targets>]
+[19:51:51] [Server thread/INFO]: System chat: /setworldspawn [<pos>]
+[19:51:51] [Server thread/INFO]: System chat: /spectate [<target>]
+[19:51:51] [Server thread/INFO]: System chat: /spreadplayers <center> <spreadDistance> <maxRange> (<respectTeams>|under)
+[19:51:51] [Server thread/INFO]: System chat: /stopsound <targets> [*|master|music|record|weather|block|hostile|neutral|player|ambient|voice|ui]
+[19:51:51] [Server thread/INFO]: System chat: /stopwatch (create|query|restart|remove)
+[19:51:51] [Server thread/INFO]: System chat: /summon <entity> [<pos>]
+[19:51:51] [Server thread/INFO]: System chat: /tag <targets> (add|remove|list)
+[19:51:51] [Server thread/INFO]: System chat: /team (list|add|remove|empty|join|leave|modify)
+[19:51:51] [Server thread/INFO]: System chat: /teammsg <message>
+[19:51:51] [Server thread/INFO]: System chat: /tm -> teammsg
+[19:51:51] [Server thread/INFO]: System chat: /teleport (<location>|<destination>|<targets>)
+[19:51:51] [Server thread/INFO]: System chat: /tp -> teleport
+[19:51:51] [Server thread/INFO]: System chat: /tellraw <targets> <message>
+[19:51:51] [Server thread/INFO]: System chat: /test (run|runmultiple|runthese|runclosest|runthat|runfailed|verify|locate|resetclosest|resetthese|resetthat|clearthat|clearthese|clearall|stop|pos|create)
+[19:51:51] [Server thread/INFO]: System chat: /tick (query|rate|step|sprint|unfreeze|freeze)
+[19:51:51] [Server thread/INFO]: System chat: /time (set|add|pause|resume|rate|query|of)
+[19:51:51] [Server thread/INFO]: System chat: /title <targets> (clear|reset|title|subtitle|actionbar|times)
+[19:51:51] [Server thread/INFO]: System chat: /trigger <objective> [add|set]
+[19:51:51] [Server thread/INFO]: System chat: /waypoint (list|modify)
+[19:51:51] [Server thread/INFO]: System chat: /weather (clear|rain|thunder)
+[19:51:51] [Server thread/INFO]: System chat: /worldborder (add|set|center|damage|get|warning)
+[19:51:51] [Server thread/INFO]: System chat: /jfr (start|stop)
+[19:51:51] [Server thread/INFO]: System chat: /ban-ip <target> [<reason>]
+[19:51:51] [Server thread/INFO]: System chat: /banlist [ips|players]
+[19:51:51] [Server thread/INFO]: System chat: /ban <targets> [<reason>]
+[19:51:51] [Server thread/INFO]: System chat: /deop <targets>
+[19:51:51] [Server thread/INFO]: System chat: /op <targets>
+[19:51:51] [Server thread/INFO]: System chat: /pardon <targets>
+[19:51:51] [Server thread/INFO]: System chat: /pardon-ip <target>
+[19:51:51] [Server thread/INFO]: System chat: /perf (start|stop)
+[19:51:51] [Server thread/INFO]: System chat: /save-all [flush]
+[19:51:51] [Server thread/INFO]: System chat: /save-off
+[19:51:51] [Server thread/INFO]: System chat: /save-on
+[19:51:51] [Server thread/INFO]: System chat: /setidletimeout <minutes>
+[19:51:51] [Server thread/INFO]: System chat: /stop
+[19:51:51] [Server thread/INFO]: System chat: /transfer <hostname> [<port>]
+[19:51:51] [Server thread/INFO]: System chat: /whitelist (on|off|list|add|remove|reload)
+[19:51:53] [Server thread/INFO]: System chat: Saving the game (this may take a moment!)
+[19:51:53] [Server thread/INFO]: System chat: Saved the game
+[19:51:53] [RCON Listener #1/INFO]: Thread RCON Client /192.0.2.1 started
+[19:51:56] [Server thread/INFO]: [Not Secure] [Rcon] hello over rcon
+[19:51:56] [RCON Client /192.0.2.1 #2/INFO]: Thread RCON Client /192.0.2.1 shutting down
+[19:51:56] [RCON Listener #1/INFO]: Thread RCON Client /192.0.2.1 started
+[19:51:57] [RCON Client /192.0.2.1 #3/INFO]: Thread RCON Client /192.0.2.1 shutting down
+[19:51:57] [RCON Listener #1/INFO]: Thread RCON Client /192.0.2.1 started
+[19:51:58] [RCON Client /192.0.2.1 #4/INFO]: Thread RCON Client /192.0.2.1 shutting down
+[19:51:58] [RCON Listener #1/INFO]: Thread RCON Client /192.0.2.1 started
+[19:52:00] [RCON Client /192.0.2.1 #5/INFO]: Thread RCON Client /192.0.2.1 shutting down
+[19:52:00] [RCON Listener #1/INFO]: Thread RCON Client /192.0.2.1 started
+[19:52:03] [Server thread/WARN]: Couldn't find profile with name: gspffnosuchplr7
+MinecraftClientHttpException[type=HTTP_ERROR, status=404, response=ErrorResponse[path=/users/profiles/minecraft/gspffnosuchplr7, error=null, errorMessage=Couldn't find any profile with name gspffnosuchplr7, details=null]]
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.buildHttpException(MinecraftClient.java:170)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.readServiceResponse(MinecraftClient.java:147)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.getWithEtag(MinecraftClient.java:81)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:65)
+	at knot//com.mojang.authlib.services.MinecraftServicesProfileRepository.findProfileByName(MinecraftServicesProfileRepository.java:103)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.lookupGameProfile(CachedUserNameToIdResolver.java:73)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.get(CachedUserNameToIdResolver.java:134)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.lambda$parse$0(GameProfileArgument.java:66)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.getGameProfiles(GameProfileArgument.java:32)
+	at knot//net.minecraft.server.commands.BanPlayerCommands.lambda$register$1(BanPlayerCommands.java:36)
+	at knot//com.mojang.brigadier.context.ContextChain.runExecutable(ContextChain.java:73)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:29)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:13)
+	at knot//net.minecraft.commands.execution.UnboundEntryAction.lambda$bind$0(UnboundEntryAction.java:8)
+	at knot//net.minecraft.commands.execution.CommandQueueEntry.execute(CommandQueueEntry.java:8)
+	at knot//net.minecraft.commands.execution.ExecutionContext.runCommandQueue(ExecutionContext.java:106)
+	at knot//net.minecraft.commands.Commands.executeCommandInContext(Commands.java:438)
+	at knot//net.minecraft.commands.Commands.performCommand(Commands.java:370)
+	at knot//net.minecraft.commands.Commands.performPrefixedCommand(Commands.java:356)
+	at knot//net.minecraft.server.dedicated.DedicatedServer.lambda$runCommand$0(DedicatedServer.java:698)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.lambda$submitAsync$0(BlockableEventLoop.java:75)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(Unknown Source)
+	at knot//net.minecraft.server.TickTask.run(TickTask.java:18)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:173)
+	at knot//net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:23)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:912)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:193)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:147)
+	at knot//net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:894)
+	at knot//net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:888)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:156)
+	at knot//net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:859)
+	at knot//net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:758)
+	at knot//net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:310)
+	at java.base/java.lang.Thread.run(Unknown Source)
+[19:52:06] [Server thread/WARN]: Couldn't find profile with name: gspffnosuchplr7
+MinecraftClientHttpException[type=HTTP_ERROR, status=404, response=ErrorResponse[path=/users/profiles/minecraft/gspffnosuchplr7, error=null, errorMessage=Couldn't find any profile with name gspffnosuchplr7, details=null]]
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.buildHttpException(MinecraftClient.java:170)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.readServiceResponse(MinecraftClient.java:147)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.getWithEtag(MinecraftClient.java:81)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:65)
+	at knot//com.mojang.authlib.services.MinecraftServicesProfileRepository.findProfileByName(MinecraftServicesProfileRepository.java:103)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.lookupGameProfile(CachedUserNameToIdResolver.java:73)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.get(CachedUserNameToIdResolver.java:134)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.lambda$parse$0(GameProfileArgument.java:66)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.getGameProfiles(GameProfileArgument.java:32)
+	at knot//net.minecraft.server.commands.PardonCommand.lambda$register$1(PardonCommand.java:30)
+	at knot//com.mojang.brigadier.context.ContextChain.runExecutable(ContextChain.java:73)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:29)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:13)
+	at knot//net.minecraft.commands.execution.UnboundEntryAction.lambda$bind$0(UnboundEntryAction.java:8)
+	at knot//net.minecraft.commands.execution.CommandQueueEntry.execute(CommandQueueEntry.java:8)
+	at knot//net.minecraft.commands.execution.ExecutionContext.runCommandQueue(ExecutionContext.java:106)
+	at knot//net.minecraft.commands.Commands.executeCommandInContext(Commands.java:438)
+	at knot//net.minecraft.commands.Commands.performCommand(Commands.java:370)
+	at knot//net.minecraft.commands.Commands.performPrefixedCommand(Commands.java:356)
+	at knot//net.minecraft.server.dedicated.DedicatedServer.lambda$runCommand$0(DedicatedServer.java:698)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.lambda$submitAsync$0(BlockableEventLoop.java:75)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(Unknown Source)
+	at knot//net.minecraft.server.TickTask.run(TickTask.java:18)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:173)
+	at knot//net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:23)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:912)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:193)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:147)
+	at knot//net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:894)
+	at knot//net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:888)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:156)
+	at knot//net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:859)
+	at knot//net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:758)
+	at knot//net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:310)
+	at java.base/java.lang.Thread.run(Unknown Source)
+[19:52:09] [Server thread/INFO]: System chat: [Rcon: Banned IP 203.0.113.9: testing]
+[19:52:16] [Server thread/INFO]: System chat: [Rcon: Unbanned IP 203.0.113.9]
+[19:52:19] [Server thread/WARN]: Couldn't find profile with name: gspffnosuchplr7
+MinecraftClientHttpException[type=HTTP_ERROR, status=404, response=ErrorResponse[path=/users/profiles/minecraft/gspffnosuchplr7, error=null, errorMessage=Couldn't find any profile with name gspffnosuchplr7, details=null]]
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.buildHttpException(MinecraftClient.java:170)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.readServiceResponse(MinecraftClient.java:147)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.getWithEtag(MinecraftClient.java:81)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:65)
+	at knot//com.mojang.authlib.services.MinecraftServicesProfileRepository.findProfileByName(MinecraftServicesProfileRepository.java:103)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.lookupGameProfile(CachedUserNameToIdResolver.java:73)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.get(CachedUserNameToIdResolver.java:134)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.lambda$parse$0(GameProfileArgument.java:66)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.getGameProfiles(GameProfileArgument.java:32)
+	at knot//net.minecraft.server.commands.WhitelistCommand.lambda$register$5(WhitelistCommand.java:53)
+	at knot//com.mojang.brigadier.context.ContextChain.runExecutable(ContextChain.java:73)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:29)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:13)
+	at knot//net.minecraft.commands.execution.UnboundEntryAction.lambda$bind$0(UnboundEntryAction.java:8)
+	at knot//net.minecraft.commands.execution.CommandQueueEntry.execute(CommandQueueEntry.java:8)
+	at knot//net.minecraft.commands.execution.ExecutionContext.runCommandQueue(ExecutionContext.java:106)
+	at knot//net.minecraft.commands.Commands.executeCommandInContext(Commands.java:438)
+	at knot//net.minecraft.commands.Commands.performCommand(Commands.java:370)
+	at knot//net.minecraft.commands.Commands.performPrefixedCommand(Commands.java:356)
+	at knot//net.minecraft.server.dedicated.DedicatedServer.lambda$runCommand$0(DedicatedServer.java:698)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.lambda$submitAsync$0(BlockableEventLoop.java:75)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(Unknown Source)
+	at knot//net.minecraft.server.TickTask.run(TickTask.java:18)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:173)
+	at knot//net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:23)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:912)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:193)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:147)
+	at knot//net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:894)
+	at knot//net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:888)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:156)
+	at knot//net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:859)
+	at knot//net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:758)
+	at knot//net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:310)
+	at java.base/java.lang.Thread.run(Unknown Source)
+[19:52:23] [Server thread/WARN]: Couldn't find profile with name: gspffnosuchplr7
+MinecraftClientHttpException[type=HTTP_ERROR, status=404, response=ErrorResponse[path=/users/profiles/minecraft/gspffnosuchplr7, error=null, errorMessage=Couldn't find any profile with name gspffnosuchplr7, details=null]]
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.buildHttpException(MinecraftClient.java:170)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.readServiceResponse(MinecraftClient.java:147)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.getWithEtag(MinecraftClient.java:81)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:65)
+	at knot//com.mojang.authlib.services.MinecraftServicesProfileRepository.findProfileByName(MinecraftServicesProfileRepository.java:103)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.lookupGameProfile(CachedUserNameToIdResolver.java:73)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.get(CachedUserNameToIdResolver.java:134)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.lambda$parse$0(GameProfileArgument.java:66)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.getGameProfiles(GameProfileArgument.java:32)
+	at knot//net.minecraft.server.commands.WhitelistCommand.lambda$register$7(WhitelistCommand.java:61)
+	at knot//com.mojang.brigadier.context.ContextChain.runExecutable(ContextChain.java:73)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:29)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:13)
+	at knot//net.minecraft.commands.execution.UnboundEntryAction.lambda$bind$0(UnboundEntryAction.java:8)
+	at knot//net.minecraft.commands.execution.CommandQueueEntry.execute(CommandQueueEntry.java:8)
+	at knot//net.minecraft.commands.execution.ExecutionContext.runCommandQueue(ExecutionContext.java:106)
+	at knot//net.minecraft.commands.Commands.executeCommandInContext(Commands.java:438)
+	at knot//net.minecraft.commands.Commands.performCommand(Commands.java:370)
+	at knot//net.minecraft.commands.Commands.performPrefixedCommand(Commands.java:356)
+	at knot//net.minecraft.server.dedicated.DedicatedServer.lambda$runCommand$0(DedicatedServer.java:698)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.lambda$submitAsync$0(BlockableEventLoop.java:75)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(Unknown Source)
+	at knot//net.minecraft.server.TickTask.run(TickTask.java:18)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:173)
+	at knot//net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:23)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:912)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:193)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:147)
+	at knot//net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:894)
+	at knot//net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:888)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:156)
+	at knot//net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:859)
+	at knot//net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:758)
+	at knot//net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:310)
+	at java.base/java.lang.Thread.run(Unknown Source)
+[19:52:25] [Server thread/INFO]: System chat: [Rcon: Whitelist is now turned on]
+[19:52:30] [Server thread/INFO]: System chat: [Rcon: Whitelist is now turned off]
+[19:52:35] [Server thread/INFO]: System chat: [Rcon: Reloaded the whitelist]
+[19:52:39] [Server thread/WARN]: Couldn't find profile with name: gspffnosuchplr7
+MinecraftClientHttpException[type=HTTP_ERROR, status=404, response=ErrorResponse[path=/users/profiles/minecraft/gspffnosuchplr7, error=null, errorMessage=Couldn't find any profile with name gspffnosuchplr7, details=null]]
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.buildHttpException(MinecraftClient.java:170)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.readServiceResponse(MinecraftClient.java:147)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.getWithEtag(MinecraftClient.java:81)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:65)
+	at knot//com.mojang.authlib.services.MinecraftServicesProfileRepository.findProfileByName(MinecraftServicesProfileRepository.java:103)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.lookupGameProfile(CachedUserNameToIdResolver.java:73)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.get(CachedUserNameToIdResolver.java:134)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.lambda$parse$0(GameProfileArgument.java:66)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.getGameProfiles(GameProfileArgument.java:32)
+	at knot//net.minecraft.server.commands.OpCommand.lambda$register$3(OpCommand.java:33)
+	at knot//com.mojang.brigadier.context.ContextChain.runExecutable(ContextChain.java:73)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:29)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:13)
+	at knot//net.minecraft.commands.execution.UnboundEntryAction.lambda$bind$0(UnboundEntryAction.java:8)
+	at knot//net.minecraft.commands.execution.CommandQueueEntry.execute(CommandQueueEntry.java:8)
+	at knot//net.minecraft.commands.execution.ExecutionContext.runCommandQueue(ExecutionContext.java:106)
+	at knot//net.minecraft.commands.Commands.executeCommandInContext(Commands.java:438)
+	at knot//net.minecraft.commands.Commands.performCommand(Commands.java:370)
+	at knot//net.minecraft.commands.Commands.performPrefixedCommand(Commands.java:356)
+	at knot//net.minecraft.server.dedicated.DedicatedServer.lambda$runCommand$0(DedicatedServer.java:698)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.lambda$submitAsync$0(BlockableEventLoop.java:75)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(Unknown Source)
+	at knot//net.minecraft.server.TickTask.run(TickTask.java:18)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:173)
+	at knot//net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:23)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:912)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:193)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:147)
+	at knot//net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:894)
+	at knot//net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:888)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:156)
+	at knot//net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:859)
+	at knot//net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:758)
+	at knot//net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:310)
+	at java.base/java.lang.Thread.run(Unknown Source)
+[19:52:41] [Server thread/INFO]: Server empty for 60 seconds, pausing
+[19:52:41] [Server thread/WARN]: Couldn't find profile with name: gspffnosuchplr7
+MinecraftClientHttpException[type=HTTP_ERROR, status=404, response=ErrorResponse[path=/users/profiles/minecraft/gspffnosuchplr7, error=null, errorMessage=Couldn't find any profile with name gspffnosuchplr7, details=null]]
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.buildHttpException(MinecraftClient.java:170)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.readServiceResponse(MinecraftClient.java:147)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.getWithEtag(MinecraftClient.java:81)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:65)
+	at knot//com.mojang.authlib.services.MinecraftServicesProfileRepository.findProfileByName(MinecraftServicesProfileRepository.java:103)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.lookupGameProfile(CachedUserNameToIdResolver.java:73)
+	at knot//net.minecraft.server.players.CachedUserNameToIdResolver.get(CachedUserNameToIdResolver.java:134)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.lambda$parse$0(GameProfileArgument.java:66)
+	at knot//net.minecraft.commands.arguments.GameProfileArgument.getGameProfiles(GameProfileArgument.java:32)
+	at knot//net.minecraft.server.commands.DeOpCommands.lambda$register$1(DeOpCommands.java:30)
+	at knot//com.mojang.brigadier.context.ContextChain.runExecutable(ContextChain.java:73)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:29)
+	at knot//net.minecraft.commands.execution.tasks.ExecuteCommand.execute(ExecuteCommand.java:13)
+	at knot//net.minecraft.commands.execution.UnboundEntryAction.lambda$bind$0(UnboundEntryAction.java:8)
+	at knot//net.minecraft.commands.execution.CommandQueueEntry.execute(CommandQueueEntry.java:8)
+	at knot//net.minecraft.commands.execution.ExecutionContext.runCommandQueue(ExecutionContext.java:106)
+	at knot//net.minecraft.commands.Commands.executeCommandInContext(Commands.java:438)
+	at knot//net.minecraft.commands.Commands.performCommand(Commands.java:370)
+	at knot//net.minecraft.commands.Commands.performPrefixedCommand(Commands.java:356)
+	at knot//net.minecraft.server.dedicated.DedicatedServer.lambda$runCommand$0(DedicatedServer.java:698)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.lambda$submitAsync$0(BlockableEventLoop.java:75)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(Unknown Source)
+	at knot//net.minecraft.server.TickTask.run(TickTask.java:18)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.doRunTask(BlockableEventLoop.java:173)
+	at knot//net.minecraft.util.thread.ReentrantBlockableEventLoop.doRunTask(ReentrantBlockableEventLoop.java:23)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:912)
+	at knot//net.minecraft.server.MinecraftServer.doRunTask(MinecraftServer.java:193)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.pollTask(BlockableEventLoop.java:147)
+	at knot//net.minecraft.server.MinecraftServer.pollTaskInternal(MinecraftServer.java:894)
+	at knot//net.minecraft.server.MinecraftServer.pollTask(MinecraftServer.java:888)
+	at knot//net.minecraft.util.thread.BlockableEventLoop.managedBlock(BlockableEventLoop.java:156)
+	at knot//net.minecraft.server.MinecraftServer.waitUntilNextTick(MinecraftServer.java:859)
+	at knot//net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:758)
+	at knot//net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:310)
+	at java.base/java.lang.Thread.run(Unknown Source)
+[19:52:44] [Server thread/INFO]: [Not Secure] [Rcon] done
+[19:52:52] [RCON Client /192.0.2.1 #6/INFO]: Thread RCON Client /192.0.2.1 shutting down
+[19:52:52] [RCON Listener #1/INFO]: Thread RCON Client /192.0.2.1 started
+[19:52:52] [Server thread/INFO]: System chat: [Rcon: Automatic saving is now disabled]
+[19:52:53] [Server thread/INFO]: System chat: [Rcon: Saved the game]
+[19:52:55] [Server thread/INFO]: System chat: [Rcon: Saved the game]
+[19:52:56] [Server thread/INFO]: System chat: [Rcon: Automatic saving is now enabled]
+[19:52:58] [RCON Client /192.0.2.1 #7/INFO]: Thread RCON Client /192.0.2.1 shutting down
+[19:54:07] [RCON Listener #1/INFO]: Thread RCON Client /192.0.2.1 started
+[19:54:07] [Server thread/INFO]: System chat: [Rcon: Stopping the server]
+[19:54:07] [Server thread/INFO]: Stopping server
+[19:54:07] [Server thread/INFO]: Saving players
+[19:54:07] [Server thread/INFO]: Saving worlds
+[19:54:07] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[19:54:07] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[19:54:07] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[19:54:07] [Server thread/INFO]: Thread RCON Listener stopped
+[19:54:07] [RCON Client /192.0.2.1 #8/INFO]: Thread RCON Client /192.0.2.1 shutting down
+[19:54:07] [Server thread/INFO]: Thread RCON Client /192.0.2.1 stopped

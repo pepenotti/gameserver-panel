@@ -1,0 +1,22 @@
+{
+  "GET /v3/projects/paper/versions/9.9.9/builds": {
+    "status": 404,
+    "body": {
+      "ok": false,
+      "error": "version_not_found",
+      "message": "No version was found with the given identifier."
+    }
+  },
+  "GET /v3/projects/paper/versions/26.3/builds/99999": {
+    "status": 404,
+    "body": {
+      "ok": false,
+      "error": "build_not_found",
+      "message": "No build was found with the given identifier."
+    }
+  },
+  "GET /v3/projects/paper/versions/1.21.11/builds?channel=stable": {
+    "status": 400,
+    "note": "the channel filter is case-sensitive: STABLE works, stable is a 400"
+  }
+}

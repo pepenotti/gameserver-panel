@@ -1,0 +1,121 @@
+> list
+[19:51:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[19:51:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[19:51:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[19:51:43] [Server thread/INFO]: System chat: There are 0 of a max of 20 players online: 
+> list uuids
+[19:51:45] [Server thread/INFO]: System chat: There are 0 of a max of 20 players online: 
+> say hello from the console
+[19:51:46] [Server thread/INFO]: [Not Secure] [Server] hello from the console
+> notacommand
+[19:51:47] [Server thread/INFO]: System chat: Unknown or incomplete command. See below for error
+[19:51:47] [Server thread/INFO]: System chat: notacommand<--[HERE]
+> whitelist list
+[19:51:48] [Server thread/INFO]: System chat: There are no whitelisted players
+> version
+[19:51:49] [Server thread/INFO]: System chat: Server version info:
+[19:51:49] [Server thread/INFO]: System chat: id = 26.3
+[19:51:49] [Server thread/INFO]: System chat: name = 26.3
+[19:51:49] [Server thread/INFO]: System chat: data = 5023
+[19:51:49] [Server thread/INFO]: System chat: series = main
+[19:51:49] [Server thread/INFO]: System chat: protocol = 777 (0x309)
+[19:51:49] [Server thread/INFO]: System chat: build_time = Tue Sep 15 11:20:48 UTC 2026
+[19:51:49] [Server thread/INFO]: System chat: pack_resource = 97.1
+[19:51:49] [Server thread/INFO]: System chat: pack_data = 121.0
+[19:51:49] [Server thread/INFO]: System chat: stable = yes
+> help
+[19:51:51] [Server thread/INFO]: System chat: /advancement (grant|revoke)
+[19:51:51] [Server thread/INFO]: System chat: /attribute <target> <attribute> (get|base|modifier)
+[19:51:51] [Server thread/INFO]: System chat: /execute (run|if|unless|as|at|store|positioned|rotated|facing|align|anchored|in|summon|on)
+[19:51:51] [Server thread/INFO]: System chat: /bossbar (add|remove|list|set|get)
+[19:51:51] [Server thread/INFO]: System chat: /clear [<targets>]
+[19:51:51] [Server thread/INFO]: System chat: /clone (<begin>|from)
+[19:51:51] [Server thread/INFO]: System chat: /compute (default|block|entity)
+[19:51:51] [Server thread/INFO]: System chat: /damage <target> <amount> [<damageType>]
+[19:51:51] [Server thread/INFO]: System chat: /data (merge|get|remove|modify)
+[19:51:51] [Server thread/INFO]: System chat: /datapack (enable|disable|list|create)
+[19:51:51] [Server thread/INFO]: System chat: /debug (start|stop|function)
+[19:51:51] [Server thread/INFO]: System chat: /defaultgamemode <gamemode>
+[19:51:51] [Server thread/INFO]: System chat: /dialog (show|clear)
+[19:51:51] [Server thread/INFO]: System chat: /difficulty [peaceful|easy|normal|hard]
+[19:51:51] [Server thread/INFO]: System chat: /effect (clear|give)
+[19:51:51] [Server thread/INFO]: System chat: /me <action>
+[19:51:51] [Server thread/INFO]: System chat: /enchant <targets> <enchantment> [<level>]
+[19:51:51] [Server thread/INFO]: System chat: /experience (add|set|query)
+[19:51:51] [Server thread/INFO]: System chat: /xp -> experience
+[19:51:51] [Server thread/INFO]: System chat: /fill <from> <to> <block> [outline|hollow|destroy|strict|replace|keep]
+[19:51:51] [Server thread/INFO]: System chat: /fillbiome <from> <to> <biome> [replace]
+[19:51:51] [Server thread/INFO]: System chat: /forceload (add|remove|query)
+[19:51:51] [Server thread/INFO]: System chat: /function <name> [<arguments>|with]
+[19:51:51] [Server thread/INFO]: System chat: /gamemode <gamemode> [<target>]
+[19:51:51] [Server thread/INFO]: System chat: /gamerule (tnt_explodes|minecraft:tnt_explodes|pvp|minecraft:pvp|fire_damage|minecraft:fire_damage|players_sleeping_percentage|minecraft:players_sleeping_percentage|spawn_wardens|minecraft:spawn_wardens|block_explosion_drop_decay|minecraft:block_explosion_drop_decay|ender_pearls_vanish_on_death|minecraft:ender_pearls_vanish_on_death|mob_drops|minecraft:mob_drops|spawn_wandering_traders|minecraft:spawn_wandering_traders|advance_weather|minecraft:advance_weather|tnt_explosion_drop_decay|minecraft:tnt_explosion_drop_decay|reduced_debug_info|minecraft:reduced_debug_info|allow_entering_nether_using_portals|minecraft:allow_entering_nether_using_portals|locator_bar|minecraft:locator_bar|players_nether_portal_default_delay|minecraft:players_nether_portal_default_delay|block_drops|minecraft:block_drops|log_admin_commands|minecraft:log_admin_commands|forgive_dead_players|minecraft:forgive_dead_players|mob_explosion_drop_decay|minecraft:mob_explosion_drop_decay|max_snow_accumulation_height|minecraft:max_snow_accumulation_height|spawn_monsters|minecraft:spawn_monsters|send_command_feedback|minecraft:send_command_feedback|command_block_output|minecraft:command_block_output|max_entity_cramming|minecraft:max_entity_cramming|water_source_conversion|minecraft:water_source_conversion|raids|minecraft:raids|mob_griefing|minecraft:mob_griefing|spawner_blocks_work|minecraft:spawner_blocks_work|player_movement_check|minecraft:player_movement_check|global_sound_events|minecraft:global_sound_events|spawn_mobs|minecraft:spawn_mobs|max_block_modifications|minecraft:max_block_modifications|advance_time|minecraft:advance_time|spawn_patrols|minecraft:spawn_patrols|command_blocks_work|minecraft:command_blocks_work|fall_damage|minecraft:fall_damage|elytra_movement_check|minecraft:elytra_movement_check|show_advancement_messages|minecraft:show_advancement_messages|projectiles_can_break_blocks|minecraft:projectiles_can_break_blocks|universal_anger|minecraft:universal_anger|random_tick_speed|minecraft:random_tick_speed|spawn_phantoms|minecraft:spawn_phantoms|spread_vines|minecraft:spread_vines|max_command_sequence_length|minecraft:max_command_sequence_length|keep_inventory|minecraft:keep_inventory|immediate_respawn|minecraft:immediate_respawn|freeze_damage|minecraft:freeze_damage|respawn_radius|minecraft:respawn_radius|lava_source_conversion|minecraft:lava_source_conversion|drowning_damage|minecraft:drowning_damage|show_death_messages|minecraft:show_death_messages|fire_spread_radius_around_player|minecraft:fire_spread_radius_around_player|limited_crafting|minecraft:limited_crafting|natural_health_regeneration|minecraft:natural_health_regeneration|players_nether_portal_creative_delay|minecraft:players_nether_portal_creative_delay|spectators_generate_chunks|minecraft:spectators_generate_chunks|max_command_forks|minecraft:max_command_forks|entity_drops|minecraft:entity_drops)
+[19:51:51] [Server thread/INFO]: System chat: /give <targets> <item> [<count>]
+[19:51:51] [Server thread/INFO]: System chat: /help [<command>]
+[19:51:51] [Server thread/INFO]: System chat: /item (replace|fill|override|modify)
+[19:51:51] [Server thread/INFO]: System chat: /kick <targets> [<reason>]
+[19:51:51] [Server thread/INFO]: System chat: /kill [<targets>]
+[19:51:51] [Server thread/INFO]: System chat: /list [uuids]
+[19:51:51] [Server thread/INFO]: System chat: /locate (structure|biome|poi)
+[19:51:51] [Server thread/INFO]: System chat: /loot (replace|insert|give|spawn)
+[19:51:51] [Server thread/INFO]: System chat: /msg <targets> <message>
+[19:51:51] [Server thread/INFO]: System chat: /tell -> msg
+[19:51:51] [Server thread/INFO]: System chat: /w -> msg
+[19:51:51] [Server thread/INFO]: System chat: /swing [<targets>]
+[19:51:51] [Server thread/INFO]: System chat: /particle <name> [<pos>]
+[19:51:51] [Server thread/INFO]: System chat: /place (feature|jigsaw|structure|template)
+[19:51:51] [Server thread/INFO]: System chat: /playsound <sound> [master|music|record|weather|block|hostile|neutral|player|ambient|voice|ui]
+[19:51:51] [Server thread/INFO]: System chat: /posteffect (add|clear|list|remove)
+[19:51:51] [Server thread/INFO]: System chat: /random (value|roll|reset)
+[19:51:51] [Server thread/INFO]: System chat: /reload
+[19:51:51] [Server thread/INFO]: System chat: /recipe (give|take)
+[19:51:51] [Server thread/INFO]: System chat: /fetchprofile (name|id|entity)
+[19:51:51] [Server thread/INFO]: System chat: /return (<value>|fail|run)
+[19:51:51] [Server thread/INFO]: System chat: /ride <target> (mount|dismount)
+[19:51:51] [Server thread/INFO]: System chat: /rotate <target> (<rotation>|facing)
+[19:51:51] [Server thread/INFO]: System chat: /say <message>
+[19:51:51] [Server thread/INFO]: System chat: /schedule (function|clear)
+[19:51:51] [Server thread/INFO]: System chat: /scoreboard (objectives|players)
+[19:51:51] [Server thread/INFO]: System chat: /seed
+[19:51:51] [Server thread/INFO]: System chat: /version
+[19:51:51] [Server thread/INFO]: System chat: /setblock <pos> <block> [destroy|keep|replace|strict]
+[19:51:51] [Server thread/INFO]: System chat: /spawnpoint [<targets>]
+[19:51:51] [Server thread/INFO]: System chat: /setworldspawn [<pos>]
+[19:51:51] [Server thread/INFO]: System chat: /spectate [<target>]
+[19:51:51] [Server thread/INFO]: System chat: /spreadplayers <center> <spreadDistance> <maxRange> (<respectTeams>|under)
+[19:51:51] [Server thread/INFO]: System chat: /stopsound <targets> [*|master|music|record|weather|block|hostile|neutral|player|ambient|voice|ui]
+[19:51:51] [Server thread/INFO]: System chat: /stopwatch (create|query|restart|remove)
+[19:51:51] [Server thread/INFO]: System chat: /summon <entity> [<pos>]
+[19:51:51] [Server thread/INFO]: System chat: /tag <targets> (add|remove|list)
+[19:51:51] [Server thread/INFO]: System chat: /team (list|add|remove|empty|join|leave|modify)
+[19:51:51] [Server thread/INFO]: System chat: /teammsg <message>
+[19:51:51] [Server thread/INFO]: System chat: /tm -> teammsg
+[19:51:51] [Server thread/INFO]: System chat: /teleport (<location>|<destination>|<targets>)
+[19:51:51] [Server thread/INFO]: System chat: /tp -> teleport
+[19:51:51] [Server thread/INFO]: System chat: /tellraw <targets> <message>
+[19:51:51] [Server thread/INFO]: System chat: /test (run|runmultiple|runthese|runclosest|runthat|runfailed|verify|locate|resetclosest|resetthese|resetthat|clearthat|clearthese|clearall|stop|pos|create)
+[19:51:51] [Server thread/INFO]: System chat: /tick (query|rate|step|sprint|unfreeze|freeze)
+[19:51:51] [Server thread/INFO]: System chat: /time (set|add|pause|resume|rate|query|of)
+[19:51:51] [Server thread/INFO]: System chat: /title <targets> (clear|reset|title|subtitle|actionbar|times)
+[19:51:51] [Server thread/INFO]: System chat: /trigger <objective> [add|set]
+[19:51:51] [Server thread/INFO]: System chat: /waypoint (list|modify)
+[19:51:51] [Server thread/INFO]: System chat: /weather (clear|rain|thunder)
+[19:51:51] [Server thread/INFO]: System chat: /worldborder (add|set|center|damage|get|warning)
+[19:51:51] [Server thread/INFO]: System chat: /jfr (start|stop)
+[19:51:51] [Server thread/INFO]: System chat: /ban-ip <target> [<reason>]
+[19:51:51] [Server thread/INFO]: System chat: /banlist [ips|players]
+[19:51:51] [Server thread/INFO]: System chat: /ban <targets> [<reason>]
+[19:51:51] [Server thread/INFO]: System chat: /deop <targets>
+[19:51:51] [Server thread/INFO]: System chat: /op <targets>
+[19:51:51] [Server thread/INFO]: System chat: /pardon <targets>
+[19:51:51] [Server thread/INFO]: System chat: /pardon-ip <target>
+[19:51:51] [Server thread/INFO]: System chat: /perf (start|stop)
+[19:51:51] [Server thread/INFO]: System chat: /save-all [flush]
+[19:51:51] [Server thread/INFO]: System chat: /save-off
+[19:51:51] [Server thread/INFO]: System chat: /save-on
+[19:51:51] [Server thread/INFO]: System chat: /setidletimeout <minutes>
+[19:51:51] [Server thread/INFO]: System chat: /stop
+[19:51:51] [Server thread/INFO]: System chat: /transfer <hostname> [<port>]
+[19:51:51] [Server thread/INFO]: System chat: /whitelist (on|off|list|add|remove|reload)
+> save-all
+[19:51:53] [Server thread/INFO]: System chat: Saving the game (this may take a moment!)
+[19:51:53] [Server thread/INFO]: System chat: Saved the game

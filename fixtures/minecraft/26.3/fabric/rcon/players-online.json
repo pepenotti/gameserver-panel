@@ -1,0 +1,240 @@
+[
+ {
+  "t": 0.002,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.006,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 8.233,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 8.248,
+  "dir": "in",
+  "size": 63,
+  "id": 10,
+  "type": 0,
+  "body": "There are 1 of a max of 20 players online: gspffAlice"
+ },
+ {
+  "t": 9.497,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 20,
+  "body": "list uuids",
+  "type": 2
+ },
+ {
+  "t": 9.507,
+  "dir": "in",
+  "size": 102,
+  "id": 20,
+  "type": 0,
+  "body": "There are 1 of a max of 20 players online: gspffAlice (ffcc114b-0550-393e-a2da-7e8930eb7054)"
+ },
+ {
+  "t": 13.877,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 30,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 13.892,
+  "dir": "in",
+  "size": 73,
+  "id": 30,
+  "type": 0,
+  "body": "There are 2 of a max of 20 players online: gspffAlice, gspffBob"
+ },
+ {
+  "t": 15.111,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 40,
+  "body": "say hello players",
+  "type": 2
+ },
+ {
+  "t": 15.175,
+  "dir": "in",
+  "size": 10,
+  "id": 40,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 16.405,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 50,
+  "body": "op gspffAlice",
+  "type": 2
+ },
+ {
+  "t": 16.451,
+  "dir": "in",
+  "size": 43,
+  "id": 50,
+  "type": 0,
+  "body": "Made gspffAlice a server operator"
+ },
+ {
+  "t": 17.703,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 60,
+  "body": "kick gspffBob Testing a kick",
+  "type": 2
+ },
+ {
+  "t": 17.713,
+  "dir": "in",
+  "size": 41,
+  "id": 60,
+  "type": 0,
+  "body": "Kicked gspffBob: Testing a kick"
+ },
+ {
+  "t": 20.941,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 70,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 20.943,
+  "dir": "in",
+  "size": 63,
+  "id": 70,
+  "type": 0,
+  "body": "There are 1 of a max of 20 players online: gspffAlice"
+ },
+ {
+  "t": 42.186,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 80,
+  "body": "ban gspffAlice Testing a ban",
+  "type": 2
+ },
+ {
+  "t": 42.192,
+  "dir": "in",
+  "size": 42,
+  "id": 80,
+  "type": 0,
+  "body": "Banned gspffAlice: Testing a ban"
+ },
+ {
+  "t": 46.472,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 90,
+  "body": "pardon gspffAlice",
+  "type": 2
+ },
+ {
+  "t": 46.477,
+  "dir": "in",
+  "size": 29,
+  "id": 90,
+  "type": 0,
+  "body": "Unbanned gspffAlice"
+ },
+ {
+  "t": 47.709,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 100,
+  "body": "whitelist on",
+  "type": 2
+ },
+ {
+  "t": 47.716,
+  "dir": "in",
+  "size": 36,
+  "id": 100,
+  "type": 0,
+  "body": "Whitelist is now turned on"
+ },
+ {
+  "t": 50.127,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 110,
+  "body": "whitelist add gspffAlice",
+  "type": 2
+ },
+ {
+  "t": 50.132,
+  "dir": "in",
+  "size": 43,
+  "id": 110,
+  "type": 0,
+  "body": "Added gspffAlice to the whitelist"
+ },
+ {
+  "t": 51.378,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 120,
+  "body": "whitelist list",
+  "type": 2
+ },
+ {
+  "t": 51.381,
+  "dir": "in",
+  "size": 55,
+  "id": 120,
+  "type": 0,
+  "body": "There are 1 whitelisted player(s): gspffAlice"
+ },
+ {
+  "t": 57.256,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 130,
+  "body": "whitelist off",
+  "type": 2
+ },
+ {
+  "t": 57.261,
+  "dir": "in",
+  "size": 37,
+  "id": 130,
+  "type": 0,
+  "body": "Whitelist is now turned off"
+ },
+ {
+  "t": 65.333,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 140,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 65.336,
+  "dir": "in",
+  "size": 62,
+  "id": 140,
+  "type": 0,
+  "body": "There are 1 of a max of 20 players online: gspffDave"
+ }
+]

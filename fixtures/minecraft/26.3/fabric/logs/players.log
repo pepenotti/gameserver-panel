@@ -1,0 +1,35 @@
+[20:06:04] [Server thread/INFO]: gspffAlice[/192.0.2.1:43004] logged in with entity id 15 at (9.5, 63.0, 30.5)
+[20:06:04] [Server thread/INFO]: System chat: gspffAlice joined the game
+[20:06:09] [Server thread/INFO]: gspffBob[/192.0.2.1:54848] logged in with entity id 196 at (24.5, 63.0, 27.5)
+[20:06:09] [Server thread/INFO]: System chat: gspffBob joined the game
+[20:06:13] [Server thread/INFO]: [Not Secure] [Rcon] hello players
+[20:06:14] [Server thread/INFO]: System chat: [Rcon: Made gspffAlice a server operator]
+[20:06:16] [Server thread/INFO]: System chat: [Rcon: Kicked gspffBob: Testing a kick]
+[20:06:16] [Server thread/INFO]: gspffBob lost connection: Testing a kick
+[20:06:16] [Server thread/INFO]: System chat: gspffBob left the game
+[20:06:40] [Server thread/INFO]: System chat: [Rcon: Banned gspffAlice: Testing a ban]
+[20:06:40] [Server thread/INFO]: gspffAlice lost connection: You are banned from this server
+[20:06:40] [Server thread/INFO]: System chat: gspffAlice left the game
+[20:06:43] [Server thread/INFO]: Disconnecting gspffAlice (/192.0.2.1:46406): You are banned from this server.
+Reason: Testing a ban
+[20:06:43] [Server thread/INFO]: gspffAlice (/192.0.2.1:46406) lost connection: You are banned from this server.
+Reason: Testing a ban
+[20:06:43] [Server thread/WARN]: handleDisconnection() called twice
+[20:06:44] [Server thread/INFO]: System chat: [Rcon: Unbanned gspffAlice]
+[20:06:46] [Server thread/INFO]: System chat: [Rcon: Whitelist is now turned on]
+[20:06:47] [Server thread/INFO]: gspffAlice[/192.0.2.1:46420] logged in with entity id 520 at (9.5, 63.0, 30.5)
+[20:06:47] [Server thread/INFO]: System chat: gspffAlice joined the game
+[20:06:48] [Server thread/INFO]: System chat: [Rcon: Added gspffAlice to the whitelist]
+[20:06:51] [Server thread/INFO]: gspffAlice lost connection: You logged in from another location
+[20:06:51] [Server thread/INFO]: System chat: gspffAlice left the game
+[20:06:51] [Server thread/INFO]: gspffAlice[/192.0.2.1:46430] logged in with entity id 695 at (9.5, 63.0, 30.5)
+[20:06:51] [Server thread/INFO]: System chat: gspffAlice joined the game
+[20:06:54] [Server thread/INFO]: gspffAlice lost connection: Disconnected
+[20:06:54] [Server thread/INFO]: System chat: gspffAlice left the game
+[20:06:55] [Server thread/INFO]: System chat: [Rcon: Whitelist is now turned off]
+[20:06:57] [Server thread/INFO]: gspffCarol[/192.0.2.1:44814] logged in with entity id 932 at (23.5, 67.0, 31.5)
+[20:06:57] [Server thread/INFO]: System chat: gspffCarol joined the game
+[20:06:59] [Server thread/INFO]: gspffCarol lost connection: Disconnected
+[20:06:59] [Server thread/INFO]: System chat: gspffCarol left the game
+[20:07:01] [Server thread/INFO]: gspffDave[/192.0.2.1:44820] logged in with entity id 1192 at (23.5, 63.0, 27.5)
+[20:07:01] [Server thread/INFO]: System chat: gspffDave joined the game

@@ -1,0 +1,10 @@
+# Written before the first boot: only the keys the panel would manage, plus probes.
+# A second comment line, and keys out of order.
+server-port=25565
+enable-rcon=true
+rcon.port=25575
+rcon.password=<redacted>
+enable-query=false
+motd=Servidor de prueba Ñandú ☃
+gsp-probe-unknown-key=kept or dropped?
+white-list=false
