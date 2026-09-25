@@ -1,0 +1,368 @@
+[
+ {
+  "t": 0.002,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.007,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 4.079,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "whitelist add gspffAlice",
+  "type": 2
+ },
+ {
+  "t": 4.472,
+  "dir": "in",
+  "size": 43,
+  "id": 10,
+  "type": 0,
+  "body": "Added gspffalice to the whitelist"
+ },
+ {
+  "t": 5.987,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 20,
+  "body": "whitelist add gspffBob",
+  "type": 2
+ },
+ {
+  "t": 6.577,
+  "dir": "in",
+  "size": 41,
+  "id": 20,
+  "type": 0,
+  "body": "Added gspffbob to the whitelist"
+ },
+ {
+  "t": 8.088,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 30,
+  "body": "whitelist list",
+  "type": 2
+ },
+ {
+  "t": 8.091,
+  "dir": "in",
+  "size": 65,
+  "id": 30,
+  "type": 0,
+  "body": "There are 2 whitelisted player(s): gspffalice, gspffbob"
+ },
+ {
+  "t": 9.635,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 40,
+  "body": "op gspffAlice",
+  "type": 2
+ },
+ {
+  "t": 9.64,
+  "dir": "in",
+  "size": 43,
+  "id": 40,
+  "type": 0,
+  "body": "Made gspffalice a server operator"
+ },
+ {
+  "t": 11.178,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 50,
+  "body": "op gspffAlice",
+  "type": 2
+ },
+ {
+  "t": 11.18,
+  "dir": "in",
+  "size": 60,
+  "id": 50,
+  "type": 0,
+  "body": "Nothing changed. The player is already an operator"
+ },
+ {
+  "t": 12.717,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 60,
+  "body": "deop gspffBob",
+  "type": 2
+ },
+ {
+  "t": 12.719,
+  "dir": "in",
+  "size": 56,
+  "id": 60,
+  "type": 0,
+  "body": "Nothing changed. The player is not an operator"
+ },
+ {
+  "t": 14.27,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 70,
+  "body": "ban gspffBob Testing a ban",
+  "type": 2
+ },
+ {
+  "t": 14.275,
+  "dir": "in",
+  "size": 40,
+  "id": 70,
+  "type": 0,
+  "body": "Banned gspffbob: Testing a ban"
+ },
+ {
+  "t": 15.821,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 80,
+  "body": "ban-ip 203.0.113.7 Testing an IP ban",
+  "type": 2
+ },
+ {
+  "t": 15.826,
+  "dir": "in",
+  "size": 50,
+  "id": 80,
+  "type": 0,
+  "body": "Banned IP 203.0.113.7: Testing an IP ban"
+ },
+ {
+  "t": 17.372,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 90,
+  "body": "banlist players",
+  "type": 2
+ },
+ {
+  "t": 17.375,
+  "dir": "in",
+  "size": 71,
+  "id": 90,
+  "type": 0,
+  "body": "There are 1 ban(s):gspffbob was banned by Rcon: Testing a ban"
+ },
+ {
+  "t": 18.923,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 100,
+  "body": "banlist ips",
+  "type": 2
+ },
+ {
+  "t": 18.925,
+  "dir": "in",
+  "size": 78,
+  "id": 100,
+  "type": 0,
+  "body": "There are 1 ban(s):203.0.113.7 was banned by Rcon: Testing an IP ban"
+ },
+ {
+  "t": 20.476,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 110,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 20.479,
+  "dir": "in",
+  "size": 53,
+  "id": 110,
+  "type": 0,
+  "body": "There are 0 of a max of 20 players online: "
+ },
+ {
+  "t": 22.031,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 120,
+  "body": "list uuids",
+  "type": 2
+ },
+ {
+  "t": 22.034,
+  "dir": "in",
+  "size": 53,
+  "id": 120,
+  "type": 0,
+  "body": "There are 0 of a max of 20 players online: "
+ },
+ {
+  "t": 29.692,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 130,
+  "body": "whitelist list",
+  "type": 2
+ },
+ {
+  "t": 29.694,
+  "dir": "in",
+  "size": 65,
+  "id": 130,
+  "type": 0,
+  "body": "There are 2 whitelisted player(s): gspffalice, gspffbob"
+ },
+ {
+  "t": 31.229,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 140,
+  "body": "whitelist reload",
+  "type": 2
+ },
+ {
+  "t": 31.234,
+  "dir": "in",
+  "size": 32,
+  "id": 140,
+  "type": 0,
+  "body": "Reloaded the whitelist"
+ },
+ {
+  "t": 32.785,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 150,
+  "body": "whitelist list",
+  "type": 2
+ },
+ {
+  "t": 32.788,
+  "dir": "in",
+  "size": 77,
+  "id": 150,
+  "type": 0,
+  "body": "There are 3 whitelisted player(s): gspffalice, gspffbob, gspffCarol"
+ },
+ {
+  "t": 34.336,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 160,
+  "body": "op gspffCarol",
+  "type": 2
+ },
+ {
+  "t": 34.766,
+  "dir": "in",
+  "size": 43,
+  "id": 160,
+  "type": 0,
+  "body": "Made gspffcarol a server operator"
+ },
+ {
+  "t": 36.309,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 170,
+  "body": "deop gspffCarol",
+  "type": 2
+ },
+ {
+  "t": 36.317,
+  "dir": "in",
+  "size": 53,
+  "id": 170,
+  "type": 0,
+  "body": "Made gspffcarol no longer a server operator"
+ },
+ {
+  "t": 41.462,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 180,
+  "body": "whitelist on",
+  "type": 2
+ },
+ {
+  "t": 41.468,
+  "dir": "in",
+  "size": 36,
+  "id": 180,
+  "type": 0,
+  "body": "Whitelist is now turned on"
+ },
+ {
+  "t": 43.019,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 190,
+  "body": "whitelist off",
+  "type": 2
+ },
+ {
+  "t": 43.023,
+  "dir": "in",
+  "size": 37,
+  "id": 190,
+  "type": 0,
+  "body": "Whitelist is now turned off"
+ },
+ {
+  "t": 48.089,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 200,
+  "body": "pardon gspffBob",
+  "type": 2
+ },
+ {
+  "t": 48.093,
+  "dir": "in",
+  "size": 27,
+  "id": 200,
+  "type": 0,
+  "body": "Unbanned gspffbob"
+ },
+ {
+  "t": 49.628,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 210,
+  "body": "pardon-ip 203.0.113.7",
+  "type": 2
+ },
+ {
+  "t": 49.632,
+  "dir": "in",
+  "size": 33,
+  "id": 210,
+  "type": 0,
+  "body": "Unbanned IP 203.0.113.7"
+ },
+ {
+  "t": 51.181,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 220,
+  "body": "whitelist remove gspffBob",
+  "type": 2
+ },
+ {
+  "t": 51.185,
+  "dir": "in",
+  "size": 45,
+  "id": 220,
+  "type": 0,
+  "body": "Removed gspffbob from the whitelist"
+ }
+]

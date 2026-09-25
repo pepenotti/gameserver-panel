@@ -1,0 +1,94 @@
+[
+ {
+  "t": 0.003,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.008,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 0.433,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 0.436,
+  "dir": "in",
+  "size": 53,
+  "id": 10,
+  "type": 0,
+  "body": "There are 0 of a max of 20 players online: "
+ },
+ {
+  "t": 1.055,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 20,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 1.058,
+  "dir": "in",
+  "size": 53,
+  "id": 20,
+  "type": 0,
+  "body": "There are 0 of a max of 20 players online: "
+ },
+ {
+  "t": 1.117,
+  "dir": "out",
+  "kind": "sentinel",
+  "id": 21
+ },
+ {
+  "t": 1.119,
+  "dir": "in",
+  "size": 27,
+  "id": 21,
+  "type": 0,
+  "body": "Unknown request 0"
+ },
+ {
+  "t": 1.74,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 30,
+  "body": "notacommand",
+  "type": 2
+ },
+ {
+  "t": 1.743,
+  "dir": "in",
+  "size": 81,
+  "id": 30,
+  "type": 0,
+  "body": "Unknown or incomplete command. See below for error\nnotacommand<--[HERE]"
+ },
+ {
+  "t": 2.362,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 40,
+  "body": "say hello over rcon",
+  "type": 2
+ },
+ {
+  "t": 2.364,
+  "dir": "in",
+  "size": 10,
+  "id": 40,
+  "type": 0,
+  "body": ""
+ }
+]

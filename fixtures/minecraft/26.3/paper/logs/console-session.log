@@ -1,0 +1,231 @@
+> list
+[19:43:29 INFO]: This is the first time you're starting this server.
+[19:43:29 INFO]: It's recommended you read our 'Getting Started' documentation for guidance.
+[19:43:29 INFO]: View this and more helpful information here: https://docs.papermc.io/paper/next-steps
+[19:43:29 INFO]: *************************************************************************************
+[19:43:31 INFO]: System chat: There are 0 of a max of 20 players online: 
+> list uuids
+[19:43:32 INFO]: System chat: There are 0 of a max of 20 players online: 
+> say hello from the console
+[19:43:33 INFO]: [Not Secure] [Server] hello from the console
+> notacommand
+[19:43:34 INFO]: System chat: Unknown or incomplete command. See below for error
+notacommand<--[HERE]
+> whitelist list
+[19:43:35 INFO]: System chat: There are no whitelisted players
+> version
+[19:43:37 INFO]: Checking version, please wait...
+[19:43:37 INFO]: This server is running Paper version 26.3-41-main@a15fed9 (2026-09-25T03:26:20Z) (Implementing API version 26.3.build.41-alpha)
+You are running the latest version
+> help
+[19:43:38 INFO]: --------- Help: Index ---------------------------------
+[19:43:38 INFO]: Use /help [n] to get page n of help.
+[19:43:38 INFO]: Aliases: Lists command aliases
+[19:43:38 INFO]: Bukkit: All commands for Bukkit
+[19:43:38 INFO]: Minecraft: All commands for Minecraft
+[19:43:38 INFO]: Paper: All commands for Paper
+[19:43:38 INFO]: /about: Gets the version of this server including any plugins in use
+[19:43:38 INFO]: /advancement: A Mojang provided command.
+[19:43:38 INFO]: /attribute: A Mojang provided command.
+[19:43:38 INFO]: /ban: A Mojang provided command.
+[19:43:38 INFO]: /ban-ip: A Mojang provided command.
+[19:43:38 INFO]: /banlist: A Mojang provided command.
+[19:43:38 INFO]: /bossbar: A Mojang provided command.
+[19:43:38 INFO]: /bukkit:about: Gets the version of this server including any plugins in use
+[19:43:38 INFO]: /bukkit:pl: Gets a list of plugins running on the server
+[19:43:38 INFO]: /bukkit:plugins: Gets a list of plugins running on the server
+[19:43:38 INFO]: /bukkit:ver: Gets the version of this server including any plugins in use
+[19:43:38 INFO]: /bukkit:version: Gets the version of this server including any plugins in use
+[19:43:38 INFO]: /clear: A Mojang provided command.
+[19:43:38 INFO]: /clone: A Mojang provided command.
+[19:43:38 INFO]: /compute: A Mojang provided command.
+[19:43:38 INFO]: /damage: A Mojang provided command.
+[19:43:38 INFO]: /data: A Mojang provided command.
+[19:43:38 INFO]: /datapack: A Mojang provided command.
+[19:43:38 INFO]: /debug: A Mojang provided command.
+[19:43:38 INFO]: /defaultgamemode: A Mojang provided command.
+[19:43:38 INFO]: /deop: A Mojang provided command.
+[19:43:38 INFO]: /dialog: A Mojang provided command.
+[19:43:38 INFO]: /difficulty: A Mojang provided command.
+[19:43:38 INFO]: /effect: A Mojang provided command.
+[19:43:38 INFO]: /enchant: A Mojang provided command.
+[19:43:38 INFO]: /execute: A Mojang provided command.
+[19:43:38 INFO]: /experience: A Mojang provided command.
+[19:43:38 INFO]: /fetchprofile: A Mojang provided command.
+[19:43:38 INFO]: /fill: A Mojang provided command.
+[19:43:38 INFO]: /fillbiome: A Mojang provided command.
+[19:43:38 INFO]: /forceload: A Mojang provided command.
+[19:43:38 INFO]: /function: A Mojang provided command.
+[19:43:38 INFO]: /gamemode: A Mojang provided command.
+[19:43:38 INFO]: /gamerule: A Mojang provided command.
+[19:43:38 INFO]: /give: A Mojang provided command.
+[19:43:38 INFO]: /help: Shows the help menu
+[19:43:38 INFO]: /item: A Mojang provided command.
+[19:43:38 INFO]: /jfr: A Mojang provided command.
+[19:43:38 INFO]: /kick: A Mojang provided command.
+[19:43:38 INFO]: /kill: A Mojang provided command.
+[19:43:38 INFO]: /list: A Mojang provided command.
+[19:43:38 INFO]: /locate: A Mojang provided command.
+[19:43:38 INFO]: /loot: A Mojang provided command.
+[19:43:38 INFO]: /me: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:advancement: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:attribute: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:ban: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:ban-ip: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:banlist: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:bossbar: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:clear: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:clone: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:compute: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:damage: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:data: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:datapack: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:debug: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:defaultgamemode: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:deop: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:dialog: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:difficulty: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:effect: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:enchant: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:execute: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:experience: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:fetchprofile: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:fill: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:fillbiome: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:forceload: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:function: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:gamemode: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:gamerule: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:give: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:help: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:item: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:jfr: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:kick: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:kill: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:list: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:locate: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:loot: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:me: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:msg: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:op: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:pardon: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:pardon-ip: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:particle: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:perf: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:place: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:playsound: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:posteffect: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:random: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:recipe: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:reload: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:return: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:ride: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:rotate: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:save-all: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:save-off: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:save-on: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:say: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:schedule: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:scoreboard: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:seed: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:setblock: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:setidletimeout: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:setworldspawn: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:spawnpoint: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:spectate: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:spreadplayers: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:stop: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:stopsound: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:stopwatch: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:summon: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:swing: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:tag: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:team: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:teammsg: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:teleport: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:tell: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:tellraw: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:test: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:tick: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:time: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:title: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:tm: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:tp: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:transfer: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:trigger: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:version: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:w: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:waypoint: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:weather: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:whitelist: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:worldborder: A Mojang provided command.
+[19:43:38 INFO]: /minecraft:xp: A Mojang provided command.
+[19:43:38 INFO]: /msg: A Mojang provided command.
+[19:43:38 INFO]: /mspt: View server tick times
+[19:43:38 INFO]: /op: A Mojang provided command.
+[19:43:38 INFO]: /paper: Paper related commands
+[19:43:38 INFO]: /paper:mspt: View server tick times
+[19:43:38 INFO]: /paper:spark: 
+[19:43:38 INFO]: /pardon: A Mojang provided command.
+[19:43:38 INFO]: /pardon-ip: A Mojang provided command.
+[19:43:38 INFO]: /particle: A Mojang provided command.
+[19:43:38 INFO]: /perf: A Mojang provided command.
+[19:43:38 INFO]: /pl: Gets a list of plugins running on the server
+[19:43:38 INFO]: /place: A Mojang provided command.
+[19:43:38 INFO]: /playsound: A Mojang provided command.
+[19:43:38 INFO]: /plugins: Gets a list of plugins running on the server
+[19:43:38 INFO]: /posteffect: A Mojang provided command.
+[19:43:38 INFO]: /random: A Mojang provided command.
+[19:43:38 INFO]: /recipe: A Mojang provided command.
+[19:43:38 INFO]: /reload: A Mojang provided command.
+[19:43:38 INFO]: /restart: Restarts the server
+[19:43:38 INFO]: /return: A Mojang provided command.
+[19:43:38 INFO]: /ride: A Mojang provided command.
+[19:43:38 INFO]: /rotate: A Mojang provided command.
+[19:43:38 INFO]: /save-all: A Mojang provided command.
+[19:43:38 INFO]: /save-off: A Mojang provided command.
+[19:43:38 INFO]: /save-on: A Mojang provided command.
+[19:43:38 INFO]: /say: A Mojang provided command.
+[19:43:38 INFO]: /schedule: A Mojang provided command.
+[19:43:38 INFO]: /scoreboard: A Mojang provided command.
+[19:43:38 INFO]: /seed: A Mojang provided command.
+[19:43:38 INFO]: /setblock: A Mojang provided command.
+[19:43:38 INFO]: /setidletimeout: A Mojang provided command.
+[19:43:38 INFO]: /setworldspawn: A Mojang provided command.
+[19:43:38 INFO]: /spark: 
+[19:43:38 INFO]: /spawnpoint: A Mojang provided command.
+[19:43:38 INFO]: /spectate: A Mojang provided command.
+[19:43:38 INFO]: /spigot: Spigot related commands
+[19:43:38 INFO]: /spreadplayers: A Mojang provided command.
+[19:43:38 INFO]: /stop: A Mojang provided command.
+[19:43:38 INFO]: /stopsound: A Mojang provided command.
+[19:43:38 INFO]: /stopwatch: A Mojang provided command.
+[19:43:38 INFO]: /summon: A Mojang provided command.
+[19:43:38 INFO]: /swing: A Mojang provided command.
+[19:43:38 INFO]: /tag: A Mojang provided command.
+[19:43:38 INFO]: /team: A Mojang provided command.
+[19:43:38 INFO]: /teammsg: A Mojang provided command.
+[19:43:38 INFO]: /teleport: A Mojang provided command.
+[19:43:38 INFO]: /tell: A Mojang provided command.
+[19:43:38 INFO]: /tellraw: A Mojang provided command.
+[19:43:38 INFO]: /test: A Mojang provided command.
+[19:43:38 INFO]: /tick: A Mojang provided command.
+[19:43:38 INFO]: /time: A Mojang provided command.
+[19:43:38 INFO]: /timings: Manages Spigot Timings data to see performance of the server.
+[19:43:38 INFO]: /title: A Mojang provided command.
+[19:43:38 INFO]: /tm: A Mojang provided command.
+[19:43:38 INFO]: /tp: A Mojang provided command.
+[19:43:38 INFO]: /tps: Gets the current ticks per second for the server
+[19:43:38 INFO]: /transfer: A Mojang provided command.
+[19:43:38 INFO]: /trigger: A Mojang provided command.
+[19:43:38 INFO]: /ver: Gets the version of this server including any plugins in use
+[19:43:38 INFO]: /version: Gets the version of this server including any plugins in use
+[19:43:38 INFO]: /w: A Mojang provided command.
+[19:43:38 INFO]: /waypoint: A Mojang provided command.
+[19:43:38 INFO]: /weather: A Mojang provided command.
+[19:43:38 INFO]: /whitelist: A Mojang provided command.
+[19:43:38 INFO]: /worldborder: A Mojang provided command.
+[19:43:38 INFO]: /xp: A Mojang provided command.
+> save-all
+[19:43:40 INFO]: System chat: Saving the game (this may take a moment!)
+[19:43:40 INFO]: System chat: Saved the game

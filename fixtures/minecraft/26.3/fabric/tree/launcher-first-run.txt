@@ -1,0 +1,33 @@
+A launcher, no eula: exit {"code":0,"sig":null,"t":18.209}
+--- /data after A
+f 158 ./eula.txt
+d 4096 ./logs
+f 2176 ./logs/latest.log
+d 4096 ./mods
+f 1740 ./server.properties
+d 46809333 ./libraries (files: 46)
+d 26652008 ./versions (files: 1)
+d 63023042 ./.fabric (files: 3)
+cat: /data/fabric-server-launcher.properties: No such file or directory
+/data/.fabric
+/data/.fabric/server
+/data/.fabric/server/fabric-loader-server-0.19.5-minecraft-26.3.jar
+/data/.fabric/server/26.3-server.jar
+/data/.fabric/processedMods
+/data/.fabric/processedMods/mixinextras-0.5.5-cd81fe35163f5828.jar
+--- /opt/game after A
+f 181838 ./fabric-server-launcher.jar
+B installer: exit {"code":0,"sig":null,"t":8.34}
+--- /opt/game after B install
+f 616 ./fabric-server-launch.jar
+f 62294556 ./server.jar
+d 3907777 ./libraries (files: 7)
+cat: /opt/game/fabric-server-launcher.properties: No such file or directory
+sh: 1: unzip: not found
+B start, no eula: exit {"code":1,"sig":null,"t":1.46}
+--- /data after B start
+f 51 ./fabric-server-launcher.properties
+--- /opt/game after B start
+f 616 ./fabric-server-launch.jar
+f 62294556 ./server.jar
+d 3907777 ./libraries (files: 7)

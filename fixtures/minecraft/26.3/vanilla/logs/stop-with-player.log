@@ -1,0 +1,10 @@
+[20:03:38] [Server thread/INFO]: System chat: [Rcon: Stopping the server]
+[20:03:38] [Server thread/INFO]: Stopping server
+[20:03:38] [Server thread/INFO]: Saving players
+[20:03:38] [Server thread/INFO]: Saving worlds
+[20:03:38] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[20:03:41] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[20:03:42] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[20:03:42] [Server thread/INFO]: Thread RCON Listener stopped
+[20:03:42] [RCON Client /192.0.2.1 #2/INFO]: Thread RCON Client /192.0.2.1 shutting down
+[20:03:42] [Server thread/INFO]: Thread RCON Client /192.0.2.1 stopped

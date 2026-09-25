@@ -1,0 +1,68 @@
+[
+  {
+    "id": 41,
+    "time": "2026-09-25T03:26:20Z",
+    "channel": "ALPHA",
+    "commits": [
+      {
+        "sha": "a15fed9c16a5cc93e4ff38d6e2135623e2dc9daa",
+        "time": "2026-09-25T03:24:50Z",
+        "message": "Update Gradle to 9.8 and paperweight to beta.24\n"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-41.jar",
+        "checksums": {
+          "sha256": "2b77166ee61886a9bc9ab33dc9e4847fa3538b36d9ba6e5f2fa7ed90973aa748"
+        },
+        "size": 65176386,
+        "url": "https://fill-data.papermc.io/v1/objects/2b77166ee61886a9bc9ab33dc9e4847fa3538b36d9ba6e5f2fa7ed90973aa748/paper-26.3-41.jar"
+      }
+    }
+  },
+  {
+    "id": 40,
+    "time": "2026-09-24T06:18:44Z",
+    "channel": "ALPHA",
+    "commits": [
+      {
+        "sha": "beac08f83f965f86453bb0ef2803329d1ae8f443",
+        "time": "2026-09-24T06:17:28Z",
+        "message": "Don't pre-cancel AsyncPlayerSendSuggestionsEvent on empty suggestions (#14294)"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-40.jar",
+        "checksums": {
+          "sha256": "49399919246cbf443efc8507447dc948eb7477c41be560b0e87e2a455aff824a"
+        },
+        "size": 65176863,
+        "url": "https://fill-data.papermc.io/v1/objects/49399919246cbf443efc8507447dc948eb7477c41be560b0e87e2a455aff824a/paper-26.3-40.jar"
+      }
+    }
+  },
+  {
+    "id": 39,
+    "time": "2026-09-24T06:17:21Z",
+    "channel": "ALPHA",
+    "commits": [
+      {
+        "sha": "f8a210f1d783dbdc02b7d82e2bc3042efa8c2197",
+        "time": "2026-09-24T06:15:51Z",
+        "message": "Fix exception when Cushion is in fluids (#14296)"
+      }
+    ],
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-39.jar",
+        "checksums": {
+          "sha256": "a0108ff1583f02dc2208fbcf2b622e4c72692ebd7395afb251b9d4c2da65cb99"
+        },
+        "size": 65175506,
+        "url": "https://fill-data.papermc.io/v1/objects/a0108ff1583f02dc2208fbcf2b622e4c72692ebd7395afb251b9d4c2da65cb99/paper-26.3-39.jar"
+      }
+    }
+  }
+]

@@ -1,0 +1,17 @@
+---- Minecraft Crash Report ----
+// There are four lights!
+
+Time: 2026-09-25 19:40:18
+Description: Exception in server tick loop
+
+java.lang.IllegalStateException: Failed to initialize server
+	at net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:774)
+	at net.minecraft.server.MinecraftServer.lambda$spin$0(MinecraftServer.java:310)
+	at java.base/java.lang.Thread.run(Unknown Source)
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- System Details --
+(left out of the fixture: the host's hardware, memory and OS details)

@@ -1,0 +1,208 @@
+[
+ {
+  "t": 0.001,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.006,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 0.42,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 20,
+  "body": "save-off",
+  "type": 2
+ },
+ {
+  "t": 0.433,
+  "dir": "in",
+  "size": 42,
+  "id": 20,
+  "type": 0,
+  "body": "Automatic saving is now disabled"
+ },
+ {
+  "t": 0.739,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 30,
+  "body": "save-all flush",
+  "type": 2
+ },
+ {
+  "t": 1.411,
+  "dir": "in",
+  "size": 65,
+  "id": 30,
+  "type": 0,
+  "body": "Saving the game (this may take a moment!)Saved the game"
+ },
+ {
+  "t": 13.471,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 40,
+  "body": "save-on",
+  "type": 2
+ },
+ {
+  "t": 13.475,
+  "dir": "in",
+  "size": 41,
+  "id": 40,
+  "type": 0,
+  "body": "Automatic saving is now enabled"
+ },
+ {
+  "t": 19.481,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 50,
+  "body": "save-off",
+  "type": 2
+ },
+ {
+  "t": 19.484,
+  "dir": "in",
+  "size": 42,
+  "id": 50,
+  "type": 0,
+  "body": "Automatic saving is now disabled"
+ },
+ {
+  "t": 19.78,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 60,
+  "body": "save-all flush",
+  "type": 2
+ },
+ {
+  "t": 20.329,
+  "dir": "in",
+  "size": 65,
+  "id": 60,
+  "type": 0,
+  "body": "Saving the game (this may take a moment!)Saved the game"
+ },
+ {
+  "t": 32.443,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 70,
+  "body": "save-on",
+  "type": 2
+ },
+ {
+  "t": 32.446,
+  "dir": "in",
+  "size": 41,
+  "id": 70,
+  "type": 0,
+  "body": "Automatic saving is now enabled"
+ },
+ {
+  "t": 38.464,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 80,
+  "body": "save-off",
+  "type": 2
+ },
+ {
+  "t": 38.467,
+  "dir": "in",
+  "size": 42,
+  "id": 80,
+  "type": 0,
+  "body": "Automatic saving is now disabled"
+ },
+ {
+  "t": 38.778,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 90,
+  "body": "save-all flush",
+  "type": 2
+ },
+ {
+  "t": 39.303,
+  "dir": "in",
+  "size": 65,
+  "id": 90,
+  "type": 0,
+  "body": "Saving the game (this may take a moment!)Saved the game"
+ },
+ {
+  "t": 51.383,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 100,
+  "body": "save-on",
+  "type": 2
+ },
+ {
+  "t": 51.386,
+  "dir": "in",
+  "size": 41,
+  "id": 100,
+  "type": 0,
+  "body": "Automatic saving is now enabled"
+ },
+ {
+  "t": 59.015,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 110,
+  "body": "save-off",
+  "type": 2
+ },
+ {
+  "t": 59.018,
+  "dir": "in",
+  "size": 42,
+  "id": 110,
+  "type": 0,
+  "body": "Automatic saving is now disabled"
+ },
+ {
+  "t": 59.324,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 120,
+  "body": "save-all flush",
+  "type": 2
+ },
+ {
+  "t": 59.892,
+  "dir": "in",
+  "size": 65,
+  "id": 120,
+  "type": 0,
+  "body": "Saving the game (this may take a moment!)Saved the game"
+ },
+ {
+  "t": 71.897,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 130,
+  "body": "save-on",
+  "type": 2
+ },
+ {
+  "t": 71.9,
+  "dir": "in",
+  "size": 41,
+  "id": 130,
+  "type": 0,
+  "body": "Automatic saving is now enabled"
+ }
+]

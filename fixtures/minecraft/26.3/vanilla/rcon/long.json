@@ -1,0 +1,58 @@
+[
+ {
+  "t": 0.001,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.004,
+  "dir": "in",
+  "kind": "bytes",
+  "n": 14
+ },
+ {
+  "t": 0.004,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 0.432,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "help",
+  "type": 2
+ },
+ {
+  "t": 0.437,
+  "dir": "in",
+  "kind": "bytes",
+  "n": 4110
+ },
+ {
+  "t": 0.437,
+  "dir": "in",
+  "size": 4106,
+  "id": 10,
+  "type": 0,
+  "body": "/advancement (grant|revoke)/attribute <target> <attribute> (get|base|modifier)/execute (run|if|unless|as|at|store|positioned|rotated|facing|align|anchored|in|summon|on)/bossbar (add|remove|list|set|get)/clear [<targets>]/clone (<begin>|from)/compute (default|block|entity)/damage <target> <amount> [<damageType>]/data (merge|get|remove|modify)/datapack (enable|disable|list|create)/debug (start|stop|function)/defaultgamemode <gamemode>/dialog (show|clear)/difficulty [peaceful|easy|normal|hard]/effect (clear|give)/me <action>/enchant <targets> <enchantment> [<level>]/experience (add|set|query)/xp -> experience/fill <from> <to> <block> [outline|hollow|destroy|strict|replace|keep]/fillbiome <from> <to> <biome> [replace]/forceload (add|remove|query)/function <name> [<arguments>|with]/gamemode <gamemode> [<target>]/gamerule (locator_bar|minecraft:locator_bar|show_death_messages|minecraft:show_death_messages|block_drops|minecraft:block_drops|spawner_blocks_work|minecraft:spawner_blocks_work|advance_weather|minecraft:advance_weather|max_block_modifications|minecraft:max_block_modifications|log_admin_commands|minecraft:log_admin_commands|natural_health_regeneration|minecraft:natural_health_regeneration|keep_inventory|minecraft:keep_inventory|lava_source_conversion|minecraft:lava_source_conversion|tnt_explosion_drop_decay|minecraft:tnt_explosion_drop_decay|players_sleeping_percentage|minecraft:players_sleeping_percentage|respawn_radius|minecraft:respawn_radius|max_command_sequence_length|minecraft:max_command_sequence_length|random_tick_speed|minecraft:random_tick_speed|spawn_monsters|minecraft:spawn_monsters|mob_explosion_drop_decay|minecraft:mob_explosion_drop_decay|block_explosion_drop_decay|minecraft:block_explosion_drop_decay|spectators_generate_chunks|minecraft:spectators_generate_chunks|limited_crafting|minecraft:limited_crafting|elytra_movement_check|minecraft:elytra_movement_check|fire_spread_radius_around_player|minecraft:fire_spread_radius_around_player|show_advancement_messages|minecraft:show_advancement_messages|command_block_output|minecraft:command_block_output|spawn_mobs|minecraft:spawn_mobs|immediate_respawn|minecraft:immediate_respawn|global_sound_events|minecraft:global_sound_events|max_entity_cramming|minecraft:max_entity_cramming|spawn_phantoms|minecraft:spawn_phantoms|player_movement_check|minecraft:player_movement_check|spawn_wandering_traders|minecraft:spawn_wandering_traders|raids|minecraft:raids|water_source_conversion|minecraft:water_source_conversion|spawn_wardens|minecraft:spawn_wardens|max_command_forks|minecraft:max_command_forks|tnt_explodes|minecraft:tnt_explodes|freeze_damage|minecraft:freeze_damage|pvp|minecraft:pvp|fire_damage|minecraft:fire_damage|send_command_feedback|minecraft:send_command_feedback|ender_pearls_vanish_on_death|minecraft:ender_pearls_vanish_on_death|drowning_damage|minecraft:drowning_damage|command_blocks_work|minecraft:command_blocks_work|fall_damage|minecraft:fall_damage|reduced_debug_info|minecraft:reduced_debug_info|advance_time|minecraft:advance_time|players_nether_portal_default_delay|minecraft:players_nether_portal_default_delay|spawn_patrols|minecraft:spawn_patrols|universal_anger|minecraft:universal_anger|spread_vines|minecraft:spread_vines|forgive_dead_players|minecraft:forgive_dead_players|projectiles_can_break_blocks|minecraft:projectiles_can_break_blocks|max_snow_accumulation_height|minecraft:max_snow_accumulation_height|mob_griefing|minecraft:mob_griefing|allow_entering_nether_using_portals|minecraft:allow_entering_nether_using_portals|mob_drops|minecraft:mob_drops|entity_drops|minecraft:entity_drops|players_nether_portal_creative_delay|minecraft:players_nether_portal_creative_delay)/give <targets> <item> [<count>]/help [<command>]/item (replace|fill|override|modify)/kick <targets> [<reason>]/kill [<targets>]/list [uuids]/locate (structure|biome|poi)/loot (replace|insert|give|spawn)/msg <targets> <message>/tell -> msg/w -> msg/swing [<targets>]/particle <name> [<pos>]/place (feature|jigsaw|structure|template)/playsound <sound> [master|music|record|weather|block|hos"
+ },
+ {
+  "t": 0.437,
+  "dir": "in",
+  "kind": "bytes",
+  "n": 1642
+ },
+ {
+  "t": 0.437,
+  "dir": "in",
+  "size": 1638,
+  "id": 10,
+  "type": 0,
+  "body": "tile|neutral|player|ambient|voice|ui]/posteffect (add|clear|list|remove)/random (value|roll|reset)/reload/recipe (give|take)/fetchprofile (name|id|entity)/return (<value>|fail|run)/ride <target> (mount|dismount)/rotate <target> (<rotation>|facing)/say <message>/schedule (function|clear)/scoreboard (objectives|players)/seed/version/setblock <pos> <block> [destroy|keep|replace|strict]/spawnpoint [<targets>]/setworldspawn [<pos>]/spectate [<target>]/spreadplayers <center> <spreadDistance> <maxRange> (<respectTeams>|under)/stopsound <targets> [*|master|music|record|weather|block|hostile|neutral|player|ambient|voice|ui]/stopwatch (create|query|restart|remove)/summon <entity> [<pos>]/tag <targets> (add|remove|list)/team (list|add|remove|empty|join|leave|modify)/teammsg <message>/tm -> teammsg/teleport (<location>|<destination>|<targets>)/tp -> teleport/tellraw <targets> <message>/test (run|runmultiple|runthese|runclosest|runthat|runfailed|verify|locate|resetclosest|resetthese|resetthat|clearthat|clearthese|clearall|stop|pos|create)/tick (query|rate|step|sprint|unfreeze|freeze)/time (set|add|pause|resume|rate|query|of)/title <targets> (clear|reset|title|subtitle|actionbar|times)/trigger <objective> [add|set]/waypoint (list|modify)/weather (clear|rain|thunder)/worldborder (add|set|center|damage|get|warning)/jfr (start|stop)/ban-ip <target> [<reason>]/banlist [ips|players]/ban <targets> [<reason>]/deop <targets>/op <targets>/pardon <targets>/pardon-ip <target>/perf (start|stop)/save-all [flush]/save-off/save-on/setidletimeout <minutes>/stop/transfer <hostname> [<port>]/whitelist (on|off|list|add|remove|reload)"
+ }
+]

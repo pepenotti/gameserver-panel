@@ -1,0 +1,31 @@
+[20:04:31 INFO]: UUID of player gspffAlice is ffcc114b-0550-393e-a2da-7e8930eb7054
+[20:04:36 INFO]: System chat: gspffAlice joined the game
+[20:04:36 INFO]: gspffAlice[/192.0.2.1:58826] logged in with entity id 30 at ([minecraft:overworld]-5.5, 78.0, 28.5)
+[20:04:41 INFO]: UUID of player gspffBob is dc6418c1-65ab-357a-98d4-eacecaaf26ba
+[20:04:41 INFO]: System chat: gspffBob joined the game
+[20:04:41 INFO]: gspffBob[/192.0.2.1:33274] logged in with entity id 204 at ([minecraft:overworld]2.5, 78.0, 22.5)
+[20:04:46 INFO]: [Not Secure] [Rcon] hello players
+[20:04:47 INFO]: System chat: [Rcon: Made gspffAlice a server operator]
+[20:04:48 INFO]: System chat: [Rcon: Kicked gspffBob: Testing a kick]
+[20:04:48 INFO]: gspffBob lost connection: Testing a kick
+[20:04:48 INFO]: System chat: gspffBob left the game
+[20:05:13 INFO]: System chat: [Rcon: Banned gspffAlice: Testing a ban]
+[20:05:13 INFO]: gspffAlice lost connection: You are banned from this server
+[20:05:13 INFO]: System chat: gspffAlice left the game
+[20:05:16 INFO]: UUID of player gspffAlice is ffcc114b-0550-393e-a2da-7e8930eb7054
+[20:05:16 INFO]: Disconnecting gspffAlice (/192.0.2.1:33470): You are banned from this server.
+Reason: Testing a ban
+[20:05:16 INFO]: gspffAlice (/192.0.2.1:33470) lost connection: You are banned from this server.
+Reason: Testing a ban
+[20:05:17 INFO]: System chat: [Rcon: Unbanned gspffAlice]
+[20:05:18 INFO]: System chat: [Rcon: Whitelist is now turned on]
+[20:05:20 INFO]: System chat: [Rcon: Added gspffAlice to the whitelist]
+[20:05:27 INFO]: System chat: [Rcon: Whitelist is now turned off]
+[20:05:28 INFO]: UUID of player gspffCarol is e72f348c-1f9f-3df7-bad9-7a2092e001aa
+[20:05:29 INFO]: System chat: gspffCarol joined the game
+[20:05:29 INFO]: gspffCarol[/192.0.2.1:48598] logged in with entity id 723 at ([minecraft:overworld]3.5, 77.0, 35.5)
+[20:05:31 INFO]: gspffCarol lost connection: Disconnected
+[20:05:31 INFO]: System chat: gspffCarol left the game
+[20:05:33 INFO]: UUID of player gspffDave is b0057c90-74d0-3a0b-8519-316d4423de8c
+[20:05:33 INFO]: System chat: gspffDave joined the game
+[20:05:33 INFO]: gspffDave[/192.0.2.1:35438] logged in with entity id 795 at ([minecraft:overworld]9.5, 74.0, 22.5)

@@ -1,0 +1,320 @@
+[
+ {
+  "t": 0.001,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.004,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 0.433,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "kick gspffNoSuchPlr7 testing",
+  "type": 2
+ },
+ {
+  "t": 0.436,
+  "dir": "in",
+  "size": 29,
+  "id": 10,
+  "type": 0,
+  "body": "No player was found"
+ },
+ {
+  "t": 2.976,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 20,
+  "body": "ban gspffNoSuchPlr7 testing",
+  "type": 2
+ },
+ {
+  "t": 3.797,
+  "dir": "in",
+  "size": 36,
+  "id": 20,
+  "type": 0,
+  "body": "That player does not exist"
+ },
+ {
+  "t": 6.318,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 30,
+  "body": "pardon gspffNoSuchPlr7",
+  "type": 2
+ },
+ {
+  "t": 6.49,
+  "dir": "in",
+  "size": 36,
+  "id": 30,
+  "type": 0,
+  "body": "That player does not exist"
+ },
+ {
+  "t": 9.025,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 40,
+  "body": "ban-ip 203.0.113.9 testing",
+  "type": 2
+ },
+ {
+  "t": 9.032,
+  "dir": "in",
+  "size": 40,
+  "id": 40,
+  "type": 0,
+  "body": "Banned IP 203.0.113.9: testing"
+ },
+ {
+  "t": 11.567,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 50,
+  "body": "banlist",
+  "type": 2
+ },
+ {
+  "t": 11.571,
+  "dir": "in",
+  "size": 68,
+  "id": 50,
+  "type": 0,
+  "body": "There are 1 ban(s):203.0.113.9 was banned by Rcon: testing"
+ },
+ {
+  "t": 14.113,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 60,
+  "body": "banlist ips",
+  "type": 2
+ },
+ {
+  "t": 14.116,
+  "dir": "in",
+  "size": 68,
+  "id": 60,
+  "type": 0,
+  "body": "There are 1 ban(s):203.0.113.9 was banned by Rcon: testing"
+ },
+ {
+  "t": 16.658,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 70,
+  "body": "pardon-ip 203.0.113.9",
+  "type": 2
+ },
+ {
+  "t": 16.663,
+  "dir": "in",
+  "size": 33,
+  "id": 70,
+  "type": 0,
+  "body": "Unbanned IP 203.0.113.9"
+ },
+ {
+  "t": 19.199,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 80,
+  "body": "whitelist add gspffNoSuchPlr7",
+  "type": 2
+ },
+ {
+  "t": 19.443,
+  "dir": "in",
+  "size": 36,
+  "id": 80,
+  "type": 0,
+  "body": "That player does not exist"
+ },
+ {
+  "t": 21.963,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 90,
+  "body": "whitelist remove gspffNoSuchPlr7",
+  "type": 2
+ },
+ {
+  "t": 22.127,
+  "dir": "in",
+  "size": 36,
+  "id": 90,
+  "type": 0,
+  "body": "That player does not exist"
+ },
+ {
+  "t": 24.636,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 100,
+  "body": "whitelist on",
+  "type": 2
+ },
+ {
+  "t": 24.642,
+  "dir": "in",
+  "size": 36,
+  "id": 100,
+  "type": 0,
+  "body": "Whitelist is now turned on"
+ },
+ {
+  "t": 27.176,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 110,
+  "body": "whitelist on",
+  "type": 2
+ },
+ {
+  "t": 27.178,
+  "dir": "in",
+  "size": 40,
+  "id": 110,
+  "type": 0,
+  "body": "Whitelist is already turned on"
+ },
+ {
+  "t": 29.703,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 120,
+  "body": "whitelist off",
+  "type": 2
+ },
+ {
+  "t": 29.708,
+  "dir": "in",
+  "size": 37,
+  "id": 120,
+  "type": 0,
+  "body": "Whitelist is now turned off"
+ },
+ {
+  "t": 32.248,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 130,
+  "body": "whitelist list",
+  "type": 2
+ },
+ {
+  "t": 32.25,
+  "dir": "in",
+  "size": 42,
+  "id": 130,
+  "type": 0,
+  "body": "There are no whitelisted players"
+ },
+ {
+  "t": 34.789,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 140,
+  "body": "whitelist reload",
+  "type": 2
+ },
+ {
+  "t": 34.793,
+  "dir": "in",
+  "size": 32,
+  "id": 140,
+  "type": 0,
+  "body": "Reloaded the whitelist"
+ },
+ {
+  "t": 37.336,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 150,
+  "body": "op gspffNoSuchPlr7",
+  "type": 2
+ },
+ {
+  "t": 38.079,
+  "dir": "in",
+  "size": 36,
+  "id": 150,
+  "type": 0,
+  "body": "That player does not exist"
+ },
+ {
+  "t": 40.625,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 160,
+  "body": "deop gspffNoSuchPlr7",
+  "type": 2
+ },
+ {
+  "t": 41.205,
+  "dir": "in",
+  "size": 36,
+  "id": 160,
+  "type": 0,
+  "body": "That player does not exist"
+ },
+ {
+  "t": 43.728,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 170,
+  "body": "say done",
+  "type": 2
+ },
+ {
+  "t": 43.731,
+  "dir": "in",
+  "size": 10,
+  "id": 170,
+  "type": 0,
+  "body": ""
+ },
+ {
+  "t": 46.271,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 180,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 46.274,
+  "dir": "in",
+  "size": 53,
+  "id": 180,
+  "type": 0,
+  "body": "There are 0 of a max of 20 players online: "
+ },
+ {
+  "t": 48.816,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 190,
+  "body": "list uuids",
+  "type": 2
+ },
+ {
+  "t": 48.818,
+  "dir": "in",
+  "size": 53,
+  "id": 190,
+  "type": 0,
+  "body": "There are 0 of a max of 20 players online: "
+ }
+]

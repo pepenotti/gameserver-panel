@@ -1,0 +1,42 @@
+[
+ {
+  "t": 0.001,
+  "dir": "out",
+  "kind": "auth",
+  "id": 1
+ },
+ {
+  "t": 0.004,
+  "dir": "in",
+  "kind": "bytes",
+  "n": 14
+ },
+ {
+  "t": 0.004,
+  "dir": "in",
+  "size": 10,
+  "id": 1,
+  "type": 2,
+  "body": ""
+ },
+ {
+  "t": 0.431,
+  "dir": "out",
+  "kind": "cmd",
+  "id": 10,
+  "body": "list",
+  "type": 2
+ },
+ {
+  "t": 0.431,
+  "dir": "out",
+  "kind": "sentinel",
+  "id": 11,
+  "sameWrite": true
+ },
+ {
+  "t": 0.434,
+  "dir": "in",
+  "kind": "close"
+ }
+]

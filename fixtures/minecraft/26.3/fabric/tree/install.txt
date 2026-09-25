@@ -1,0 +1,4 @@
+f 616 ./fabric-server-launch.jar
+f 62294556 ./server.jar
+d 46809333 ./libraries (files: 46)
+d 26652008 ./versions (files: 1)
