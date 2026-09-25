@@ -3,7 +3,7 @@ import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyContextConfig, type FastifyInstance } from 'fastify';
 import { AgentCallError } from './agent/client';
 import { UserError } from './auth/users';
 import { HttpError, installGuards } from './http/context';
@@ -21,14 +21,42 @@ import { resetRoutes } from './routes/reset';
 import { notificationRoutes, scheduleRoutes } from './routes/schedules';
 import { serverScope } from './routes/scope';
 import { serverRoutes } from './routes/server';
+import { serverListRoutes } from './routes/servers';
 import { meRoutes, userRoutes } from './routes/users';
 import { wsRoutes } from './routes/ws';
+
+/** A route as registered: what the API-first test (AST-01) checks the web's calls and every route's guard against. */
+export interface RouteInfo {
+  method: string;
+  url: string;
+  readonly config: FastifyContextConfig;
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** Every route of the app, as registered (HEAD twins included). */
+    routeTable: readonly RouteInfo[];
+  }
+}
 
 export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: opts.logger ? { level: 'info', redact: ['req.headers.cookie', 'req.headers.authorization', 'req.headers["x-gsp-csrf"]'] } : false,
     trustProxy: deps.env.trustProxy,
     bodyLimit: 256 * 1024,
+  });
+  const routes: RouteInfo[] = [];
+  app.decorate('routeTable', routes);
+  app.addHook('onRoute', (r) => {
+    // `config` is read later: plugins' own onRoute hooks (serverScope) still add to it.
+    for (const method of [r.method].flat())
+      routes.push({
+        method,
+        url: r.url,
+        get config() {
+          return r.config ?? {};
+        },
+      });
   });
   // Only JSON bodies: a text/plain "simple request" from another site must not reach a route.
   app.removeContentTypeParser('text/plain');
@@ -52,14 +80,15 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
 
   app.get('/api/health', { config: { auth: 'public' } }, async () => ({ ok: true, version: deps.env.version }));
 
-  // The host's routes: accounts, sessions, users, audit, host settings, the websocket.
+  // The host's routes: accounts, sessions, users, audit, host settings, the server list, the websocket.
   authRoutes(app, deps);
   meRoutes(app, deps);
   userRoutes(app, deps);
   notificationRoutes(app, deps);
+  serverListRoutes(app, deps);
   wsRoutes(app, deps);
 
-  // Each server's routes (ACC-02: resolved and checked per server).
+  // Each server's routes, under /api/servers/:sid (ACC-02: resolved and checked per server).
   await serverScope(app, (s) => {
     statusRoutes(s, deps);
     metaRoutes(s, deps);

@@ -19,7 +19,7 @@ export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
 
   app.post<{ Body: ProposalInput }>(
-    '/api/config/proposals',
+    '/config/proposals',
     {
       config: perm,
       // A file may be up to 1 MiB of text; JSON escaping makes the body larger.
@@ -54,14 +54,14 @@ export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.get<{ Querystring: { status?: ProposalStatus; file?: string } }>(
-    '/api/config/proposals',
+    '/config/proposals',
     { config: perm, schema: { querystring: { type: 'object', properties: { status: { enum: PROPOSAL_STATUSES }, file: FILE_ID } } } },
     async (req) => srvOf(req).changes.list({ status: req.query.status, fileId: req.query.file }),
   );
 
-  app.get<{ Params: { id: string } }>('/api/config/proposals/:id', { config: perm, schema: { params: idParam } }, async (req) => srvOf(req).changes.get(req.params.id));
+  app.get<{ Params: { id: string } }>('/config/proposals/:id', { config: perm, schema: { params: idParam } }, async (req) => srvOf(req).changes.get(req.params.id));
 
-  app.post<{ Params: { id: string } }>('/api/config/proposals/:id/apply', { config: perm, schema: { params: idParam } }, async (req) => {
+  app.post<{ Params: { id: string } }>('/config/proposals/:id/apply', { config: perm, schema: { params: idParam } }, async (req) => {
     const r = await srvOf(req).changes.apply(req.params.id, who(req));
     // Keys only: the history has the text, and the audit log never holds a secret.
     audit.log({
@@ -73,7 +73,7 @@ export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
     return r;
   });
 
-  app.post<{ Params: { id: string } }>('/api/config/proposals/:id/reject', { config: perm, schema: { params: idParam } }, async (req) => {
+  app.post<{ Params: { id: string } }>('/config/proposals/:id/reject', { config: perm, schema: { params: idParam } }, async (req) => {
     const p = srvOf(req).changes.reject(req.params.id, who(req));
     audit.log({ ...by(req), action: 'config.reject', target: p.fileId, detail: { proposal: p.id } });
     return p;

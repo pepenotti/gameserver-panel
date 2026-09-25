@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { diffLines, withContext } from '@gsp/shared';
-import { get } from '../../api/http';
+import { useServerApi } from '../../api/server';
 import { formatDateTime, useErrorText } from '../../lib/format';
 import { propose, useFileLabel, type FileDecl, type ProposalPreview } from './api';
 import { DiffView } from './DiffView';
@@ -40,20 +40,21 @@ function useNoteText(): (note: string | null) => string {
 /** One file's versions: each one's diff against the one before, and a revert that is previewed like any change (CFG-03). */
 export function FileHistory({ fileId }: { fileId: string }) {
   const { t, i18n } = useTranslation();
+  const sapi = useServerApi();
   const errorText = useErrorText();
   const noteText = useNoteText();
   const [viewing, setViewing] = useState<number | null>(null);
   const [revert, setRevert] = useState<ProposalPreview | null>(null);
-  const list = useQuery({ queryKey: ['config', 'history', fileId], queryFn: () => get<VersionRow[]>(`/api/config/history?file=${encodeURIComponent(fileId)}`) });
+  const list = useQuery({ queryKey: ['config', 'history', fileId, sapi.sid], queryFn: () => sapi<VersionRow[]>('GET', `/config/history?file=${encodeURIComponent(fileId)}`) });
   const version = useQuery({
-    queryKey: ['config', 'version', viewing],
-    queryFn: () => get<{ row: VersionRow; content: string; previous: string | null }>(`/api/config/history/${viewing}`),
+    queryKey: ['config', 'version', viewing, sapi.sid],
+    queryFn: () => sapi<{ row: VersionRow; content: string; previous: string | null }>('GET', `/config/history/${viewing}`),
     enabled: viewing !== null,
   });
   const lines = useMemo(() => (version.data ? withContext(diffLines(version.data.previous ?? '', version.data.content)) : []), [version.data]);
 
   const previewRevert = (id: number) =>
-    void propose({ fileId, revert: id }).then(
+    void propose(sapi, { fileId, revert: id }).then(
       (p) => {
         setViewing(null);
         setRevert(p);

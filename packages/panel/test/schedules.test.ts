@@ -91,26 +91,26 @@ describe('schedules', () => {
     expect(timeToCron('23:45')).toBe('45 23 * * *');
     expect(() => timeToCron('24:00')).toThrow();
     const { c } = await setup();
-    const cur = ((await c.get('/api/schedules')).json() as { settings: Record<string, unknown> }).settings;
-    const bad = await c.req('PUT', '/api/schedules', { ...cur, timezone: 'Mars/Olympus' });
+    const cur = ((await c.get('/api/servers/default/schedules')).json() as { settings: Record<string, unknown> }).settings;
+    const bad = await c.req('PUT', '/api/servers/default/schedules', { ...cur, timezone: 'Mars/Olympus' });
     expect(bad.json()).toMatchObject({ error: 'invalid-schedule' });
-    const ok = (await c.req('PUT', '/api/schedules', { ...cur, timezone: 'America/New_York', restarts: { enabled: true, times: ['05:30'], countdownSec: 300, backupWhileStopped: true } })).json() as { next: { restart: string } };
+    const ok = (await c.req('PUT', '/api/servers/default/schedules', { ...cur, timezone: 'America/New_York', restarts: { enabled: true, times: ['05:30'], countdownSec: 300, backupWhileStopped: true } })).json() as { next: { restart: string } };
     expect(new Date(ok.next.restart).getUTCMinutes()).toBe(30);
     // The dashboard shows the same next restart.
-    expect(((await c.get('/api/status')).json() as { nextRestart: string }).nextRestart).toBe(ok.next.restart);
+    expect(((await c.get('/api/servers/default/status')).json() as { nextRestart: string }).nextRestart).toBe(ok.next.restart);
   });
 
   it('daily restart: stops, backs up while stopped, starts again, under the agent lock', async () => {
     const { p, c } = await setup();
-    const cur = ((await c.get('/api/schedules')).json() as { settings: Record<string, unknown> }).settings;
-    await c.req('PUT', '/api/schedules', { ...cur, restarts: { enabled: true, times: ['06:00'], countdownSec: 0, backupWhileStopped: true } });
+    const cur = ((await c.get('/api/servers/default/schedules')).json() as { settings: Record<string, unknown> }).settings;
+    await c.req('PUT', '/api/servers/default/schedules', { ...cur, restarts: { enabled: true, times: ['06:00'], countdownSec: 0, backupWhileStopped: true } });
     seedWorld(p);
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
     await p.srv.scheduler.runRestart();
     await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'start']);
     expect(p.srv.backups.list().map((b) => b.manifest.trigger)).toEqual(['scheduled']);
-    expect(((await c.get('/api/status')).json() as { lastBackup: unknown }).lastBackup).toMatchObject({ trigger: 'scheduled', mode: 'cold' });
+    expect(((await c.get('/api/servers/default/status')).json() as { lastBackup: unknown }).lastBackup).toMatchObject({ trigger: 'scheduled', mode: 'cold' });
   });
 
   it('copies the panel database nightly and keeps the newest seven', async () => {

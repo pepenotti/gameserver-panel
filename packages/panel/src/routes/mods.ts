@@ -10,7 +10,7 @@ export function modRoutes(app: FastifyInstance, deps: Deps): void {
   const { audit } = deps;
   const who = (req: { auth: { user: { username: string } } | null }) => req.auth?.user.username ?? null;
 
-  app.get('/api/mods', { config: perm }, async (req) => {
+  app.get('/mods', { config: perm }, async (req) => {
     const { mods, feed } = srvOf(req);
     await mods.importFromConfig();
     const items = await mods.items();
@@ -18,7 +18,7 @@ export function modRoutes(app: FastifyInstance, deps: Deps): void {
   });
 
   app.post<{ Body: { refs: string[] } }>(
-    '/api/mods',
+    '/mods',
     {
       config: perm,
       schema: { body: { type: 'object', required: ['refs'], additionalProperties: false, properties: { refs: { type: 'array', minItems: 1, maxItems: 50, items: { type: 'string', maxLength: 300 } } } } },
@@ -31,7 +31,7 @@ export function modRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.put<{ Body: { enabled: { modId: string; workshopId: string }[] } }>(
-    '/api/mods/enabled',
+    '/mods/enabled',
     {
       config: perm,
       schema: {
@@ -57,20 +57,20 @@ export function modRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.post('/api/mods/sort', { config: perm }, async (req) => {
+  app.post('/mods/sort', { config: perm }, async (req) => {
     const { mods } = srvOf(req);
     const enabled = await mods.autoSort(who(req));
     audit.log({ ...by(req), action: 'mods.sort' });
     return { enabled, issues: mods.issues(await mods.items()) };
   });
 
-  app.post('/api/mods/check', { config: perm }, async (req) => {
+  app.post('/mods/check', { config: perm }, async (req) => {
     const { mods } = srvOf(req);
     return { updates: await mods.checkUpdates(), items: await mods.items() };
   });
 
   app.post<{ Body: { ids?: string[] } }>(
-    '/api/mods/download',
+    '/mods/download',
     { config: perm, schema: { body: { type: 'object', additionalProperties: false, properties: { ids: { type: 'array', maxItems: 200, items: itemId } } } } },
     async (req) => {
       const { mods } = srvOf(req);
@@ -80,7 +80,7 @@ export function modRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.delete<{ Params: { id: string } }>('/api/mods/:id', { config: perm, schema: { params: { type: 'object', required: ['id'], properties: { id: itemId } } } }, async (req) => {
+  app.delete<{ Params: { id: string } }>('/mods/:id', { config: perm, schema: { params: { type: 'object', required: ['id'], properties: { id: itemId } } } }, async (req) => {
     const r = await srvOf(req).mods.remove(req.params.id, who(req));
     audit.log({ ...by(req), action: 'mods.remove', target: req.params.id });
     return r;

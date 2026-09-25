@@ -2,7 +2,7 @@ import { Alert, Button, Center, Code, CopyButton, Group, List, Loader, PinInput,
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { post } from '../../api/http';
+import { api } from '../../api/http';
 import { useSession } from '../../api/session';
 import type { SessionInfo } from '../../api/types';
 import { useErrorText } from '../../lib/format';
@@ -20,7 +20,7 @@ export function EnrolTotp({ onDone }: { onDone?: () => void }) {
 
   useEffect(() => {
     let cancelled = false;
-    post<{ secret: string; uri: string }>('/api/auth/totp/setup')
+    api<{ secret: string; uri: string }>('POST', '/api/auth/totp/setup', {})
       .then(async (s) => {
         const qr = await QRCode.toDataURL(s.uri, { margin: 1, width: 220, errorCorrectionLevel: 'M' });
         if (!cancelled) setSetup({ ...s, qr });
@@ -35,7 +35,7 @@ export function EnrolTotp({ onDone }: { onDone?: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const r = await post<SessionInfo & { recoveryCodes: string[] }>('/api/auth/totp/enable', { code });
+      const r = await api<SessionInfo & { recoveryCodes: string[] }>('POST', '/api/auth/totp/enable', { code });
       setCodes(r.recoveryCodes);
       setPendingSession(r);
     } catch (e) {

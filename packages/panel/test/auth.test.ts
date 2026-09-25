@@ -14,13 +14,13 @@ describe('first login of the bootstrapped owner', () => {
     const cookie = login.cookies.find((x) => x.name === SESSION_COOKIE)!;
     expect(cookie).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Strict', path: '/' });
 
-    expect((await c.get('/api/status')).json()).toMatchObject({ error: 'pending', pending: 'password' });
+    expect((await c.get('/api/servers/default/status')).json()).toMatchObject({ error: 'pending', pending: 'password' });
 
     const weak = await c.post('/api/auth/password', { current: OWNER.password, next: 'short' });
     expect(weak.json()).toEqual({ error: 'password-too-short' });
     const changed = await c.post('/api/auth/password', { current: OWNER.password, next: 'Nueva-clave-segura-2026' });
     expect(changed.json()).toMatchObject({ pending: 'enrol' });
-    expect((await c.get('/api/status')).statusCode).toBe(403);
+    expect((await c.get('/api/servers/default/status')).statusCode).toBe(403);
 
     const setup = (await c.post('/api/auth/totp/setup')).json() as { secret: string; uri: string };
     expect(setup.uri).toMatch(/^otpauth:\/\/totp\/Game%20Server%20Panel%3Aalice\?secret=[A-Z2-7]+&issuer=Game%20Server%20Panel/);
@@ -29,7 +29,7 @@ describe('first login of the bootstrapped owner', () => {
     expect(enabled.json()).toMatchObject({ pending: null, recoveryCodes: expect.arrayContaining([expect.stringMatching(/^[a-z2-9]{4}-[a-z2-9]{4}$/)]) });
     expect((enabled.json() as { permissions: string[] }).permissions).toContain('users.manage');
 
-    const status = await c.get('/api/status');
+    const status = await c.get('/api/servers/default/status');
     expect(status.statusCode).toBe(200);
     expect(status.json()).toMatchObject({ serverName: 'zomboid', agentConnected: true, agent: { state: 'stopped' } });
   });
@@ -43,13 +43,13 @@ describe('signing in with 2FA', () => {
     const c = new Client(p.app);
     expect((await c.post('/api/auth/login', { username: 'ALICE', password })).json()).toMatchObject({ pending: 'mfa' });
     const pendingCookie = c.cookie;
-    expect((await c.get('/api/status')).statusCode).toBe(403);
+    expect((await c.get('/api/servers/default/status')).statusCode).toBe(403);
     expect((await c.post('/api/auth/mfa', { code: '123456' })).statusCode).toBe(401);
     const code = totpCode(secret, 1);
     expect((await c.post('/api/auth/mfa', { code })).json()).toMatchObject({ pending: null });
     // The pending token was rotated away.
     expect(c.cookie).not.toBe(pendingCookie);
-    expect((await c.get('/api/status')).statusCode).toBe(200);
+    expect((await c.get('/api/servers/default/status')).statusCode).toBe(200);
 
     const replay = new Client(p.app);
     await replay.post('/api/auth/login', { username: 'alice', password });
@@ -137,11 +137,11 @@ describe('sessions', () => {
     const other = new Client(p.app);
     await other.post('/api/auth/login', { username: 'alice', password });
     await other.post('/api/auth/mfa', { code: totpCode(secret, 1) });
-    expect((await other.get('/api/status')).statusCode).toBe(200);
+    expect((await other.get('/api/servers/default/status')).statusCode).toBe(200);
 
     await client.post('/api/auth/password', { current: password, next: 'Otra-clave-mas-segura' });
-    expect((await other.get('/api/status')).statusCode).toBe(401);
-    expect((await client.get('/api/status')).statusCode).toBe(200);
+    expect((await other.get('/api/servers/default/status')).statusCode).toBe(401);
+    expect((await client.get('/api/servers/default/status')).statusCode).toBe(200);
   });
 
   it('lists and revokes own sessions', async () => {
@@ -151,7 +151,7 @@ describe('sessions', () => {
     expect(list).toHaveLength(1);
     expect(list[0]!.current).toBe(true);
     expect((await client.req('DELETE', `/api/me/sessions/${list[0]!.id}`)).statusCode).toBe(200);
-    expect((await client.get('/api/status')).statusCode).toBe(401);
+    expect((await client.get('/api/servers/default/status')).statusCode).toBe(401);
   });
 
   it('logs out', async () => {

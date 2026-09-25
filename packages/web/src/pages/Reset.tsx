@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PERMISSIONS } from '@gsp/shared';
-import { get, post } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import type { Meta } from '../api/meta';
 import { useSession } from '../api/session';
@@ -28,8 +28,9 @@ export function Reset() {
   const errorText = useErrorText();
   const { can } = useSession();
   const live = useLive();
+  const sapi = useServerApi();
   const { meta, has, l } = useMeta();
-  const presets = useQuery({ queryKey: ['config', 'meta'], queryFn: () => get<{ presets: string[] }>('/api/config/meta'), enabled: can('config.edit') && has('presets'), staleTime: Infinity });
+  const presets = useQuery({ queryKey: ['config', 'meta', sapi.sid], queryFn: () => sapi<{ presets: string[] }>('GET', '/config/meta'), enabled: can('config.edit') && has('presets'), staleTime: Infinity });
   const resets = meta?.resets ?? [];
   const [picked, setPicked] = useState<string | null>(null);
   const [newSeed, setNewSeed] = useState(false);
@@ -53,7 +54,7 @@ export function Reset() {
 
   const go = () =>
     scope &&
-    void post('/api/reset', {
+    void sapi('POST', '/reset', {
       scope: scope.id,
       confirm,
       countdownSec: playersOnline ? Number(countdown) : 0,

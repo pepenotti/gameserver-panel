@@ -12,10 +12,10 @@ import { FILE_ID } from './config';
 export function fileRoutes(app: FastifyInstance, _deps: Deps): void {
   const perm = { permission: 'config.edit' as const };
 
-  app.get('/api/config/files', { config: perm }, async (req) => srvOf(req).config.listFiles());
+  app.get('/config/files', { config: perm }, async (req) => srvOf(req).config.listFiles());
 
   app.get<{ Querystring: { id: string } }>(
-    '/api/config/files/content',
+    '/config/files/content',
     { config: perm, schema: { querystring: { type: 'object', required: ['id'], properties: { id: FILE_ID } } } },
     async (req) => srvOf(req).config.content(req.query.id),
   );

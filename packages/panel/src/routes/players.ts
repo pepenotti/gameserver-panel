@@ -1,5 +1,4 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-
 import { allowed, by, HttpError, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 
@@ -17,7 +16,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   const { audit } = deps;
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
 
-  app.get('/api/players', { config: { permission: 'players.view', capability: 'players' } }, async (req) => {
+  app.get('/players', { config: { permission: 'players.view', capability: 'players' } }, async (req) => {
     const { players } = srvOf(req);
     const full = allowed(req, 'accounts.view');
     return {
@@ -30,7 +29,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   });
 
   app.get<{ Querystring: { limit?: number } }>(
-    '/api/players/history',
+    '/players/history',
     {
       config: { permission: 'accounts.view', capability: 'playerHistory' },
       schema: { querystring: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 1000 } } } },
@@ -39,7 +38,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.post<{ Body: { username: string; reason?: string } }>(
-    '/api/players/kick',
+    '/players/kick',
     {
       config: { permission: 'players.moderate', capability: 'kick' },
       schema: { body: { type: 'object', required: ['username'], additionalProperties: false, properties: { username, reason } } },
@@ -52,7 +51,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.post<{ Body: { username?: string; steamId?: string; reason?: string } }>(
-    '/api/players/ban',
+    '/players/ban',
     { config: { permission: 'players.moderate', capability: 'ban' }, schema: { body: target } },
     async (req) => {
       const output = await srvOf(req).players.ban(who(req), { username: req.body.username, steamId: req.body.steamId }, req.body.reason);
@@ -62,7 +61,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.post<{ Body: { username?: string; steamId?: string } }>(
-    '/api/players/unban',
+    '/players/unban',
     { config: { permission: 'players.moderate', capability: 'ban' }, schema: { body: target } },
     async (req) => {
       const output = await srvOf(req).players.unban(who(req), { username: req.body.username, steamId: req.body.steamId });
@@ -72,7 +71,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.post<{ Body: { username: string; level: string } }>(
-    '/api/players/access',
+    '/players/access',
     {
       config: { permission: 'players.accessLevel', capability: 'accessLevels' },
       schema: { body: { type: 'object', required: ['username', 'level'], additionalProperties: false, properties: { username, level: { type: 'string', minLength: 1, maxLength: 32 } } } },
@@ -89,7 +88,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.post<{ Body: { username: string; password: string } }>(
-    '/api/players/whitelist',
+    '/players/whitelist',
     {
       config: { permission: 'whitelist.manage', capability: 'whitelist' },
       schema: { body: { type: 'object', required: ['username', 'password'], additionalProperties: false, properties: { username, password: { type: 'string', minLength: 4, maxLength: 64 } } } },
@@ -102,7 +101,7 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   );
 
   app.delete<{ Params: { username: string } }>(
-    '/api/players/whitelist/:username',
+    '/players/whitelist/:username',
     { config: { permission: 'whitelist.manage', capability: 'whitelist' }, schema: { params: { type: 'object', required: ['username'], properties: { username } } } },
     async (req) => {
       const output = await srvOf(req).players.whitelistRemove(who(req), req.params.username);

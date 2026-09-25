@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { get } from './http';
+import { serverApi } from './http';
 import { hasCapability, localize, supports, type CapabilityNeed, type I18n, type Meta, type Need } from './meta';
+import { useServerScope } from './server';
 import { useSession } from './session';
 
 export interface MetaView {
@@ -17,14 +18,20 @@ export interface MetaView {
   l(v: Partial<I18n> | undefined): string;
 }
 
-/** The server's adapter description (`GET /api/meta`): one query per session, cached, shared by every page. */
-export function useMeta(): MetaView {
+/**
+ * The page's server's adapter description (`GET /api/servers/:sid/meta`):
+ * one query per server, cached, shared by every page. Outside a server's
+ * pages (`sid` null) there is none.
+ */
+export function useMeta(sidOverride?: string | null): MetaView {
+  const scope = useServerScope();
+  const sid = sidOverride !== undefined ? sidOverride : (scope?.sid ?? null);
   const { i18n } = useTranslation();
   const { session } = useSession();
   const q = useQuery({
-    queryKey: ['meta'],
-    queryFn: () => get<Meta>('/api/meta'),
-    enabled: !!session && !session.pending,
+    queryKey: ['meta', sid],
+    queryFn: () => serverApi(sid!)<Meta>('GET', '/meta'),
+    enabled: !!sid && !!session && !session.pending,
     staleTime: Infinity,
   });
   const meta = q.data ?? null;

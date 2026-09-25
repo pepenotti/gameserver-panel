@@ -4,7 +4,8 @@ import { IconPlus, IconX } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { get, post, put } from '../api/http';
+import { api } from '../api/http';
+import { useServerApi } from '../api/server';
 import { NEED_MODS, type Need } from '../api/meta';
 import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
@@ -68,11 +69,13 @@ export function Schedules() {
   const { t } = useTranslation();
   const errorText = useErrorText();
   const qc = useQueryClient();
-  const { can } = useSession();
+  const { can, canHost } = useSession();
+  const sapi = useServerApi();
   const { supports, gameName } = useMeta();
   const editable = can('schedules.manage');
-  const q = useQuery({ queryKey: ['schedules'], queryFn: () => get<{ settings: ScheduleSettings; next: NextRuns }>('/api/schedules') });
-  const discord = useQuery({ queryKey: ['notifications'], queryFn: () => get<DiscordView>('/api/notifications'), enabled: can('notifications.manage') });
+  const q = useQuery({ queryKey: ['schedules', sapi.sid], queryFn: () => sapi<{ settings: ScheduleSettings; next: NextRuns }>('GET', '/schedules') });
+  // The Discord webhook is the host's (SCH-03).
+  const discord = useQuery({ queryKey: ['notifications'], queryFn: () => api<DiscordView>('GET', '/api/notifications'), enabled: canHost('notifications.manage') });
   const [s, setS] = useState<ScheduleSettings | null>(null);
   const [d, setD] = useState<DiscordView | null>(null);
   const [hook, setHook] = useState('');
@@ -88,13 +91,13 @@ export function Schedules() {
   const fail = (e: unknown) => notifications.show({ color: 'red', message: errorText(e) });
   const saveSchedules = () =>
     s &&
-    void put<{ settings: ScheduleSettings; next: NextRuns }>('/api/schedules', s).then((r) => {
-      qc.setQueryData(['schedules'], r);
+    void sapi<{ settings: ScheduleSettings; next: NextRuns }>('PUT', '/schedules', s).then((r) => {
+      qc.setQueryData(['schedules', sapi.sid], r);
       notifications.show({ color: 'green', message: t('schedules.saved') });
     }, fail);
   const saveDiscord = (extra: { webhookUrl?: string | null } = {}) =>
     d &&
-    void put<DiscordView>('/api/notifications', { lang: d.lang, events: d.events, ...(hook.trim() ? { webhookUrl: hook.trim() } : {}), ...extra }).then((r) => {
+    void api<DiscordView>('PUT', '/api/notifications', { lang: d.lang, events: d.events, ...(hook.trim() ? { webhookUrl: hook.trim() } : {}), ...extra }).then((r) => {
       qc.setQueryData(['notifications'], r);
       setHook('');
       notifications.show({ color: 'green', message: t('common.saved') });
@@ -208,7 +211,7 @@ export function Schedules() {
             </SimpleGrid>
             <Group>
               <Button onClick={() => saveDiscord()}>{t('common.save')}</Button>
-              <Button variant="default" disabled={!d.configured} onClick={() => void post('/api/notifications/test').then(() => notifications.show({ color: 'green', message: t('discord.testOk') }), fail)}>
+              <Button variant="default" disabled={!d.configured} onClick={() => void api('POST', '/api/notifications/test', {}).then(() => notifications.show({ color: 'green', message: t('discord.testOk') }), fail)}>
                 {t('discord.test')}
               </Button>
               {d.configured && (

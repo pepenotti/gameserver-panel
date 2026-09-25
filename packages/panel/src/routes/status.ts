@@ -3,7 +3,7 @@ import { srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 
 export function statusRoutes(app: FastifyInstance, deps: Deps): void {
-  app.get('/api/status', { config: { permission: 'server.view' } }, async (req) => {
+  app.get('/status', { config: { permission: 'server.view' } }, async (req) => {
     const s = srvOf(req);
     let agent = s.feed.status_;
     if (!agent) agent = await s.agent.status().catch(() => null);

@@ -10,13 +10,13 @@ export function scheduleRoutes(app: FastifyInstance, deps: Deps): void {
   const { audit } = deps;
   const next = (s: ReturnType<typeof srvOf>) => ({ ...s.scheduler.nextRuns(), ...deps.hostJobs.nextRuns() });
 
-  app.get('/api/schedules', { config: { permission: 'schedules.view' } }, async (req) => {
+  app.get('/schedules', { config: { permission: 'schedules.view' } }, async (req) => {
     const s = srvOf(req);
     return { settings: s.scheduler.config(), next: next(s) };
   });
 
   app.put<{ Body: ScheduleSettings }>(
-    '/api/schedules',
+    '/schedules',
     {
       config: { permission: 'schedules.manage' },
       schema: {

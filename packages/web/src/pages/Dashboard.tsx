@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AgentStatus } from '@gsp/shared';
-import { get } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import { OpBanner } from '../components/OpBanner';
 import { ServerControls } from '../components/ServerControls';
@@ -38,9 +38,10 @@ function Stat({ label, children }: { label: string; children: ReactNode }) {
 export function Dashboard() {
   const { t } = useTranslation();
   const live = useLive();
+  const sapi = useServerApi();
   const dur = useDuration();
   const rel = useRelative();
-  const q = useQuery({ queryKey: ['status'], queryFn: () => get<StatusResponse>('/api/status'), refetchInterval: 30_000 });
+  const q = useQuery({ queryKey: ['status', sapi.sid], queryFn: () => sapi<StatusResponse>('GET', '/status'), refetchInterval: 30_000 });
   const s = live.status ?? q.data?.agent ?? null;
   const connected = live.socket === 'open' ? live.agentConnected : (q.data?.agentConnected ?? false);
   const players = live.players ?? s?.players ?? null;

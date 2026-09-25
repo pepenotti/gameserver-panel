@@ -1,12 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
-import { can, roleOn, type Permission, type SeqEvent } from '@gsp/shared';
+import { can, canHost, roleOn, type AgentStatus, type Permission, type Role, type SeqEvent } from '@gsp/shared';
 import type { UserRow } from '../auth/users';
 import { principal } from '../http/context';
 import type { Deps } from '../http/deps';
-import { DEFAULT_SERVER_ID } from '../servers/store';
+import type { OpState } from '../ops/bus';
+import type { ServerContext } from '../servers/context';
 
-/** Which permission each agent event needs before a browser may see it. */
+/** Which permission each agent event needs, on its server, before a browser may see it. */
 const TOPIC: Record<SeqEvent['event']['type'], Permission> = {
   state: 'server.view',
   job: 'server.view',
@@ -18,17 +19,39 @@ const TOPIC: Record<SeqEvent['event']['type'], Permission> = {
 const SOFT_LIMIT = 1_000_000;
 const HARD_LIMIT = 8_000_000;
 
-export function wsRoutes(app: FastifyInstance, deps: Deps): void {
-  app.get('/api/ws', { websocket: true, config: { permission: 'server.view' } }, (socket: WebSocket, req) => {
-    const a = req.auth!;
-    // The one server until the websocket carries several (M2).
-    const srv = deps.servers.get(DEFAULT_SERVER_ID)!;
-    const roleNow = (u: UserRow) => roleOn(principal(u), deps.grants.forUser(u.id), srv.id);
-    let role = roleNow(a.user);
-    const may = (p: Permission) => role !== null && can(role, p);
-    const sessionHash = a.session.id_hash;
+/** One server as a browser first sees it. */
+export interface WsServerSnapshot {
+  serverId: string;
+  agentConnected: boolean;
+  status: AgentStatus | null;
+  /** Recent log lines, when the user may read the log there. */
+  logs: SeqEvent[];
+  /** The running operation, else the last one. */
+  op: OpState | null;
+}
 
-    const send = (msg: unknown, droppable = false) => {
+/**
+ * What `/api/ws` sends: one socket per browser tab, for every server the
+ * user may see; everything about a server names it.
+ */
+export type WsMessage =
+  /** On connect (every visible server), and later for servers that become visible. */
+  | { type: 'hello'; servers: WsServerSnapshot[] }
+  /** A server that is no longer visible (removed, or the grant taken away). */
+  | { type: 'gone'; serverId: string }
+  | ({ type: 'event'; serverId: string } & SeqEvent)
+  | { type: 'op'; serverId: string; op: OpState }
+  /** `serverId` null: about the host. */
+  | { type: 'notice'; serverId: string | null; kind: string; message: string }
+  | { type: 'pong' };
+
+export function wsRoutes(app: FastifyInstance, deps: Deps): void {
+  // Any signed-in user: what flows is filtered per server and topic (ACC-02).
+  app.get('/api/ws', { websocket: true }, (socket: WebSocket, req) => {
+    let user: UserRow = req.auth!.user;
+    const sessionHash = req.auth!.session.id_hash;
+
+    const send = (msg: WsMessage, droppable = false) => {
       if (socket.readyState !== socket.OPEN) return;
       if (socket.bufferedAmount > HARD_LIMIT) {
         socket.close(1013, 'too slow');
@@ -38,41 +61,77 @@ export function wsRoutes(app: FastifyInstance, deps: Deps): void {
       socket.send(JSON.stringify(msg));
     };
 
-    send({
-      type: 'hello',
+    /** The servers this user sees now: their role there, and the feed subscription. */
+    const subs = new Map<string, { role: Role; off: () => void }>();
+    const may = (serverId: string, p: Permission) => {
+      const s = subs.get(serverId);
+      return !!s && can(s.role, p);
+    };
+    const snapshot = (srv: ServerContext, role: Role): WsServerSnapshot => ({
+      serverId: srv.id,
       agentConnected: srv.feed.connected,
       status: srv.feed.status_,
-      logs: may('log.view') ? srv.feed.recentLogs() : [],
+      logs: can(role, 'log.view') ? srv.feed.recentLogs() : [],
       op: srv.ops.last(),
     });
 
-    const off = srv.feed.onEvent((e) => {
-      if (!may(TOPIC[e.event.type])) return;
-      send({ type: 'event', ...e }, e.event.type === 'log');
-    });
+    /** Follow the servers the user may see: subscribe to new ones, drop the others. */
+    const sync = (first: boolean) => {
+      const who = principal(user);
+      const grants = deps.grants.forUser(user.id);
+      const added: WsServerSnapshot[] = [];
+      const visible = new Set<string>();
+      for (const srv of deps.servers.list()) {
+        const role = roleOn(who, grants, srv.id);
+        if (role === null) continue;
+        visible.add(srv.id);
+        const cur = subs.get(srv.id);
+        if (cur) {
+          cur.role = role;
+          continue;
+        }
+        const off = srv.feed.onEvent((e) => {
+          if (may(srv.id, TOPIC[e.event.type])) send({ type: 'event', serverId: srv.id, ...e }, e.event.type === 'log');
+        });
+        subs.set(srv.id, { role, off });
+        added.push(snapshot(srv, role));
+      }
+      for (const [id, s] of subs) {
+        if (visible.has(id)) continue;
+        s.off();
+        subs.delete(id);
+        send({ type: 'gone', serverId: id });
+      }
+      if (first || added.length) send({ type: 'hello', servers: added });
+    };
+    sync(true);
 
     const offBus = deps.bus.on((e) => {
-      if (e.serverId !== srv.id) return;
-      if (e.type === 'op') send({ type: 'op', op: e.op });
-      else if (may(e.permission)) send({ type: 'notice', kind: e.kind, message: e.message });
+      if (e.type === 'op') {
+        if (subs.has(e.serverId)) send({ type: 'op', serverId: e.serverId, op: e.op });
+      } else if (e.serverId === null ? canHost(principal(user), e.permission) : may(e.serverId, e.permission)) {
+        send({ type: 'notice', serverId: e.serverId, kind: e.kind, message: e.message });
+      }
     });
 
-    // Sessions can be revoked or roles changed while the socket is open.
+    // Sessions can be revoked, and roles, grants and servers change, while the socket is open.
     const recheck = setInterval(() => {
       const row = deps.db.prepare('SELECT user_id, expires_at FROM sessions WHERE id_hash = ?').get(sessionHash) as { user_id: number; expires_at: number } | undefined;
-      const user = row ? deps.users.byId(row.user_id) : null;
-      if (!row || row.expires_at <= Date.now() || !user || user.disabled) {
+      const fresh = row ? deps.users.byId(row.user_id) : null;
+      if (!row || row.expires_at <= Date.now() || !fresh || fresh.disabled) {
         socket.close(4001, 'session ended');
         return;
       }
-      role = roleNow(user);
+      user = fresh;
+      sync(false);
     }, 30_000);
 
     socket.on('message', (raw) => {
       if (raw.toString() === 'ping') send({ type: 'pong' });
     });
     socket.on('close', () => {
-      off();
+      for (const s of subs.values()) s.off();
+      subs.clear();
       offBus();
       clearInterval(recheck);
     });

@@ -15,19 +15,19 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
   const lang = (req: FastifyRequest): GameLang => (req.auth?.user.lang === 'en' ? 'en' : 'es');
 
-  app.get('/api/backups', { config: { permission: 'server.view' } }, async (req) => {
+  app.get('/backups', { config: { permission: 'server.view' } }, async (req) => {
     const { backups, flows } = srvOf(req);
     return { backups: backups.list(), lastRestore: flows.lastRestore() };
   });
 
-  app.post('/api/backups', { config: { permission: 'backups.create' } }, async (req) => {
+  app.post('/backups', { config: { permission: 'backups.create' } }, async (req) => {
     const op = srvOf(req).flows.startBackup(who(req));
     audit.log({ ...by(req), action: 'backup.create' });
     return op;
   });
 
   app.patch<{ Params: { name: string }; Body: { pinned: boolean } }>(
-    '/api/backups/:name',
+    '/backups/:name',
     {
       config: { permission: 'backups.delete' },
       schema: { params: nameParam, body: { type: 'object', required: ['pinned'], additionalProperties: false, properties: { pinned: { type: 'boolean' } } } },
@@ -39,14 +39,14 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.delete<{ Params: { name: string } }>('/api/backups/:name', { config: { permission: 'backups.delete' }, schema: { params: nameParam } }, async (req) => {
+  app.delete<{ Params: { name: string } }>('/backups/:name', { config: { permission: 'backups.delete' }, schema: { params: nameParam } }, async (req) => {
     srvOf(req).backups.delete(req.params.name);
     audit.log({ ...by(req), action: 'backup.delete', target: req.params.name });
     return { ok: true };
   });
 
   // Backups hold account hashes and the join password: admins only, and audited.
-  app.get<{ Params: { name: string } }>('/api/backups/:name/download', { config: { permission: 'backups.download' }, schema: { params: nameParam } }, async (req, reply) => {
+  app.get<{ Params: { name: string } }>('/backups/:name/download', { config: { permission: 'backups.download' }, schema: { params: nameParam } }, async (req, reply) => {
     const { backups } = srvOf(req);
     const b = backups.get(req.params.name);
     audit.log({ ...by(req), action: 'backup.download', target: b.name });
@@ -57,7 +57,7 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
   });
 
   app.post<{ Params: { name: string }; Body: { parts: BackupPart[]; countdownSec?: number } }>(
-    '/api/backups/:name/restore',
+    '/backups/:name/restore',
     {
       config: { permission: 'backups.restore' },
       schema: {
@@ -82,14 +82,14 @@ export function backupRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.post('/api/backups/undo-restore', { config: { permission: 'backups.restore' } }, async (req) => {
+  app.post('/backups/undo-restore', { config: { permission: 'backups.restore' } }, async (req) => {
     const op = srvOf(req).flows.startUndoRestore(who(req));
     audit.log({ ...by(req), action: 'backup.undo-restore' });
     return op;
   });
 
   // Upload an archive (e.g. moving from another machine). Owner only.
-  app.post('/api/backups/upload', { config: { permission: 'backups.upload' } }, async (req) => {
+  app.post('/backups/upload', { config: { permission: 'backups.upload' } }, async (req) => {
     const { backups } = srvOf(req);
     if (!req.isMultipart()) throw new HttpError(415, 'expected-multipart');
     const file = await req.file({ limits: { fileSize: MAX_UPLOAD, files: 1 } });

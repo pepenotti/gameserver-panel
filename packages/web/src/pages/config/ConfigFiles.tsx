@@ -7,10 +7,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { formatFor, type ParseIssue } from '@gsp/formats';
-import { ApiError, get } from '../../api/http';
+import { ApiError } from '../../api/http';
+import { useServerApi } from '../../api/server';
 import { CodeEditor, type CodeEditorHandle } from '../../components/CodeEditor';
 import { useErrorText } from '../../lib/format';
-import { contentUrl, propose, useFileLabel, type FileContent, type FilesView, type ProposalPreview, type ReadonlyReason, type TreeEntry } from './api';
+import { getContent, propose, useFileLabel, type FileContent, type FilesView, type ProposalPreview, type ReadonlyReason, type TreeEntry } from './api';
 import { FileHistory } from './ConfigHistory';
 import { ProposalModal } from './ProposalModal';
 
@@ -106,8 +107,9 @@ function FileEditor({ id, onDirty }: { id: string; onDirty: (dirty: boolean) => 
   const errorText = useErrorText();
   const fileLabel = useFileLabel();
   const qc = useQueryClient();
+  const sapi = useServerApi();
   const editor = useRef<CodeEditorHandle>(null);
-  const q = useQuery({ queryKey: ['config', 'content', id], queryFn: () => get<FileContent>(contentUrl(id)), retry: false });
+  const q = useQuery({ queryKey: ['config', 'content', id, sapi.sid], queryFn: () => getContent(sapi, id), retry: false });
   // The version being edited; a newer one from the server never replaces unsaved edits.
   const [base, setBase] = useState<FileContent | null>(null);
   const [text, setText] = useState('');
@@ -165,7 +167,7 @@ function FileEditor({ id, onDirty }: { id: string; onDirty: (dirty: boolean) => 
     setProblem(null);
     setServerIssues([]);
     try {
-      setPreview(await propose({ fileId: id, text, baseSha256: content.sha256 }));
+      setPreview(await propose(sapi, { fileId: id, text, baseSha256: content.sha256 }));
     } catch (e) {
       if (e instanceof ApiError && e.code === 'invalid-file' && Array.isArray(e.extra.issues)) setServerIssues(e.extra.issues as ParseIssue[]);
       else if (e instanceof ApiError && e.code === 'stale') setStale(true);
@@ -280,6 +282,7 @@ function FileEditor({ id, onDirty }: { id: string; onDirty: (dirty: boolean) => 
 /** The text editor for every config file (CFG-07): browse, edit with checks as you type, preview the change, apply, history. */
 export function ConfigFiles() {
   const { t } = useTranslation();
+  const sapi = useServerApi();
   const errorText = useErrorText();
   const [params, setParams] = useSearchParams();
   const selected = params.get('file');
@@ -287,7 +290,7 @@ export function ConfigFiles() {
   const setDirty = useCallback((d: boolean) => {
     dirty.current = d;
   }, []);
-  const files = useQuery({ queryKey: ['config', 'files'], queryFn: () => get<FilesView>('/api/config/files') });
+  const files = useQuery({ queryKey: ['config', 'files', sapi.sid], queryFn: () => sapi<FilesView>('GET', '/config/files') });
 
   const open = (id: string) => {
     if (id === selected) return;

@@ -9,6 +9,7 @@ export default {
   reset: 'Reset',
   schedules: 'Schedules',
   users: 'Users',
+  servers: 'Servers',
   audit: 'Activity log',
   profile: 'My account',
   logout: 'Sign out',

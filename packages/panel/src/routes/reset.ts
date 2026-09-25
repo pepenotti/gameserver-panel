@@ -9,7 +9,7 @@ const MINIMUM: Permission = 'reset.world';
 
 export function resetRoutes(app: FastifyInstance, deps: Deps): void {
   app.post<{ Body: { scope: string; confirm: string; countdownSec?: number; newSeed?: boolean; preset?: string } }>(
-    '/api/reset',
+    '/reset',
     {
       // The minimum; each scope checks its own permission below.
       config: { permission: MINIMUM },

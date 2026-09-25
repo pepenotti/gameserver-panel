@@ -116,9 +116,9 @@ async function setup() {
 describe('creating backups', () => {
   it('archives world, accounts and configs with a manifest and checksum', async () => {
     const { p, c } = await setup();
-    await c.post('/api/backups');
+    await c.post('/api/servers/default/backups');
     await p.srv.ops.idle();
-    const { backups } = (await c.get('/api/backups')).json() as { backups: { name: string; sha256: string; size: number; manifest: Record<string, unknown> }[] };
+    const { backups } = (await c.get('/api/servers/default/backups')).json() as { backups: { name: string; sha256: string; size: number; manifest: Record<string, unknown> }[] };
     expect(backups).toHaveLength(1);
     const b = backups[0]!;
     expect(b.name).toMatch(/^pz-zomboid-\d{8}T\d{6}Z-manual\.tar\.zst$/);
@@ -166,7 +166,7 @@ describe('restoring', () => {
     const b = await p.srv.backups.create({ trigger: 'manual', hot: false });
     seedWorld(p, 'v2');
 
-    const op = await c.post(`/api/backups/${b.name}/restore`, { parts: ['world', 'configs'] });
+    const op = await c.post(`/api/servers/default/backups/${b.name}/restore`, { parts: ['world', 'configs'] });
     expect(op.statusCode).toBe(200);
     await p.srv.ops.idle();
     expect(p.srv.ops.last()).toMatchObject({ kind: 'restore', ok: true });
@@ -180,11 +180,11 @@ describe('restoring', () => {
     // The agent lock was taken and released.
     expect(p.agent.calls).not.toContain('start');
 
-    await c.post('/api/backups/undo-restore');
+    await c.post('/api/servers/default/backups/undo-restore');
     await p.srv.ops.idle();
     expect(read(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe('time-v2');
     expect(read(p, 'Server/zomboid.ini')).toContain('PublicName=v2');
-    expect((await c.post('/api/backups/undo-restore')).json()).toEqual({ error: 'nothing-to-undo' });
+    expect((await c.post('/api/servers/default/backups/undo-restore')).json()).toEqual({ error: 'nothing-to-undo' });
   });
 
   it('stops a running server, restores, and starts it again', async () => {
@@ -204,7 +204,7 @@ describe('restoring', () => {
       p.feed.status_ = fakeStatus({ state: 'stopped' });
       return p.feed.status_;
     };
-    await c.post(`/api/backups/${b.name}/restore`, { parts: ['world'] });
+    await c.post(`/api/servers/default/backups/${b.name}/restore`, { parts: ['world'] });
     await p.srv.ops.idle();
     expect(p.agent.calls.filter((x) => x === 'stop' || x === 'start')).toEqual(['stop', 'start']);
     expect(p.srv.ops.last()).toMatchObject({ ok: true });
@@ -219,7 +219,7 @@ describe('restoring', () => {
     const bytes = readFileSync(file);
     bytes[bytes.length - 5] = bytes[bytes.length - 5]! ^ 0xff;
     writeFileSync(file, bytes);
-    await c.post(`/api/backups/${b.name}/restore`, { parts: ['world'] });
+    await c.post(`/api/servers/default/backups/${b.name}/restore`, { parts: ['world'] });
     await p.srv.ops.idle();
     expect(p.srv.ops.last()).toMatchObject({ ok: false, error: expect.stringMatching(/damaged/) });
     expect(read(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe('time-v1');
@@ -229,8 +229,8 @@ describe('restoring', () => {
     const meta = JSON.parse(readFileSync(side, 'utf8'));
     meta.manifest.buildId = '99999999';
     writeFileSync(side, JSON.stringify(meta));
-    expect((await c.post(`/api/backups/${b2.name}/restore`, { parts: ['world'] })).json()).toEqual({ error: 'backup-from-newer-build' });
-    expect((await c.post('/api/backups/..%2F..%2Fetc/restore', { parts: ['world'] })).statusCode).toBe(400);
+    expect((await c.post(`/api/servers/default/backups/${b2.name}/restore`, { parts: ['world'] })).json()).toEqual({ error: 'backup-from-newer-build' });
+    expect((await c.post('/api/servers/default/backups/..%2F..%2Fetc/restore', { parts: ['world'] })).statusCode).toBe(400);
   });
 
   it('never writes outside the staging folder, whatever the archive says', async () => {
@@ -253,7 +253,7 @@ describe('download and upload', () => {
   it('lets admins download and the owner upload; not operators', async () => {
     const { p, c } = await setup();
     const b = await p.srv.backups.create({ trigger: 'manual', hot: false });
-    const dl = await c.get(`/api/backups/${b.name}/download`);
+    const dl = await c.get(`/api/servers/default/backups/${b.name}/download`);
     expect(dl.statusCode).toBe(200);
     expect(dl.headers['content-disposition']).toContain(b.name);
     expect(dl.rawPayload.length).toBe(b.size);
@@ -266,7 +266,7 @@ describe('download and upload', () => {
     ]);
     const up = await p.app.inject({
       method: 'POST',
-      url: '/api/backups/upload',
+      url: '/api/servers/default/backups/upload',
       headers: { origin: 'https://panel.test:8443', cookie: `__Host-gspsid=${c.cookie}`, 'x-gsp-csrf': c.csrf!, 'content-type': `multipart/form-data; boundary=${boundary}` },
       payload: body,
     });
@@ -277,9 +277,9 @@ describe('download and upload', () => {
     const op = new Client(p.app);
     await op.post('/api/auth/login', { username: 'op1', password: 'Temporal-12345' });
     await op.post('/api/auth/password', { current: 'Temporal-12345', next: 'Operador-propio-1' });
-    expect((await op.get(`/api/backups/${b.name}/download`)).statusCode).toBe(403);
-    expect((await op.get('/api/backups')).statusCode).toBe(200);
-    expect((await op.post('/api/backups')).statusCode).toBe(200);
+    expect((await op.get(`/api/servers/default/backups/${b.name}/download`)).statusCode).toBe(403);
+    expect((await op.get('/api/servers/default/backups')).statusCode).toBe(200);
+    expect((await op.post('/api/servers/default/backups')).statusCode).toBe(200);
     await p.srv.ops.idle();
   });
 });

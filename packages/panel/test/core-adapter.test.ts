@@ -29,26 +29,26 @@ describe('capability guard', () => {
     const { client: c } = await ownerReady(p);
     without(p, 'kick', 'broadcast', 'updateCheck');
 
-    const kick = await c.post('/api/players/kick', { username: 'rick' });
+    const kick = await c.post('/api/servers/default/players/kick', { username: 'rick' });
     expect(kick.statusCode).toBe(409);
     expect(kick.json()).toEqual({ error: 'capability-unsupported', capability: 'kick' });
-    expect((await c.post('/api/server/broadcast', { message: 'hola' })).json()).toMatchObject({ error: 'capability-unsupported' });
-    expect((await c.get('/api/server/updates')).statusCode).toBe(409);
+    expect((await c.post('/api/servers/default/server/broadcast', { message: 'hola' })).json()).toMatchObject({ error: 'capability-unsupported' });
+    expect((await c.get('/api/servers/default/server/updates')).statusCode).toBe(409);
     // Nothing reached the game.
     expect(p.agent.calls).toEqual([]);
 
     // What the game still supports works.
-    expect((await c.post('/api/players/ban', { username: 'rick' })).statusCode).toBe(200);
+    expect((await c.post('/api/servers/default/players/ban', { username: 'rick' })).statusCode).toBe(200);
     // Permissions come first: someone who may not kick learns nothing about the game.
     const viewer = await asRole(p, c, 'viewer');
-    expect((await viewer.post('/api/players/kick', { username: 'rick' })).statusCode).toBe(403);
+    expect((await viewer.post('/api/servers/default/players/kick', { username: 'rick' })).statusCode).toBe(403);
   });
 
   it('refuses mods when the game has no mod source', async () => {
     const p = await makePanel({}, { mods: [] });
     const { client: c } = await ownerReady(p);
-    expect((await c.get('/api/mods')).json()).toMatchObject({ error: 'capability-unsupported' });
-    expect((await c.post('/api/mods', { refs: ['2544353492'] })).statusCode).toBe(409);
+    expect((await c.get('/api/servers/default/mods')).json()).toMatchObject({ error: 'capability-unsupported' });
+    expect((await c.post('/api/servers/default/mods', { refs: ['2544353492'] })).statusCode).toBe(409);
   });
 });
 
@@ -56,7 +56,7 @@ describe('GET /api/meta', () => {
   it("describes the server's adapter to any signed-in user", async () => {
     const p = await makePanel();
     const { client: c } = await ownerReady(p);
-    const m = (await c.get('/api/meta')).json() as {
+    const m = (await c.get('/api/servers/default/meta')).json() as {
       adapter: { id: string; name: { en: string } };
       server: { gameName: string };
       capabilities: string[];
@@ -88,15 +88,15 @@ describe('GET /api/meta', () => {
     expect(m.consoleCatalog.map((x) => x.name)).toContain('servermsg');
 
     const viewer = await asRole(p, c, 'viewer');
-    expect((await viewer.get('/api/meta')).statusCode).toBe(200);
-    expect((await new Client(p.app).get('/api/meta')).statusCode).toBe(401);
+    expect((await viewer.get('/api/servers/default/meta')).statusCode).toBe(200);
+    expect((await new Client(p.app).get('/api/servers/default/meta')).statusCode).toBe(401);
   });
 
   it('follows the adapter: a capability it drops is gone', async () => {
     const p = await makePanel();
     const { client: c } = await ownerReady(p);
     without(p, 'kick');
-    expect(((await c.get('/api/meta')).json() as { capabilities: string[] }).capabilities).not.toContain('kick');
+    expect(((await c.get('/api/servers/default/meta')).json() as { capabilities: string[] }).capabilities).not.toContain('kick');
   });
 });
 

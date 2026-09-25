@@ -4,7 +4,7 @@
 import { useTranslation } from 'react-i18next';
 import type { DataShape, FormatId, Highlight, OptionMeta, ParseIssue } from '@gsp/formats';
 import type { DiffLine } from '@gsp/shared';
-import { get, post } from '../../api/http';
+import type { ServerApi } from '../../api/http';
 
 export type Value = string | number | boolean | null;
 
@@ -120,11 +120,12 @@ export interface ChangeBody {
   note?: string;
 }
 
-export const propose = (body: ChangeBody) => post<ProposalPreview>('/api/config/proposals', body);
-export const applyProposal = (id: string) => post<ApplyOutcome>(`/api/config/proposals/${id}/apply`);
-export const rejectProposal = (id: string) => post<Proposal>(`/api/config/proposals/${id}/reject`);
-export const getProposal = (id: string) => get<ProposalView>(`/api/config/proposals/${id}`);
-export const contentUrl = (id: string) => `/api/config/files/content?id=${encodeURIComponent(id)}`;
+// The server's config routes (`sapi`: the page's server, from `useServerApi()`).
+export const propose = (sapi: ServerApi, body: ChangeBody) => sapi<ProposalPreview>('POST', '/config/proposals', body);
+export const applyProposal = (sapi: ServerApi, id: string) => sapi<ApplyOutcome>('POST', `/config/proposals/${id}/apply`, {});
+export const rejectProposal = (sapi: ServerApi, id: string) => sapi<Proposal>('POST', `/config/proposals/${id}/reject`, {});
+export const getProposal = (sapi: ServerApi, id: string) => sapi<ProposalView>('GET', `/config/proposals/${id}`);
+export const getContent = (sapi: ServerApi, id: string) => sapi<FileContent>('GET', `/config/files/content?id=${encodeURIComponent(id)}`);
 
 /** A file's name for people: the declared files have one; others show their path. */
 export function useFileLabel(): (id: string) => string {

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { ROLES, type Role } from '@gsp/shared';
+import { canHost, ROLES, SERVER_ID_PATTERN, type Role } from '@gsp/shared';
 import { toPublic, type Lang } from '../auth/users';
-import { actor, HttpError } from '../http/context';
+import { actor, HttpError, principal, serversAllowing } from '../http/context';
 import type { Deps } from '../http/deps';
 
 const idParam = { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } } as const;
@@ -135,18 +135,39 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
     return { ok: true };
   });
 
-  app.get<{ Querystring: { before?: number; action?: string; limit?: number } }>(
+  /**
+   * The audit log (ACC-03), filterable by server. Admins on every server see
+   * all of it; an admin on some servers sees only those servers' entries,
+   * and a server they can't see is "not found".
+   */
+  app.get<{ Querystring: { before?: number; action?: string; limit?: number; server?: string } }>(
     '/api/audit',
     {
-      config: { permission: 'audit.view' },
+      config: { permission: 'audit.view', perServer: true },
       schema: {
         querystring: {
           type: 'object',
           additionalProperties: false,
-          properties: { before: { type: 'integer', minimum: 1 }, action: { type: 'string', maxLength: 40, pattern: '^[a-z0-9.-]*$' }, limit: { type: 'integer', minimum: 1, maximum: 500 } },
+          properties: {
+            before: { type: 'integer', minimum: 1 },
+            action: { type: 'string', maxLength: 40, pattern: '^[a-z0-9.-]*$' },
+            limit: { type: 'integer', minimum: 1, maximum: 500 },
+            server: { type: 'string', pattern: SERVER_ID_PATTERN.source },
+          },
         },
       },
     },
-    async (req) => audit.list({ beforeId: req.query.before, action: req.query.action, limit: req.query.limit }),
+    async (req) => {
+      const user = req.auth!.user;
+      const q = { beforeId: req.query.before, action: req.query.action, limit: req.query.limit };
+      const everywhere = canHost(principal(user), 'audit.view');
+      const mine = everywhere ? null : serversAllowing(deps, user, 'audit.view');
+      if (req.query.server !== undefined) {
+        // Entries outlive deleted servers, so an admin on every server may ask for any id.
+        if (mine && !mine.includes(req.query.server)) throw new HttpError(404, 'server-not-found');
+        return audit.list({ ...q, serverId: req.query.server });
+      }
+      return audit.list(mine ? { ...q, serverIds: mine } : q);
+    },
   );
 }

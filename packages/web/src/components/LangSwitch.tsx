@@ -1,6 +1,6 @@
 import { SegmentedControl } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { put } from '../api/http';
+import { api } from '../api/http';
 import { useSession } from '../api/session';
 import type { Lang } from '../api/types';
 import { setLang } from '../i18n';
@@ -19,7 +19,7 @@ export function LangSwitch({ size = 'xs' }: { size?: 'xs' | 'sm' }) {
       ]}
       onChange={(v) => {
         setLang(v as Lang);
-        if (session) void put('/api/me', { lang: v }).then(refresh, () => undefined);
+        if (session) void api('PUT', '/api/me', { lang: v }).then(refresh, () => undefined);
       }}
       aria-label="Language / Idioma"
     />

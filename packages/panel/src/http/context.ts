@@ -1,12 +1,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Capability } from '@gsp/adapter-api';
-import { can, canHost, hostPermissionsFor, requiresTotp, roleOn, type Permission, type Principal, type Role } from '@gsp/shared';
+import { can, canHost, canOn, hostPermissionsFor, isServerId, isServerPermission, requiresTotp, roleOn, type Permission, type Principal, type Role, type ServerPermission } from '@gsp/shared';
 import { userActor, type Actor, type AuditInput } from '../audit';
 import type { SessionRow } from '../auth/sessions';
 import { SESSION_COOKIE } from '../auth/sessions';
 import { toPublic, type PublicUser, type UserRow } from '../auth/users';
 import type { ServerContext } from '../servers/context';
-import { DEFAULT_SERVER_ID } from '../servers/store';
 import type { Deps } from './deps';
 
 /** What a signed-in session still has to do before it is fully usable. */
@@ -34,6 +33,12 @@ declare module 'fastify' {
      * `permission` and `capability` on that server.
      */
     serverScoped?: boolean;
+    /**
+     * A host route whose (server) `permission` may also be held on some
+     * servers only: the guard lets those users in, and the handler narrows
+     * what it returns to those servers (the audit log, ACC-03).
+     */
+    perServer?: boolean;
   }
   interface FastifyRequest {
     auth: AuthContext | null;
@@ -108,8 +113,8 @@ export function installGuards(app: FastifyInstance, deps: Deps): void {
     if (UNSAFE.has(req.method) && req.headers['x-gsp-csrf'] !== a.session.csrf) throw new HttpError(403, 'bad-csrf');
     if (cfg.serverScoped) {
       // A server the user has no role on doesn't exist for them: 404 whether or not it does.
-      const sid = (req.params as { sid?: string } | undefined)?.sid ?? DEFAULT_SERVER_ID;
-      const srv = deps.servers.get(sid);
+      const sid = (req.params as { sid?: string } | undefined)?.sid;
+      const srv = isServerId(sid) ? deps.servers.get(sid) : null;
       const role = srv && !a.pending ? roleOn(principal(a.user), deps.grants.forUser(a.user.id), srv.id) : null;
       if (!srv || role === null) throw new HttpError(404, 'server-not-found');
       req.srv = srv;
@@ -118,7 +123,11 @@ export function installGuards(app: FastifyInstance, deps: Deps): void {
       if (cfg.capability && !srv.capabilities().has(cfg.capability)) throw new HttpError(409, 'capability-unsupported', undefined, { capability: cfg.capability });
       return;
     }
-    if (cfg.permission && (a.pending || !canHost(principal(a.user), cfg.permission))) throw new HttpError(403, 'forbidden');
+    if (cfg.permission && (a.pending || !canHost(principal(a.user), cfg.permission))) {
+      const perm = cfg.permission;
+      const somewhere = cfg.perServer && !a.pending && isServerPermission(perm) && serversAllowing(deps, a.user, perm).length > 0;
+      if (!somewhere) throw new HttpError(403, 'forbidden');
+    }
   });
 
   app.addHook('onSend', async (req, reply: FastifyReply, payload) => {
@@ -147,6 +156,16 @@ export function installGuards(app: FastifyInstance, deps: Deps): void {
     reply.removeHeader('x-powered-by');
     return payload;
   });
+}
+
+/** The ids of the servers where `user` holds `permission`. */
+export function serversAllowing(deps: Pick<Deps, 'servers' | 'grants'>, user: UserRow, permission: ServerPermission): string[] {
+  const who = principal(user);
+  const grants = deps.grants.forUser(user.id);
+  return deps.servers
+    .list()
+    .filter((s) => canOn(who, grants, s.id, permission))
+    .map((s) => s.id);
 }
 
 /** The signed-in person, as the audit log records who acted (AST-02). */

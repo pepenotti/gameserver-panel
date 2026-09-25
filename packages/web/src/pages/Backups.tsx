@@ -5,7 +5,7 @@ import { IconArchive, IconDots, IconPinned, IconUpload } from '@tabler/icons-rea
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiError, del, get, patch, post } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
@@ -44,8 +44,9 @@ export function Backups() {
   const qc = useQueryClient();
   const { can } = useSession();
   const live = useLive();
+  const sapi = useServerApi();
   const { meta, l } = useMeta();
-  const q = useQuery({ queryKey: ['backups'], queryFn: () => get<ListResponse>('/api/backups') });
+  const q = useQuery({ queryKey: ['backups', sapi.sid], queryFn: () => sapi<ListResponse>('GET', '/backups') });
   const [restoring, setRestoring] = useState<Backup | null>(null);
   const [parts, setParts] = useState<Part[]>([]);
   // What a backup is made of, as the server's game names it; parts a backup lists but the game doesn't are shown by id.
@@ -71,11 +72,7 @@ export function Backups() {
     const form = new FormData();
     form.append('file', file);
     try {
-      const res = await fetch('/api/backups/upload', { method: 'POST', body: form, headers: { 'x-gsp-csrf': (await get<{ csrf: string }>('/api/session')).csrf } });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new ApiError(res.status, body.error ?? 'generic');
-      }
+      await sapi('POST', '/backups/upload', form);
       notifications.show({ color: 'green', message: t('backups.uploaded') });
       void qc.invalidateQueries({ queryKey: ['backups'] });
     } catch (e) {
@@ -98,7 +95,7 @@ export function Backups() {
             </FileButton>
           )}
           {can('backups.create') && (
-            <Button leftSection={<IconArchive size={16} />} disabled={busy} onClick={() => void post('/api/backups').catch(fail)}>
+            <Button leftSection={<IconArchive size={16} />} disabled={busy} onClick={() => void sapi('POST', '/backups', {}).catch(fail)}>
               {t('backups.create')}
             </Button>
           )}
@@ -114,7 +111,7 @@ export function Backups() {
         <Alert color="orange" variant="light" title={t('backups.undoTitle')}>
           <Group justify="space-between">
             <Text size="sm">{t('backups.undoHelp', { backup: q.data.lastRestore.backup, when: formatDateTime(q.data.lastRestore.at, i18n.language) })}</Text>
-            <Button size="xs" variant="default" disabled={busy} onClick={() => void post('/api/backups/undo-restore').catch(fail)}>
+            <Button size="xs" variant="default" disabled={busy} onClick={() => void sapi('POST', '/backups/undo-restore', {}).catch(fail)}>
               {t('backups.undo')}
             </Button>
           </Group>
@@ -190,13 +187,13 @@ export function Backups() {
                             </Menu.Target>
                             <Menu.Dropdown>
                               {can('backups.download') && (
-                                <Menu.Item component="a" href={`/api/backups/${encodeURIComponent(b.name)}/download`} download>
+                                <Menu.Item component="a" href={sapi.url(`/backups/${encodeURIComponent(b.name)}/download`)} download>
                                   {t('backups.download')}
                                 </Menu.Item>
                               )}
                               {can('backups.delete') && (
                                 <>
-                                  <Menu.Item onClick={() => void patch(`/api/backups/${encodeURIComponent(b.name)}`, { pinned: !b.pinned }).then(() => qc.invalidateQueries({ queryKey: ['backups'] }), fail)}>
+                                  <Menu.Item onClick={() => void sapi('PATCH', `/backups/${encodeURIComponent(b.name)}`, { pinned: !b.pinned }).then(() => qc.invalidateQueries({ queryKey: ['backups'] }), fail)}>
                                     {b.pinned ? t('backups.unpin') : t('backups.pin')}
                                   </Menu.Item>
                                   <Menu.Item
@@ -207,7 +204,7 @@ export function Backups() {
                                         children: <Text size="sm">{t('backups.deleteConfirm', { when: when(b) })}</Text>,
                                         labels: { confirm: t('backups.delete'), cancel: t('common.cancel') },
                                         confirmProps: { color: 'red' },
-                                        onConfirm: () => void del(`/api/backups/${encodeURIComponent(b.name)}`).then(() => qc.invalidateQueries({ queryKey: ['backups'] }), fail),
+                                        onConfirm: () => void sapi('DELETE', `/backups/${encodeURIComponent(b.name)}`).then(() => qc.invalidateQueries({ queryKey: ['backups'] }), fail),
                                       })
                                     }
                                   >
@@ -276,7 +273,7 @@ export function Backups() {
               color="orange"
               disabled={parts.length === 0}
               onClick={() =>
-                void post(`/api/backups/${encodeURIComponent(restoring.name)}/restore`, { parts, countdownSec: playersOnline ? Number(countdown) : 0 }).then(() => setRestoring(null), fail)
+                void sapi('POST', `/backups/${encodeURIComponent(restoring.name)}/restore`, { parts, countdownSec: playersOnline ? Number(countdown) : 0 }).then(() => setRestoring(null), fail)
               }
             >
               {t('backups.restoreConfirm')}

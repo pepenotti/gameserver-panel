@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
 /** Where one server's routes live: `:sid` is the server's id. */
-export const SERVER_PREFIX = '';
+export const SERVER_PREFIX = '/api/servers/:sid';
 
 /**
  * Registers the routes of one server (`register` adds them to `s`). Each is

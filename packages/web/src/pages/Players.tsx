@@ -5,7 +5,7 @@ import { IconDots, IconUserPlus } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { del, get, post } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import type { Need } from '../api/meta';
 import { useSession } from '../api/session';
@@ -47,9 +47,10 @@ export function Players() {
   const qc = useQueryClient();
   const { can: canRole } = useSession();
   const live = useLive();
+  const sapi = useServerApi();
   const { meta, has, l } = useMeta();
-  const q = useQuery({ queryKey: ['players'], queryFn: () => get<PlayersResponse>('/api/players'), refetchInterval: 30_000 });
-  const history = useQuery({ queryKey: ['players', 'history'], queryFn: () => get<Session[]>('/api/players/history?limit=50'), enabled: canRole('accounts.view') && has('playerHistory') });
+  const q = useQuery({ queryKey: ['players', sapi.sid], queryFn: () => sapi<PlayersResponse>('GET', '/players'), refetchInterval: 30_000 });
+  const history = useQuery({ queryKey: ['players', 'history', sapi.sid], queryFn: () => sapi<Session[]>('GET', '/players/history?limit=50'), enabled: canRole('accounts.view') && has('playerHistory') });
   const [dialog, setDialog] = useState<Dialog>(null);
   const [reason, setReason] = useState('');
   const [bySteam, setBySteam] = useState(true);
@@ -113,7 +114,7 @@ export function Players() {
                 children: <Text size="sm">{t('players.removeConfirm', { name })}</Text>,
                 labels: { confirm: t('players.whitelistRemove'), cancel: t('common.cancel') },
                 confirmProps: { color: 'red' },
-                onConfirm: () => void act(() => del(`/api/players/whitelist/${encodeURIComponent(name)}`)),
+                onConfirm: () => void act(() => sapi('DELETE', `/players/whitelist/${encodeURIComponent(name)}`)),
               })
             }
           >
@@ -250,7 +251,7 @@ export function Players() {
                       <Table.Td>{b.reason ?? ''}</Table.Td>
                       <Table.Td w={100} ta="right">
                         {can.ban && (
-                          <Button size="compact-xs" variant="subtle" disabled={!running} onClick={() => void act(() => post('/api/players/unban', { steamId: b.steamId }))}>
+                          <Button size="compact-xs" variant="subtle" disabled={!running} onClick={() => void act(() => sapi('POST', '/players/unban', { steamId: b.steamId }))}>
                             {t('players.unban')}
                           </Button>
                         )}
@@ -341,8 +342,8 @@ export function Players() {
               onClick={() =>
                 void act(() =>
                   dialog.kind === 'kick'
-                    ? post('/api/players/kick', { username: dialog.name, ...(reason ? { reason } : {}) })
-                    : post('/api/players/ban', bySteam && dialog.steamId ? { steamId: dialog.steamId } : { username: dialog.name, ...(reason ? { reason } : {}) }),
+                    ? sapi('POST', '/players/kick', { username: dialog.name, ...(reason ? { reason } : {}) })
+                    : sapi('POST', '/players/ban', bySteam && dialog.steamId ? { steamId: dialog.steamId } : { username: dialog.name, ...(reason ? { reason } : {}) }),
                 )
               }
             >
@@ -356,7 +357,7 @@ export function Players() {
               {t('players.accessHelp')}
             </Text>
             <Select data={levels.map((x) => ({ value: x.id, label: l(x.label) }))} value={level} onChange={(v) => v && setLevel(v)} allowDeselect={false} aria-label={t('players.access')} />
-            <Button disabled={!level} onClick={() => void act(() => post('/api/players/access', { username: dialog.name, level }))}>
+            <Button disabled={!level} onClick={() => void act(() => sapi('POST', '/players/access', { username: dialog.name, level }))}>
               {t('common.save')}
             </Button>
           </Stack>
@@ -372,7 +373,7 @@ export function Players() {
               disabled={!wl.username.trim() || wl.password.length < 4}
               onClick={() =>
                 void act(async () => {
-                  const r = await post<{ output: string }>('/api/players/whitelist', { username: wl.username.trim(), password: wl.password });
+                  const r = await sapi<{ output: string }>('POST', '/players/whitelist', { username: wl.username.trim(), password: wl.password });
                   setWl({ username: '', password: '' });
                   return r;
                 })

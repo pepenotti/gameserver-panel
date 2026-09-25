@@ -8,7 +8,7 @@ import type { Deps } from '../http/deps';
  * may read it.
  */
 export function metaRoutes(app: FastifyInstance, _deps: Deps): void {
-  app.get('/api/meta', { config: { permission: 'server.view' } }, async (req) => {
+  app.get('/meta', { config: { permission: 'server.view' } }, async (req) => {
     const s = srvOf(req);
     const a = s.adapter;
     const srv = s.handle.ref;

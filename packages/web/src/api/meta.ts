@@ -1,4 +1,4 @@
-// What the server's game adapter supports (`GET /api/meta`, AST-04): pages
+// What a server's game adapter supports (`GET /api/servers/:sid/meta`, AST-04): pages
 // read every game-specific list and label from it (through `useMeta`), so the
 // web itself stays game-neutral (NFR-08, PRD §6 "Capability"). Types mirror
 // packages/panel/src/routes/meta.ts and packages/adapter-api/src/index.ts.
@@ -60,7 +60,7 @@ export interface Meta {
     memory: { minMb: number; defaultMb: number; overheadMb: number };
     capabilities: Capability[];
   };
-  server: { gameName: string; flavour: string | null };
+  server: { id?: string; name?: string; gameName: string; flavour: string | null };
   capabilities: Capability[];
   launch: { schema: OptionMeta[] };
   backupParts: { id: string; label: I18n }[];
