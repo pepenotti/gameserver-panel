@@ -1,11 +1,11 @@
 // Where the panel listens (NFR-03): TCP, or a unix socket in a volume only
 // the panel and the TLS proxy mount; `panelctl health` finds it either way.
-import { mkdtempSync, renameSync, statSync } from 'node:fs';
+import { mkdtempSync, renameSync, rmSync, statSync } from 'node:fs';
 import { request } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { listenOn, probeHealth, type PanelListen } from '../src/listen';
 import { makePanel, ORIGIN, OWNER } from './harness';
 
@@ -13,8 +13,17 @@ const posix = process.platform !== 'win32';
 
 /** A socket path for this test: a file on POSIX, a named pipe on Windows (what `unix:` means there). */
 function socketPath(name: string): string {
-  return posix ? path.join(mkdtempSync(path.join(os.tmpdir(), 'gsp-listen-')), `${name}.sock`) : `\\\\.\\pipe\\gsp-listen-${process.pid}-${name}`;
+  if (!posix) return `\\\\.\\pipe\\gsp-listen-${process.pid}-${name}`;
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-listen-'));
+  made.push(dir);
+  return path.join(dir, `${name}.sock`);
 }
+
+/** The folders the sockets were made in, removed at the end. */
+const made: string[] = [];
+afterAll(() => {
+  for (const d of made.splice(0)) rmSync(d, { recursive: true, force: true });
+});
 
 function post(socket: string, url: string, body: unknown, headers: Record<string, string>): Promise<number> {
   return new Promise((resolve, reject) => {

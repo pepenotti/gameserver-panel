@@ -1,8 +1,8 @@
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import type { AgentCommand, ConfigAccess, DirEntry, RootId, ServerCtx, ServerFiles, ServerRef, VersionsResponse } from '@gsp/adapter-api';
 import { RconProtocolError } from '@gsp/formats';
 import { pzPanelAdapter } from '../src/panel';
@@ -314,6 +314,7 @@ describe('Steam Workshop source', () => {
   it('scans the real B42 mod folders wherever the item was downloaded', async () => {
     const { source } = fakeSteam();
     const tmp = mkdtempSync(path.join(os.tmpdir(), 'gsp-pz-scan-'));
+    onTestFinished(() => rmSync(tmp, { recursive: true, force: true }));
     const cache = path.join(tmp, 'data', '.workshop', 'steamapps', 'workshop', 'content', '108600');
     const serverDownloads = path.join(tmp, 'install', 'steamapps', 'workshop', 'content', '108600');
     mkdirSync(cache, { recursive: true });
