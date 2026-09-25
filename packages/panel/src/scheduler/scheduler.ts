@@ -6,7 +6,7 @@ import type { BackupService } from '../backups/service';
 import type { Control, GameLang } from '../control/control';
 import type { AgentFeed } from '../http/deps';
 import type { ModsService } from '../mods/service';
-import type { DiscordNotifier } from '../notifier/discord';
+import type { Notify } from '../notifier/discord';
 import type { OpRunner } from '../ops/runner';
 import type { KeyValueSettings } from '../settings';
 
@@ -48,7 +48,8 @@ export interface SchedulerDeps {
   flows: BackupFlows;
   backups: BackupService;
   mods: ModsService;
-  notifier: DiscordNotifier;
+  /** The server's Discord messages (its override, its name). */
+  notifier: Notify;
   audit: Audit;
 }
 

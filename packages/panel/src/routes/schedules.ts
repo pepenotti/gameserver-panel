@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { isWebhookUrl, maskWebhook, NOTIFY_EVENTS, type DiscordSettings } from '../notifier/discord';
+import { DISCORD_OVERRIDE_KEY, isWebhookUrl, maskWebhook, NO_OVERRIDE, NOTIFY_EVENTS, type DiscordOverride, type DiscordSettings } from '../notifier/discord';
 import type { ScheduleSettings } from '../scheduler/scheduler';
 import { by, HttpError, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
@@ -71,12 +71,73 @@ export function scheduleRoutes(app: FastifyInstance, deps: Deps): void {
       return { settings: s.scheduler.config(), next: next(s) };
     },
   );
+
+  // ------------------------------------------ this server's Discord (SCH-03)
+
+  const { notifier } = deps;
+  const stored = (s: ReturnType<typeof srvOf>): DiscordOverride => ({ ...NO_OVERRIDE, ...s.settings.getRaw<DiscordOverride>(DISCORD_OVERRIDE_KEY) });
+  /** Its override (webhook masked), the host's settings it falls back on, and what its messages use. */
+  const overrideView = (s: ReturnType<typeof srvOf>) => {
+    const o = stored(s);
+    const host = notifier.config();
+    const eff = notifier.effective(o);
+    return {
+      override: { ...o, webhookUrl: maskWebhook(o.webhookUrl) },
+      host: { configured: !!host.webhookUrl, lang: host.lang, events: host.events },
+      effective: { configured: !!eff.webhookUrl, lang: eff.lang, events: eff.events },
+    };
+  };
+
+  app.get('/notifications', { config: { permission: 'notifications.manage' } }, async (req) => overrideView(srvOf(req)));
+
+  app.put<{ Body: { webhookUrl?: string | null; lang: 'en' | 'es' | null; events: DiscordOverride['events'] } }>(
+    '/notifications',
+    {
+      config: { permission: 'notifications.manage' },
+      schema: {
+        body: {
+          type: 'object',
+          required: ['lang', 'events'],
+          additionalProperties: false,
+          properties: {
+            // Omit to keep its own webhook (only ever shown masked); null: use the host's.
+            webhookUrl: { type: 'string', nullable: true, maxLength: 300 },
+            lang: { enum: ['en', 'es', null] },
+            // Events left out follow the host's switches.
+            events: { type: 'object', additionalProperties: false, properties: Object.fromEntries(NOTIFY_EVENTS.map((e) => [e, { type: 'boolean' }])) },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const s = srvOf(req);
+      const cur = stored(s);
+      let webhookUrl = cur.webhookUrl;
+      if (req.body.webhookUrl === null) webhookUrl = null;
+      else if (typeof req.body.webhookUrl === 'string' && req.body.webhookUrl.trim() !== '') {
+        const url = req.body.webhookUrl.trim();
+        if (!isWebhookUrl(url)) throw new HttpError(400, 'invalid-webhook');
+        webhookUrl = url;
+      }
+      s.settings.setRaw<DiscordOverride>(DISCORD_OVERRIDE_KEY, { webhookUrl, lang: req.body.lang, events: req.body.events });
+      audit.log({ ...by(req), action: 'notifications.update', detail: { lang: req.body.lang, events: req.body.events, webhookChanged: webhookUrl !== cur.webhookUrl } });
+      return overrideView(s);
+    },
+  );
+
+  /** The test message, where this server's messages go, naming it. */
+  app.post('/notifications/test', { config: { permission: 'notifications.manage' } }, async (req) => {
+    const s = srvOf(req);
+    const r = await notifier.test(notifier.effective(stored(s)), s.row.name).catch(() => ({ ok: false, status: 0 }));
+    if (!r.ok) throw new HttpError(502, 'webhook-failed', undefined, { status: r.status });
+    return { ok: true };
+  });
 }
 
 /**
  * The Discord webhook (SCH-03): one for the host, so these are host routes;
  * `notifications.manage` is checked as "on every server". A server's own
- * override (`discord.override`) comes with the server list (M2).
+ * override (`discord.override`) is `/api/servers/:sid/notifications` (above).
  */
 export function notificationRoutes(app: FastifyInstance, deps: Deps): void {
   const { audit, notifier } = deps;

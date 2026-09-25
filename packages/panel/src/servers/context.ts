@@ -6,6 +6,7 @@ import type { ConfigStore } from '../config/store';
 import type { Control } from '../control/control';
 import type { AgentFeed } from '../http/deps';
 import type { ModsService } from '../mods/service';
+import type { Notify } from '../notifier/discord';
 import type { OpRunner } from '../ops/runner';
 import type { PlayersService } from '../players/service';
 import type { ProposalService } from '../proposals/service';
@@ -46,6 +47,8 @@ export interface ServerContext {
   readonly players: PlayersService;
   readonly mods: ModsService;
   readonly scheduler: Scheduler;
+  /** Its Discord messages: the host's webhook or its own override (SCH-03), each naming the server. */
+  readonly notifier: Notify;
   /** Change proposals for its files (AST-03). */
   readonly changes: ProposalService;
   /** What its game supports: its flavour's capabilities, or the adapter's. */

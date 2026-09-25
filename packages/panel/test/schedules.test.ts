@@ -6,7 +6,7 @@ import { backupPanelDb } from '../src/backups/panel-db';
 import { MESSAGES, NOTIFY_EVENTS } from '../src/notifier/discord';
 import { timeToCron } from '../src/scheduler/scheduler';
 import type { Client } from './harness';
-import { fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
+import { fakeStatus, friend, makePanel, ownerReady, type TestPanel } from './harness';
 
 const HOOK = 'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz_ABCDEF-123';
 
@@ -60,7 +60,7 @@ describe('Discord notifications', () => {
     p.feed.emit({ type: 'players', count: 1, names: ['rick'] });
     p.deps.bus.emit({ type: 'op', serverId: 'default', op: { id: '1', kind: 'backup', startedAt: '', startedBy: 'alice', step: 'failed', countdownEndsAt: null, cancellable: false, progress: null, done: true, ok: false, error: 'disk full' } });
     await p.deps.notifier.drain();
-    expect(d.posts.map((x) => x.body.embeds[0]!.title)).toEqual(['🟢 Servidor en línea', '➡️ Entró rick', '⚠️ Falló la copia de seguridad']);
+    expect(d.posts.map((x) => x.body.embeds[0]!.title)).toEqual(['🟢 Servidor en línea · zomboid', '➡️ Entró rick · zomboid', '⚠️ Falló la copia de seguridad · zomboid']);
     expect(d.posts[2]!.body.embeds[0]!.description).toBe('👤 alice — disk full');
     expect(d.posts[0]!.url).toBe(`${HOOK}?wait=true`);
   });
@@ -72,7 +72,7 @@ describe('Discord notifications', () => {
     d.rateLimitNext();
     p.feed.emit({ type: 'alert', kind: 'crash', message: 'boom' });
     await p.deps.notifier.drain();
-    expect(d.posts.map((x) => x.body.embeds[0]!.title)).toEqual(['💥 Problema en el servidor', '💥 Problema en el servidor']);
+    expect(d.posts.map((x) => x.body.embeds[0]!.title)).toEqual(['💥 Problema en el servidor · zomboid', '💥 Problema en el servidor · zomboid']);
   });
 
   it('has a test button', async () => {
@@ -139,14 +139,14 @@ describe('schedules', () => {
     expect(p.deps.audit.list({ action: 'schedule.backup' })[0]).toMatchObject({ ok: true });
   });
 
-  it('saves the world first when the periodic backup runs on a live server', async () => {
+  it('takes a hot copy when the periodic backup runs on a live server, saving once, in the agent', async () => {
     const { p } = await setup();
     seedWorld(p);
     p.feed.status_ = fakeStatus({ state: 'running' });
     await p.srv.scheduler.runBackup();
     await p.srv.ops.idle();
-    // The agent's save waits for the game to finish writing.
-    expect(p.agent.calls).toEqual(['save']);
+    // The agent's pack saves the world first (the adapter's hotCopy, BAK-02); the panel neither saves nor locks.
+    expect(p.agent.calls).toEqual([]);
     expect(p.srv.backups.list()[0]!.manifest.mode).toBe('hot');
   });
 
@@ -187,3 +187,100 @@ function seedWorld(p: TestPanel) {
   mkdirSync(w, { recursive: true });
   writeFileSync(path.join(w, 'map_t.bin'), 'x');
 }
+
+const HOOK2 = 'https://discord.com/api/webhooks/987654321098765432/ZYXWVUTSRQPONMLKJIHGFEDCBA_zyxwv-987';
+
+describe('per server (M2): schedules, operations and Discord (SCH-01, SCH-03, SRV-07)', () => {
+  /** default plus `pz-two`, the host webhook set, and pz-two's fakes. */
+  async function withTwo() {
+    const s = await setup();
+    await configure(s.c);
+    expect((await s.c.post('/api/servers', { id: 'pz-two', name: 'Second', adapter: 'pz' })).statusCode).toBe(200);
+    return { ...s, two: s.p.deps.servers.get('pz-two')!, fakes: s.p.fakes('pz-two') };
+  }
+
+  it('keeps each server’s schedules and timers apart', async () => {
+    const { p, c, two } = await withTwo();
+    const cur = ((await c.get('/api/servers/pz-two/schedules')).json() as { settings: Record<string, unknown> }).settings;
+    await c.req('PUT', '/api/servers/pz-two/schedules', { ...cur, restarts: { enabled: true, times: ['03:15'], countdownSec: 0, backupWhileStopped: true }, backups: { enabled: false, everyHours: 6 } });
+    expect(two.scheduler.config().restarts.times).toEqual(['03:15']);
+    expect(p.srv.scheduler.config().restarts.times).toEqual(['06:00']);
+    expect(p.srv.scheduler.config().backups.enabled).toBe(true);
+    two.scheduler.reload();
+    p.srv.scheduler.reload();
+    expect(new Date(two.scheduler.nextRuns().restart!).getUTCMinutes()).toBe(15);
+    expect(two.scheduler.nextRuns().backup).toBeNull();
+    expect(p.srv.scheduler.nextRuns().backup).not.toBeNull();
+    two.scheduler.stop();
+    p.srv.scheduler.stop();
+    expect(p.deps.audit.list({ action: 'schedules.update' })[0]).toMatchObject({ serverId: 'pz-two' });
+  });
+
+  it('runs a scheduled job on its own server only, alongside the other’s operation', async () => {
+    const { p, two, fakes } = await withTwo();
+    const world = path.join(fakes.dataDir, 'Saves', 'Multiplayer', 'pz-two');
+    mkdirSync(world, { recursive: true });
+    writeFileSync(path.join(world, 'map_t.bin'), 'x');
+    // default is busy with something long; pz-two's backup doesn't wait for it.
+    let release!: () => void;
+    p.srv.ops.start('restore', 'alice', () => new Promise<void>((r) => (release = r)));
+    await two.scheduler.runBackup();
+    await two.ops.idle();
+    expect(two.backups.list().map((b) => b.manifest.trigger)).toEqual(['scheduled']);
+    expect(two.backups.dir).toBe(path.join(p.deps.env.backupDir, 'pz-two'));
+    expect(p.srv.backups.list()).toEqual([]);
+    expect(p.deps.audit.list({ action: 'schedule.backup' })[0]).toMatchObject({ serverId: 'pz-two', actorType: 'schedule', ok: true });
+    expect(p.agent.calls).toEqual([]);
+    release();
+    await p.srv.ops.idle();
+  });
+
+  it('names the server in every message, and follows each server’s own webhook, language and switches', async () => {
+    const { p, c, d, fakes } = await withTwo();
+    // A crash (the watchdog's alert, SRV-07) and a join on each server.
+    p.feed.emit({ type: 'alert', kind: 'crash', message: 'boom' });
+    fakes.feed.emit({ type: 'alert', kind: 'crash', message: 'bang' });
+    await p.deps.notifier.drain();
+    expect(d.posts.map((x) => [x.url, x.body.embeds[0]!.title, x.body.embeds[0]!.description])).toEqual([
+      [`${HOOK}?wait=true`, '💥 Problema en el servidor · zomboid', 'boom'],
+      [`${HOOK}?wait=true`, '💥 Problema en el servidor · Second', 'bang'],
+    ]);
+
+    const bad = await c.req('PUT', '/api/servers/pz-two/notifications', { webhookUrl: 'https://evil.example/api/webhooks/1/x', lang: null, events: {} });
+    expect(bad.json()).toEqual({ error: 'invalid-webhook' });
+    const saved = (await c.req('PUT', '/api/servers/pz-two/notifications', { webhookUrl: HOOK2, lang: 'en', events: { playerJoin: false } })).json() as {
+      override: { webhookUrl: string; lang: string };
+      effective: { configured: boolean; lang: string; events: Record<string, boolean> };
+    };
+    expect(saved.override.webhookUrl).not.toContain('ZYXWVUTSRQ');
+    expect(saved.effective).toMatchObject({ configured: true, lang: 'en', events: expect.objectContaining({ playerJoin: false, crash: true }) });
+    d.posts.length = 0;
+    fakes.feed.emit({ type: 'alert', kind: 'crash', message: 'again' });
+    fakes.feed.emit({ type: 'players', count: 1, names: ['rick'] });
+    p.feed.emit({ type: 'players', count: 1, names: ['rick'] });
+    await p.deps.notifier.drain();
+    expect(d.posts.map((x) => [x.url, x.body.embeds[0]!.title])).toEqual([
+      [`${HOOK2}?wait=true`, '💥 Server problem · Second'],
+      [`${HOOK}?wait=true`, '➡️ Entró rick · zomboid'],
+    ]);
+    expect((await c.post('/api/servers/pz-two/notifications/test')).json()).toEqual({ ok: true });
+    expect(d.posts.at(-1)).toMatchObject({ url: `${HOOK2}?wait=true`, body: { embeds: [{ title: '✅ Test message · Second' }] } });
+
+    // Saving without a URL keeps it; null goes back to the host's webhook.
+    await c.req('PUT', '/api/servers/pz-two/notifications', { lang: 'en', events: {} });
+    expect(((await c.get('/api/servers/pz-two/notifications')).json() as { override: { webhookUrl: string | null } }).override.webhookUrl).not.toBeNull();
+    await c.req('PUT', '/api/servers/pz-two/notifications', { webhookUrl: null, lang: null, events: {} });
+    expect((await c.get('/api/servers/pz-two/notifications')).json()).toMatchObject({ override: { webhookUrl: null, lang: null, events: {} }, effective: { lang: 'es' } });
+    expect(p.deps.audit.list({ action: 'notifications.update' })[0]).toMatchObject({ serverId: 'pz-two' });
+  });
+
+  it('lets an admin of one server set that server’s override, and nothing else', async () => {
+    const { p, c } = await withTwo();
+    const adm = await friend(p, c, 'two-admin', 'admin', { 'pz-two': 'admin' });
+    expect((await adm.req('PUT', '/api/servers/pz-two/notifications', { webhookUrl: HOOK2, lang: 'en', events: {} })).statusCode).toBe(200);
+    expect((await adm.req('PUT', '/api/servers/default/notifications', { webhookUrl: HOOK2, lang: 'en', events: {} })).json()).toEqual({ error: 'server-not-found' });
+    expect((await adm.req('PUT', '/api/notifications', { lang: 'en', events: {} })).json()).toEqual({ error: 'forbidden' });
+    const op = await friend(p, c, 'two-op', 'operator', { 'pz-two': 'operator' });
+    expect((await op.get('/api/servers/pz-two/notifications')).json()).toEqual({ error: 'forbidden' });
+  });
+});

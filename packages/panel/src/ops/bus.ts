@@ -20,9 +20,15 @@ export interface OpState {
 /**
  * Panel-side events for the websocket (agent events come from each server's
  * feed). Every event names its server; a notice without one is about the
- * host. `permission` is checked on that server (or on the host).
+ * host. `permission` is checked on that server (or on the host). `access`:
+ * what a user may see changed (their grants, scope or role), or with
+ * `userId` null, for everyone (a server was created, removed or renamed):
+ * open websockets re-check at once instead of on their next periodic check.
  */
-export type PanelEvent = { type: 'op'; serverId: string; op: OpState } | { type: 'notice'; serverId: string | null; kind: string; message: string; permission: Permission };
+export type PanelEvent =
+  | { type: 'op'; serverId: string; op: OpState }
+  | { type: 'notice'; serverId: string | null; kind: string; message: string; permission: Permission }
+  | { type: 'access'; userId: number | null };
 
 type Listener = (e: PanelEvent) => void;
 

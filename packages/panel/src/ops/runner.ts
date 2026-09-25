@@ -41,6 +41,23 @@ export class OpRunner {
 
   /** Starts `fn` in the background and returns its initial state. */
   start(kind: OpState['kind'], startedBy: string | null, fn: (ctx: OpContext) => Promise<void>, opts: { cancellable?: boolean } = {}): OpState {
+    const { state, done } = this.launch(kind, startedBy, fn, opts);
+    // How it ended is in its state (and on the bus); nobody waits for it here.
+    done.catch(() => undefined);
+    return state;
+  }
+
+  /**
+   * Runs `fn` as this server's operation, like `start`, and resolves with
+   * what it returns once it has ended (rejects with its error): for callers
+   * that need the result, such as the final backup before a server is
+   * removed (SRV-04). Refuses (409 `busy`) while another one runs.
+   */
+  run<T>(kind: OpState['kind'], startedBy: string | null, fn: (ctx: OpContext) => Promise<T>, opts: { cancellable?: boolean } = {}): Promise<T> {
+    return this.launch(kind, startedBy, fn, opts).done;
+  }
+
+  private launch<T>(kind: OpState['kind'], startedBy: string | null, fn: (ctx: OpContext) => Promise<T>, opts: { cancellable?: boolean }): { state: OpState; done: Promise<T> } {
     if (this.current) throw new HttpError(409, 'busy', undefined, { op: this.current.state });
     const abort = new AbortController();
     const state: OpState = {
@@ -83,15 +100,17 @@ export class OpRunner {
         }),
     };
     publish();
-    void (async () => {
+    const done = (async () => {
       try {
-        await fn(ctx);
+        const result = await fn(ctx);
         state.ok = true;
         state.step = 'done';
+        return result;
       } catch (e) {
         state.ok = false;
         state.step = e instanceof OpCancelled ? 'cancelled' : 'failed';
         state.error = e instanceof OpCancelled ? null : (e as Error).message;
+        throw e;
       } finally {
         state.done = true;
         state.countdownEndsAt = null;
@@ -100,7 +119,7 @@ export class OpRunner {
         publish();
       }
     })();
-    return { ...state };
+    return { state: { ...state }, done };
   }
 
   cancel(id: string): boolean {

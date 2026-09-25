@@ -3,10 +3,11 @@ import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
-import Fastify, { type FastifyContextConfig, type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyContextConfig, type FastifyInstance, type FastifySchema } from 'fastify';
 import { AgentCallError } from './agent/client';
 import { UserError } from './auth/users';
 import { HttpError, installGuards } from './http/context';
+import { trustProxyFor } from './listen';
 import type { Deps } from './http/deps';
 import { authRoutes } from './routes/auth';
 import { statusRoutes } from './routes/status';
@@ -21,7 +22,7 @@ import { resetRoutes } from './routes/reset';
 import { notificationRoutes, scheduleRoutes } from './routes/schedules';
 import { serverScope } from './routes/scope';
 import { serverRoutes } from './routes/server';
-import { serverListRoutes } from './routes/servers';
+import { serverAdminRoutes, serverListRoutes } from './routes/servers';
 import { meRoutes, userRoutes } from './routes/users';
 import { wsRoutes } from './routes/ws';
 
@@ -30,6 +31,8 @@ export interface RouteInfo {
   method: string;
   url: string;
   readonly config: FastifyContextConfig;
+  /** Its JSON schemas (body, querystring, params), as declared; the API docs summarise them. */
+  readonly schema: FastifySchema | undefined;
 }
 
 declare module 'fastify' {
@@ -42,7 +45,7 @@ declare module 'fastify' {
 export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: opts.logger ? { level: 'info', redact: ['req.headers.cookie', 'req.headers.authorization', 'req.headers["x-gsp-csrf"]'] } : false,
-    trustProxy: deps.env.trustProxy,
+    trustProxy: trustProxyFor(deps.env),
     bodyLimit: 256 * 1024,
   });
   const routes: RouteInfo[] = [];
@@ -55,6 +58,9 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
         url: r.url,
         get config() {
           return r.config ?? {};
+        },
+        get schema() {
+          return r.schema;
         },
       });
   });
@@ -90,6 +96,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
 
   // Each server's routes, under /api/servers/:sid (ACC-02: resolved and checked per server).
   await serverScope(app, (s) => {
+    serverAdminRoutes(s, deps);
     statusRoutes(s, deps);
     metaRoutes(s, deps);
     serverRoutes(s, deps);

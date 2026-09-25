@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { SYSTEM } from '../src/audit';
 import { openDb } from '../src/db/db';
 import type { Deps } from '../src/http/deps';
 import type { ServerContext } from '../src/servers/context';
 import { ServerSettings } from '../src/settings';
-import { createPanelDeps } from '../src/wiring';
+import { AgentServerFiles } from '../src/files/agent';
+import { NoOrchestrator } from '../src/servers/orchestrator';
+import { OrchestratorHttp } from '../src/servers/orchestrator-http';
+import { createPanelDeps, FACTORIES } from '../src/wiring';
 import { FakeFeed, fakeAgent, makePanel, noNetwork } from './harness';
 
 /** Every field of `Deps`: the compiler refuses this list when one is missing or unknown. */
@@ -21,6 +25,7 @@ const FIELDS = {
   serverRows: true,
   servers: true,
   orchestrator: true,
+  adapters: true,
   hostJobs: true,
 } as const satisfies Record<keyof Deps, true>;
 
@@ -42,6 +47,7 @@ const SERVER_FIELDS = {
   players: true,
   mods: true,
   scheduler: true,
+  notifier: true,
   changes: true,
   capabilities: false,
   start: false,
@@ -61,19 +67,57 @@ describe('createPanelDeps (the one composition root)', () => {
     expect(Object.keys(deps).sort()).toEqual(Object.keys(FIELDS).sort());
   });
 
-  it('serves one server, default, the environment describes', async () => {
+  it('serves default, the server the environment describes, outside the orchestrator', async () => {
     const { deps, srv } = await makePanel();
     expect(deps.servers.list().map((s) => s.id)).toEqual(['default']);
     expect(deps.servers.get('nope')).toBeNull();
     expect(srv.handle.ref).toEqual({ id: 'default', gameName: 'zomboid', flavour: null });
-    expect(srv.row).toMatchObject({ id: 'default', adapter: 'pz', gameName: 'zomboid' });
+    expect(srv.row).toMatchObject({ id: 'default', adapter: 'pz', gameName: 'zomboid', spec: null });
     expect(srv.handle.adapter).toBe(srv.adapter);
     expect(srv.ops.serverId).toBe('default');
     expect(srv.settings).toBeInstanceOf(ServerSettings);
-    await expect(deps.servers.create({ id: 'pz-2', name: 'x', adapter: 'pz', by: { type: 'system' } })).rejects.toMatchObject({ statusCode: 501, code: 'not-implemented' });
-    await expect(deps.servers.remove('default', { keepBackups: true, by: { type: 'system' } })).rejects.toMatchObject({ statusCode: 501 });
-    await expect(deps.servers.reconcile()).resolves.toEqual({ applied: [], started: [], orphans: [], failed: [] });
-    await expect(deps.orchestrator.health()).rejects.toMatchObject({ code: 'not-implemented' });
+    // Its backups stay where they always were; its secrets in the environment.
+    expect(srv.backups.dir).toBe(deps.env.backupDir);
+    expect(srv.handle.secrets()).toEqual({ adminPassword: 'AdminPw-123456' });
+    expect(deps.adapters.map((a) => a.meta.id)).toEqual(['pz']);
+  });
+
+  it('answers 501 for what needs the orchestrator while this build has none (FACTORIES)', async () => {
+    const { deps } = await makePanel();
+    const feed = new FakeFeed();
+    const bare = createPanelDeps({ env: deps.env, db: openDb(':memory:'), agent: fakeAgent(feed), feed, fetch: noNetwork });
+    expect(bare.orchestrator).toBeInstanceOf(NoOrchestrator);
+    await expect(bare.servers.create({ id: 'pz-2', name: 'x', adapter: 'pz', by: { type: 'system' } })).rejects.toMatchObject({ statusCode: 501, code: 'not-implemented' });
+    // Nothing of its own for the orchestrator to run: nothing to reconcile, and nothing fails.
+    await expect(bare.servers.reconcile()).resolves.toEqual({ applied: [], started: [], orphans: [], failed: [] });
+  });
+
+  it('builds the real pieces in production: the orchestrator over its socket, every server’s files through its agent (D3, D11)', async () => {
+    const { deps } = await makePanel();
+    expect(FACTORIES.orchestrator({ ...deps.env, orchestrator: { socket: '/run/orch/orch.sock', token: 'o'.repeat(40) } })).toBeInstanceOf(OrchestratorHttp);
+    expect(FACTORIES.orchestrator(deps.env)).toBeInstanceOf(NoOrchestrator);
+    const feed = new FakeFeed();
+    const prod = createPanelDeps({ env: deps.env, db: openDb(':memory:'), agent: fakeAgent(feed), feed, fetch: noNetwork });
+    // default too: the panel mounts no game volume.
+    const files = prod.servers.get('default')!.files;
+    expect(files).toBeInstanceOf(AgentServerFiles);
+    expect((files as AgentServerFiles).target).toMatchObject({ baseUrl: deps.env.agentUrl, token: deps.env.agentToken });
+  });
+
+  it('boots without a default server when the environment describes none', async () => {
+    const { deps } = await makePanel();
+    const bare = createPanelDeps({ env: { ...deps.env, agentUrl: '', agentToken: '' }, db: openDb(':memory:'), fetch: noNetwork });
+    expect(bare.servers.list()).toEqual([]);
+    // A database that has default, under an environment that no longer says where its agent is
+    // (the orchestrator's stack has no game service of its own): listed, unreachable, and removable.
+    const db = openDb(':memory:');
+    createPanelDeps({ env: deps.env, db, agent: fakeAgent(new FakeFeed()), feed: new FakeFeed(), fetch: noNetwork });
+    const later = createPanelDeps({ env: { ...deps.env, agentUrl: '', agentToken: '', secrets: {} }, db, fetch: noNetwork });
+    expect(later.servers.list().map((s) => s.id)).toEqual(['default']);
+    await expect(later.servers.get('default')!.agent.status()).rejects.toMatchObject({ code: 'unreachable' });
+    await expect(later.servers.remove('default', { confirm: 'zomboid', keepBackups: true, by: SYSTEM })).resolves.toEqual({ finalBackup: null });
+    expect(later.servers.list()).toEqual([]);
+    expect(later.audit.list({ action: 'server.delete' })[0]).toMatchObject({ serverId: 'default', ok: true });
   });
 
   it("hands every service of a server that server's instances, and the host's shared ones", async () => {

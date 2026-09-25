@@ -1,6 +1,6 @@
 import type { PanelAdapter } from '@gsp/adapter-api';
 import { isServerId, type ServerSpec } from '@gsp/shared';
-import { nowIso, type Db } from '../db/db';
+import { nowIso, tx, type Db } from '../db/db';
 import type { PanelEnv } from '../env';
 import type { KeyValueSettings } from '../settings';
 
@@ -37,7 +37,20 @@ export interface ServerRow {
   sort: number;
 }
 
-export type NewServer = Omit<ServerRow, 'createdAt' | 'spec' | 'eulaAcceptedAt' | 'eulaAcceptedBy' | 'sort'> & Partial<Pick<ServerRow, 'spec' | 'sort'>>;
+export type NewServer = Omit<ServerRow, 'createdAt' | 'spec' | 'eulaAcceptedAt' | 'eulaAcceptedBy' | 'sort'> & Partial<Pick<ServerRow, 'spec' | 'sort' | 'eulaAcceptedAt' | 'eulaAcceptedBy'>>;
+
+/** What can change about a server after it was created without recreating its container. */
+export interface ServerPatch {
+  name?: string;
+  sort?: number;
+}
+
+/**
+ * Every table that keys rows by server (migration 6). They have no foreign
+ * key to `servers` (the audit log must outlive a server), so removing one
+ * deletes from each explicitly; `audit` is deliberately not here.
+ */
+const SERVER_TABLES = ['server_grants', 'server_settings', 'server_mods', 'config_versions', 'player_sessions', 'proposals'] as const;
 
 interface DbRow {
   id: string;
@@ -104,7 +117,7 @@ export class ServersStore {
     if (!isServerId(s.id)) throw new Error(`Invalid server id ${JSON.stringify(s.id)}`);
     this.db
       .prepare(
-        'INSERT INTO servers (id, name, adapter, flavour, game_name, version_pin, ports, mem_limit_mb, cpus, secrets, spec, created_at, created_by, sort) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO servers (id, name, adapter, flavour, game_name, version_pin, ports, mem_limit_mb, cpus, secrets, spec, created_at, created_by, sort, eula_accepted_at, eula_accepted_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
       )
       .run(
         s.id,
@@ -121,13 +134,34 @@ export class ServersStore {
         nowIso(),
         s.createdBy,
         s.sort ?? 0,
+        s.eulaAcceptedAt ?? null,
+        s.eulaAcceptedBy ?? null,
       );
     return this.get(s.id)!;
+  }
+
+  /** Changes what `ServerPatch` allows; the row as it is now, or null when there is none. */
+  update(id: string, patch: ServerPatch): ServerRow | null {
+    if (patch.name !== undefined) this.db.prepare('UPDATE servers SET name = ? WHERE id = ?').run(patch.name, id);
+    if (patch.sort !== undefined) this.db.prepare('UPDATE servers SET sort = ? WHERE id = ?').run(patch.sort, id);
+    return this.get(id);
   }
 
   /** Removes the row (grants go with it); the caller removes the server's settings, mods and history. */
   delete(id: string): boolean {
     return Number(this.db.prepare('DELETE FROM servers WHERE id = ?').run(id).changes) > 0;
+  }
+
+  /**
+   * SRV-04: the server's row and every row keyed to it (grants, settings,
+   * mods, settings history, player history, proposals), in one transaction.
+   * Its audit entries stay (ACC-03).
+   */
+  purge(id: string): void {
+    tx(this.db, () => {
+      for (const t of SERVER_TABLES) this.db.prepare(`DELETE FROM ${t} WHERE server_id = ?`).run(id);
+      this.db.prepare('DELETE FROM servers WHERE id = ?').run(id);
+    });
   }
 
   /** The server's secrets by name (never returned by the API). */

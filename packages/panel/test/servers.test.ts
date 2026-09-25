@@ -1,44 +1,52 @@
-// Servers as the API addresses them (M2): the list, routes under
-// /api/servers/:sid, per-server roles (ACC-02), the audit log by server and
-// by actor (ACC-03, AST-02), and the websocket's per-server messages.
+// Servers as the API addresses them (M2): the list, creating, renaming and
+// removing servers, routes under /api/servers/:sid, per-server roles and
+// their API (ACC-02), the audit log by server and by actor (ACC-03,
+// AST-02), and the websocket's per-server messages.
 import { describe, expect, it } from 'vitest';
-import type { GrantRole } from '@gsp/shared';
 import { runCli } from '../src/cli/commands';
-import { SESSION_COOKIE } from '../src/auth/sessions';
-import { Client, makePanel, ORIGIN, ownerReady, totpCode, type TestPanel } from './harness';
+import { Client, fakeStatus, friend, listenWs, makePanel, ownerReady, until, type TestPanel } from './harness';
 
-type Role = 'viewer' | 'operator' | 'admin';
+/** Creates `pz-two` through the API as `c`. */
+function createTwo(c: Client, over: Record<string, unknown> = {}) {
+  return c.post('/api/servers', { id: 'pz-two', name: 'Second', adapter: 'pz', ...over });
+}
 
-/**
- * A friend signed in and ready: with `grant`, an account of scope `granted`
- * holding that role on `default` (or on nothing, with `null`).
- */
-async function friend(p: TestPanel, owner: Client, name: string, role: Role, grant?: GrantRole | null): Promise<Client> {
-  const created = (await owner.post('/api/users', { username: name, password: 'Temporal-12345', role })).json() as { id: number };
-  if (grant !== undefined) {
-    p.deps.users.setScope(created.id, 'granted');
-    if (grant) p.deps.grants.set(created.id, 'default', grant);
-  }
-  const c = new Client(p.app);
-  await c.post('/api/auth/login', { username: name, password: 'Temporal-12345' });
-  const after = (await c.post('/api/auth/password', { current: 'Temporal-12345', next: 'La-mia-propia-2026' })).json() as { pending: string | null };
-  if (after.pending === 'enrol') {
-    const { secret } = (await c.post('/api/auth/totp/setup')).json() as { secret: string };
-    await c.post('/api/auth/totp/enable', { code: totpCode(secret, 0) });
-  }
-  return c;
+async function userId(p: TestPanel, name: string): Promise<number> {
+  return p.deps.users.byName(name)!.id;
 }
 
 describe('the server list (SRV-02)', () => {
-  it('lists the servers a user may see, with their role and permissions there', async () => {
+  it('lists the servers a user may see, with their state, players, version, next restart and role there', async () => {
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);
-    const list = (await owner.get('/api/servers')).json() as { id: string; name: string; adapter: string; state: string; role: string; permissions: string[]; players: unknown; version: string }[];
+    const list = (await owner.get('/api/servers')).json() as { id: string; permissions: string[] }[];
     expect(list).toEqual([
-      expect.objectContaining({ id: 'default', name: 'zomboid', adapter: 'pz', adapterName: expect.objectContaining({ en: 'Project Zomboid' }), state: 'stopped', role: 'owner', players: null, version: '42.20.4' }),
+      expect.objectContaining({
+        id: 'default',
+        name: 'zomboid',
+        adapter: 'pz',
+        adapterName: expect.objectContaining({ en: 'Project Zomboid' }),
+        state: 'stopped',
+        role: 'owner',
+        players: null,
+        version: '42.20.4',
+        nextRestart: null,
+        managed: false,
+        ports: [
+          { id: 'game', port: 16261, proto: 'udp' },
+          { id: 'udp', port: 16262, proto: 'udp' },
+        ],
+        memLimitMb: 8192 + 3072,
+      }),
     ]);
     expect(list[0]!.permissions).toContain('reset.factory');
     expect((await new Client(p.app).get('/api/servers')).statusCode).toBe(401);
+    // Players while it runs, and the next scheduled restart once its timers run.
+    p.feed.status_ = fakeStatus({ state: 'running', players: { count: 3, names: [], at: new Date().toISOString() } });
+    p.srv.scheduler.reload();
+    const running = (await owner.get('/api/servers')).json() as { players: number; nextRestart: string | null }[];
+    p.srv.scheduler.stop();
+    expect(running[0]).toMatchObject({ players: 3, nextRestart: expect.stringMatching(/^\d{4}-/) });
   });
 
   it('shows a granted account only its servers, with its grant role', async () => {
@@ -48,6 +56,63 @@ describe('the server list (SRV-02)', () => {
     const none = await friend(p, owner, 'granted-none', 'viewer', null);
     expect((await op.get('/api/servers')).json()).toEqual([expect.objectContaining({ id: 'default', role: 'operator', permissions: expect.arrayContaining(['server.control']) })]);
     expect((await none.get('/api/servers')).json()).toEqual([]);
+  });
+});
+
+describe('creating, renaming and removing servers through the API (SRV-01, SRV-04)', () => {
+  it('lets an admin of every server create one, and nobody else', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    const adapters = (await owner.get('/api/adapters')).json() as { host: { arch: string }; adapters: { id: string; supported: boolean; eula: boolean; ports: unknown[]; launch: { secrets: unknown[] } }[] };
+    expect(adapters.host).toMatchObject({ arch: 'amd64', cpus: 8 });
+    expect(adapters.adapters).toEqual([expect.objectContaining({ id: 'pz', supported: true, eula: false, launch: expect.objectContaining({ secrets: [expect.objectContaining({ key: 'adminPassword' })] }) })]);
+
+    const granted = await friend(p, owner, 'granted-admin', 'admin', 'admin');
+    const everywhere = await friend(p, owner, 'all-admin', 'admin');
+    const op = await friend(p, owner, 'all-op', 'operator');
+    // An admin of some servers only can't create one (servers.create needs scope all).
+    expect((await createTwo(granted)).json()).toEqual({ error: 'forbidden' });
+    expect((await granted.get('/api/adapters')).statusCode).toBe(403);
+    expect((await createTwo(op)).statusCode).toBe(403);
+    expect((await createTwo(everywhere, { id: 'Bad' })).json()).toMatchObject({ error: 'validation' });
+
+    const r = await createTwo(everywhere, { ports: { game: 17000, udp: 17001 }, launch: { memoryMb: 4096 } });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({ id: 'pz-two', name: 'Second', managed: true, role: 'admin', ports: [{ id: 'game', port: 17000, proto: 'udp' }, { id: 'udp', port: 17001, proto: 'udp' }], memLimitMb: 7168 });
+    expect((await owner.get('/api/servers')).json()).toEqual([expect.objectContaining({ id: 'default' }), expect.objectContaining({ id: 'pz-two', state: 'stopped' })]);
+    // The one who created it and every scope-all account see it; the granted admin doesn't.
+    expect(((await granted.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
+    expect((await createTwo(owner)).json()).toEqual({ error: 'server-exists' });
+    expect(p.deps.audit.list({ action: 'server.create' })[0]).toMatchObject({ serverId: 'pz-two', username: 'all-admin', ok: true, ip: expect.any(String) });
+  });
+
+  it('renames with server.update, and removes after typing the name; only the owner drops the backups', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    expect((await createTwo(owner)).statusCode).toBe(200);
+    const admin = await friend(p, owner, 'two-admin', 'admin', { 'pz-two': 'admin' });
+    const op = await friend(p, owner, 'two-op', 'operator', { 'pz-two': 'operator' });
+
+    expect((await op.req('PATCH', '/api/servers/pz-two', { name: 'Nope' })).json()).toEqual({ error: 'forbidden' });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { name: 'Renamed' })).json()).toMatchObject({ id: 'pz-two', name: 'Renamed' });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', {})).statusCode).toBe(400);
+
+    expect((await op.req('DELETE', '/api/servers/pz-two', { confirm: 'Renamed' })).json()).toEqual({ error: 'forbidden' });
+    expect((await admin.req('DELETE', '/api/servers/pz-two', {})).json()).toMatchObject({ error: 'validation' });
+    expect((await admin.req('DELETE', '/api/servers/pz-two', { confirm: 'Second' })).json()).toEqual({ error: 'confirm-mismatch' });
+    expect((await admin.req('DELETE', '/api/servers/pz-two', { confirm: 'Renamed', keepBackups: false })).json()).toEqual({ error: 'forbidden' });
+    expect((await admin.req('DELETE', '/api/servers/pz-two', { confirm: 'Renamed', finalBackup: false })).json()).toEqual({ error: 'forbidden' });
+    // default is the stack's own: never deleted from here.
+    expect((await owner.req('DELETE', '/api/servers/default', { confirm: 'zomboid' })).json()).toEqual({ error: 'server-unmanaged' });
+
+    const r = await admin.req('DELETE', '/api/servers/pz-two', { confirm: 'Renamed' });
+    expect(r.json()).toEqual({ ok: true, finalBackup: expect.stringMatching(/\.tar\.zst$/) });
+    // Gone for everyone; its audit entries stay, for those who may read them.
+    expect(((await owner.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
+    expect((await admin.get('/api/servers/pz-two/meta')).json()).toEqual({ error: 'server-not-found' });
+    const history = (await owner.get('/api/audit?server=pz-two')).json() as { action: string; username: string }[];
+    expect(history.map((e) => e.action)).toEqual(['server.delete', 'server.update', 'server.create']);
+    expect(history.find((e) => e.action === 'server.delete')).toMatchObject({ username: 'two-admin' });
   });
 });
 
@@ -66,11 +131,15 @@ describe('routes of one server (ACC-02)', () => {
       ['POST', '/api/servers/default/server/start', {}],
       ['GET', '/api/servers/default/config/meta'],
       ['POST', '/api/servers/default/reset', { scope: 'world', confirm: 'zomboid' }],
+      // Access is checked before the body: a bad one doesn't tell the server exists either.
+      ['POST', '/api/servers/default/reset', { bogus: true }],
+      ['GET', '/api/servers/default/backups/not-a-backup/download'],
     ] as [string, string, unknown?][]) {
-      // Valid bodies: a bad one is refused (400) before anyone looks at the server.
       const r = await outsider.req(method as 'GET' | 'POST', url, body);
       expect(r.json(), `${method} ${url}`).toEqual({ error: 'server-not-found' });
     }
+    // Signed out comes first, whatever the body.
+    expect((await new Client(p.app).req('POST', '/api/servers/default/reset', { bogus: true })).statusCode).toBe(401);
     expect(p.agent.calls).toEqual([]);
   });
 
@@ -96,6 +165,58 @@ describe('routes of one server (ACC-02)', () => {
   });
 });
 
+describe('grants and scope, through the owner’s API (ACC-02)', () => {
+  it('sets and removes a user’s role per server, keeping the account role at the highest grant', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    await createTwo(owner);
+    const created = (await owner.post('/api/users', { username: 'bob', password: 'Temporal-12345', role: 'admin', scope: 'granted' })).json() as { id: number; role: string; scope: string; grants: unknown[] };
+    // Granted, with nothing granted yet: a viewer of nothing.
+    expect(created).toMatchObject({ role: 'viewer', scope: 'granted', grants: [] });
+    const bob = new Client(p.app);
+    await bob.post('/api/auth/login', { username: 'bob', password: 'Temporal-12345' });
+    await bob.post('/api/auth/password', { current: 'Temporal-12345', next: 'La-mia-propia-2026' });
+    expect((await bob.get('/api/servers')).json()).toEqual([]);
+
+    const put = await owner.req('PUT', `/api/users/${created.id}/grants/pz-two`, { role: 'operator' });
+    expect(put.json()).toEqual({ userId: created.id, scope: 'granted', role: 'operator', grants: [{ serverId: 'pz-two', role: 'operator' }] });
+    // No sign-out needed: the next request sees it.
+    expect(((await bob.get('/api/servers')).json() as { id: string; role: string }[]).map((s) => [s.id, s.role])).toEqual([['pz-two', 'operator']]);
+    // An admin grant makes the account an admin, so 2FA becomes mandatory before anything else.
+    await owner.req('PUT', `/api/users/${created.id}/grants/default`, { role: 'admin' });
+    expect((await owner.get(`/api/users/${created.id}/grants`)).json()).toMatchObject({ role: 'admin', grants: [{ serverId: 'default', role: 'admin' }, { serverId: 'pz-two', role: 'operator' }] });
+    expect((await bob.get('/api/servers')).json()).toMatchObject({ error: 'pending', pending: 'enrol' });
+    expect(((await owner.get('/api/users')).json() as { username: string; grants: unknown[] }[]).find((u) => u.username === 'bob')!.grants).toHaveLength(2);
+
+    expect((await owner.req('DELETE', `/api/users/${created.id}/grants/default`)).json()).toMatchObject({ role: 'operator', grants: [{ serverId: 'pz-two', role: 'operator' }] });
+    expect((await owner.req('DELETE', `/api/users/${created.id}/grants/default`)).json()).toEqual({ error: 'not-found' });
+    expect((await owner.req('PUT', `/api/users/${created.id}/grants/nope`, { role: 'viewer' })).json()).toEqual({ error: 'server-not-found' });
+    expect((await owner.req('PUT', `/api/users/${created.id}/grants/pz-two`, { role: 'owner' })).statusCode).toBe(400);
+    const ownerId = await userId(p, 'alice');
+    expect((await owner.req('PUT', `/api/users/${ownerId}/grants/pz-two`, { role: 'admin' })).json()).toEqual({ error: 'owner-immutable' });
+    expect(p.deps.audit.list({ action: 'user.grant' })[0]).toMatchObject({ serverId: 'default', target: 'bob', username: 'alice' });
+    expect(p.deps.audit.list({ action: 'user.revoke' })[0]).toMatchObject({ serverId: 'default', target: 'bob' });
+  });
+
+  it('switches scope: all takes a role, granted derives it; only the owner manages grants', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    const admin = await friend(p, owner, 'all-admin', 'admin');
+    const id = (await owner.post('/api/users', { username: 'carol', password: 'Temporal-12345', role: 'operator' })).json().id as number;
+    expect((await owner.req('PUT', `/api/users/${id}/grants/default`, { role: 'viewer' })).statusCode).toBe(200);
+    expect((await owner.req('PATCH', `/api/users/${id}`, { scope: 'granted' })).json()).toMatchObject({ scope: 'granted', role: 'viewer' });
+    expect((await owner.req('PATCH', `/api/users/${id}`, { role: 'admin' })).json()).toEqual({ error: 'role-follows-grants' });
+    expect((await owner.req('PATCH', `/api/users/${id}`, { scope: 'all', role: 'operator' })).json()).toMatchObject({ scope: 'all', role: 'operator' });
+    for (const [method, url, body] of [
+      ['GET', `/api/users/${id}/grants`],
+      ['PUT', `/api/users/${id}/grants/default`, { role: 'admin' }],
+      ['DELETE', `/api/users/${id}/grants/default`],
+    ] as ['GET' | 'PUT' | 'DELETE', string, unknown?][]) {
+      expect((await admin.req(method, url, body)).json(), `${method} ${url}`).toEqual({ error: 'forbidden' });
+    }
+  });
+});
+
 describe('the audit log by server and actor (ACC-03, AST-02)', () => {
   it('records the server and who acted, and filters by server', async () => {
     const p = await makePanel();
@@ -105,12 +226,17 @@ describe('the audit log by server and actor (ACC-03, AST-02)', () => {
     await p.srv.scheduler.runBackup();
     await p.srv.ops.idle();
     await runCli(['backup-db'], { db: p.deps.db, backupDir: p.deps.env.backupDir, out: () => undefined });
+    await createTwo(owner);
+    await p.orch.stop('pz-two');
+    await p.deps.servers.reconcile();
 
     const all = (await owner.get('/api/audit')).json() as { action: string; serverId: string | null; actorType: string }[];
     expect(all.find((e) => e.action === 'server.start')).toMatchObject({ serverId: 'default', actorType: 'user' });
     expect(all.find((e) => e.action === 'schedule.backup')).toMatchObject({ serverId: 'default', actorType: 'schedule' });
     expect(all.find((e) => e.action === 'cli.backup-db')).toMatchObject({ serverId: null, actorType: 'recovery' });
     expect(all.find((e) => e.action === 'auth.login')).toMatchObject({ serverId: null, actorType: 'user' });
+    expect(all.find((e) => e.action === 'server.create')).toMatchObject({ serverId: 'pz-two', actorType: 'user' });
+    expect(all.find((e) => e.action === 'server.reconcile')).toMatchObject({ serverId: 'pz-two', actorType: 'system' });
 
     const one = (await owner.get('/api/audit?server=default')).json() as { serverId: string }[];
     expect(one.length).toBeGreaterThan(0);
@@ -123,11 +249,13 @@ describe('the audit log by server and actor (ACC-03, AST-02)', () => {
     const { client: owner } = await ownerReady(p);
     await owner.post('/api/servers/default/server/start');
     await p.srv.ops.idle();
+    await createTwo(owner);
     const adm = await friend(p, owner, 'server-admin', 'admin', 'admin');
     const seen = (await adm.get('/api/audit')).json() as { serverId: string | null }[];
     expect(seen.length).toBeGreaterThan(0);
     expect(seen.every((e) => e.serverId === 'default')).toBe(true);
     expect((await adm.get('/api/audit?server=default')).statusCode).toBe(200);
+    expect((await adm.get('/api/audit?server=pz-two')).json()).toEqual({ error: 'server-not-found' });
     expect((await adm.get('/api/audit?server=other')).json()).toEqual({ error: 'server-not-found' });
     const op = await friend(p, owner, 'server-op', 'operator', 'operator');
     expect((await op.get('/api/audit')).statusCode).toBe(403);
@@ -135,25 +263,15 @@ describe('the audit log by server and actor (ACC-03, AST-02)', () => {
 });
 
 describe('the websocket (ACC-02)', () => {
-  async function listen(p: TestPanel, c: Client) {
-    await p.app.ready();
-    const messages: { type: string; serverId?: string; servers?: { serverId: string }[] }[] = [];
-    const ws = await p.app.injectWS('/api/ws', { headers: { origin: ORIGIN, cookie: `${SESSION_COOKIE}=${c.cookie}` } }, {
-      onInit: (sock) => sock.on('message', (d) => messages.push(JSON.parse(d.toString()))),
-    });
-    await new Promise((r) => setTimeout(r, 50));
-    return { ws, messages };
-  }
-
   it('sends only the servers a user may see, each message naming its server', async () => {
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);
     const outsider = await friend(p, owner, 'ws-outsider', 'operator', null);
-    const a = await listen(p, owner);
-    const b = await listen(p, outsider);
+    const a = await listenWs(p, owner);
+    const b = await listenWs(p, outsider);
     p.feed.emit({ type: 'players', count: 1, names: ['rick'] });
     p.deps.bus.emit({ type: 'notice', serverId: 'default', kind: 'x', message: 'for default viewers', permission: 'server.view' });
-    await new Promise((r) => setTimeout(r, 50));
+    await until(() => a.messages.length >= 3);
     expect(a.messages[0]).toEqual(expect.objectContaining({ type: 'hello', servers: [expect.objectContaining({ serverId: 'default' })] }));
     expect(a.messages.slice(1).map((m) => [m.type, m.serverId])).toEqual([
       ['event', 'default'],
@@ -162,5 +280,44 @@ describe('the websocket (ACC-02)', () => {
     expect(b.messages).toEqual([{ type: 'hello', servers: [] }]);
     a.ws.terminate();
     b.ws.terminate();
+  });
+
+  it('follows grants, new servers, renames and removals at once, without waiting for the periodic check', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    const bob = await friend(p, owner, 'bob', 'viewer', null);
+    const id = await userId(p, 'bob');
+    const mine = await listenWs(p, bob);
+    const theirs = await listenWs(p, owner);
+    const types = () => mine.messages.map((m) => (m.type === 'hello' ? `hello:${(m.servers ?? []).map((s) => s.serverId).join(',')}` : m.serverId ? `${m.type}:${m.serverId}` : m.type));
+
+    await owner.req('PUT', `/api/users/${id}/grants/default`, { role: 'viewer' });
+    await until(() => types().includes('hello:default'));
+    expect(types()).toEqual(['hello:', 'hello:default', 'servers']);
+
+    // A new server shows up for those who may see it: the owner, not bob.
+    await createTwo(owner);
+    await until(() => theirs.messages.some((m) => m.type === 'hello' && m.servers?.some((s) => s.serverId === 'pz-two')));
+    await until(() => types().length === 4);
+    expect(types().at(-1)).toBe('servers');
+
+    // A rename rebuilds default's context: bob follows the new one (events keep coming).
+    await owner.req('PATCH', '/api/servers/default', { name: 'Main' });
+    await until(() => types().filter((t) => t === 'hello:default').length === 2);
+    p.feed.emit({ type: 'players', count: 2, names: [] });
+    await until(() => types().includes('event:default'));
+    expect(types().filter((t) => t === 'event:default')).toHaveLength(1);
+
+    await owner.req('DELETE', `/api/users/${id}/grants/default`);
+    await until(() => types().includes('gone:default'));
+    p.feed.emit({ type: 'players', count: 3, names: [] });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(types().filter((t) => t === 'event:default')).toHaveLength(1);
+
+    // Removing a server says gone to those who saw it.
+    await owner.req('DELETE', '/api/servers/pz-two', { confirm: 'Second' });
+    await until(() => theirs.messages.some((m) => m.type === 'gone' && m.serverId === 'pz-two'));
+    mine.ws.terminate();
+    theirs.ws.terminate();
   });
 });

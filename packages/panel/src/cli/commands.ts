@@ -11,8 +11,10 @@ export const USAGE = `panelctl — recover access to the panel from the host
   reset-password <user>     set a temporary password (must be changed at login)
   reset-2fa <user>          remove 2FA; admins and the owner enrol again at login
   backup-db                 copy the panel database into the backups folder now
+  health                    exit 0 if the panel answers where PANEL_LISTEN says
 
-Every command signs the user out everywhere and is written to the audit log.`;
+Every command that changes an account signs the user out everywhere and is
+written to the audit log.`;
 
 /** Runs one panelctl command. Returns the process exit code. */
 export async function runCli(argv: string[], ctx: { db: Db; backupDir: string; out: (line: string) => void }): Promise<number> {

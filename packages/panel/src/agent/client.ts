@@ -64,13 +64,26 @@ export class AgentClient implements AgentApi {
   private readonly listeners = new Set<Listener>();
   private abort: AbortController | null = null;
   private stopped = false;
+  /** Which `startStream` the running subscription belongs to. */
+  private generation = 0;
   private connectedFlag = false;
 
+  /**
+   * `base`: the agent's address, or where to read it when it can change
+   * (an orchestrator-run server's, known once the orchestrator answered;
+   * empty until then, and every call fails as unreachable).
+   */
   constructor(
-    private readonly baseUrl: string,
+    private readonly base: string | (() => string),
     private readonly token: string,
     private readonly logBacklog = 1000,
   ) {}
+
+  private get baseUrl(): string {
+    const url = typeof this.base === 'string' ? this.base : this.base();
+    if (!url) throw new AgentCallError(503, 'unreachable', "Game server agent unreachable: its container isn't known yet");
+    return url;
+  }
 
   get connected(): boolean {
     return this.connectedFlag;
@@ -93,9 +106,10 @@ export class AgentClient implements AgentApi {
     const headers: Record<string, string> = { authorization: `Bearer ${this.token}` };
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (lockId) headers['x-lock-id'] = lockId;
+    const base = this.baseUrl;
     let res: Response;
     try {
-      res = await fetch(`${this.baseUrl}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
+      res = await fetch(`${base}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
     } catch (e) {
       throw new AgentCallError(503, 'unreachable', `Game server agent unreachable: ${(e as Error).message}`);
     }
@@ -178,20 +192,27 @@ export class AgentClient implements AgentApi {
     }
   }
 
-  /** Keep an SSE subscription open forever, resuming from the last seq. */
+  /**
+   * Keep an SSE subscription open forever, resuming from the last seq.
+   * Stopping and starting again (a server's context rebuilt around the same
+   * client) leaves exactly one subscription: each start supersedes the last.
+   */
   startStream(): void {
     this.stopped = false;
-    void this.streamLoop();
+    void this.streamLoop(++this.generation);
   }
 
   stopStream(): void {
     this.stopped = true;
+    this.generation++;
+    this.connectedFlag = false;
     this.abort?.abort();
   }
 
-  private async streamLoop(): Promise<void> {
+  private async streamLoop(gen: number): Promise<void> {
     let delay = 1000;
-    while (!this.stopped) {
+    const current = () => !this.stopped && gen === this.generation;
+    while (current()) {
       try {
         const s = await this.status();
         if (s.bootId !== this.bootId) {
@@ -227,8 +248,9 @@ export class AgentClient implements AgentApi {
       } catch {
         // fall through to reconnect
       }
+      // Stopped, or another start took over: that one owns the flags now.
+      if (!current()) return;
       this.connectedFlag = false;
-      if (this.stopped) return;
       await new Promise((r) => setTimeout(r, delay));
       delay = Math.min(delay * 2, 15_000);
     }
