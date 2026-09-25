@@ -87,7 +87,8 @@ Hits show the file, line and pattern number, never the text.
 | `formats` | The file and wire formats games share (pure) |
 | `archive` | tar, zstd, and `RootedFiles`: a server's files on disk, rooted and link-free |
 | `adapter-api` | The adapter contract and its shared test suites |
-| `adapter-<game>` | One game (`adapter-pz`); `adapters` is the one list of them |
+| `adapter-<game>` | One game (`adapter-pz`; `adapter-minecraft`, `adapter-terraria`, `adapter-valheim` and `adapter-manifest` are skeletons until measured); `adapters` is the one list of them, each enabled or not |
+| `source-<name>` | A mod source several games share (`source-workshop`: the Steam Workshop, by app id) |
 | `agent` | Runs inside each server's container: the game, its console, installer and files |
 | `orchestrator` | The only component with Docker access |
 | `panel` | The API: accounts, servers, settings, backups, schedules |

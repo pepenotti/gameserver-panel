@@ -70,7 +70,10 @@ describe('what the check finds', () => {
       "import type { PanelAdapter } from '@gsp/adapter-api';",
       "import { suite } from '@gsp/adapter-api/testing/runtime-suite';",
       "import { x } from '../adapters-helper-not-a-package/x';",
+      "import { createWorkshopSource } from '@gsp/source-workshop';",
+      "import { workshopDownloadAction } from '../../source-workshop/src/runtime';",
+      "import { y } from '@gsp/sourcemaps';",
     ].join('\n');
-    expect(findAdapterImports(src).map((h) => h.line)).toEqual([1, 2, 3, 4, 5]);
+    expect(findAdapterImports(src).map((h) => h.line)).toEqual([1, 2, 3, 4, 5, 9, 10]);
   });
 });

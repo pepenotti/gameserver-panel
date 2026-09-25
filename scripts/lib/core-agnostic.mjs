@@ -33,8 +33,11 @@ export function findGameTokens(text) {
   return hits;
 }
 
-/** A module specifier that names a game adapter: `@gsp/adapters…` or `@gsp/adapter-<game>…`, or a relative path into one. */
-const ADAPTER_SPECIFIER = /^(?:@gsp\/(?:adapters|adapter-(?!api(?:\/|$))[^/]+)(?:\/.*)?|(?:\.\.\/)+(?:adapters|adapter-(?!api(?:\/|$))[^/]+)(?:\/.*)?)$/;
+/**
+ * A module specifier that names a game adapter or a game's mod source: `@gsp/adapters…`,
+ * `@gsp/adapter-<game>…`, `@gsp/source-<name>…`, or a relative path into one.
+ */
+const ADAPTER_SPECIFIER = /^(?:@gsp\/(?:adapters|adapter-(?!api(?:\/|$))[^/]+|source-[^/]+)(?:\/.*)?|(?:\.\.\/)+(?:adapters|adapter-(?!api(?:\/|$))[^/]+|source-[^/]+)(?:\/.*)?)$/;
 
 /** `import … from '…'`, `export … from '…'`, `import('…')`, `require('…')`. */
 const SPECIFIER_RE = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)(['"])([^'"\r\n]+)\1/g;
