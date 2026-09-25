@@ -10,6 +10,9 @@
 //   docker compose exec pz node /app/agentctl.mjs install [--validate]     (for the stored launch)
 //   docker compose exec pz node /app/agentctl.mjs versions | logs [since]
 //   docker compose exec pz node /app/agentctl.mjs action accounts '{"serverName":"zomboid"}'
+//   docker compose exec pz node /app/agentctl.mjs ls data Server            (the server's files, D11)
+//   docker compose exec -T pz node /app/agentctl.mjs pack data Saves db > world.tar
+//   docker compose exec pz node /app/agentctl.mjs undo <trashId> | purge [trashId]   (after a restore)
 import { readFileSync } from 'node:fs';
 
 const base = process.env.AGENT_URL ?? `http://127.0.0.1:${process.env.AGENT_PORT ?? 8081}`;
@@ -93,6 +96,36 @@ switch (cmd) {
     print((await call('POST', `/v1/actions/${encodeURIComponent(name)}`, { input: input === undefined ? {} : JSON.parse(input) })).result);
     break;
   }
+  case 'ls': {
+    const [root = 'data', rel = ''] = rest;
+    for (const e of (await call('POST', '/v1/fs/list', { root, rel })).entries) console.log(`${e.kind.padEnd(7)} ${String(e.size).padStart(12)}  ${e.name}`);
+    break;
+  }
+  case 'pack': {
+    // An uncompressed tar on stdout, taken hot (the game's own steps) while the server runs.
+    const [root, ...rels] = rest;
+    if (!root || rels.length === 0) {
+      console.error('usage: agentctl pack <root> <rel>... > files.tar');
+      process.exit(2);
+    }
+    const res = await fetch(`${base}/v1/archive/pack`, { method: 'POST', headers, body: JSON.stringify({ root, rels }) });
+    if (!res.ok) {
+      console.error(`${res.status}: ${(await res.json()).error}`);
+      process.exit(1);
+    }
+    for await (const chunk of res.body) if (!process.stdout.write(chunk)) await new Promise((r) => process.stdout.once('drain', r));
+    break;
+  }
+  case 'undo':
+    if (!rest[0]) {
+      console.error('usage: agentctl undo <trashId>');
+      process.exit(2);
+    }
+    print(await call('POST', '/v1/archive/undo', { trashId: rest[0] }));
+    break;
+  case 'purge':
+    print(await call('POST', '/v1/archive/purge', rest[0] ? { trashId: rest[0] } : {}));
+    break;
   case 'logs': {
     // Stream the event log as plain lines until interrupted.
     const res = await fetch(`${base}/v1/events?since=${rest[0] ?? 0}`, { headers });
@@ -117,6 +150,6 @@ switch (cmd) {
     break;
   }
   default:
-    console.error('usage: agentctl status [--full]|start [file|-]|stop|restart|kill|save|cmd <command>|install [--validate]|versions|action <name> [json]|logs [since]');
+    console.error('usage: agentctl status [--full]|start [file|-]|stop|restart|kill|save|cmd <command>|install [--validate]|versions|action <name> [json]|ls [root] [rel]|pack <root> <rel>...|undo <trashId>|purge [trashId]|logs [since]');
     process.exit(2);
 }

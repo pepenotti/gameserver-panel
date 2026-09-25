@@ -14,6 +14,7 @@ import type {
   RuntimeState,
   VersionsResponse,
 } from '@gsp/adapter-api';
+import { RootedFiles, type HotCopy } from '@gsp/archive';
 import { makeRedactor } from '@gsp/formats';
 import type { AgentStatus, AlertKind, CommandResponse, ControlKind, JobInfo, JobKind, PublicLaunch, ServerState } from '@gsp/shared';
 import type { AgentConfig } from './config';
@@ -103,6 +104,12 @@ export class Agent {
   private redact: (line: string) => string;
   private shuttingDown = false;
   private readonly bootId = randomUUID();
+  /**
+   * The server's files as the panel reaches them (D11, `/v1/fs/*` and
+   * `/v1/archive/*`): the adapter's roots, `install` read-only, never the
+   * agent's own state folder; packs are hot while the game runs.
+   */
+  readonly files: RootedFiles;
 
   constructor(
     private readonly cfg: AgentConfig,
@@ -115,6 +122,7 @@ export class Agent {
     this.params = this.loadLaunch();
     if (this.params !== null) this.channelKind = this.channelOf(this.params);
     this.redact = this.makeRedactor();
+    this.files = new RootedFiles({ roots: () => this.roots(), hidden: [cfg.stateDir], hot: () => this.hotCopy() });
   }
 
   private loadLaunch(): unknown {
@@ -643,6 +651,50 @@ export class Agent {
       }
     }
     this.schedulePoll();
+  }
+
+  // ------------------------------------------------------------------- files
+
+  /** Whether a game process exists (starting, running or stopping): its files may change under a copy. */
+  gameProcess(): boolean {
+    return this.run !== null;
+  }
+
+  /**
+   * How a pack copies the files right now (BAK-02, D11): null while no game
+   * process runs (plain copies); otherwise SQLite snapshots of the adapter's
+   * and the request's globs, between the adapter's hot-copy steps once the
+   * game is up (`after` runs whatever happens).
+   */
+  hotCopy(): HotCopy | null {
+    const run = this.run;
+    if (!run) return null;
+    const steps = this.adapter.hotCopy;
+    const ctl = steps && this.state === 'running' ? run.handle((e) => this.log(`${CHANNEL_LABEL[run.kind]} command failed (${e.message}).`)) : null;
+    return {
+      sqlite: steps?.sqlite ?? [],
+      before: async () => {
+        if (!steps || !ctl) return;
+        this.log('Backup: preparing the files for a copy while the server runs.');
+        try {
+          await steps.before(ctl);
+        } catch (e) {
+          const message = `The server could not prepare its files for a copy: ${(e as Error).message}`;
+          this.log(`Backup: ${message}.`);
+          throw new AgentError('unavailable', message);
+        }
+      },
+      after: async () => {
+        if (!steps || !ctl) return;
+        try {
+          await steps.after(ctl);
+        } catch (e) {
+          const message = `The server could not resume after the copy: ${(e as Error).message}`;
+          this.log(`Backup: ${message}.`);
+          throw new AgentError('unavailable', message);
+        }
+      },
+    };
   }
 
   /** `POST /v1/save`: the adapter saves the running world; `ok: false` when it didn't finish within `timeoutMs`. */

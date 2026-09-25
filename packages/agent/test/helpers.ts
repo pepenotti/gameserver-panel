@@ -61,7 +61,8 @@ export interface Harness {
   cleanup(): Promise<void>;
 }
 
-export async function makeHarness(overrides: Partial<AgentConfig> = {}): Promise<Harness> {
+/** `adapter` wraps the configured runtime adapter (spies on its steps). */
+export async function makeHarness(overrides: Partial<AgentConfig> = {}, o: { adapter?: (a: RuntimeAdapter) => RuntimeAdapter } = {}): Promise<Harness> {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-agent-'));
   const cfg: AgentConfig = {
     version: 'test',
@@ -87,11 +88,11 @@ export async function makeHarness(overrides: Partial<AgentConfig> = {}): Promise
     logBufferLines: 5000,
     ...overrides,
   };
-  return build(dir, cfg);
+  return build(dir, cfg, o.adapter ?? ((a) => a));
 }
 
-function build(dir: string, cfg: AgentConfig): Harness {
-  const adapter = runtimeAdapter(cfg.adapter);
+function build(dir: string, cfg: AgentConfig, wrap: (a: RuntimeAdapter) => RuntimeAdapter): Harness {
+  const adapter = wrap(runtimeAdapter(cfg.adapter));
   const hub = new EventHub(cfg.logBufferLines);
   const store = new StateStore(cfg.stateDir, { adapter: adapter.meta.id });
   const agent = new Agent(cfg, adapter, store, hub);
@@ -145,7 +146,7 @@ function build(dir: string, cfg: AgentConfig): Harness {
       return events.flatMap((e) => (e.event.type === 'log' ? [e.event.line] : []));
     },
     reopen() {
-      return build(dir, cfg);
+      return build(dir, cfg, wrap);
     },
     async cleanup() {
       try {
