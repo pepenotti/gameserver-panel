@@ -7,6 +7,7 @@
     "packages/shared",
     "packages/formats",
     "packages/adapter-api",
+    "packages/archive",
     "packages/adapter-pz",
     "packages/adapters",
     "packages/agent",

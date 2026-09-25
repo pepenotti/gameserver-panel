@@ -10,7 +10,7 @@ import { findAdapterImports, findGameTokens, GAME_TOKENS } from './lib/core-agno
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 /** The core packages this test covers (packages/web checks itself). */
-const CORE = ['shared', 'formats', 'adapter-api', 'agent', 'panel'];
+const CORE = ['shared', 'formats', 'adapter-api', 'archive', 'agent', 'panel'];
 /** The only core modules that pick game adapters. */
 const COMPOSITION_ROOTS = ['packages/agent/src/main.ts', 'packages/panel/src/main.ts', 'packages/panel/src/wiring.ts'];
 const SOURCE = /\.(?:[cm]?[jt]s|tsx|json)$/;

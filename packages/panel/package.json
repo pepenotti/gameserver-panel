@@ -14,6 +14,7 @@
     "@fastify/websocket": "^11.3.1",
     "@gsp/adapter-api": "*",
     "@gsp/adapters": "*",
+    "@gsp/archive": "*",
     "@gsp/formats": "*",
     "@gsp/shared": "*",
     "croner": "^10.0.1",
