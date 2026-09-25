@@ -3,7 +3,7 @@
  * command, readiness from the log, RCON with stdin as fallback, save+quit,
  * and reads of the game's own database for the panel (actions).
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type {
@@ -133,8 +133,35 @@ async function save(ctl: ControlHandle, o: { budgetMs: number }): Promise<void> 
 
 // ------------------------------------------------------------------ actions
 
+/** The game's own database: accounts, roles, bans (docs/verification/pz-b42.md). */
+function gameDbFile(ctx: RuntimeCtx, serverName: string): string {
+  return path.join(ctx.roots.data, 'db', `${serverName}.db`);
+}
+
+/**
+ * The game creates `db/<serverName>.db` early in its first boot, and its
+ * tables only when that file doesn't exist yet. A first boot that dies in
+ * between leaves it at 0 bytes, and every later start fails with "no such
+ * table" (measured in the M2 acceptance run, docs/verification/m2-acceptance.md).
+ * An empty file holds nothing, so it goes before a start; one with any
+ * content is never touched.
+ */
+export function removeEmptyGameDb(ctx: RuntimeCtx, serverName: string): void {
+  const file = gameDbFile(ctx, serverName);
+  let st;
+  try {
+    st = lstatSync(file);
+  } catch {
+    return;
+  }
+  if (!st.isFile() || st.size !== 0) return;
+  unlinkSync(file);
+  ctx.log(`Removed the empty game database db/${serverName}.db that a failed start left behind; the game creates it again.`);
+}
+
+/** Reads the game's database without ever creating or changing it: nothing when it doesn't exist, read-only otherwise. */
 function withGameDb<T>(ctx: InstallCtx, serverName: string, fn: (db: DatabaseSync) => T, fallback: T): T {
-  const file = path.join(ctx.roots.data, 'db', `${serverName}.db`);
+  const file = gameDbFile(ctx, serverName);
   if (!existsSync(file)) return fallback;
   let db: DatabaseSync | null = null;
   try {
@@ -243,6 +270,7 @@ export const pzRuntimeAdapter: RuntimeAdapter<PzLaunch> = {
   },
 
   async prepare(ctx, p) {
+    removeEmptyGameDb(ctx, p.serverName);
     const managed = managedIni(ctx);
     const dir = path.join(ctx.roots.data, 'Server');
     const file = path.join(dir, `${p.serverName}.ini`);
