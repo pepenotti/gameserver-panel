@@ -761,9 +761,15 @@ export class DbServerRegistry implements ServerRegistry {
   /** Servers the orchestrator couldn't bring up are tried again, less and less often. */
   private retryFailed(report: ReconcileReport, delayMs: number): void {
     if (!this.live || report.failed.length === 0) return;
+    const failed = report.failed.map((f) => f.id);
     this.retry = setTimeout(() => {
       void this.reconcile().then((r) => {
         for (const ctx of this.list()) this.activate(ctx);
+        // The audit log's last word on a server that failed is that it's fine now (a retry that changed nothing is otherwise silent).
+        const quiet = (id: string) => !r.failed.some((f) => f.id === id) && !r.applied.includes(id) && !r.started.includes(id);
+        for (const id of failed.filter((x) => this.d.rows.get(x) && quiet(x))) {
+          this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: 'in line with its settings again on retry' });
+        }
         this.retryFailed(r, Math.min(delayMs * 2, 300_000));
       });
     }, delayMs);

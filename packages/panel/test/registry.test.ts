@@ -4,7 +4,7 @@
 // the table (SRV-06).
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PanelAdapter } from '@gsp/adapter-api';
 import { pzPanelAdapter } from '@gsp/adapter-pz/panel';
 import { SYSTEM, userActor, type Actor } from '../src/audit';
@@ -627,5 +627,30 @@ describe('reconcile (SRV-06)', () => {
     // Every server runs its timers even so; the retry comes later.
     expect(started.sort()).toEqual(['default', 'pz-two']);
     again.deps.servers.stop();
+  });
+
+  it('says in the audit log when a retry finds a failed server in line again (SRV-06)', async () => {
+    const p = await makePanel();
+    await create(p);
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    const reconciles = () =>
+      again.deps.audit.list({ serverId: 'pz-two', action: 'server.reconcile' }).map((e) => [e.ok, e.detail]);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      // After a host restart the panel can boot before the orchestrator's socket exists.
+      p.orch.down = new OrchestratorCallError(503, 'unreachable', 'connect ENOENT');
+      await again.deps.servers.start();
+      expect(reconciles()).toEqual([[false, expect.stringContaining('ENOENT')]]);
+      p.orch.down = null;
+      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.waitFor(() => expect(reconciles()).toHaveLength(2));
+      expect(reconciles()[0]).toEqual([true, 'in line with its settings again on retry']);
+      // Nothing more to say, and no more retries.
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(reconciles()).toHaveLength(2);
+    } finally {
+      again.deps.servers.stop();
+      vi.useRealTimers();
+    }
   });
 });
