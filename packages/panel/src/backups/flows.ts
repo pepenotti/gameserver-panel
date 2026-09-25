@@ -82,7 +82,7 @@ export class BackupFlows {
     if (running && !this.d.server.has('hotBackup')) throw new HttpError(409, 'capability-unsupported', undefined, { capability: 'hotBackup' });
     let lockId: string | null = null;
     try {
-      if (!running) lockId = (await this.d.agent.lock(`backup (${trigger})`, 2 * 3_600_000)).id;
+      if (!running) lockId = (await this.d.agent.lock(`backup: ${trigger}`, 2 * 3_600_000)).id;
       ctx?.step('archiving', { progress: 0 });
       let last = 0;
       return await this.d.backups.create({
@@ -190,7 +190,7 @@ export class BackupFlows {
       'reset',
       by,
       async (ctx) => {
-        const lock = await this.d.agent.lock(`reset (${scope})`, 3 * 3_600_000);
+        const lock = await this.d.agent.lock(`reset: ${scope}`, 3 * 3_600_000);
         const wasRunning = ['running', 'starting'].includes(this.state ?? '');
         try {
           await this.d.control.countdown(ctx, 'reset', opts.countdownSec, opts.lang);

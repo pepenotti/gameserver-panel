@@ -88,7 +88,11 @@ export function fakeAgent(feed: FakeFeed): AgentApi & { calls: string[] } {
       calls.push(`action:${name}`);
       throw new AgentCallError(404, 'not-found', `No action ${name}`);
     },
-    lock: async () => ({ id: 'lock-1', expiresAt: new Date(Date.now() + 60_000).toISOString() }),
+    lock: async (holder) => {
+      // The agent's own rule for holders (packages/agent/src/agent.ts), so a name it would refuse fails here too.
+      if (!/^[\w .:-]{1,64}$/.test(holder)) throw new AgentCallError(400, 'bad-request', 'Invalid lock holder');
+      return { id: 'lock-1', expiresAt: new Date(Date.now() + 60_000).toISOString() };
+    },
     renewLock: async () => undefined,
     unlock: async () => undefined,
   };
