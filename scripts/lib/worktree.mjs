@@ -1,15 +1,22 @@
 // Pure parts of scripts/worktree-env.mjs: what a slot's .env and .env.dev
 // contain, and how to read Windows' reserved port ranges.
-import { portBlock } from './ports.mjs';
+import { MAX_FAKE_CONTROL, portBlock } from './ports.mjs';
 
 export const projectName = (/** @type {number} */ slot) => `gsp-s${slot}`;
 // Never plain localhost: the Caddyfile already has a localhost site, and a duplicate address stops Caddy.
 export const devHost = (/** @type {number} */ slot) => `wt${slot}.localhost`;
 
+/** The slot's game ports (B+50…B+99): where its servers publish, as ORCH_HOST_PORTS. */
+export const slotGamePorts = (/** @type {number} */ slot) => {
+  const g = portBlock(slot).gamePorts;
+  return `${g[0]}-${g.at(-1)}`;
+};
+
 /**
  * Values a slot's .env must carry on top of .env.example. They keep the
- * slot's stack on 127.0.0.1, inside its port block, under its own project
- * name and image tag, and away from public certificates and DDNS updaters.
+ * slot's stack on 127.0.0.1, inside its port block (its game servers too),
+ * under its own project name and image tag, and away from public
+ * certificates and DDNS updaters.
  * @param {number} slot
  * @returns {Record<string, string>}
  */
@@ -23,11 +30,14 @@ export function slotOverrides(slot) {
     COMPOSE_PROFILES: '',
     PANEL_HOST: devHost(slot),
     LAN_IP: '127.0.0.1',
-    PZ_MEM_LIMIT: '4g',
     PANEL_MEM_LIMIT: '512m',
     PANEL_PORT: String(b.stackHttps),
     PZ_GAME_PORT: String(b.gamePorts[11]),
     PZ_UDP_PORT: String(b.gamePorts[12]),
+    ORCH_HOST_PORTS: slotGamePorts(slot),
+    ORCH_MAX_MEM_MB: '4096',
+    ORCH_MAX_SERVERS: '4',
+    ORCH_ALLOW_FAKE: '1',
     BACKUP_DIR: './.tmp/backups',
     VITEST_MAX_WORKERS: '3',
     TEST_TIME_SCALE: '2',
@@ -44,6 +54,10 @@ export function devEnvText(/** @type {number} */ slot) {
     `DEV_AGENT_PORT=${b.devAgents[0]}`,
     `DEV_WEB_PORT=${b.devWeb}`,
     `DEV_RCON_PORT=${b.fakeControl(0)}`,
+    // The fake orchestrator: agents of the servers it runs, their inside-the-container ports, their game ports.
+    `DEV_ORCH_AGENT_PORTS=${b.devAgents[1]}-${b.devAgents.at(-1)}`,
+    `DEV_ORCH_CONTROL_PORTS=${b.fakeControl(1)}-${b.fakeControl(MAX_FAKE_CONTROL)}`,
+    `DEV_ORCH_HOST_PORTS=${slotGamePorts(slot)}`,
     'DEV_STATE_DIR=.tmp/dev',
     '',
   ].join('\n');

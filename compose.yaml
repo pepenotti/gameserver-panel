@@ -1,13 +1,17 @@
-# Game server panel (for now: one Project Zomboid server + the panel).
-#   node scripts/init-env.mjs     # once: creates .env with fresh secrets
+# Game server panel: the panel, the orchestrator that creates the game
+# servers' containers, and Caddy for HTTPS (HST-01).
+#   node scripts/init-env.mjs              # once: creates .env with fresh secrets
+#   docker compose build steam             # the image game servers run (a build-only service)
 #   docker compose up -d --build
 # In a development worktree, never call docker compose directly: use
-#   node scripts/worktree-env.mjs --slot N    then    node scripts/stack.mjs up -d --build
+#   node scripts/worktree-env.mjs --slot N
+#   node scripts/stack.mjs build steam steam-fake    then    node scripts/stack.mjs up -d --build
 #
-# Published ports: game UDP ${PZ_GAME_PORT}/${PZ_UDP_PORT} and the panel on
-# ${PANEL_PORT} (HTTPS), bound to ${PUBLISH_ADDR} (default: every address).
-# Nothing else leaves the host: RCON and the agent API stay on the internal
-# `backend` network.
+# Published ports: the panel on ${PANEL_PORT} (HTTPS), and each game server's
+# own ports (inside ORCH_HOST_PORTS), all bound to ${PUBLISH_ADDR} (default:
+# every address). Nothing else leaves the host: the panel and the
+# orchestrator listen only on unix sockets in volumes, and the orchestrator
+# has no network at all (NFR-03).
 name: gameserver-panel
 
 x-hardening: &hardening
@@ -19,36 +23,33 @@ x-hardening: &hardening
     options: { max-size: 10m, max-file: "3" }
 
 services:
-  pz:
+  # The only container with Docker access (D3, NFR-02). It creates each game
+  # server's container, volumes and network from the panel's specs, names and
+  # labels them after this Compose project, and touches nothing else.
+  orchestrator:
     <<: *hardening
     build:
       context: .
-      dockerfile: docker/pz/Dockerfile
-    image: gsp/pz:${IMAGE_TAG:-local}
-    # Room for `save` + `quit` on a big world before Docker kills it.
-    stop_grace_period: 240s
+      dockerfile: docker/orchestrator/Dockerfile
+    image: gsp/orchestrator:${IMAGE_TAG:-local}
+    # Root without capabilities: the Docker socket belongs to root (see its Dockerfile).
+    user: "0:0"
+    read_only: true
+    network_mode: none
     environment:
-      AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}
-      # The adapter's ports by id (GAME_PORT_<ID>); the game listens on the published numbers.
-      GAME_PORT_GAME: ${PZ_GAME_PORT:-16261}
-      GAME_PORT_UDP: ${PZ_UDP_PORT:-16262}
-      TZ: ${TZ:-UTC}
-    ports:
-      # Same port inside and out: PZ advertises its own port to clients.
-      - target: ${PZ_GAME_PORT:-16261}
-        published: "${PZ_GAME_PORT:-16261}"
-        protocol: udp
-        host_ip: ${PUBLISH_ADDR:-0.0.0.0}
-      - target: ${PZ_UDP_PORT:-16262}
-        published: "${PZ_UDP_PORT:-16262}"
-        protocol: udp
-        host_ip: ${PUBLISH_ADDR:-0.0.0.0}
+      ORCH_TOKEN: ${ORCH_TOKEN:?run node scripts/init-env.mjs first}
+      ORCH_SOCKET: /run/orch/orch.sock
+      ORCH_HOST_PORTS: ${ORCH_HOST_PORTS:?set ORCH_HOST_PORTS in .env (the host ports game servers may publish)}
+      ORCH_MAX_MEM_MB: ${ORCH_MAX_MEM_MB:-16384}
+      ORCH_MAX_SERVERS: ${ORCH_MAX_SERVERS:-10}
+      ORCH_ALLOW_FAKE: ${ORCH_ALLOW_FAKE:-0}
+      # Game servers publish their ports where the panel's port is published.
+      ORCH_PUBLISH_ADDR: ${PUBLISH_ADDR:-}
     volumes:
-      - pz-install:/opt/pz
-      - pz-data:/data
-      - steam-home:/home/node/Steam
-    networks: [backend]
-    mem_limit: ${PZ_MEM_LIMIT:-12g}
+      # Read-write: creating containers is its job (and a :ro socket mount restricts nothing).
+      - /var/run/docker.sock:/var/run/docker.sock
+      - orch-sock:/run/orch
+    mem_limit: 128m
 
   panel:
     <<: *hardening
@@ -59,10 +60,14 @@ services:
     read_only: true
     tmpfs: [/tmp]
     environment:
+      # Only on its socket, which only Caddy also mounts (NFR-03).
+      PANEL_LISTEN: unix:/run/panel/panel.sock
+      ORCH_SOCKET: /run/orch/orch.sock
+      ORCH_TOKEN: ${ORCH_TOKEN:?run node scripts/init-env.mjs first}
+      # The server this install had before the server list (`default`), until the
+      # panel creates it through the orchestrator too.
       AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}
-      AGENT_URL: http://pz:8081
       PZ_SERVER_NAME: ${PZ_SERVER_NAME:-zomboid}
-      # Its published ports, recorded in the panel's server list (the pz service publishes them).
       GAME_PORT_GAME: ${PZ_GAME_PORT:-16261}
       GAME_PORT_UDP: ${PZ_UDP_PORT:-16262}
       # The adapter's launch secrets, as GAME_SECRET_<KEY> (the key in upper snake case).
@@ -73,13 +78,16 @@ services:
       PANEL_OWNER_PASSWORD: ${PANEL_OWNER_PASSWORD:-}
       CLIENT_IP_TRUSTWORTHY: ${CLIENT_IP_TRUSTWORTHY:-false}
       TZ: ${TZ:-UTC}
+    # No game volumes (D11): server files go through each server's agent.
     volumes:
       - panel-data:/var/lib/panel
-      - pz-data:/data
-      - pz-install:/opt/pz:ro
+      - panel-sock:/run/panel
+      # Read-only is enough to connect to a socket.
+      - orch-sock:/run/orch:ro
       - ${BACKUP_DIR:-./backups}:/backups
-    networks: [edge, backend]
-    depends_on: [pz]
+    # Egress only (Discord, mod lookups); the orchestrator adds each server's network.
+    networks: [panel]
+    depends_on: [orchestrator]
     mem_limit: ${PANEL_MEM_LIMIT:-1g}
 
   caddy:
@@ -104,12 +112,33 @@ services:
         host_ip: ${PUBLISH_ADDR:-0.0.0.0}
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # The panel's socket (reverse_proxy unix//run/panel/panel.sock).
+      - panel-sock:/run/panel:ro
       # Holds Caddy's local CA and certificates: keep it, or every device sees a new certificate.
       - caddy-data:/data
       - caddy-config:/config
     networks: [edge]
     depends_on: [panel]
     mem_limit: 256m
+
+  # Build-only: the runtime images the orchestrator runs game servers from
+  # (never started by Compose). Naming them builds them: docker compose build steam steam-fake
+  steam:
+    profiles: [images]
+    build:
+      context: .
+      dockerfile: docker/steam/Dockerfile
+      target: runtime
+    image: gsp/steam:${IMAGE_TAG:-local}
+
+  # The same with fake games instead of Steam: tests and development slots (ORCH_ALLOW_FAKE=1).
+  steam-fake:
+    profiles: [images]
+    build:
+      context: .
+      dockerfile: docker/steam/Dockerfile
+      target: fake
+    image: gsp/steam-fake:${IMAGE_TAG:-local}
 
   # With PANEL_TLS=duckdns: keeps <DUCKDNS_SUBDOMAIN>.duckdns.org pointing at
   # this network's public IP (an empty ip= makes DuckDNS use the caller's).
@@ -149,13 +178,16 @@ services:
     mem_limit: 64m
 
 networks:
+  # Caddy's: where the HTTPS port is published.
   edge: {}
-  backend: {}
+  # The panel's way out (Discord, mod lookups).
+  panel: {}
 
 volumes:
-  pz-install:
-  pz-data:
-  steam-home:
   panel-data:
+  # The panel's socket: mounted by the panel and Caddy only.
+  panel-sock:
+  # The orchestrator's socket: mounted by the orchestrator and the panel only.
+  orch-sock:
   caddy-data:
   caddy-config:

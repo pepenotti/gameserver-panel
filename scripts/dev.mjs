@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Local development without Docker: the agent drives the fake PZ server,
-// the panel API and Vite serve the UI, all on 127.0.0.1.
+// Local development without Docker, all on 127.0.0.1: the panel API, Vite
+// serving the UI, the fake orchestrator (the real orchestrator API; each
+// server it creates is a local agent driving its game's fake), and the agent
+// of the `default` server driving the fake PZ server.
 //
 //   node scripts/dev.mjs            then open the URL it prints
 //   node scripts/dev.mjs --help     show the ports and folders it would use
@@ -10,8 +12,14 @@
 // `node scripts/worktree-env.mjs --slot N`), else from the environment, else
 // the defaults below. State lives in DEV_STATE_DIR (default .tmp/dev);
 // delete that folder to start over.
+//
+// The panel reaches the fake orchestrator as it reaches the real one, over a
+// local socket (ORCH_SOCKET, ORCH_TOKEN): a named pipe on Windows (what Node
+// listens on there), a socket file in the state folder elsewhere.
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,6 +45,21 @@ const host = process.env.DEV_HOST || 'localhost';
 const tmp = path.resolve(root, process.env.DEV_STATE_DIR || path.join('.tmp', 'dev'));
 const url = `http://${host}:${ports.web}`;
 
+/** Where the fake orchestrator listens: one name per checkout, so worktrees never share it. */
+function orchSocket() {
+  const tag = createHash('sha256').update(root).digest('hex').slice(0, 12);
+  if (process.platform === 'win32') return `\\\\.\\pipe\\gsp-dev-orch-${tag}`;
+  const inState = path.join(tmp, 'orch.sock');
+  // Socket paths are limited to ~100 bytes.
+  return Buffer.byteLength(inState) < 100 ? inState : path.join(os.tmpdir(), `gsp-dev-orch-${tag}.sock`);
+}
+const orch = {
+  socket: process.env.DEV_ORCH_SOCKET || orchSocket(),
+  agentPorts: process.env.DEV_ORCH_AGENT_PORTS || '8082-8084',
+  controlPorts: process.env.DEV_ORCH_CONTROL_PORTS || '27116-27147',
+  hostPorts: process.env.DEV_ORCH_HOST_PORTS || '16300-16349',
+};
+
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log(`usage: node scripts/dev.mjs
 
@@ -44,6 +67,7 @@ repo root   ${root}
 env file    ${existsSync(envDev) ? envDev : '(no .env.dev; defaults and environment)'}
 state dir   ${tmp}
 ports       panel ${ports.panel}, agent ${ports.agent}, web ${ports.web}, fake RCON ${ports.rcon}
+orchestrator  fake, on ${orch.socket}; its servers: agents ${orch.agentPorts}, inside ports ${orch.controlPorts}, game ports ${orch.hostPorts}
 open        ${url}`);
   process.exit(0);
 }
@@ -51,10 +75,30 @@ open        ${url}`);
 mkdirSync(tmp, { recursive: true });
 const node = process.execPath;
 const token = 'dev-agent-token-0123456789abcdef0123456789';
+const orchToken = 'dev-orch-token-0123456789abcdef01234567890';
 
 const common = { ...process.env, FORCE_COLOR: '1' };
 const procs = [
   {
+    name: 'orch',
+    color: 32,
+    cmd: [node, '--import', 'tsx', 'tools/fake-orchestrator/main.ts'],
+    env: {
+      ORCH_SOCKET: orch.socket,
+      ORCH_TOKEN: orchToken,
+      ORCH_HOST_PORTS: orch.hostPorts,
+      ORCH_MAX_MEM_MB: '8192',
+      ORCH_MAX_SERVERS: '3',
+      ORCH_ALLOW_FAKE: '1',
+      FAKE_ORCH_STATE_DIR: path.join(tmp, 'orch'),
+      FAKE_ORCH_AGENT_PORTS: orch.agentPorts,
+      FAKE_ORCH_CONTROL_PORTS: orch.controlPorts,
+      FAKE_PZ_BOOT_MS: '2500',
+      FAKE_PZ_PLAYERS: process.env.FAKE_PZ_PLAYERS ?? 'Rick,Daryl',
+    },
+  },
+  {
+    // The `default` server of today's single-server wiring (AGENT_URL below).
     name: 'agent',
     color: 33,
     cmd: [node, '--import', 'tsx', 'packages/agent/src/main.ts'],
@@ -79,6 +123,8 @@ const procs = [
     env: {
       AGENT_TOKEN: token,
       AGENT_URL: `http://127.0.0.1:${ports.agent}`,
+      ORCH_SOCKET: orch.socket,
+      ORCH_TOKEN: orchToken,
       PANEL_HOST_BIND: '127.0.0.1',
       PANEL_PORT_BIND: String(ports.panel),
       PANEL_DATA_DIR: path.join(tmp, 'panel'),

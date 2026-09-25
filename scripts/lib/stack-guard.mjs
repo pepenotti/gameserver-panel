@@ -103,6 +103,83 @@ export function checkPublished(ports, slot) {
 }
 
 /**
+ * `ORCH_HOST_PORTS` as inclusive ranges ("30150-30199,30160" → [[30150,30199],[30160,30160]]),
+ * or null when it isn't a list of ports and ranges.
+ * @param {string} text
+ * @returns {[number, number][] | null}
+ */
+export function parsePortList(text) {
+  /** @type {[number, number][]} */
+  const out = [];
+  for (const part of text.split(',').map((s) => s.trim())) {
+    const m = /^(\d{1,5})(?:-(\d{1,5}))?$/.exec(part);
+    if (!m) return null;
+    const a = Number(m[1]);
+    const b = m[2] === undefined ? a : Number(m[2]);
+    if (a > b) return null;
+    out.push([a, b]);
+  }
+  return out;
+}
+
+/**
+ * Reasons the rendered orchestrator could reach outside this slot. It must
+ * have no network and publish nothing itself, and the game servers it
+ * creates must publish on 127.0.0.1 and only inside the slot's game ports
+ * (B+50…B+99), where the rendered ports check can't see them.
+ * @param {{ services?: Record<string, { network_mode?: string; networks?: unknown; ports?: unknown[]; environment?: Record<string, string | null> }> }} config
+ * @param {number} slot
+ */
+export function checkOrchestrator(config, slot) {
+  const o = config.services?.orchestrator;
+  if (!o) return [];
+  const games = portBlock(slot).gamePorts;
+  const [first, last] = [games[0] ?? 0, games.at(-1) ?? 0];
+  /** @type {string[]} */
+  const reasons = [];
+  if (o.network_mode !== 'none') reasons.push(`the orchestrator must have no network (network_mode: none), not ${o.network_mode ?? 'the default network'}`);
+  if (o.ports?.length) reasons.push('the orchestrator must not publish ports');
+  const env = o.environment ?? {};
+  if (env.ORCH_PUBLISH_ADDR !== '127.0.0.1') reasons.push(`the orchestrator would publish game servers on ${env.ORCH_PUBLISH_ADDR || 'every address'}, not 127.0.0.1`);
+  const ranges = parsePortList(env.ORCH_HOST_PORTS ?? '');
+  if (!ranges) reasons.push(`ORCH_HOST_PORTS ${JSON.stringify(env.ORCH_HOST_PORTS ?? '')} is not a list of ports and ranges`);
+  for (const [a, b] of ranges ?? []) {
+    if (a < first || b > last) reasons.push(`ORCH_HOST_PORTS ${a === b ? a : `${a}-${b}`} is outside slot ${slot}'s game ports ${first}-${last}`);
+  }
+  return reasons;
+}
+
+/** The label the orchestrator puts on everything it creates for a stack. */
+export const serverLabel = (/** @type {string} */ project) => `label=gsp.stack=${project}`;
+
+/**
+ * Docker commands that remove what the orchestrator created for `project`
+ * (its game servers' containers and networks, and with `volumes` their
+ * volumes): Compose doesn't know them, so `down` and `clean` do this after
+ * Compose. Containers stop first, with their own stop timeout (a clean save).
+ * @param {string} project
+ * @param {{ containers: string[]; networks: string[]; volumes: string[] }} found  ids from `docker ps -aq` / `network ls -q` / `volume ls -q` filtered by `serverLabel`
+ * @param {boolean} volumes
+ * @returns {string[][]}
+ */
+export function serverCleanup(project, found, volumes) {
+  if (!PROJECT_RE.test(project)) throw new Error(`not a slot project: ${project}`);
+  const ok = (/** @type {string} */ id) => /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(id);
+  /** @type {string[][]} */
+  const out = [];
+  const containers = found.containers.filter(ok);
+  if (containers.length) out.push(['stop', ...containers], ['rm', ...containers]);
+  const networks = found.networks.filter(ok);
+  if (networks.length) out.push(['network', 'rm', ...networks]);
+  const vols = found.volumes.filter(ok);
+  if (volumes && vols.length) out.push(['volume', 'rm', ...vols]);
+  return out;
+}
+
+/** Whether Compose arguments drop volumes (`down -v`, `--volumes`). */
+export const dropsVolumes = (/** @type {string[]} */ args) => args.slice(1).some((a) => a === '--volumes' || a.startsWith('--volumes=') || /^-[a-zA-Z]*v[a-zA-Z]*$/.test(a));
+
+/**
  * Parses `docker ps --format '{{.Label "com.docker.compose.project"}}\t{{.Ports}}'`.
  * @param {string} text
  * @returns {{ project: string; ports: { port: number; protocol: string }[] }[]}
@@ -173,9 +250,8 @@ export function planCompose(input) {
     const value = args[rmi]?.includes('=') ? args[rmi]?.split('=')[1] : args[rmi + 1];
     if (value !== 'local') return { error: '--rmi only takes local here: images of other projects may share tags' };
   }
-  if (args[0] === 'down' && sub !== 'clean' && !yes) {
-    const dropsVolumes = args.slice(1).some((a) => a === '--volumes' || a.startsWith('--volumes=') || /^-[a-zA-Z]*v[a-zA-Z]*$/.test(a));
-    if (dropsVolumes) return { error: 'down with --volumes deletes this stack\'s data; add --yes-this-stack, or use clean' };
+  if (args[0] === 'down' && sub !== 'clean' && !yes && dropsVolumes(args)) {
+    return { error: 'down with --volumes deletes this stack\'s data; add --yes-this-stack, or use clean' };
   }
   return { args };
 }

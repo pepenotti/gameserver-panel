@@ -42,7 +42,8 @@
 (panel) {
 	encode zstd gzip
 	header -Server
-	reverse_proxy panel:8080
+	# The panel listens only on its socket in the panel-sock volume (NFR-03).
+	reverse_proxy unix//run/panel/panel.sock
 }
 
 {$PANEL_HOST}:{$PANEL_PORT} {
