@@ -103,7 +103,7 @@ describe('creating a server (D3, NFR-02, NFR-03)', () => {
     expect(hc.SecurityOpt).toEqual(['no-new-privileges:true']);
     expect(hc.Privileged).toBe(false);
     expect(hc.ReadonlyRootfs).toBe(true);
-    expect(hc.Tmpfs).toEqual({ '/tmp': 'rw,nosuid,nodev,size=256m' });
+    expect(hc.Tmpfs).toEqual({ '/tmp': 'rw,exec,nosuid,nodev,size=256m' });
     expect(hc.PidsLimit).toBe(4096);
     expect(hc.Memory).toBe(2048 * MIB);
     expect(hc.MemorySwap).toBe(2048 * MIB);

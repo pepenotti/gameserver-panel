@@ -65,7 +65,8 @@ docker image ls 'gsp/*'                         # five images, all tagged $T
       lists `server.mjs` and `steamcmd.mjs`.
 - [ ] Nothing else is needed at runtime for files and archives: the agent packs
       tar + zstd and snapshots SQLite with Node 24's own `node:zlib` and
-      `node:sqlite` (no `tar`/`zstd` binaries in the image).
+      `node:sqlite`. It never calls a `tar` or `zstd` program (the base
+      image has `tar`, unused; there is no `zstd`).
 
 ## 2. Start the stack
 
@@ -172,7 +173,7 @@ docker network inspect $S-net-pz-a --format '{{range .Containers}}{{.Name}} {{en
 - [ ] `drop=[ALL] add=[]` (or empty) `sec=[no-new-privileges:true] ipc=private pids=4096`
 - [ ] `mem` = `swap` = `memLimitMb` × 1048576 (pz-a 5368709120, pz-b 6442450944);
       `cpus=0` (no CPU limit asked); `restart=unless-stopped stop=240`
-- [ ] `tmpfs={"/tmp":"rw,nosuid,nodev,size=256m"}`, json-file 10m × 3
+- [ ] `tmpfs={"/tmp":"rw,exec,nosuid,nodev,size=256m"}`, json-file 10m × 3; inside, `grep " /tmp " /proc/mounts` shows no `noexec`
 - [ ] Mounts: only the three named volumes `$S-srv-pz-a-{data,install,steam}`
       on `/data`, `/opt/game`, `/home/node`; no bind mount, no Docker socket.
 - [ ] `mode=$S-net-pz-a nets=$S-net-pz-a`; ports only the game's two UDP ports

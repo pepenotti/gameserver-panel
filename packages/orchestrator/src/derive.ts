@@ -14,8 +14,13 @@ export const SERVER_USER = '1000:1000';
 export const PIDS_LIMIT = 4096;
 /** Seconds Docker waits after SIGTERM when nobody says otherwise: room to save a big world (NFR-04). */
 export const DEFAULT_STOP_TIMEOUT_SEC = 240;
-/** The only writable path outside the server's volumes. Not noexec: JVMs load native libraries from /tmp. */
-export const TMPFS: Readonly<Record<string, string>> = { '/tmp': 'rw,nosuid,nodev,size=256m' };
+/**
+ * The only writable path outside the server's volumes. `exec` must be explicit:
+ * Docker mounts every tmpfs noexec unless told otherwise, and JVMs load native
+ * libraries they unpack into /tmp (a JDBC SQLite driver, for one, won't start
+ * without it). It grants nothing new: the game already runs code from its volumes.
+ */
+export const TMPFS: Readonly<Record<string, string>> = { '/tmp': 'rw,exec,nosuid,nodev,size=256m' };
 export const LOG_CONFIG = { Type: 'json-file', Config: { 'max-size': '10m', 'max-file': '3' } } as const;
 const MIB = 1024 * 1024;
 
