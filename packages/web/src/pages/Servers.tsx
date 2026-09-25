@@ -1,4 +1,4 @@
-import { ActionIcon, Alert, Badge, Button, Card, Center, Group, Loader, Menu, SimpleGrid, Stack, Text, ThemeIcon, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Center, Group, Loader, Menu, SimpleGrid, Stack, Text, ThemeIcon, Title, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -64,9 +64,9 @@ function ServerCard({ s, live, open }: { s: ServerSummary; live: LiveServer | un
       <Stack gap={6} style={{ flex: 1 }}>
         <Group justify="space-between" wrap="nowrap" align="flex-start">
           <Stack gap={0} style={{ minWidth: 0 }}>
-            <Text fw={600} component={Link} to={serverHref(s.id, '/')} truncate>
+            <Anchor component={Link} to={serverHref(s.id, '/')} fw={600} c="var(--mantine-color-text)" underline="hover" truncate>
               {s.name}
-            </Text>
+            </Anchor>
             <Text size="xs" c="dimmed" truncate>
               {game}
             </Text>

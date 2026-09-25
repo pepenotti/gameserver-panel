@@ -12,6 +12,11 @@ const COLOR: Record<ServerState, string> = {
   failed: 'red',
 };
 
+/** The badge's colour for a server's state (red while its agent can't be reached). */
+export function stateColor(state: ServerState | null | undefined, agentConnected: boolean): string {
+  return !agentConnected || !state ? 'red' : COLOR[state];
+}
+
 export function StateBadge({ state, agentConnected, size = 'md' }: { state: ServerState | undefined; agentConnected: boolean; size?: 'sm' | 'md' | 'lg' }) {
   const { t } = useTranslation();
   if (!agentConnected || !state) {

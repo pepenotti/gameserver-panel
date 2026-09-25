@@ -1,4 +1,4 @@
-import { AppShell, Burger, Divider, Group, Menu, NavLink, ScrollArea, Select, Text, UnstyledButton } from '@mantine/core';
+import { AppShell, Box, Burger, Divider, Group, Menu, NavLink, ScrollArea, Select, Text, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconAdjustments,
@@ -22,7 +22,7 @@ import {
 import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink as RouterLink, useLocation, useNavigate } from 'react-router';
-import type { Permission } from '@gsp/shared';
+import type { Permission, ServerState } from '@gsp/shared';
 import { useLive, useLiveServers } from '../api/live';
 import { localize, NEED_MODS, NEED_RESETS, type Need } from '../api/meta';
 import { lastServer, serverHref, useCanSomewhere, useServers, useServerScope, type ServerSummary } from '../api/server';
@@ -30,7 +30,7 @@ import { useMeta } from '../api/useMeta';
 import { useSession } from '../api/session';
 import { LangSwitch } from './LangSwitch';
 import { LiveToasts } from './LiveToasts';
-import { StateBadge } from './StateBadge';
+import { StateBadge, stateColor } from './StateBadge';
 
 /** A page: hidden without its permission, and without what it needs from the game (`capability`, `when`). */
 export interface NavItem extends Need {
@@ -92,7 +92,10 @@ function ServerSwitcher({ list, sid, onPicked }: { list: ServerSummary[]; sid: s
     navigate(serverHref(next, SERVER_NAV.some((n) => n.to !== '/' && rest.startsWith(n.to)) ? rest : '/'));
     onPicked();
   };
-  const stateOf = (s: ServerSummary) => (live.open && live.servers[s.id]?.status ? live.servers[s.id]!.status!.state : s.state);
+  const now = (s: ServerSummary) => {
+    const l = live.open ? live.servers[s.id] : undefined;
+    return { state: (l?.status ? l.status.state : s.state) as ServerState | null, connected: l ? l.agentConnected : s.agentConnected };
+  };
   return (
     <Select
       aria-label={t('nav.switchServer')}
@@ -103,22 +106,22 @@ function ServerSwitcher({ list, sid, onPicked }: { list: ServerSummary[]; sid: s
       searchable={list.length > 6}
       mx={4}
       mb={4}
-      comboboxProps={{ withinPortal: true }}
+      comboboxProps={{ withinPortal: true, width: 300, position: 'bottom-start' }}
       renderOption={({ option }) => {
         const s = list.find((x) => x.id === option.value)!;
+        const n = now(s);
+        const stateText = n.connected && n.state ? t(`state.${n.state}`) : t('state.agentOffline');
         return (
-          <Group gap={6} wrap="nowrap" justify="space-between" w="100%">
+          <Group gap={8} wrap="nowrap" w="100%">
+            <Box w={8} h={8} style={{ borderRadius: '50%', flexShrink: 0, background: `var(--mantine-color-${stateColor(n.state, n.connected)}-6)` }} title={stateText} />
             <div style={{ minWidth: 0 }}>
               <Text size="sm" truncate>
                 {s.name}
               </Text>
               <Text size="xs" c="dimmed" truncate>
-                {localize(s.adapterName, i18n.language)} · {t(`roles.${s.role}`)}
+                {stateText} · {localize(s.adapterName, i18n.language)} · {t(`roles.${s.role}`)}
               </Text>
             </div>
-            <Text size="xs" c="dimmed">
-              {t(`state.${stateOf(s) ?? 'unknown'}`)}
-            </Text>
           </Group>
         );
       }}
