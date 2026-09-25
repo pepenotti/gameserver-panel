@@ -40,10 +40,11 @@ online mode can show is listed at the end.
    comments go, keys are sorted, unknown keys are kept. An edit made on disk while the server
    runs is lost at the next such write. `ops.json` is overwritten the same way at the next
    `op`/`deop`; `whitelist.json` edits are picked up only by `whitelist reload`.
-4. **`save-all flush` answers before the last world writes.** With a player online, world files
-   still changed 0.3–0.6 s after the RCON reply (vanilla and Fabric every time, Paper once in
-   four). A copy must wait for the world to settle after the flush. Joins and leaves write
-   player files even while saving is off.
+4. **`save-all flush` is synchronous, but saving off isn't a freeze.** Its RCON reply
+   (`…Saved the game`, 0.2–0.9 s with a player online) comes after the last world write, and
+   a `tar` taken right then is clean. Afterwards nothing changes while players only stand
+   around, but a player **leaving** while saving is off still writes their player files (and,
+   on vanilla, a chunk file), and a join may write a chunk file.
 5. **Java 25 for 26.x.** 26.1, 26.2 and 26.3 declare Java 25; a 26.3 jar on Java 21 fails in
    under a second. Temurin publishes no Java 16 image, which 1.17.x declares.
 6. **Paper's download API moved.** `api.papermc.io/v2` answers 410 Gone (sunset 2026-07-01);
@@ -178,12 +179,13 @@ features are not available in this environment`. Timestamps are the container's 
 | Fact | Value | How verified | Holds for |
 |---|---|---|---|
 | `save-off` | `Automatic saving is now disabled` (again: `Saving is already turned off`) | `*/rcon/save.json` | all three |
-| `save-all flush` | One reply, `Saving the game (this may take a moment!)Saved the game` (Paper with `\n`), after 18 ms (empty, vanilla) to 0.5 s (a player online). Works while saving is off and while the server is paused. | `*/rcon/save.json`, `*/rcon/flush-timing.json` | all three |
-| After the reply | With a player online, world files (level.dat, region, entities, poi, `data/minecraft/*.dat`) kept changing for **0.3–0.6 s** after the reply (vanilla and Fabric in 4/4 rounds, Paper in 1/4); then nothing for 30 s while saving stayed off. A player joining or leaving while saving is off writes their player files and some chunk files. A `tar` run right after the reply warned `file changed as we read it`. | `vanilla/rcon/backup.json`, the watch runs | all three |
+| `save-all flush` | One reply, `Saving the game (this may take a moment!)Saved the game` (Paper with `\n`): 18 ms on an empty server (vanilla), 0.5–0.9 s with a player online (Paper 0.2 s after its first flush). Works while saving is off and while the server is paused. | `*/rcon/save.json`, `*/rcon/flush-timing.json` (reply awaited, 4 rounds per loader) | all three |
+| After the reply | The newest world file was written **before** the reply arrived in every round (12 of 12), and a `tar` of `world/` taken right after the reply finished without "file changed" warnings (12 of 12). With the player standing still and saving off, nothing under `world/` changed for 10 s. | Container clock around the awaited reply and file times; `tar` exit status | all three |
+| Joins and leaves while saving is off | A leaving player's files are written anyway (`world/players/{data,advancements,stats}/<uuid>`), and on vanilla one `entities` region file; a join wrote one `poi` region file on vanilla and nothing on Paper. | File times around a test client's join and leave | vanilla, Paper |
 | `save-on` | `Automatic saving is now enabled` (again: `Saving is already turned on`) | `*/rcon/save.json` | all three |
 | What the world is | `world/` (the `level-name`), with every dimension inside it (`world/dimensions/minecraft/{overworld,the_nether,the_end}/{region,entities,poi,data}`), `world/data/minecraft/*.dat`, `world/players/`, `world/level.dat` (+ `level.dat_old`), `world/datapacks/`. **The same on Paper** (plus `paper-world.yml` and `data/paper/` per dimension). | `*/tree/data-running.txt`, `paper/tree/data-26.2-83.txt` | 26.2, 26.3 |
 | `session.lock` | `world/session.lock`, 3 bytes (a UTF-8 snowman), held with a file lock while running, still readable; left behind after a stop. | Reads while running | all three |
-| Restore | A world copied this way (without `session.lock`) into a stopped server booted cleanly (`Done`, no warnings about the world). | `vanilla/logs/restored-world-boot.log` | vanilla |
+| Restore | A world copied while running (without `session.lock`) and put back into the stopped server booted cleanly (`Done`, no warnings about the world). That copy was even taken before the flush had answered. | `vanilla/logs/restored-world-boot.log` | vanilla |
 
 ### Ports (SRV-01, SRV-08, NFR-03)
 | Fact | Value | How verified | Holds for |
@@ -232,13 +234,12 @@ Every `server.properties` key takes effect at the next start (`restartKeys: '*'`
 
 ### Backup procedure (BAK-02), as measured
 1. `save-off`; expect `Automatic saving is now disabled` or `Saving is already turned off`.
-2. `save-all flush`; expect a reply containing `Saved the game`.
-3. Wait for the world to settle: no file under `world/` changed for 2 s (measured writes ended
-   within 0.6 s of the reply), with an upper bound.
-4. Copy `world/` without `world/session.lock`, plus the config files and lists.
-5. `save-on`, always, even when the copy failed.
-A player joining or leaving during step 4 writes files; the copy should notice files that
-changed while it read them (tar does) and copy those again.
+2. `save-all flush`, over RCON, and wait for its reply: it contains `Saved the game` once the
+   world is on disk (a console fallback waits for the `Saved the game` log line instead).
+3. Copy `world/` without `world/session.lock`, plus the config files and lists.
+4. `save-on`, always, even when the copy failed.
+A player leaving during step 3 writes their own files; a copy that notices a file changing under
+it (tar reports it) should copy that file again.
 
 ### Open questions (for the integrator and the owner)
 - Which Minecraft versions are offered? Measured: 26.3 on 25, 1.20.6 on 21, 1.17.1 and 1.16.5
