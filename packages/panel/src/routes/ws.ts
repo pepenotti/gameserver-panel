@@ -39,6 +39,8 @@ export type WsMessage =
   | { type: 'hello'; servers: WsServerSnapshot[] }
   /** A server that is no longer visible (removed, or the grant taken away). */
   | { type: 'gone'; serverId: string }
+  /** The servers this user sees, their names or the user's roles on them changed: fetch `GET /api/servers` again. */
+  | { type: 'servers' }
   | ({ type: 'event'; serverId: string } & SeqEvent)
   | { type: 'op'; serverId: string; op: OpState }
   /** `serverId` null: about the host. */
@@ -61,8 +63,8 @@ export function wsRoutes(app: FastifyInstance, deps: Deps): void {
       socket.send(JSON.stringify(msg));
     };
 
-    /** The servers this user sees now: their role there, and the feed subscription. */
-    const subs = new Map<string, { role: Role; off: () => void }>();
+    /** The servers this user sees now: the context followed, their role there, and the feed subscription. */
+    const subs = new Map<string, { srv: ServerContext; role: Role; off: () => void }>();
     const may = (serverId: string, p: Permission) => {
       const s = subs.get(serverId);
       return !!s && can(s.role, p);
@@ -75,7 +77,10 @@ export function wsRoutes(app: FastifyInstance, deps: Deps): void {
       op: srv.ops.last(),
     });
 
-    /** Follow the servers the user may see: subscribe to new ones, drop the others. */
+    /**
+     * Follow the servers the user may see: subscribe to new ones (and to a
+     * server's new context once it was rebuilt, e.g. renamed), drop the others.
+     */
     const sync = (first: boolean) => {
       const who = principal(user);
       const grants = deps.grants.forUser(user.id);
@@ -86,14 +91,15 @@ export function wsRoutes(app: FastifyInstance, deps: Deps): void {
         if (role === null) continue;
         visible.add(srv.id);
         const cur = subs.get(srv.id);
-        if (cur) {
+        if (cur?.srv === srv) {
           cur.role = role;
           continue;
         }
+        cur?.off();
         const off = srv.feed.onEvent((e) => {
           if (may(srv.id, TOPIC[e.event.type])) send({ type: 'event', serverId: srv.id, ...e }, e.event.type === 'log');
         });
-        subs.set(srv.id, { role, off });
+        subs.set(srv.id, { srv, role, off });
         added.push(snapshot(srv, role));
       }
       for (const [id, s] of subs) {
@@ -106,25 +112,33 @@ export function wsRoutes(app: FastifyInstance, deps: Deps): void {
     };
     sync(true);
 
+    /**
+     * Sessions can be revoked, and roles, grants and servers change, while
+     * the socket is open: checked when the panel says something changed
+     * (`access` events), and every 30 s for what it can't announce (expiry).
+     */
+    const recheck = (): boolean => {
+      const row = deps.db.prepare('SELECT user_id, expires_at FROM sessions WHERE id_hash = ?').get(sessionHash) as { user_id: number; expires_at: number } | undefined;
+      const fresh = row ? deps.users.byId(row.user_id) : null;
+      if (!row || row.expires_at <= Date.now() || !fresh || fresh.disabled) {
+        socket.close(4001, 'session ended');
+        return false;
+      }
+      user = fresh;
+      sync(false);
+      return true;
+    };
+    const timer = setInterval(recheck, 30_000);
+
     const offBus = deps.bus.on((e) => {
-      if (e.type === 'op') {
+      if (e.type === 'access') {
+        if ((e.userId === null || e.userId === user.id) && recheck()) send({ type: 'servers' });
+      } else if (e.type === 'op') {
         if (subs.has(e.serverId)) send({ type: 'op', serverId: e.serverId, op: e.op });
       } else if (e.serverId === null ? canHost(principal(user), e.permission) : may(e.serverId, e.permission)) {
         send({ type: 'notice', serverId: e.serverId, kind: e.kind, message: e.message });
       }
     });
-
-    // Sessions can be revoked, and roles, grants and servers change, while the socket is open.
-    const recheck = setInterval(() => {
-      const row = deps.db.prepare('SELECT user_id, expires_at FROM sessions WHERE id_hash = ?').get(sessionHash) as { user_id: number; expires_at: number } | undefined;
-      const fresh = row ? deps.users.byId(row.user_id) : null;
-      if (!row || row.expires_at <= Date.now() || !fresh || fresh.disabled) {
-        socket.close(4001, 'session ended');
-        return;
-      }
-      user = fresh;
-      sync(false);
-    }, 30_000);
 
     socket.on('message', (raw) => {
       if (raw.toString() === 'ping') send({ type: 'pong' });
@@ -133,7 +147,7 @@ export function wsRoutes(app: FastifyInstance, deps: Deps): void {
       for (const s of subs.values()) s.off();
       subs.clear();
       offBus();
-      clearInterval(recheck);
+      clearInterval(timer);
     });
   });
 }

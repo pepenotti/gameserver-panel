@@ -1,6 +1,6 @@
-import { isGrantRole, type GrantRole, type ServerGrant } from '@gsp/shared';
+import { isGrantRole, roleForGrants, type GrantRole, type Role, type ServerGrant } from '@gsp/shared';
 import type { Db } from '../db/db';
-import { UserError } from './users';
+import { UserError, type Users } from './users';
 
 /**
  * Per-server roles (`server_grants`, ACC-02): what a scope-`granted`
@@ -38,4 +38,19 @@ export class ServerGrants {
   remove(userId: number, serverId: string): boolean {
     return Number(this.db.prepare('DELETE FROM server_grants WHERE user_id = ? AND server_id = ?').run(userId, serverId).changes) > 0;
   }
+}
+
+/**
+ * Keeps a scope-`granted` account's role at its highest grant
+ * (`roleForGrants`), so role-wide rules such as mandatory 2FA follow what it
+ * can do somewhere (ACC-01, ACC-02). Call after its grants or scope change,
+ * and after a server it had a grant on is removed. Returns its role now.
+ */
+export function syncRoleWithGrants(users: Users, grants: ServerGrants, userId: number): Role | null {
+  const u = users.byId(userId);
+  if (!u) return null;
+  if (u.role === 'owner' || u.scope !== 'granted') return u.role;
+  const role = roleForGrants(grants.forUser(userId));
+  if (role !== u.role) users.setRole(userId, role);
+  return role;
 }

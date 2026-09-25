@@ -1,10 +1,11 @@
+import { createHash } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
-import type { ModSource } from '@gsp/adapter-api';
+import type { ModSource, PanelAdapter } from '@gsp/adapter-api';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
-import type { AgentStatus, SeqEvent } from '@gsp/shared';
+import { ORCHESTRATOR_API_VERSION, type AgentStatus, type CpuArch, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { bootstrapOwner } from '../src/auth/bootstrap';
@@ -12,9 +13,12 @@ import { SESSION_COOKIE } from '../src/auth/sessions';
 import { base32Decode, currentStep, hotp } from '../src/auth/totp';
 import { openDb, type Db } from '../src/db/db';
 import type { PanelEnv } from '../src/env';
+import { LocalServerFiles } from '../src/files/local';
 import type { AgentFeed, Deps } from '../src/http/deps';
 import type { ServerContext } from '../src/servers/context';
-import { createPanelDeps } from '../src/wiring';
+import { OrchestratorCallError, type OrchestratorClient } from '../src/servers/orchestrator';
+import type { AgentTarget } from '../src/servers/registry';
+import { createPanelDeps, FACTORIES, isManaged } from '../src/wiring';
 
 export const ORIGIN = 'https://panel.test:8443';
 export const OWNER = { username: 'alice', password: 'Primera-clave-2026' };
@@ -91,16 +95,121 @@ export function fakeAgent(feed: FakeFeed): AgentApi & { calls: string[] } {
 
 export const noNetwork = (() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch;
 
+/**
+ * The orchestrator in memory (D3's API, `@gsp/shared` orchestrator-api):
+ * containers by id with the spec each was created from, every call made,
+ * and failures on demand.
+ */
+export class FakeOrchestrator implements OrchestratorClient {
+  arch: CpuArch = 'amd64';
+  cpus = 8;
+  readonly containers = new Map<string, ServerContainer & { spec: ServerSpec; volumes: boolean }>();
+  /** Volumes left behind by removals that kept them, by server id. */
+  readonly keptVolumes = new Set<string>();
+  readonly calls: string[] = [];
+  /** The next call of a method fails with this error (once). */
+  readonly failNext = new Map<keyof OrchestratorClient, OrchestratorCallError>();
+  /** Every call fails with this: the orchestrator is down. */
+  down: OrchestratorCallError | null = null;
+
+  private check(method: keyof OrchestratorClient, detail = ''): void {
+    this.calls.push(detail ? `${method} ${detail}` : method);
+    if (this.down) throw this.down;
+    const f = this.failNext.get(method);
+    if (f) {
+      this.failNext.delete(method);
+      throw f;
+    }
+  }
+
+  private get(id: string) {
+    const c = this.containers.get(id);
+    if (!c) throw new OrchestratorCallError(404, 'not-found', `No server ${id}`);
+    return c;
+  }
+
+  private view(c: ServerContainer & { spec: ServerSpec; volumes: boolean }): ServerContainer {
+    const { spec: _spec, volumes: _volumes, ...rest } = c;
+    return rest;
+  }
+
+  async health() {
+    this.check('health');
+    return { ok: true as const, version: 'fake', api: ORCHESTRATOR_API_VERSION };
+  }
+  async host() {
+    this.check('host');
+    return { arch: this.arch, cpus: this.cpus, memBytes: 64 * 1024 ** 3, dockerVersion: 'fake', os: 'fake' };
+  }
+  async list() {
+    this.check('list');
+    return [...this.containers.values()].map((c) => this.view(c));
+  }
+  async apply(spec: ServerSpec) {
+    this.check('apply', spec.id);
+    const specHash = createHash('sha256').update(JSON.stringify(spec)).digest('hex');
+    const cur = this.containers.get(spec.id);
+    if (cur?.specHash === specHash) return this.view(cur);
+    const c = { id: spec.id, state: 'created' as const, startedAt: null, finishedAt: null, exitCode: null, image: `gsp/${spec.runtime}:fake`, specHash, agentUrl: `http://gsp-${spec.id}:8081`, spec, volumes: true };
+    this.containers.set(spec.id, c);
+    return this.view(c);
+  }
+  async start(id: string) {
+    this.check('start', id);
+    const c = this.get(id);
+    c.state = 'running';
+    c.startedAt = new Date().toISOString();
+    return this.view(c);
+  }
+  async stop(id: string) {
+    this.check('stop', id);
+    const c = this.get(id);
+    c.state = 'exited';
+    return this.view(c);
+  }
+  async restart(id: string) {
+    this.check('restart', id);
+    const c = this.get(id);
+    c.state = 'running';
+    return this.view(c);
+  }
+  async stats(id: string) {
+    this.check('stats', id);
+    this.get(id);
+    return { id, at: new Date().toISOString(), cpuPercent: 0, memBytes: 0, memLimitBytes: null, netRxBytes: 0, netTxBytes: 0 };
+  }
+  async remove(id: string, o: { removeVolumes: boolean }) {
+    this.check('remove', `${id} volumes=${o.removeVolumes}`);
+    this.get(id);
+    this.containers.delete(id);
+    if (!o.removeVolumes) this.keptVolumes.add(id);
+    return { removed: true, volumesRemoved: o.removeVolumes };
+  }
+}
+
+/** An orchestrator-run server's fakes: its agent, its live mirror, and its files on the test's disk. */
+export interface FakeServer {
+  agent: ReturnType<typeof fakeAgent>;
+  feed: FakeFeed;
+  dataDir: string;
+  /** Where the registry says its agent answers, and its token. */
+  target?: AgentTarget;
+}
+
 export interface TestPanel {
   app: FastifyInstance;
   deps: Deps;
   feed: FakeFeed;
   agent: ReturnType<typeof fakeAgent>;
-  /** The one server (`default`): its services. */
+  /** The server the environment describes (`default`): its services. */
   srv: ServerContext;
+  /** The orchestrator the panel was built with. */
+  orch: FakeOrchestrator;
+  /** The fakes of an orchestrator-run server, by id (made on first use). */
+  fakes(id: string): FakeServer;
 }
 
-export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: ModSource[]; fetch?: typeof fetch; db?: Db } = {}): Promise<TestPanel> {
+export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: ModSource[]; fetch?: typeof fetch; db?: Db; orch?: FakeOrchestrator; adapters?: readonly PanelAdapter[] } = {}): Promise<TestPanel> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'pz-panel-'));
   const env: PanelEnv = {
     version: 'test',
@@ -126,11 +235,37 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
   const db = opts.db ?? openDb(':memory:');
   const feed = new FakeFeed();
   const agent = fakeAgent(feed);
-  // The same construction as main.ts, without the network (Discord, the Steam Workshop API).
-  const deps = createPanelDeps({ env, db, agent, feed, fetch: opts.fetch ?? noNetwork, mods: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })] });
+  const orch = opts.orch ?? new FakeOrchestrator();
+  const servers = new Map<string, FakeServer>();
+  const fakes = (id: string): FakeServer => {
+    let s = servers.get(id);
+    if (!s) {
+      const f = new FakeFeed();
+      s = { agent: fakeAgent(f), feed: f, dataDir: path.join(tmp, 'servers', id, 'data') };
+      servers.set(id, s);
+    }
+    return s;
+  };
+  // The same construction as main.ts, without the network (Discord, the Steam Workshop API, Docker).
+  const deps = createPanelDeps({
+    env,
+    db,
+    agent,
+    feed,
+    fetch: opts.fetch ?? noNetwork,
+    mods: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })],
+    orchestrator: orch,
+    adapters: opts.adapters,
+    // Orchestrator-run servers: fake agents, and their files (as the panel sees them once M2-C lands) on the test's disk.
+    factories: {
+      agent: (row, target) => Object.assign(fakes(row.id), { target }),
+      files: (row, target, e) => (isManaged(row) ? new LocalServerFiles({ data: fakes(row.id).dataDir, install: path.join(tmp, 'servers', row.id, 'install') }) : FACTORIES.files(row, target, e)),
+      dataDir: (row, e) => (isManaged(row) ? fakes(row.id).dataDir : FACTORIES.dataDir(row, e)),
+    },
+  });
   await bootstrapOwner(deps);
   const app = await buildApp(deps);
-  return { app, deps, feed, agent, srv: deps.servers.get('default')! };
+  return { app, deps, feed, agent, srv: deps.servers.get('default')!, orch, fakes };
 }
 
 /** A tiny cookie-jar client that behaves like the web UI (Origin + CSRF header). */

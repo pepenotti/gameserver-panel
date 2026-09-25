@@ -1,10 +1,12 @@
 // The panel's composition root: every service, built in the one order they
 // depend on each other. main.ts and the tests' harness both build the panel
 // here, so the two can't drift apart. With main.ts, the only panel module
-// that picks a game adapter (NFR-08).
+// that picks game adapters (NFR-08): `panelAdapters`, the ones servers are
+// created from and run with.
+import path from 'node:path';
 import type { ModSource, PanelAdapter, ServerFiles } from '@gsp/adapter-api';
-import { panelAdapter } from '@gsp/adapters/panel';
-import type { AgentApi } from './agent/client';
+import { panelAdapters } from '@gsp/adapters/panel';
+import { AgentClient, type AgentApi } from './agent/client';
 import { Audit, SYSTEM } from './audit';
 import { ServerGrants } from './auth/grants';
 import { Sessions } from './auth/sessions';
@@ -18,6 +20,7 @@ import type { ConfigStore } from './config/store';
 import { Control } from './control/control';
 import type { Db } from './db/db';
 import { secretEnvName, type PanelEnv } from './env';
+import { AgentServerFiles } from './files/agent';
 import { LocalServerFiles } from './files/local';
 import type { AgentFeed, Deps } from './http/deps';
 import { ModsService } from './mods/service';
@@ -32,17 +35,12 @@ import { Scheduler } from './scheduler/scheduler';
 import { capabilitiesOf, ServerHandle } from './server/handle';
 import type { ServerContext } from './servers/context';
 import { NoOrchestrator, type OrchestratorClient } from './servers/orchestrator';
-import { SingleServerRegistry } from './servers/registry';
+import { DbServerRegistry, type AgentTarget } from './servers/registry';
 import { DEFAULT_SERVER_ID, ensureDefaultServer, ServersStore, type ServerRow } from './servers/store';
 import { ServerSettings, Settings } from './settings';
 
-/** The game of the server an install's environment describes (today's single server). */
+/** The game of the server an install's environment describes (`default`). */
 export const DEFAULT_ADAPTER = 'pz';
-
-/** A game adapter's panel half, by id: the one place the panel picks adapters (NFR-08). */
-export function adapterFor(id: string): PanelAdapter {
-  return panelAdapter(id);
-}
 
 /** What every server's services share from the host. */
 export interface HostParts {
@@ -152,63 +150,143 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
   return ctx;
 }
 
-export interface PanelDepsOptions {
-  env: PanelEnv;
-  db: Db;
-  /** The agent of the server the environment describes and its live mirror: one `AgentClient` in production, fakes in tests. */
+/** A server's agent API, its live mirror, and its event stream. */
+export interface AgentParts {
   agent: AgentApi;
   feed: AgentFeed;
-  /** Starts and stops that agent's event stream (main.ts). */
   stream?: { start(): void; stop(): void };
-  /** That server's game adapter (default: its row's). */
-  adapter?: PanelAdapter;
-  /** Mod sources in place of the adapter's (tests: sources that don't reach the network). */
-  mods?: readonly ModSource[];
-  /** How the Discord notifier reaches Discord (tests: not at all). */
-  fetch?: typeof fetch;
-  /** The orchestrator (default: none yet, M2-A). */
-  orchestrator?: OrchestratorClient;
 }
 
 /**
- * Builds the host's services and the registry of servers. Today that is the
- * one server the environment describes (`default`, whose row is written on
- * first boot). Throws when its adapter needs a secret the environment
- * doesn't have.
+ * What the panel is built from that differs between builds and tests, each
+ * swappable on its own (`PanelDepsOptions.factories`). Production:
+ * `FACTORIES`.
+ */
+export interface PanelFactories {
+  /** The orchestrator (D3), from `ORCH_SOCKET`/`ORCH_TOKEN`. */
+  orchestrator(env: PanelEnv): OrchestratorClient;
+  /** A server's agent: an `AgentClient` at `target` (its address may change: see `AgentTarget`). */
+  agent(row: ServerRow, target: AgentTarget): AgentParts;
+  /** A server's files (D11). */
+  files(row: ServerRow, target: AgentTarget, env: PanelEnv): ServerFiles;
+  /** A server's data root on the panel's disk, for backups, restores and resets until M2-C moves them behind the agent. */
+  dataDir(row: ServerRow, env: PanelEnv): string;
+}
+
+/** Whether the orchestrator runs this server (it has a spec), rather than Compose (`default`, until adopted). */
+export const isManaged = (row: ServerRow): boolean => row.spec !== null;
+
+export const FACTORIES: PanelFactories = {
+  // No orchestrator client in this build yet (M2-A brings `HttpOrchestratorClient`): creating servers answers 501.
+  orchestrator: () => new NoOrchestrator(),
+  agent: (_row, target) => {
+    const client = new AgentClient(() => target.baseUrl, target.token);
+    return { agent: client, feed: client, stream: { start: () => client.startStream(), stop: () => client.stopStream() } };
+  },
+  // `default` keeps the panel's own mounts of its volumes; every other server's files are its agent's (M2-C implements them).
+  files: (row, target, env) => (isManaged(row) ? new AgentServerFiles(target) : new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir })),
+  // Nothing of an orchestrator-run server is on the panel's disk: this folder stays empty until M2-C packs through the agent.
+  dataDir: (row, env) => (isManaged(row) ? path.join(env.dataDir, 'servers', row.id) : env.pzDataDir),
+};
+
+/**
+ * Where a server's backups go (BAK-01): `BACKUP_DIR/<id>/`, so servers of
+ * one adapter never list each other's archives; `default` keeps the folder
+ * it always had, the root.
+ */
+export function backupDirOf(env: PanelEnv, row: ServerRow): string {
+  return isManaged(row) ? path.join(env.backupDir, row.id) : env.backupDir;
+}
+
+export interface PanelDepsOptions {
+  env: PanelEnv;
+  db: Db;
+  /** The agent of the server the environment describes (`default`) and its live mirror (tests: fakes; else `factories.agent`). */
+  agent?: AgentApi;
+  feed?: AgentFeed;
+  /** Starts and stops that agent's event stream. */
+  stream?: { start(): void; stop(): void };
+  /** `default`'s game adapter (default: its row's). */
+  adapter?: PanelAdapter;
+  /** The adapters servers are created from and run with (default: every adapter in `@gsp/adapters`). */
+  adapters?: readonly PanelAdapter[];
+  /** Mod sources in place of the adapters' (tests: sources that don't reach the network). */
+  mods?: readonly ModSource[];
+  /** How the Discord notifier reaches Discord (tests: not at all). */
+  fetch?: typeof fetch;
+  /** The orchestrator (default: `factories.orchestrator(env)`). */
+  orchestrator?: OrchestratorClient;
+  /** Any of `FACTORIES` replaced (tests: fake agents and local files for orchestrator-run servers). */
+  factories?: Partial<PanelFactories>;
+}
+
+/**
+ * Builds the host's services and the registry of servers: one context per
+ * row of `servers`. The environment may describe `default` (its row is
+ * written on first boot); throws when that row exists but the environment
+ * doesn't say where its agent is, or lacks a secret its adapter needs.
  */
 export function createPanelDeps(o: PanelDepsOptions): Deps {
   const { env, db } = o;
+  const f: PanelFactories = { ...FACTORIES, ...o.factories };
+  const adapters = o.adapters ?? panelAdapters;
+  const adapterOf = (id: string): PanelAdapter => {
+    const a = adapters.find((x) => x.meta.id === id);
+    if (!a) throw new Error(`No panel adapter "${id}"`);
+    return a;
+  };
   const audit = new Audit(db);
   const settings = new Settings(db);
   const bus = new PanelBus();
   const notifier = new DiscordNotifier(settings, o.fetch);
   const serverRows = new ServersStore(db);
-
-  ensureDefaultServer(serverRows, { env, adapter: o.adapter ?? adapterFor(DEFAULT_ADAPTER), settings: new ServerSettings(db, DEFAULT_SERVER_ID) });
-  const row = serverRows.get(DEFAULT_SERVER_ID);
-  if (!row) throw new Error(`No "${DEFAULT_SERVER_ID}" server: the environment must describe one (AGENT_URL, AGENT_TOKEN) until the server list lands`);
-  const adapter = o.adapter ?? adapterFor(row.adapter);
+  const users = new Users(db);
+  const grants = new ServerGrants(db);
   const host: HostParts = { db, audit, bus, notifier, version: env.version };
-  // The server the environment describes: its files on the panel's own mounts, its secrets in the environment.
-  const only = createServerContext(host, row, {
-    adapter,
-    agent: o.agent,
-    feed: o.feed,
-    stream: o.stream,
-    files: new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir }),
-    secrets: () => env.secrets,
-    mods: o.mods,
-    backupDir: env.backupDir,
-    dataDir: env.pzDataDir,
+
+  ensureDefaultServer(serverRows, { env, adapter: o.adapter ?? adapterOf(DEFAULT_ADAPTER), settings: new ServerSettings(db, DEFAULT_SERVER_ID) });
+  const unmanaged = serverRows.list().find((r) => !isManaged(r));
+  if (unmanaged && (!env.agentUrl || !env.agentToken)) {
+    throw new Error(`Server "${unmanaged.id}" runs outside the orchestrator: the environment must say where its agent is (AGENT_URL, AGENT_TOKEN)`);
+  }
+
+  const orchestrator = o.orchestrator ?? f.orchestrator(env);
+  const servers = new DbServerRegistry({
+    env,
+    db,
+    rows: serverRows,
+    orchestrator,
+    audit,
+    bus,
+    users,
+    grants,
+    tz: process.env.TZ || 'UTC',
+    adapterFor: adapterOf,
+    build: (row, target) => {
+      const managed = isManaged(row);
+      const own = !managed && o.agent && o.feed ? { agent: o.agent, feed: o.feed, stream: o.stream } : f.agent(row, target);
+      return createServerContext(host, row, {
+        adapter: !managed && o.adapter ? o.adapter : adapterOf(row.adapter),
+        ...own,
+        files: f.files(row, target, env),
+        // `default`'s secrets are in the environment; every other server's in its row.
+        secrets: managed ? () => serverRows.secrets(row.id) : () => env.secrets,
+        mods: o.mods,
+        backupDir: backupDirOf(env, row),
+        dataDir: f.dataDir(row, env),
+      });
+    },
   });
-  const missing = only.handle.missingSecrets();
-  if (missing.length) throw new Error(`${missing.map(secretEnvName).join(', ')} must be set (secrets the ${adapter.meta.id} adapter needs)`);
+  for (const s of servers.list()) {
+    const missing = s.handle.missingSecrets();
+    if (missing.length && !isManaged(s.row)) throw new Error(`${missing.map(secretEnvName).join(', ')} must be set (secrets the ${s.adapter.meta.id} adapter needs)`);
+  }
 
   return {
     env,
     db,
-    users: new Users(db),
-    grants: new ServerGrants(db),
+    users,
+    grants,
     sessions: new Sessions(db),
     audit,
     settings,
@@ -220,8 +298,9 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     bus,
     notifier,
     serverRows,
-    servers: new SingleServerRegistry(only),
-    orchestrator: o.orchestrator ?? new NoOrchestrator(),
+    servers,
+    orchestrator,
+    adapters,
     hostJobs: new HostJobs({ audit, backupPanelDb: () => backupPanelDb(db, env.backupDir) }),
   };
 }

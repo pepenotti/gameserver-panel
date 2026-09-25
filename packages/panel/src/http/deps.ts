@@ -1,3 +1,4 @@
+import type { PanelAdapter } from '@gsp/adapter-api';
 import type { AgentStatus, SeqEvent } from '@gsp/shared';
 import type { Audit } from '../audit';
 import type { ServerGrants } from '../auth/grants';
@@ -46,8 +47,10 @@ export interface Deps {
   serverRows: ServersStore;
   /** The servers the panel runs (M2). */
   servers: ServerRegistry;
-  /** The one component with Docker access (D3); a stub until M2-A. */
+  /** The one component with Docker access (D3); `NoOrchestrator` until M2-A's client is wired. */
   orchestrator: OrchestratorClient;
+  /** The game adapters' panel halves servers can be created from (SRV-01). */
+  adapters: readonly PanelAdapter[];
   /** The host's own jobs (the panel database's nightly copy). */
   hostJobs: HostJobs;
 }
