@@ -30,6 +30,11 @@ const errno = (e: unknown) => (e as NodeJS.ErrnoException).code;
 /** Nothing there (or a file where a folder should be). */
 const missing = (e: unknown) => errno(e) === 'ENOENT' || errno(e) === 'ENOTDIR';
 const sameName = (a: string, b: string) => (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
+/** `inner` is `outer` or inside it (absolute paths). */
+function within(outer: string, inner: string): boolean {
+  const rel = path.relative(outer, inner);
+  return rel === '' || !(rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel));
+}
 
 function kindOf(st: Stats): FileKind {
   return st.isSymbolicLink() ? 'symlink' : st.isFile() ? 'file' : st.isDirectory() ? 'dir' : 'other';
@@ -155,17 +160,18 @@ export class RootedFiles implements ServerFiles {
   }
 
   private hidden(abs: string): boolean {
-    for (const h of this.o.hidden ?? []) {
-      const rel = path.relative(path.resolve(h), abs);
-      if (rel === '' || !(rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel))) return true;
-    }
-    return false;
+    return (this.o.hidden ?? []).some((h) => within(path.resolve(h), abs));
   }
 
-  /** Refuses the data root's own folder and hidden folders. */
-  private reserved(root: RootId, parts: string[], abs: string, rel: string): void {
+  /**
+   * Refuses the data root's own folder and hidden folders; with `tree` (a
+   * removal, a swap) also a folder that holds a hidden one, which would go
+   * along.
+   */
+  private reserved(root: RootId, parts: string[], abs: string, rel: string, tree = false): void {
     if (root === 'data' && parts.length > 0 && sameName(parts[0]!, INTERNAL_DIR)) invalid(`Reserved path: ${JSON.stringify(rel)}`);
     if (this.hidden(abs)) throw new ServerFilesError('outside-root', `Not reachable: ${JSON.stringify(rel)}`);
+    if (tree && (this.o.hidden ?? []).some((h) => within(abs, path.resolve(h)))) throw new ServerFilesError('outside-root', `Holds a folder that is not reachable: ${JSON.stringify(rel)}`);
   }
 
   /** Each existing component of `parts` below `base`, with lstat: no symbolic link anywhere (the last one may be one when `finalLink`). */
@@ -181,12 +187,12 @@ export class RootedFiles implements ServerFiles {
   }
 
   /** Absolute path of `rel` in `root`; refuses bad names, reserved folders and any symbolic link on the way. */
-  private async resolve(root: RootId, rel: string, o: { notRoot?: boolean; finalLink?: boolean } = {}): Promise<{ abs: string; parts: string[] }> {
+  private async resolve(root: RootId, rel: string, o: { notRoot?: boolean; finalLink?: boolean; tree?: boolean } = {}): Promise<{ abs: string; parts: string[] }> {
     const base = this.base(root);
     const parts = segments(rel);
     if (o.notRoot && parts.length === 0) invalid('The root itself is not a file');
     const abs = path.join(base, ...parts);
-    this.reserved(root, parts, abs, rel);
+    this.reserved(root, parts, abs, rel, o.tree);
     await this.noLinks(base, parts, rel, o.finalLink);
     return { abs, parts };
   }
@@ -208,7 +214,7 @@ export class RootedFiles implements ServerFiles {
     return rels.map((r: unknown) => {
       const parts = segments(r as string);
       if (parts.length === 0) invalid('The root itself is not a file');
-      this.reserved('data', parts, path.join(base, ...parts), r as string);
+      this.reserved('data', parts, path.join(base, ...parts), r as string, true);
       return parts.join('/');
     });
   }
@@ -346,7 +352,7 @@ export class RootedFiles implements ServerFiles {
     if (!Array.isArray(rels) || rels.length > MAX_RELS) invalid(`Expected at most ${MAX_RELS} paths`);
     const targets: string[] = [];
     // A link itself may go (rm never follows it); nothing is removed through one.
-    for (const rel of rels) targets.push((await this.resolve(root, rel, { notRoot: true, finalLink: true })).abs);
+    for (const rel of rels) targets.push((await this.resolve(root, rel, { notRoot: true, finalLink: true, tree: true })).abs);
     for (const abs of targets) await rm(abs, RM_TREE);
   }
 

@@ -51,6 +51,28 @@ async function entriesOf(stream: AsyncIterable<Buffer>): Promise<(TarEntry & { d
   return out;
 }
 
+describe('RootedFiles hidden folders', () => {
+  it('never reaches a hidden folder, nor removes, swaps or packs one along with its parent', async () => {
+    const { data, install } = tmpRoots();
+    const state = path.join(data, 'world', '.state');
+    mkdirSync(state);
+    writeFileSync(path.join(state, 'secret.json'), '{"token":"x"}');
+    writeFileSync(path.join(data, 'world', 'map.bin'), 'map');
+    const files = new RootedFiles({ roots: { data, install }, hidden: [state] });
+    const code = (p: Promise<unknown>) => p.then(() => 'no error', (e: { code?: string }) => e.code);
+    expect(await code(files.read('data', 'world/.state/secret.json'))).toBe('outside-root');
+    expect(await code(files.writeAtomic('data', 'world/.state/x', 'x'))).toBe('outside-root');
+    expect((await files.list('data', 'world')).map((e) => e.name)).toEqual(['map.bin']);
+    expect(await code(files.remove('data', ['world']))).toBe('outside-root');
+    expect(await code(files.swap('00000000-0000-4000-8000-000000000000', ['world']))).toBe('outside-root');
+    expect(await code(files.stage((async function* () {})(), ['world']))).toBe('outside-root');
+    expect((await entriesOf(await files.pack({ root: 'data', rels: ['world'] }))).map((e) => e.name)).toEqual(['world/', 'world/map.bin']);
+    // What is next to it is fine.
+    await files.remove('data', ['world/map.bin']);
+    expect(readdirSync(state)).toEqual(['secret.json']);
+  });
+});
+
 describe('RootedFiles hot packs', () => {
   it('snapshots the SQLite databases between before and after while the game holds them open', async () => {
     const { tmp, data, install } = tmpRoots();
