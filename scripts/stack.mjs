@@ -6,7 +6,8 @@
 //   node scripts/stack.mjs config               render the project (read-only)
 //   node scripts/stack.mjs up -d --build        any Compose command…
 //   node scripts/stack.mjs logs -f panel
-//   node scripts/stack.mjs down                 stop and remove containers
+//   node scripts/stack.mjs build steam steam-fake   the game servers' runtime images (build-only services)
+//   node scripts/stack.mjs down                 stop and remove containers (the game servers' too)
 //   node scripts/stack.mjs clean                down --volumes --rmi local, this project only
 //   node scripts/stack.mjs --stack-env FILE …   use FILE instead of .env (tests, dry runs)
 //
@@ -14,13 +15,15 @@
 // only when .env (see scripts/worktree-env.mjs) has COMPOSE_PROJECT_NAME=gsp-s<slot>
 // that isn't listed in <git common dir>/info/protected-projects, PANEL_TLS=internal,
 // an empty COMPOSE_PROFILES and PUBLISH_ADDR=127.0.0.1; every published port is on
-// 127.0.0.1 inside the slot's block; and no running container of another project
-// publishes one of those ports. `down -v` needs --yes-this-stack. Never prune.
+// 127.0.0.1 inside the slot's block; the orchestrator has no network and lets game
+// servers publish only on 127.0.0.1 inside the slot's game ports; and no running
+// container of another project publishes one of those ports. `down -v` needs
+// --yes-this-stack. Never prune.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkEnv, checkPublished, parseDockerPs, parseEnvFile, parseNameList, planCompose, portConflicts, publishedPorts, slotOf } from './lib/stack-guard.mjs';
+import { checkEnv, checkOrchestrator, checkPublished, dropsVolumes, parseDockerPs, parseEnvFile, parseNameList, planCompose, portConflicts, publishedPorts, serverCleanup, serverLabel, slotOf } from './lib/stack-guard.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 
@@ -68,8 +71,10 @@ const docker = (/** @type {string[]} */ args) => {
 
 // What this project would publish, rendered read-only.
 const rendered = JSON.parse(docker([...base, 'config', '--format', 'json']));
+const slot = /** @type {number} */ (slotOf(project));
 const ours = publishedPorts(rendered);
-const portReasons = checkPublished(ours, /** @type {number} */ (slotOf(project)));
+// The orchestrator's game servers publish too, outside Compose: their range and address are checked here.
+const portReasons = [...checkPublished(ours, slot), ...checkOrchestrator(rendered, slot)];
 if (portReasons.length) refuse(portReasons);
 if (rendered.name !== project) refuse([`the rendered project is ${rendered.name}, expected ${project}`]);
 
@@ -79,4 +84,16 @@ const clashes = portConflicts(ours, running, project);
 if (clashes.length) refuse(clashes);
 
 const r = spawnSync('docker', [...base, ...plan.args], { cwd: root, env: childEnv, stdio: 'inherit' });
+
+// Compose doesn't know the game servers the orchestrator created for this
+// stack (label gsp.stack=<project>): down removes their containers and
+// networks as well, and clean (or down -v) their volumes.
+if (r.status === 0 && plan.args[0] === 'down') {
+  const list = (/** @type {string[]} */ args) => docker([...args, '--filter', serverLabel(project)]).split(/\s+/).filter(Boolean);
+  const found = { containers: list(['ps', '-aq']), networks: list(['network', 'ls', '-q']), volumes: list(['volume', 'ls', '-q']) };
+  for (const cmd of serverCleanup(project, found, dropsVolumes(plan.args))) {
+    console.log(`stack.mjs: docker ${cmd.filter((a) => /^[a-z]+$/.test(a)).join(' ')} (${project}'s game servers)`);
+    docker(cmd);
+  }
+}
 process.exit(r.status ?? 1);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkEnv, checkPublished, parseDockerPs, parseEnvFile, parseNameList, planCompose, portConflicts, publishedPorts, slotOf } from './stack-guard.mjs';
+import { checkEnv, checkOrchestrator, checkPublished, dropsVolumes, parseDockerPs, parseEnvFile, parseNameList, parsePortList, planCompose, portConflicts, publishedPorts, serverCleanup, serverLabel, slotOf } from './stack-guard.mjs';
 
 const good = { COMPOSE_PROJECT_NAME: 'gsp-s1', PANEL_TLS: 'internal', COMPOSE_PROFILES: '', PUBLISH_ADDR: '127.0.0.1' };
 
@@ -87,6 +87,65 @@ describe('published ports', () => {
     // Same number, other protocol: no clash.
     expect(portConflicts(ours, parseDockerPs('x\t127.0.0.1:30161->30161/tcp'), 'gsp-s1')).toEqual([]);
     expect(portConflicts(ours, parseDockerPs('prodstack\t0.0.0.0:30143->443/tcp'), 'gsp-s1')).toEqual(['30143/tcp is already published by project prodstack']);
+  });
+});
+
+describe("the orchestrator's game servers (NFR-03)", () => {
+  const orchestrator = (over: Record<string, unknown> = {}, env: Record<string, string | null> = {}) => ({
+    services: {
+      orchestrator: { network_mode: 'none', environment: { ORCH_HOST_PORTS: '30150-30199', ORCH_PUBLISH_ADDR: '127.0.0.1', ...env }, ...over },
+    },
+  });
+
+  it('accepts an orchestrator with no network that keeps its servers on 127.0.0.1 inside the slot game ports', () => {
+    expect(checkOrchestrator(orchestrator(), 1)).toEqual([]);
+    expect(checkOrchestrator(orchestrator({}, { ORCH_HOST_PORTS: '30150,30160-30170' }), 1)).toEqual([]);
+    expect(checkOrchestrator({ services: {} }, 1)).toEqual([]);
+  });
+
+  it('refuses one with a network or ports of its own', () => {
+    expect(checkOrchestrator(orchestrator({ network_mode: 'host' }), 1).join()).toMatch(/no network/);
+    expect(checkOrchestrator(orchestrator({ network_mode: undefined }), 1).join()).toMatch(/default network/);
+    expect(checkOrchestrator(orchestrator({ ports: [{ published: '30150' }] }), 1).join()).toMatch(/must not publish/);
+  });
+
+  it('refuses servers published on other addresses, or outside the slot game ports', () => {
+    expect(checkOrchestrator(orchestrator({}, { ORCH_PUBLISH_ADDR: '' }), 1).join()).toMatch(/every address/);
+    expect(checkOrchestrator(orchestrator({}, { ORCH_PUBLISH_ADDR: '0.0.0.0' }), 1).join()).toMatch(/0\.0\.0\.0, not 127/);
+    expect(checkOrchestrator(orchestrator({}, { ORCH_HOST_PORTS: '30143' }), 1).join()).toMatch(/outside slot 1's game ports 30150-30199/);
+    expect(checkOrchestrator(orchestrator({}, { ORCH_HOST_PORTS: '30150-30200' }), 1).join()).toMatch(/30150-30200 is outside/);
+    expect(checkOrchestrator(orchestrator({}, { ORCH_HOST_PORTS: '16261-16299' }), 1)).toHaveLength(1);
+    expect(checkOrchestrator(orchestrator(), 2)).toHaveLength(1);
+    for (const bad of ['', 'x', '30199-30150', '30150-', null]) expect(checkOrchestrator(orchestrator({}, { ORCH_HOST_PORTS: bad }), 1).join(), String(bad)).toMatch(/not a list/);
+  });
+
+  it('parses port lists', () => {
+    expect(parsePortList('30150-30199, 30100')).toEqual([
+      [30150, 30199],
+      [30100, 30100],
+    ]);
+    expect(parsePortList('a')).toBeNull();
+  });
+
+  it("removes this stack's game servers after down, and their volumes only when volumes go", () => {
+    const found = { containers: ['c1', 'c2'], networks: ['n1'], volumes: ['gsp-s1-srv-pz-data'] };
+    expect(serverLabel('gsp-s1')).toBe('label=gsp.stack=gsp-s1');
+    expect(serverCleanup('gsp-s1', found, false)).toEqual([
+      ['stop', 'c1', 'c2'],
+      ['rm', 'c1', 'c2'],
+      ['network', 'rm', 'n1'],
+    ]);
+    expect(serverCleanup('gsp-s1', found, true).at(-1)).toEqual(['volume', 'rm', 'gsp-s1-srv-pz-data']);
+    expect(serverCleanup('gsp-s1', { containers: [], networks: [], volumes: [] }, true)).toEqual([]);
+    // Nothing that looks like a flag or another argument gets through.
+    expect(serverCleanup('gsp-s1', { containers: ['--all', 'c1'], networks: ['-f'], volumes: [] }, true)).toEqual([
+      ['stop', 'c1'],
+      ['rm', 'c1'],
+    ]);
+    expect(() => serverCleanup('zomboid', found, true)).toThrow();
+    expect(dropsVolumes(['down', '-v'])).toBe(true);
+    expect(dropsVolumes(['down', '--volumes', '--rmi', 'local'])).toBe(true);
+    expect(dropsVolumes(['down'])).toBe(false);
   });
 });
 

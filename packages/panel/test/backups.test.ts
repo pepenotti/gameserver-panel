@@ -1,79 +1,39 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { PassThrough, Writable } from 'node:stream';
+import { Writable } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 import { zstdCompressSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { headerFor, TarError, TarPacker, unpack } from '../src/backups/tar';
+import { INTERNAL_DIR, isFolderId, TarPacker } from '@gsp/archive';
 import { Client, fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
-async function packToBuffer(fill: (t: TarPacker) => Promise<void>): Promise<Buffer> {
+async function tarOf(fill: (t: TarPacker) => Promise<void>): Promise<Buffer> {
   const chunks: Buffer[] = [];
-  const sink = new Writable({
-    write(c: Buffer, _e, cb) {
-      chunks.push(c);
-      cb();
-    },
-  });
-  const t = new TarPacker(sink);
+  const t = new TarPacker(
+    new Writable({
+      write(c: Buffer, _e, cb) {
+        chunks.push(c);
+        cb();
+      },
+    }),
+  );
   await fill(t);
   await t.finish();
   return Buffer.concat(chunks);
 }
 
-async function unpackAll(buf: Buffer): Promise<Record<string, string>> {
-  const out: Record<string, string> = {};
-  const src = new PassThrough();
-  src.end(buf);
-  await unpack(src, async (e) => {
-    if (e.type === 'dir') {
-      out[e.name] = '<dir>';
-      return null;
-    }
-    const chunks: Buffer[] = [];
-    return new Writable({
-      write(c: Buffer, _e, cb) {
-        chunks.push(c);
-        cb();
-      },
-      final(cb) {
-        out[e.name] = Buffer.concat(chunks).toString('utf8');
-        cb();
-      },
-    });
-  });
-  return out;
+/** An archive dropped into the backup folder by hand, with its sidecar. */
+function placeArchive(p: TestPanel, name: string, tar: Buffer, manifest: Record<string, unknown>): void {
+  mkdirSync(p.deps.env.backupDir, { recursive: true });
+  writeFileSync(path.join(p.deps.env.backupDir, name), zstdCompressSync(tar));
+  writeFileSync(path.join(p.deps.env.backupDir, `${name}.json`), JSON.stringify({ size: 1, sha256: '', pinned: false, manifest: { trigger: 'upload', createdAt: '2026-01-01T00:00:00Z', bytes: 1, ...manifest } }));
 }
 
-describe('tar', () => {
-  it('round-trips files, directories, long and non-ASCII names', async () => {
-    const long = `data/Saves/Multiplayer/zomboid/${'chunk_'.repeat(30)}ñandú.bin`;
-    const buf = await packToBuffer(async (t) => {
-      await t.addDir('data/Saves/', 0);
-      await t.addBuffer('manifest.json', Buffer.from('{"a":1}'), 0);
-      await t.addBuffer(long, Buffer.from('x'.repeat(1025)), 0);
-      await t.addBuffer('data/empty', Buffer.alloc(0), 0);
-    });
-    expect(await unpackAll(buf)).toEqual({ 'data/Saves/': '<dir>', 'manifest.json': '{"a":1}', [long]: 'x'.repeat(1025), 'data/empty': '' });
-  });
-
-  it('refuses links and corrupt headers', async () => {
-    const good = headerFor({ name: 'evil', type: 'file', size: 0, mode: 0o644, mtime: 0 });
-    const link = Buffer.from(good);
-    link.write('2', 156);
-    // Recompute the checksum so only the type is "wrong".
-    link.write('        ', 148);
-    let sum = 0;
-    for (const b of link) sum += b;
-    link.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148);
-    await expect(unpackAll(Buffer.concat([link, Buffer.alloc(1024)]))).rejects.toThrow(/Unsupported entry type "2"/);
-    const corrupt = Buffer.from(good);
-    corrupt[0] = 0x41;
-    await expect(unpackAll(Buffer.concat([corrupt, Buffer.alloc(1024)]))).rejects.toThrow(TarError);
-    await expect(unpackAll(good)).rejects.toThrow(/Truncated/);
-  });
-});
+const stagingLeft = (p: TestPanel) => {
+  const dir = path.join(p.deps.env.pzDataDir, INTERNAL_DIR, 'staging');
+  return existsSync(dir) ? readdirSync(dir) : [];
+};
 
 /** A small but realistic world: files, a chunk folder and PZ's SQLite databases. */
 function seedWorld(p: TestPanel, marker = 'v1'): void {
@@ -235,17 +195,58 @@ describe('restoring', () => {
 
   it('never writes outside the staging folder, whatever the archive says', async () => {
     const { p } = await setup();
-    const evilTar = await packToBuffer(async (t) => {
-      await t.addBuffer('manifest.json', Buffer.from(JSON.stringify({ format: 1, serverName: 'zomboid', parts: ['world'], bytes: 1 })), 0);
-      await t.addBuffer('data/Saves/Multiplayer/zomboid/../../../../escaped.txt', Buffer.from('pwned'), 0);
+    for (const evil of ['data/Saves/Multiplayer/zomboid/../../../../escaped.txt', 'data/../escaped.txt', '/escaped.txt', 'escaped.txt']) {
+      const tar = await tarOf(async (t) => {
+        await t.addBuffer('manifest.json', Buffer.from(JSON.stringify({ format: 1, serverName: 'zomboid', parts: ['world'], bytes: 1 })), 0);
+        await t.addBuffer('data/Saves/Multiplayer/zomboid/ok.bin', Buffer.from('ok'), 0);
+        await t.addBuffer(evil, Buffer.from('pwned'), 0);
+      });
+      const name = 'pz-zomboid-20260101T000000Z-upload.tar.zst';
+      placeArchive(p, name, tar, { serverName: 'zomboid', parts: ['world'] });
+      await expect(p.srv.backups.stage(name, ['world']), evil).rejects.toThrow(/Unsafe path/);
+      expect(existsSync(path.join(p.deps.env.pzDataDir, '..', 'escaped.txt'))).toBe(false);
+      expect(existsSync(path.join(p.deps.env.pzDataDir, 'escaped.txt'))).toBe(false);
+      // Nothing of it stays next to the data.
+      expect(stagingLeft(p), evil).toEqual([]);
+    }
+    expect(read(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe('time-v1');
+  });
+
+  it("restores another server's backup under this server's names", async () => {
+    const { p, c } = await setup();
+    // Moving from another machine, where the server had another name (BAK-05).
+    const tar = await tarOf(async (t) => {
+      await t.addBuffer('manifest.json', Buffer.from(JSON.stringify({ format: 1, serverName: 'oldsrv', parts: ['world', 'configs'] })), 0);
+      await t.addDir('data/Saves/Multiplayer/oldsrv/', 0);
+      await t.addBuffer('data/Saves/Multiplayer/oldsrv/map_t.bin', Buffer.from('time-old'), 0);
+      await t.addBuffer('data/Server/oldsrv.ini', Buffer.from('PublicName=old\n'), 0);
+      // Not a path of a chosen part: left out.
+      await t.addBuffer('data/Server/unrelated.txt', Buffer.from('x'), 0);
     });
-    mkdirSync(p.deps.env.backupDir, { recursive: true });
-    const name = 'pz-zomboid-20260101T000000Z-upload.tar.zst';
-    writeFileSync(path.join(p.deps.env.backupDir, name), zstdCompressSync(evilTar));
-    writeFileSync(path.join(p.deps.env.backupDir, `${name}.json`), JSON.stringify({ size: 1, sha256: '', pinned: false, manifest: { serverName: 'zomboid', parts: ['world'], trigger: 'upload', createdAt: '2026-01-01T00:00:00Z', bytes: 1 } }));
-    const staging = path.join(p.deps.env.pzDataDir, '.staging', 'evil');
-    await expect(p.srv.backups.extract(name, ['world'], staging)).rejects.toThrow(/Unsafe path/);
-    expect(existsSync(path.join(p.deps.env.pzDataDir, '..', 'escaped.txt'))).toBe(false);
+    const name = 'pz-oldsrv-20260101T000000Z-upload.tar.zst';
+    placeArchive(p, name, tar, { serverName: 'oldsrv', parts: ['world', 'configs'] });
+    await c.post(`/api/servers/default/backups/${name}/restore`, { parts: ['world', 'configs'] });
+    await p.srv.ops.idle();
+    expect(p.srv.ops.last()).toMatchObject({ kind: 'restore', ok: true });
+    expect(read(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe('time-old');
+    // The world's other files belong to the replaced world, kept in the trash for an undo.
+    expect(existsSync(path.join(p.deps.env.pzDataDir, 'Saves/Multiplayer/zomboid/map/10/20.bin'))).toBe(false);
+    expect(read(p, 'Server/zomboid.ini')).toBe('PublicName=old\n');
+    expect(existsSync(path.join(p.deps.env.pzDataDir, 'Server/unrelated.txt'))).toBe(false);
+    expect(existsSync(path.join(p.deps.env.pzDataDir, 'Saves/Multiplayer/oldsrv'))).toBe(false);
+    const last = p.srv.flows.lastRestore()!;
+    expect(isFolderId(last.trash)).toBe(true);
+    // A restore after it can't undo the first one any more: its trash is gone.
+    await c.post(`/api/servers/default/backups/${name}/restore`, { parts: ['world'] });
+    await p.srv.ops.idle();
+    expect(readdirSync(path.join(p.deps.env.pzDataDir, INTERNAL_DIR, 'trash'))).toEqual([p.srv.flows.lastRestore()!.trash]);
+  });
+
+  it('treats a trash folder recorded before D11 as nothing to undo', async () => {
+    const { p, c } = await setup();
+    p.srv.settings.setRaw('lastRestore', { id: 'x', backup: 'b', parts: ['world'], at: '2026-01-01T00:00:00Z', trash: '/data/.trash/x' });
+    expect(p.srv.flows.lastRestore()?.trash).toBeNull();
+    expect((await c.post('/api/servers/default/backups/undo-restore')).json()).toEqual({ error: 'nothing-to-undo' });
   });
 });
 

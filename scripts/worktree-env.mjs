@@ -18,7 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fillEnv } from './lib/env-template.mjs';
 import { blockPorts, parseSlot, portBlock } from './lib/ports.mjs';
-import { devEnvText, envConflict, overlapping, parseExcludedRanges, projectName, slotOverrides } from './lib/worktree.mjs';
+import { devEnvText, envConflict, overlapping, parseExcludedRanges, projectName, slotGamePorts, slotOverrides } from './lib/worktree.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -91,6 +91,6 @@ writeFileSync(envPath, text, { mode: 0o600 });
 writeFileSync(path.join(root, '.env.dev'), devEnvText(slot));
 
 console.log(`Slot ${slot}: ports ${first}-${last}, Compose project ${projectName(slot)}.
-  .env      fresh secrets; stack HTTPS on 127.0.0.1:${block.stackHttps}, game UDP ${slotOverrides(slot).PZ_GAME_PORT}-${slotOverrides(slot).PZ_UDP_PORT}
-  .env.dev  dev loop: web ${block.devWeb}, panel ${block.devPanel}, agent ${block.devAgents[0]}, fake RCON ${block.fakeControl(0)}
+  .env      fresh secrets; stack HTTPS on 127.0.0.1:${block.stackHttps}, game servers on 127.0.0.1:${slotGamePorts(slot)} (fake images allowed)
+  .env.dev  dev loop: web ${block.devWeb}, panel ${block.devPanel}, agent ${block.devAgents[0]}, fake RCON ${block.fakeControl(0)}, fake orchestrator's servers on ${slotGamePorts(slot)}
 Next: node scripts/dev.mjs   (Docker only through node scripts/stack.mjs)`);
