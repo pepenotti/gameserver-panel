@@ -27,8 +27,10 @@ export function readTarZst(file: string, onRead?: (bytes: number) => void): Read
       )
     : src;
   const out = counted.pipe(createZstdDecompress());
-  // A read error (the file vanished) reaches the reader instead of being lost upstream.
+  // A read error (the file vanished) reaches the reader instead of being lost upstream…
   src.on('error', (e) => out.destroy(e));
+  // …which gets it from the stream itself, even before it starts reading.
+  out.on('error', () => undefined);
   out.on('close', () => src.destroy());
   return out;
 }

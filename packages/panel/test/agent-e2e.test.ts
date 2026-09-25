@@ -1,17 +1,23 @@
 // Agent ↔ panel, end to end, without Docker: the real agent HTTP server with
 // the Project Zomboid runtime adapter and tools/fake-pz, driven through the
 // panel's AgentClient, its ServerHandle (launch envelope, ServerCtx) and the
-// Project Zomboid panel adapter (players, messages, update check). M1, G3, D4.
+// Project Zomboid panel adapter (players, messages, update check), with the
+// server's files reached only through the agent (AgentServerFiles): config
+// reads, a hot backup and a restore. M1, M2, G3, D4, D11.
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import type http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { panelAdapter } from '@gsp/adapters/panel';
 import type { AgentStatus, SeqEvent } from '@gsp/shared';
 import { createAgentServer } from '../../agent/src/http';
 import { makeHarness, TIME_SCALE, type Harness } from '../../agent/test/helpers';
 import { AgentClient } from '../src/agent/client';
+import { BackupService } from '../src/backups/service';
 import { openDb } from '../src/db/db';
-import { LocalServerFiles } from '../src/files/local';
+import { AgentServerFiles } from '../src/files/agent';
 import { ServerHandle } from '../src/server/handle';
 import { ServerSettings } from '../src/settings';
 
@@ -21,14 +27,45 @@ const WAIT_MS = 15_000 * TIME_SCALE;
 let h: Harness | null = null;
 let server: http.Server | null = null;
 let client: AgentClient | null = null;
+const dirs: string[] = [];
 
 afterEach(async () => {
   client?.stopStream();
   server?.closeAllConnections();
   await new Promise((r) => (server ? server.close(r) : r(undefined)));
   await h?.cleanup();
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
   h = server = client = null;
 });
+
+/** The real agent on an ephemeral port, the panel's client following its events, and the server as the panel sees it. */
+async function connect(): Promise<{ h: Harness; client: AgentClient; files: AgentServerFiles; handle: ServerHandle }> {
+  for (const k of ['FAKE_PZ_SCENARIO', 'FAKE_PZ_PLAYERS', 'FAKE_STEAMCMD_FAIL']) delete process.env[k];
+  h = await makeHarness();
+  server = createAgentServer(h.agent, h.hub, h.cfg.token);
+  await new Promise<void>((r) => server!.listen(0, '127.0.0.1', r));
+  const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  client = new AgentClient(baseUrl, h.cfg.token);
+  client.startStream();
+  await until(client, (s) => s.state === 'stopped', 'the first status');
+  // The server's files only through its agent (D11), as the panel's wiring builds them.
+  const files = new AgentServerFiles({ baseUrl, token: h.cfg.token });
+  // The panel's side of the server: its adapter, launch settings and secrets, as wiring.ts builds it.
+  const handle = new ServerHandle({
+    ref: { id: 'default', gameName: 'testsrv', flavour: null },
+    secrets: () => ({ adminPassword: ADMIN_PASSWORD }),
+    agent: client,
+    feed: client,
+    files,
+    settings: new ServerSettings(openDb(':memory:'), 'default'),
+    config: () => {
+      throw new Error('no config store in this test');
+    },
+    adapter: panelAdapter('pz'),
+  });
+  handle.setLaunchSettings({ memoryMb: 2048, branch: 'public', updateOnStart: false });
+  return { h, client, files, handle };
+}
 
 /**
  * Resolves once `pred` holds for the status the client mirrors (its first
@@ -79,29 +116,8 @@ describe('agent and panel, end to end', () => {
   it(
     'launches, runs, saves, reads accounts, broadcasts and stops the fake server through the panel client',
     async () => {
-      for (const k of ['FAKE_PZ_SCENARIO', 'FAKE_PZ_PLAYERS', 'FAKE_STEAMCMD_FAIL']) delete process.env[k];
-      h = await makeHarness();
-      server = createAgentServer(h.agent, h.hub, h.cfg.token);
-      await new Promise<void>((r) => server!.listen(0, '127.0.0.1', r));
-      client = new AgentClient(`http://127.0.0.1:${(server.address() as AddressInfo).port}`, h.cfg.token);
-      client.startStream();
-      await until(client, (s) => s.state === 'stopped', 'the first status');
-
-      // The panel's side of the server: its adapter, launch settings and secrets, as wiring.ts builds it.
-      const adapter = panelAdapter('pz');
-      const handle = new ServerHandle({
-        ref: { id: 'default', gameName: 'testsrv', flavour: null },
-        secrets: () => ({ adminPassword: ADMIN_PASSWORD }),
-        agent: client,
-        feed: client,
-        files: new LocalServerFiles({ data: h.cfg.dataDir!, install: h.cfg.installDir! }),
-        settings: new ServerSettings(openDb(':memory:'), 'default'),
-        config: () => {
-          throw new Error('no config store in this test');
-        },
-        adapter,
-      });
-      handle.setLaunchSettings({ memoryMb: 2048, branch: 'public', updateOnStart: false });
+      const { h, client, handle } = await connect();
+      const adapter = handle.adapter;
 
       // Launch: the adapter's envelope, stored by the agent without its secrets.
       const envelope = handle.launchEnvelope();
@@ -148,6 +164,61 @@ describe('agent and panel, end to end', () => {
       expect(lines.some((l) => l.includes('SERVER STARTED'))).toBe(true);
       expect(lines.join('\n')).not.toContain(ADMIN_PASSWORD);
       expect(lines.join('\n')).not.toContain(h.store.controlSecret);
+    },
+    90_000 * TIME_SCALE,
+  );
+
+  it(
+    'backs up the running server and restores it, reaching its files only through the agent (D11, BAK-01…03)',
+    async () => {
+      const { h, client, files, handle } = await connect();
+      const backupDir = mkdtempSync(path.join(os.tmpdir(), 'gsp-e2e-backups-'));
+      dirs.push(backupDir);
+      const backups = new BackupService({ dir: backupDir, panelVersion: 'test', feed: client, server: handle });
+      const world = path.join(h.cfg.dataDir!, 'Saves', 'Multiplayer', 'testsrv');
+
+      await client.setLaunch(handle.launchEnvelope());
+      await client.start();
+      await until(client, (s) => s.state === 'running', 'the server to be ready');
+      // The game's files, as the running game wrote them (the fake writes its world, ini and accounts database).
+      writeFileSync(path.join(world, 'chunk.bin'), 'v1');
+      expect((await files.read('data', 'Server/testsrv.ini'))?.toString()).toMatch(/RCONPort=/);
+
+      // A hot backup: the agent saves through the game's own step and snapshots the databases.
+      const saved = nextEvent(client, (e) => e.type === 'log' && e.line.includes('World saved'), 'the hot copy to save the world');
+      const b = await backups.create({ trigger: 'manual', hot: true });
+      await saved;
+      expect(b.manifest).toMatchObject({ mode: 'hot', serverName: 'testsrv', parts: ['world', 'accounts', 'configs'] });
+      expect(b.manifest.warnings).toBeUndefined();
+      expect(b.manifest.files).toBeGreaterThanOrEqual(4);
+      expect(await backups.sha256(b.name)).toBe(b.sha256);
+      expect(await backups.readManifest(backups.filePath(b.name))).toMatchObject({ serverName: 'testsrv', mode: 'hot' });
+      // The panel's disk holds the archive and its sidecar, nothing of the game's files.
+      expect(readdirSync(backupDir).sort()).toEqual([b.name, `${b.name}.json`].sort());
+
+      // The world moves on; the server is stopped for a restore (the agent refuses swaps under a running game).
+      await client.stop({ reason: 'restore' });
+      await until(client, (s) => s.state === 'stopped', 'the server to stop');
+      writeFileSync(path.join(world, 'chunk.bin'), 'v2');
+      writeFileSync(path.join(world, 'new.bin'), 'new');
+
+      const { stagingId, rels } = await backups.stage(b.name, ['world']);
+      expect(rels).toEqual(['Saves/Multiplayer/testsrv', 'Saves/Multiplayer/testsrv_player']);
+      const { trashId } = await backups.swap(stagingId, rels);
+      expect(readFileSync(path.join(world, 'chunk.bin'), 'utf8')).toBe('v1');
+      expect(existsSync(path.join(world, 'new.bin'))).toBe(false);
+
+      // Undo puts the newer world back; the trash is spent.
+      await backups.undo(trashId);
+      expect(readFileSync(path.join(world, 'chunk.bin'), 'utf8')).toBe('v2');
+      expect(readFileSync(path.join(world, 'new.bin'), 'utf8')).toBe('new');
+      await expect(backups.undo(trashId)).rejects.toMatchObject({ code: 'invalid-path' });
+
+      // Restoring again and keeping it: the trash is purged through the agent.
+      const again = await backups.swap((await backups.stage(b.name, ['world'])).stagingId, rels);
+      await backups.purgeTrash(again.trashId);
+      expect(readFileSync(path.join(world, 'chunk.bin'), 'utf8')).toBe('v1');
+      expect(readdirSync(path.join(h.cfg.dataDir!, '.gsp-files', 'trash'))).toEqual([]);
     },
     90_000 * TIME_SCALE,
   );

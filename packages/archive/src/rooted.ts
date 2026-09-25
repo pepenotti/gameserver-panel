@@ -23,6 +23,8 @@ const MAX_GLOBS = 50;
 const CHUNK = 1 << 20;
 /** Leftover staging folders and snapshots older than this are dropped (a crash, a restore that never swapped). */
 const STALE_MS = 3_600_000;
+/** Whole trees; `rm` never follows a link, it removes the link. */
+const RM_TREE = { recursive: true, force: true } as const;
 
 const errno = (e: unknown) => (e as NodeJS.ErrnoException).code;
 /** Nothing there (or a file where a folder should be). */
@@ -240,7 +242,7 @@ export class RootedFiles implements ServerFiles {
     for (const name of names) {
       if (keep.has(name)) continue;
       const st = await lstatOrNull(path.join(dir, name));
-      if (st && Date.now() - st.mtimeMs > STALE_MS) await rm(path.join(dir, name), { recursive: true, force: true }).catch(() => undefined);
+      if (st && Date.now() - st.mtimeMs > STALE_MS) await rm(path.join(dir, name), RM_TREE).catch(() => undefined);
     }
   }
 
@@ -345,7 +347,7 @@ export class RootedFiles implements ServerFiles {
     const targets: string[] = [];
     // A link itself may go (rm never follows it); nothing is removed through one.
     for (const rel of rels) targets.push((await this.resolve(root, rel, { notRoot: true, finalLink: true })).abs);
-    for (const abs of targets) await rm(abs, { recursive: true, force: true });
+    for (const abs of targets) await rm(abs, RM_TREE);
   }
 
   // ---------------------------------------------------------------- archives
@@ -371,7 +373,7 @@ export class RootedFiles implements ServerFiles {
       for (const rel of rels) yield* this.walk(ctx, rel);
       yield END_OF_ARCHIVE;
     } finally {
-      if (ctx.snapDir) await rm(ctx.snapDir, { recursive: true, force: true }).catch(() => undefined);
+      if (ctx.snapDir) await rm(ctx.snapDir, RM_TREE).catch(() => undefined);
       if (hot) await hot.after();
     }
   }
@@ -489,7 +491,7 @@ export class RootedFiles implements ServerFiles {
           return createWriteStream(dest, { flags: 'wx', mode: 0o644 });
         });
       } catch (e) {
-        await rm(dir, { recursive: true, force: true });
+        await rm(dir, RM_TREE);
         throw e;
       }
       return { stagingId: id, entries };
@@ -528,10 +530,10 @@ export class RootedFiles implements ServerFiles {
       }
     } catch (e) {
       for (const m of done.reverse()) await rename(m.to, m.from).catch(() => undefined);
-      await rm(tdir, { recursive: true, force: true });
+      await rm(tdir, RM_TREE);
       throw e;
     } finally {
-      await rm(staged, { recursive: true, force: true });
+      await rm(staged, RM_TREE);
     }
     return { trashId };
   }
@@ -554,19 +556,19 @@ export class RootedFiles implements ServerFiles {
       await this.noLinks(base, parts, rel, true);
       const live = path.join(base, ...parts);
       const kept = path.join(tdir, 'files', ...parts);
-      await rm(live, { recursive: true, force: true });
+      await rm(live, RM_TREE);
       if (await lstatOrNull(kept)) {
         await mkdir(path.dirname(live), { recursive: true });
         await rename(kept, live);
       }
     }
-    await rm(tdir, { recursive: true, force: true });
+    await rm(tdir, RM_TREE);
   }
 
   async purgeTrash(trashId?: string): Promise<void> {
     if (trashId !== undefined && !isFolderId(trashId)) invalid('Invalid trash id');
     const trash = await this.internal('trash', false);
-    await rm(trashId === undefined ? trash : path.join(trash, trashId), { recursive: true, force: true });
+    await rm(trashId === undefined ? trash : path.join(trash, trashId), RM_TREE);
   }
 }
 

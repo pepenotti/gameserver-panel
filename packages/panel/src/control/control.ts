@@ -131,7 +131,7 @@ export class Control {
         }
         ctx.step('safety-backup');
         // Only when there is something to protect; the server is stopped, so a cold copy.
-        if (this.d.backups.hasData()) await this.d.backups.create({ trigger: 'pre-update', hot: false });
+        if (await this.d.backups.hasData()) await this.d.backups.create({ trigger: 'pre-update', hot: false });
         ctx.step(opts.validate ? 'validating' : 'updating');
         const r = await this.d.agent.install({ validate: opts.validate, launch });
         if (!r.ok) {

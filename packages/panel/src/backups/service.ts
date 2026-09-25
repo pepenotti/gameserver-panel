@@ -1,16 +1,13 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statfsSync, statSync, writeFileSync, type Stats } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { Transform, Writable } from 'node:stream';
+import { PassThrough, Transform, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { DatabaseSync } from 'node:sqlite';
-import { createZstdCompress, createZstdDecompress } from 'node:zlib';
-import type { BackupPartDecl } from '@gsp/adapter-api';
+import type { BackupPartDecl, DirEntry, ServerFiles } from '@gsp/adapter-api';
+import { closeIterable, isSafeName, readTarZst, segments, TarError, TarPacker, unpack, zstdCompress } from '@gsp/archive';
 import type { AgentFeed } from '../http/deps';
 import { HttpError } from '../http/context';
 import type { ServerHandle } from '../server/handle';
-import { globToRegExp, matchesAny } from './glob';
-import { TarError, TarPacker, unpack } from './tar';
 
 /** A backup part id, from the adapter's `backups.parts`. */
 export type BackupPart = string;
@@ -19,6 +16,8 @@ const TRIGGERS: BackupTrigger[] = ['manual', 'scheduled', 'pre-reset', 'pre-rest
 const PROTECTED: BackupTrigger[] = ['pre-reset', 'pre-restore', 'pre-update'];
 const KEEP = { scheduled: 14, manual: 10, upload: 10 } as const;
 const PROTECT_DAYS = 14;
+/** Inside an archive, the server's files live under `data/`, next to `manifest.json`. */
+const DATA_PREFIX = 'data/';
 
 export interface BackupManifest {
   format: 1;
@@ -37,7 +36,7 @@ export interface BackupManifest {
   files: number;
   bytes: number;
   panelVersion: string;
-  /** Things that went less than perfectly (e.g. a database copied without the SQLite backup API). */
+  /** Things that went less than perfectly (e.g. a database copied without a snapshot). */
   warnings?: string[];
 }
 
@@ -53,41 +52,28 @@ function stamp(d: Date): string {
   return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
-/**
- * Walk a directory, yielding paths relative to `root` (dirs end with /).
- * Symbolic links are skipped, never followed: whatever runs in the game
- * (mods) can create them, and a backup must not reach outside the data.
- */
-export function* walk(root: string, rel: string): Generator<{ rel: string; abs: string; st: Stats }> {
-  const abs = path.join(root, rel);
-  let st: Stats;
+/** The data-root path of an archive entry under `data/`, or null when it is anything else (or not a path the file API takes). */
+export function dataRel(entryName: string): string | null {
+  const n = entryName.replace(/\/$/, '');
+  if (!n.startsWith(DATA_PREFIX)) return null;
+  const rel = n.slice(DATA_PREFIX.length);
   try {
-    st = lstatSync(abs);
+    const parts = segments(rel);
+    return parts.length > 0 && parts.join('/') === rel ? rel : null;
   } catch {
-    return;
-  }
-  if (st.isDirectory()) {
-    yield { rel: `${rel}/`, abs, st };
-    for (const e of readdirSync(abs).sort()) yield* walk(root, `${rel}/${e}`);
-  } else if (st.isFile()) {
-    yield { rel, abs, st };
+    return null;
   }
 }
 
-function exists(abs: string): boolean {
-  try {
-    lstatSync(abs);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const inside = (rel: string, roots: readonly string[]) => roots.some((r) => rel === r || rel.startsWith(`${r}/`));
 
 export interface BackupDeps {
-  /** Where this server's archives go. */
+  /** Where this server's archives go (`BACKUP_DIR/<server>/`). */
   dir: string;
-  /** The server's data root on the panel's disk (until M2-C packs through the agent, D11). */
-  dataDir: string;
+  /** The server's files (D11: through its agent); by default the server handle's. */
+  files?: ServerFiles;
+  /** @deprecated Unused since backups go through `ServerFiles` (D11); the panel no longer reads game files itself. */
+  dataDir?: string;
   /** Recorded in each manifest. */
   panelVersion: string;
   feed: AgentFeed;
@@ -96,12 +82,21 @@ export interface BackupDeps {
   mods?: { enabled(): { modId: string; workshopId: string }[] };
 }
 
+/**
+ * A server's backups (BAK-01…05). Archives, their manifests and checksums
+ * live on the panel's disk; the server's files are reached only through
+ * `ServerFiles` (D11): its agent packs them (hot while the game runs, with
+ * the game's own steps), stages a restore next to the data, swaps it in and
+ * keeps what it replaced for an undo.
+ */
 export class BackupService {
   private readonly nameRe: RegExp;
+  private readonly files: ServerFiles;
 
   constructor(private readonly d: BackupDeps) {
     const prefix = d.server.adapter.meta.id.replace(/[^a-z0-9-]/g, '');
     this.nameRe = new RegExp(`^${prefix}-[A-Za-z0-9_-]{1,32}-\\d{8}T\\d{6}Z-(${TRIGGERS.join('|')})(-\\d+)?\\.tar\\.zst$`);
+    this.files = d.files ?? d.server.ctx().files;
   }
 
   /** Where this server's archives are. */
@@ -142,9 +137,45 @@ export class BackupService {
     return this.decl(part).paths({ ...this.d.server.ref, gameName: serverName });
   }
 
+  /** Whether anything of a part exists. */
+  private async present(part: BackupPart): Promise<boolean> {
+    for (const rel of this.partPaths(part)) {
+      try {
+        if (await this.files.stat('data', rel)) return true;
+      } catch {
+        // A path the file API refuses (a link): nothing a backup could copy.
+      }
+    }
+    return false;
+  }
+
   /** Whether anything a backup would cover exists (there is something to protect). */
-  hasData(): boolean {
-    return this.parts().some((p) => this.partPaths(p).some((rel) => exists(path.join(this.d.dataDir, rel))));
+  async hasData(): Promise<boolean> {
+    for (const part of this.parts()) if (await this.present(part)) return true;
+    return false;
+  }
+
+  /** Bytes of the files under `rel`, walked through the file API (links skipped, as a pack skips them). */
+  private async sizeOf(rel: string): Promise<number> {
+    const st = await this.files.stat('data', rel).catch(() => null);
+    if (st?.kind === 'file') return st.size;
+    if (st?.kind !== 'dir') return 0;
+    let total = 0;
+    const dirs = [rel];
+    while (dirs.length > 0) {
+      const dir = dirs.pop()!;
+      let entries: DirEntry[];
+      try {
+        entries = await this.files.list('data', dir);
+      } catch {
+        continue;
+      }
+      for (const e of entries) {
+        if (e.kind === 'file') total += e.size;
+        else if (e.kind === 'dir' && isSafeName(e.name)) dirs.push(`${dir}/${e.name}`);
+      }
+    }
+    return total;
   }
 
   // ------------------------------------------------------------------ list
@@ -219,23 +250,21 @@ export class BackupService {
 
   // ---------------------------------------------------------------- create
 
-  private sourceBytes(parts: BackupPart[]): number {
-    let total = 0;
-    for (const part of parts) for (const p of this.partPaths(part)) for (const f of walk(this.d.dataDir, p)) if (f.st.isFile()) total += f.st.size;
-    return total;
-  }
-
   /**
-   * Archive every part the adapter declares. `hot` means the server is
-   * running: files matching a part's `sqlite` globs (relative to the data
-   * folder) are copied as consistent SQLite snapshots instead of being read
-   * mid-write.
+   * Archive every part the adapter declares that exists. The server's files
+   * come from `ServerFiles.pack` as a tar stream (the agent copies hot while
+   * the game runs: the game's own steps and SQLite snapshots of the parts'
+   * `sqlite` globs); the panel adds the manifest first, compresses, and
+   * writes the archive, its checksum and its sidecar. `hot` is what the
+   * manifest records.
    */
   async create(opts: { trigger: BackupTrigger; hot: boolean; onProgress?: (fraction: number) => void }): Promise<BackupInfo> {
     mkdirSync(this.dir, { recursive: true });
-    const data = this.d.dataDir;
-    const parts = this.parts().filter((p) => this.partPaths(p).some((rel) => exists(path.join(data, rel))));
-    const total = this.sourceBytes(parts);
+    const parts: BackupPart[] = [];
+    for (const part of this.parts()) if (await this.present(part)) parts.push(part);
+    const rels = parts.flatMap((p) => this.partPaths(p));
+    let total = 0;
+    for (const rel of rels) total += await this.sizeOf(rel);
     const free = statfsSync(this.dir);
     // Estimate the archive at 60% of the raw size (zstd usually does better) and keep 20% headroom.
     if (free.bavail * free.bsize < total * 1.2 * 0.6) throw new HttpError(507, 'no-space', undefined, { neededBytes: Math.round(total * 0.72), freeBytes: free.bavail * free.bsize });
@@ -244,16 +273,14 @@ export class BackupService {
     let name = this.archiveName(this.name, createdAt, opts.trigger);
     for (let i = 2; existsSync(path.join(this.dir, name)); i++) name = this.archiveName(this.name, createdAt, opts.trigger, i);
     const tmp = path.join(this.dir, `.${name}.partial`);
-    const snapDir = path.join(data, '.panel-snapshots', randomUUID());
 
-    const status = this.d.feed.status_;
-    const installed = status?.installedInfo;
+    const installed = this.d.feed.status_?.installedInfo;
     const enabled = this.d.mods?.enabled() ?? [];
 
     const hash = createHash('sha256');
     let size = 0;
     const out = createWriteStream(tmp);
-    const zstd = createZstdCompress();
+    const zstd = zstdCompress();
     const counter = new Transform({
       transform(chunk: Buffer, _enc, cb) {
         hash.update(chunk);
@@ -262,10 +289,15 @@ export class BackupService {
       },
     });
     const done = pipeline(zstd, counter, out);
+    // Awaited below; a failure (a full disk) must not count as unhandled before then.
+    done.catch(() => undefined);
     const tar = new TarPacker(zstd);
     let files = 0;
     let bytes = 0;
     const warnings: string[] = [];
+    // A server that sends far more than it holds is cut off before it fills the backup disk.
+    const limit = total * 2 + 256 * 1024 * 1024;
+    let src: AsyncIterable<Buffer> | null = null;
     try {
       const manifest: BackupManifest = {
         format: 1,
@@ -285,50 +317,32 @@ export class BackupService {
       };
       // Written first so a reader can check it before unpacking gigabytes.
       await tar.addBuffer('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2)), createdAt.getTime() / 1000);
-      for (const part of parts) {
-        const sqlite = (this.decl(part).sqlite ?? []).map(globToRegExp);
-        for (const rel of this.partPaths(part)) {
-          for (const f of walk(data, rel)) {
-            const archName = `data/${f.rel}`;
-            const mtime = f.st.mtimeMs / 1000;
-            if (f.rel.endsWith('/')) {
-              await tar.addDir(archName, mtime);
-              continue;
-            }
-            let src = f.abs;
-            let len = f.st.size;
-            if (opts.hot && matchesAny(f.rel, sqlite)) {
-              mkdirSync(snapDir, { recursive: true });
-              const snap = path.join(snapDir, `${files}.db`);
-              try {
-                // One read transaction, so a consistent snapshot even while the game writes.
-                // (node:sqlite's async backup() sometimes stalled for minutes in testing.)
-                const db = new DatabaseSync(f.abs, { readOnly: true, timeout: 10_000 });
-                try {
-                  db.prepare('VACUUM INTO ?').run(snap);
-                } finally {
-                  db.close();
-                }
-                src = snap;
-                len = statSync(snap).size;
-              } catch (e) {
-                // Not a SQLite file after all (or locked): fall back to a plain copy rather than failing the backup.
-                warnings.push(`${f.rel}: copied as a plain file (${(e as Error).message})`);
-              }
-            }
-            await tar.addFile(archName, src, len, mtime);
-            files++;
-            bytes += f.st.size;
-            opts.onProgress?.(total ? Math.min(bytes / total, 1) : 1);
+      if (rels.length > 0) {
+        const sqlite = [...new Set(parts.flatMap((p) => this.decl(p).sqlite ?? []))];
+        src = await this.files.pack({ root: 'data', rels, sqlite, prefix: DATA_PREFIX });
+        await unpack(src, async (e) => {
+          // What the server sent is checked like an upload: only its parts, under data/.
+          const rel = dataRel(e.name);
+          if (rel === null || !inside(rel, rels)) throw new TarError(`Unexpected path in the server's archive: ${e.name}`);
+          const note = e.meta?.['GSP.warning'];
+          if (note) warnings.push(note);
+          if (e.type === 'dir') {
+            await tar.addDir(e.name, e.mtime);
+            return null;
           }
-        }
+          files++;
+          bytes += e.size;
+          if (bytes > limit) throw new TarError('The server sent more data than it holds');
+          opts.onProgress?.(total ? Math.min(bytes / total, 1) : 1);
+          return tar.addFile(e.name, e.size, e.mtime);
+        });
       }
       await tar.finish();
       zstd.end();
       await done;
       const sha256 = hash.digest('hex');
       renameSync(tmp, path.join(this.dir, name));
-      const info: BackupInfo = { name, size, sha256, pinned: false, manifest: { ...manifest, files, ...(warnings.length ? { warnings } : {}) } };
+      const info: BackupInfo = { name, size, sha256, pinned: false, manifest: { ...manifest, files, bytes, ...(warnings.length ? { warnings } : {}) } };
       const { name: _n, ...side } = info;
       writeFileSync(path.join(this.dir, `${name}.json`), JSON.stringify(side, null, 2));
       this.applyRetention();
@@ -336,10 +350,12 @@ export class BackupService {
     } catch (e) {
       zstd.destroy();
       out.destroy();
+      await done.catch(() => undefined);
       rmSync(tmp, { force: true });
       throw e;
     } finally {
-      rmSync(snapDir, { recursive: true, force: true });
+      // Hangs up on a pack that didn't finish (the agent's hot copy then runs its `after`).
+      if (src) await closeIterable(src).catch(() => undefined);
     }
   }
 
@@ -355,9 +371,9 @@ export class BackupService {
   async readManifest(file: string): Promise<BackupManifest> {
     let manifest: BackupManifest | null = null;
     const chunks: Buffer[] = [];
-    const src = createReadStream(file).pipe(createZstdDecompress());
+    const src = readTarZst(file);
     try {
-      await unpack(src as AsyncIterable<Buffer>, async (e) => {
+      await unpack(src, async (e) => {
         if (manifest === null && e.name === 'manifest.json' && e.type === 'file' && e.size < 1 << 20) {
           return new Writable({
             write(c: Buffer, _enc, cb) {
@@ -365,8 +381,12 @@ export class BackupService {
               cb();
             },
             final(cb) {
-              manifest = JSON.parse(Buffer.concat(chunks).toString('utf8')) as BackupManifest;
-              cb();
+              try {
+                manifest = JSON.parse(Buffer.concat(chunks).toString('utf8')) as BackupManifest;
+                cb();
+              } catch {
+                cb(new TarError('Invalid manifest'));
+              }
             },
           });
         }
@@ -387,102 +407,98 @@ export class BackupService {
   // -------------------------------------------------------------- restore
 
   /**
-   * Unpack the chosen parts into `staging`, renaming the backup's server name
-   * to ours. Every entry is checked: only plain files/dirs, only paths that
-   * belong to a chosen part, nothing that escapes the staging folder.
+   * Stage the chosen parts of a backup next to the server's data, renamed
+   * from the backup's server name to ours: the archive is read here, checked
+   * (only plain files and folders under `data/`; paths of other parts are
+   * left out) and streamed to `ServerFiles.stage`, which checks every entry
+   * again. `rels` are the data-root paths a swap then moves into place.
    */
-  async extract(name: string, parts: BackupPart[], staging: string, onProgress?: (fraction: number) => void): Promise<{ files: number }> {
+  async stage(name: string, parts: BackupPart[], onProgress?: (fraction: number) => void): Promise<{ stagingId: string; rels: string[] }> {
     const info = this.get(name);
     const from = info.manifest.serverName;
-    const allowed = parts.flatMap((p) => this.partPaths(p, from).map((rel) => ({ rel, part: p })));
+    const mapping = parts.flatMap((p) => {
+      const ours = this.partPaths(p);
+      return this.partPaths(p, from).map((theirs, i) => ({ theirs, ours: ours[i]! }));
+    });
+    const rels = parts.flatMap((p) => this.partPaths(p));
     const renameTo = (rel: string): string | null => {
-      for (const a of allowed) {
-        if (rel === a.rel || rel.startsWith(`${a.rel}/`)) {
-          const ours = this.partPaths(a.part)[this.partPaths(a.part, from).indexOf(a.rel)]!;
-          return ours + rel.slice(a.rel.length);
-        }
-      }
+      for (const m of mapping) if (rel === m.theirs || rel.startsWith(`${m.theirs}/`)) return m.ours + rel.slice(m.theirs.length);
       return null;
     };
-    mkdirSync(staging, { recursive: true });
-    let files = 0;
-    let seen = 0;
-    const total = info.manifest.bytes || 1;
-    const src = createReadStream(this.filePath(name)).pipe(createZstdDecompress());
-    await unpack(src as AsyncIterable<Buffer>, async (e) => {
-      if (e.name === 'manifest.json') return null;
-      const n = e.name.replace(/\/$/, '');
-      if (!n.startsWith('data/') || n.includes('\\') || n.split('/').some((seg) => seg === '..' || seg === '.' || seg === '') || /^[A-Za-z]:/.test(n)) {
-        throw new TarError(`Unsafe path in archive: ${e.name}`);
-      }
-      const mapped = renameTo(n.slice('data/'.length));
-      if (mapped === null) return null; // a part we're not restoring (or junk): skip
-      const dest = path.join(staging, mapped);
-      if (!path.resolve(dest).startsWith(path.resolve(staging) + path.sep)) throw new TarError(`Unsafe path in archive: ${e.name}`);
-      if (e.type === 'dir') {
-        mkdirSync(dest, { recursive: true });
-        return null;
-      }
-      mkdirSync(path.dirname(dest), { recursive: true });
-      files++;
-      seen += e.size;
-      onProgress?.(Math.min(seen / total, 1));
-      return createWriteStream(dest, { flags: 'wx' });
+    const file = this.filePath(name);
+    const total = statSync(file).size || 1;
+    const src = readTarZst(file, (n) => onProgress?.(Math.min(n / total, 1)));
+    const staged = new PassThrough();
+    // Its reader gets the error (a stream remembers it); this only keeps an early one from going unhandled.
+    staged.on('error', () => undefined);
+    const tar = new TarPacker(staged);
+    let producerError: unknown = null;
+    const producing = (async () => {
+      await unpack(src, async (e) => {
+        if (e.name === 'manifest.json') return null;
+        const rel = dataRel(e.name);
+        if (rel === null) throw new TarError(`Unsafe path in archive: ${e.name}`);
+        const mapped = renameTo(rel);
+        if (mapped === null) return null; // a part we're not restoring
+        if (e.type === 'dir') {
+          await tar.addDir(mapped, e.mtime);
+          return null;
+        }
+        return tar.addFile(mapped, e.size, e.mtime);
+      });
+      await tar.finish();
+      staged.end();
+    })().catch((e: unknown) => {
+      producerError ??= e;
+      staged.destroy(e as Error);
     });
-    return { files };
-  }
-
-  /**
-   * Swap staged parts into place with renames (same volume, so each is atomic),
-   * moving what was there into `trash` for rollback.
-   */
-  swapIn(parts: BackupPart[], staging: string, trash: string): void {
-    const data = this.d.dataDir;
-    for (const part of parts) {
-      for (const rel of this.partPaths(part)) {
-        const live = path.join(data, rel);
-        const staged = path.join(staging, rel);
-        if (exists(live)) {
-          mkdirSync(path.dirname(path.join(trash, rel)), { recursive: true });
-          renameSync(live, path.join(trash, rel));
-        }
-        if (existsSync(staged)) {
-          mkdirSync(path.dirname(live), { recursive: true });
-          renameSync(staged, live);
-        }
-      }
+    try {
+      const { stagingId } = await this.files.stage(staged, rels);
+      await producing;
+      return { stagingId, rels };
+    } catch (e) {
+      // The archive's own fault comes first; otherwise the stage's refusal.
+      if (producerError) throw producerError;
+      staged.destroy(new TarError('Staging stopped'));
+      await producing;
+      throw e;
+    } finally {
+      src.destroy();
     }
   }
 
-  /** Undo swapIn: put the trash back. */
-  rollback(parts: BackupPart[], trash: string): void {
-    const data = this.d.dataDir;
-    for (const part of parts) {
-      for (const rel of this.partPaths(part)) {
-        const kept = path.join(trash, rel);
-        const live = path.join(data, rel);
-        if (!existsSync(kept)) {
-          // Nothing existed before; remove what the restore added.
-          rmSync(live, { recursive: true, force: true });
-          continue;
-        }
-        rmSync(live, { recursive: true, force: true });
-        mkdirSync(path.dirname(live), { recursive: true });
-        renameSync(kept, live);
-      }
-    }
+  /** Move staged paths into place; what they replace goes to a trash folder (kept for an undo). */
+  swap(stagingId: string, rels: string[]): Promise<{ trashId: string }> {
+    return this.files.swap(stagingId, rels);
+  }
+
+  /** Put a trash folder's files back. */
+  undo(trashId: string): Promise<void> {
+    return this.files.undo(trashId);
+  }
+
+  purgeTrash(trashId: string): Promise<void> {
+    return this.files.purgeTrash(trashId);
+  }
+
+  /** Delete parts (a reset, after its safety backup). */
+  removeParts(parts: BackupPart[]): Promise<void> {
+    return this.files.remove('data', parts.flatMap((p) => this.partPaths(p)));
   }
 
   /** Accept an uploaded archive: validate it and give it a canonical name. */
   async adopt(tmpFile: string): Promise<BackupInfo> {
     const manifest = await this.readManifest(tmpFile);
     // Full read to prove the archive is complete and contains only safe entries.
-    const src = createReadStream(tmpFile).pipe(createZstdDecompress());
-    await unpack(src as AsyncIterable<Buffer>, async (e) => {
-      const n = e.name.replace(/\/$/, '');
-      if (e.name !== 'manifest.json' && (!n.startsWith('data/') || n.split('/').some((s) => s === '..' || s === '.' || s === '') || n.includes('\\'))) throw new TarError(`Unsafe path in archive: ${e.name}`);
-      return null;
-    });
+    const src = readTarZst(tmpFile);
+    try {
+      await unpack(src, async (e) => {
+        if (e.name !== 'manifest.json' && dataRel(e.name) === null) throw new TarError(`Unsafe path in archive: ${e.name}`);
+        return null;
+      });
+    } finally {
+      src.destroy();
+    }
     const created = new Date();
     const name = this.archiveName(manifest.serverName, created, 'upload');
     renameSync(tmpFile, path.join(this.dir, name));
