@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.7 |
+| Status | Draft 0.8 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -235,7 +235,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 |---|---|---|
 | SCH-01 | P0 | Per-server schedules: restarts with a quiet backup, backups, update checks. |
 | SCH-02 | P1 | Stagger jobs so servers don't restart or back up at the same moment. |
-| SCH-03 | P0 | Discord webhooks with per-event switches in EN/ES, and a per-server override. |
+| SCH-03 | P0 | Discord webhooks with per-event switches in EN/ES. One host webhook; each server may override it with its own webhook, language and event switches. Every message names its server. |
 
 ### 8.9 Accounts, permissions, audit — ACC
 
@@ -342,7 +342,10 @@ NFR-01's controls, carried over from zomboid-server:
   keeps each server's row, including the fixed name the game uses for its
   files (`game_name`); per-server settings live in `server_settings` and
   per-server roles in `server_grants`. Server routes are
-  `/api/servers/<id>/…`; the web addresses a server as `/s/<id>/…`.
+  `/api/servers/<id>/…`; the web addresses a server as `/s/<id>/…`. A server
+  someone can't see answers "not found" before its request body is even
+  checked. The API reference `docs/api.md` is generated from the route table
+  and a test fails when it goes stale.
 - **Package layout.** `packages/adapter-api` holds the contract (types plus
   shared contract test suites). Each game lives in `packages/adapter-<game>`,
   and `packages/adapters` is the single place that lists them. The core
@@ -479,3 +482,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.5 | 2026-09-24 | M1 contract landed: §10 names the package layout (`adapter-api`, `adapter-<game>`, `adapters`) and where fixtures and verification notes live per game. |
 | 0.6 | 2026-09-24 | M1 closed: the adapter contract carries the server context panel-side adapter code needs, declared launch secrets and secret console arguments; NFR-08 is also enforced by tests (no game names in the core or the web). |
 | 0.7 | 2026-09-24 | M2 contract step: server routes under `/api/servers/<id>` and web pages under `/s/<id>`; host vs server permissions and account scope (§5); unknown or ungranted servers answer "not found"; the orchestrator's server spec and the agent's file and archive routes (D11) are fixed; actor-typed audit; Q9 answered. |
+| 0.8 | 2026-09-24 | M2 wave: the orchestrator service (only Docker holder, derived hardening, refusal-tested), server files and backups through each server's agent (D11), servers created, renamed and removed through the API with per-server roles, per-server schedules and Discord override (SCH-03 wording), `PANEL_LISTEN` unix socket behind the proxy, generated `docs/api.md`. |
