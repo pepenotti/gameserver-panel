@@ -12,8 +12,8 @@ container shaped like the product's java containers: user 1000:1000, read-only r
 capabilities dropped, `no-new-privileges`, a 256 MB `/tmp` tmpfs (exec), a pids limit, a
 3 GiB memory limit, the working directory `/data` on one volume and the jars in `/opt/game`
 on another, and `--init` in front of `java` (the product runs tini). Ports were published on
-127.0.0.1 only. Images: `eclipse-temurin:25-jre` (25.0.4+7) and `:21-jre` (21.0.12+8), both
-Ubuntu 26.04 based. At most one server ran at a time.
+127.0.0.1 only. Images: `eclipse-temurin:25-jre` (25.0.4+7), `:21-jre` (21.0.12+8) and
+`:17-jre` (for the older versions), Ubuntu based. At most one server ran at a time.
 
 **What ran.** The latest release, **26.3** (released 2026-09-15): Mojang's server jar; Paper
 **26.3 build 41** (the newest; 26.3 had only ALPHA builds); Fabric Loader **0.19.5** with the
@@ -46,7 +46,8 @@ online mode can show is listed at the end.
    around, but a player **leaving** while saving is off still writes their player files (and,
    on vanilla, a chunk file), and a join may write a chunk file.
 5. **Java 25 for 26.x.** 26.1, 26.2 and 26.3 declare Java 25; a 26.3 jar on Java 21 fails in
-   under a second. Temurin publishes no Java 16 image, which 1.17.x declares.
+   about a second. Temurin publishes no Java 16 image, which 1.17.x declares; 1.17.1 and 1.16.5
+   ran on 17.
 6. **Paper's download API moved.** `api.papermc.io/v2` answers 410 Gone (sunset 2026-07-01);
    the current one is Fill v3 (`fill.papermc.io/v3`), with builds in channels ALPHA, BETA,
    STABLE. A new Minecraft version has only ALPHA builds for weeks.
