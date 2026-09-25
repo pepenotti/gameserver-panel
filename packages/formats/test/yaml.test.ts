@@ -109,6 +109,8 @@ describe('yaml edits (CFG-09)', () => {
     expect(comments(out)).toEqual(comments(CONFIG));
     expect(flat(out)).toMatchObject({ 'settings.new-key': 'x', 'settings.spawn-limits.water': 5, 'brand.new.deep': true, fresh: 'a: b', top: 1 });
     expect(yamlFormat.edit('', { a: 1 })).toBe('a: 1\n');
+    expect(() => yamlFormat.edit('- a\n', { k: 1 })).toThrow(/not a map/);
+    expect(() => yamlFormat.edit(CONFIG, { 'top.x': 1 })).toThrow(/top is not a map/);
     expect(yamlFormat.edit('# only a comment', { a: 1 })).toBe('# only a comment\na: 1\n');
   });
 

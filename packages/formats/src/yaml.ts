@@ -196,8 +196,11 @@ function setOne(src: string, path: string[], next: YamlScalar): string {
   }
   if (map !== null && !isMap(map)) throw new Error(`${path.slice(0, i).join('.') || 'The file'} is not a map`);
   const eol = eolOf(src);
-  const lastItem = map ? (map.items.at(-1) as Pair<Node, Node | null> | undefined) : undefined;
-  if (map === null || (!map.flow && lastItem)) {
+  const lastItem = map ? (map.items.at(-1) as Pair<Node | null, Node | null> | undefined) : undefined;
+  // Where the map's keys start and where its last value ends (a block map of plain keys has both).
+  const firstKeyAt = map ? (map.items[0] as Pair<Node | null, unknown> | undefined)?.key?.range?.[0] : undefined;
+  const lastEnd = lastItem ? (lastItem.value?.range?.[1] ?? lastItem.key?.range?.[1]) : undefined;
+  if (map === null || (!map.flow && firstKeyAt !== undefined && lastEnd !== undefined)) {
     let at: number;
     let indent: string;
     if (map === null) {
@@ -205,10 +208,8 @@ function setOne(src: string, path: string[], next: YamlScalar): string {
       at = src.length;
       indent = '';
     } else {
-      const first = map.items[0] as Pair<Node, unknown>;
-      indent = ' '.repeat(y.lines.linePos(first.key.range![0]).col - 1);
-      const end = lastItem!.value?.range?.[1] ?? lastItem!.key.range![1];
-      at = afterLine(src, end);
+      indent = ' '.repeat(y.lines.linePos(firstKeyAt!).col - 1);
+      at = afterLine(src, lastEnd!);
     }
     const lines: string[] = [];
     for (let j = i; j < path.length - 1; j++) lines.push(`${indent}${'  '.repeat(j - i)}${keyLiteral(path[j]!)}:`);
