@@ -36,6 +36,11 @@ const COLOR = { green: 0x2f9e44, red: 0xe03131, orange: 0xf08c00, blue: 0x1c7ed6
 
 type Msg = (p: Record<string, string>) => Embed;
 
+/** A server's message says which server it is about (one webhook may serve several). */
+function named(e: Embed, server: string | null): Embed {
+  return server ? { ...e, title: `${e.title} · ${server}` } : e;
+}
+
 /** Message catalogue, one entry per event kind, in both languages. */
 export const MESSAGES: Record<'en' | 'es', Record<string, Msg>> = {
   en: {
@@ -73,11 +78,37 @@ export const MESSAGES: Record<'en' | 'es', Record<string, Msg>> = {
 type Fetch = typeof fetch;
 
 /**
+ * One server's own Discord settings over the host's (SCH-03, server setting
+ * `discord.override`): its own webhook (another channel), language and
+ * event switches. What it leaves out follows the host.
+ */
+export interface DiscordOverride {
+  /** Its own webhook; null: the host's. */
+  webhookUrl: string | null;
+  /** The language of its messages; null: the host's. */
+  lang: 'en' | 'es' | null;
+  /** Switches over the host's; an event left out follows the host. */
+  events: Partial<Record<NotifyEvent, boolean>>;
+}
+
+/** The server setting that holds a server's `DiscordOverride`. */
+export const DISCORD_OVERRIDE_KEY = 'discord.override';
+
+export const NO_OVERRIDE: DiscordOverride = { webhookUrl: null, lang: null, events: {} };
+
+/** What sends one server's (or the host's) messages. */
+export interface Notify {
+  /** Queue a message for `event` if it is switched on. `kind` picks the text (defaults to the event). */
+  notify(event: NotifyEvent, params?: Record<string, string>, kind?: string): void;
+}
+
+/**
  * Posts embeds to a Discord webhook through a small queue that honours
  * Discord's rate limits (429 + retry_after) and drops messages rather than
- * growing without bound when Discord is down.
+ * growing without bound when Discord is down. One per panel: each server
+ * notifies through `forServer`, which applies its override and names it.
  */
-export class DiscordNotifier {
+export class DiscordNotifier implements Notify {
   private queue: { url: string; embed: Embed }[] = [];
   private sending = false;
   private recent: number[] = [];
@@ -87,6 +118,7 @@ export class DiscordNotifier {
     private readonly doFetch: Fetch = fetch,
   ) {}
 
+  /** The host's settings. */
   config(): DiscordSettings {
     const s = this.settings.getRaw<Partial<DiscordSettings>>('discord');
     return { ...DISCORD_DEFAULTS, ...s, events: { ...DISCORD_DEFAULTS.events, ...(s?.events ?? {}) } };
@@ -96,20 +128,34 @@ export class DiscordNotifier {
     this.settings.setRaw('discord', next);
   }
 
-  /** Queue a message for `event` if it is switched on. `kind` picks the text (defaults to the event). */
-  notify(event: NotifyEvent, params: Record<string, string> = {}, kind: string = event): void {
+  /** The host's settings under a server's override. */
+  effective(o: DiscordOverride | null): DiscordSettings {
     const c = this.config();
+    if (!o) return c;
+    return { webhookUrl: o.webhookUrl ?? c.webhookUrl, lang: o.lang ?? c.lang, events: { ...c.events, ...o.events } };
+  }
+
+  /** Host messages (security): the host's settings, no server named. */
+  notify(event: NotifyEvent, params: Record<string, string> = {}, kind: string = event): void {
+    this.send(this.config(), null, event, params, kind);
+  }
+
+  /** A server's messages: its override over the host's settings, each naming the server. */
+  forServer(s: { name: () => string; override: () => DiscordOverride | null }): Notify {
+    return { notify: (event, params = {}, kind = event) => this.send(this.effective(s.override()), s.name(), event, params, kind) };
+  }
+
+  private send(c: DiscordSettings, server: string | null, event: NotifyEvent, params: Record<string, string>, kind: string): void {
     if (!c.webhookUrl || !c.events[event]) return;
     const msg = MESSAGES[c.lang][kind];
     if (!msg) return;
-    this.enqueue(c.webhookUrl, msg(params));
+    this.enqueue(c.webhookUrl, named(msg(params), server));
   }
 
-  /** Send the test message right away and report the result. */
-  async test(): Promise<{ ok: boolean; status: number }> {
-    const c = this.config();
+  /** Send the test message right away with these settings (default: the host's) and report the result. */
+  async test(c: DiscordSettings = this.config(), server: string | null = null): Promise<{ ok: boolean; status: number }> {
     if (!c.webhookUrl) return { ok: false, status: 0 };
-    const res = await this.post(c.webhookUrl, MESSAGES[c.lang].test!({}));
+    const res = await this.post(c.webhookUrl, named(MESSAGES[c.lang].test!({}), server));
     return { ok: res.ok, status: res.status };
   }
 

@@ -1,7 +1,7 @@
 import type { AgentFeed } from '../http/deps';
 import type { PanelBus } from '../ops/bus';
 import type { PlayersService } from '../players/service';
-import type { DiscordNotifier, NotifyEvent } from './discord';
+import type { Notify, NotifyEvent } from './discord';
 
 const OP_EVENT: Record<string, NotifyEvent | undefined> = {
   backup: 'backup',
@@ -17,7 +17,7 @@ function actorLabel(by: string | null): string {
 }
 
 /** Route one server's live events to Discord. Returns an unsubscribe function. */
-export function wireNotifications(d: { serverId: string; feed: AgentFeed; players: PlayersService; bus: PanelBus; notifier: DiscordNotifier }): () => void {
+export function wireNotifications(d: { serverId: string; feed: AgentFeed; players: PlayersService; bus: PanelBus; notifier: Notify }): () => void {
   let last: string | null = null;
   const offFeed = d.feed.onEvent((e) => {
     const ev = e.event;

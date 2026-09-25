@@ -24,7 +24,7 @@ import { AgentServerFiles } from './files/agent';
 import { LocalServerFiles } from './files/local';
 import type { AgentFeed, Deps } from './http/deps';
 import { ModsService } from './mods/service';
-import { DiscordNotifier } from './notifier/discord';
+import { DISCORD_OVERRIDE_KEY, DiscordNotifier, type DiscordOverride } from './notifier/discord';
 import { wireNotifications } from './notifier/events';
 import { PanelBus } from './ops/bus';
 import { OpRunner } from './ops/runner';
@@ -79,10 +79,12 @@ export interface ServerParts {
  * triggers). Timers and the agent's stream start with `start()`.
  */
 export function createServerContext(host: HostParts, row: ServerRow, parts: ServerParts): ServerContext {
-  const { db, audit, bus, notifier } = host;
+  const { db, audit, bus } = host;
   const { adapter, agent, feed, files } = parts;
   const settings = new ServerSettings(db, row.id);
   const ops = new OpRunner(bus, row.id);
+  // Its Discord messages name it, and follow its override of the host's webhook (SCH-03).
+  const notifier = host.notifier.forServer({ name: () => row.name, override: () => settings.getRaw<DiscordOverride>(DISCORD_OVERRIDE_KEY) });
 
   // The server's contexts give adapter code the config store, and the store
   // runs adapter code (afterWrite, presets) with those contexts: late-bound.
@@ -135,6 +137,7 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
     players,
     mods,
     scheduler,
+    notifier,
     changes,
     capabilities: () => capabilitiesOf(ctx.adapter, row.flavour),
     start: () => {

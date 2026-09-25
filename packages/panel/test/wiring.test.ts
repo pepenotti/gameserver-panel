@@ -44,6 +44,7 @@ const SERVER_FIELDS = {
   players: true,
   mods: true,
   scheduler: true,
+  notifier: true,
   changes: true,
   capabilities: false,
   start: false,
