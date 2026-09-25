@@ -82,7 +82,8 @@ async function failure(p: Promise<unknown>): Promise<OrchestratorCallError> {
 describe('the panel’s orchestrator client (D3, NFR-03), against the fake orchestrator', () => {
   it('reads health, host and the server list', async () => {
     expect(await client.health()).toEqual({ ok: true, version: 'fake', api: 1 });
-    expect(await client.host()).toMatchObject({ dockerVersion: 'fake', cpus: expect.any(Number) });
+    // With where servers may publish and how much memory one may have (SRV-01, SRV-05).
+    expect(await client.host()).toMatchObject({ dockerVersion: 'fake', cpus: expect.any(Number), hostPorts: [{ from: 1024, to: 65535 }], maxMemMb: 4096 });
     expect(await client.list()).toEqual([]);
   });
 

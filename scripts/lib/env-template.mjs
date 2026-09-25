@@ -5,9 +5,7 @@ import { randomBytes } from 'node:crypto';
 
 /** @type {Record<string, () => string>} */
 export const SECRETS = {
-  AGENT_TOKEN: () => randomBytes(32).toString('hex'),
   ORCH_TOKEN: () => randomBytes(32).toString('hex'),
-  PZ_ADMIN_PASSWORD: () => randomBytes(18).toString('base64url'),
   PANEL_OWNER_PASSWORD: () => randomBytes(12).toString('base64url'),
 };
 

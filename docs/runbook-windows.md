@@ -3,6 +3,11 @@
 How to run the stack on a Windows PC: install, open it to friends, and keep it
 running. Commands are for PowerShell in the repo folder unless noted.
 
+> The stack is the panel, Caddy and the orchestrator; every game server you
+> create in the panel runs in its own container, named
+> `gameserver-panel-srv-<id>`. This guide is being rewritten for several
+> servers (M7); until then, its examples use one Project Zomboid server.
+
 > **If Docker Desktop won't start:** on Windows 11 build 26200 it can crash at
 > startup on undeletable socket files (see `verification/pz-b42.md`, M3). Option B
 > below, Docker Engine inside WSL, avoids Docker Desktop entirely. Everything
@@ -57,10 +62,12 @@ It creates `.env` with random secrets. Open `.env` and check:
 | `LAN_IP` | This PC's LAN address, e.g. `192.168.1.50` |
 | `PANEL_PORT` | `8443`, which leaves 80/443 to any other web server on this PC |
 | `BACKUP_DIR` | A folder on a disk with room, e.g. `D:/zomboid-backups` |
-| `PZ_MEM_LIMIT` | About 3 GB more than the Java memory you'll set in the panel |
+| `ORCH_MAX_MEM_MB` | The most memory one server may have: for Project Zomboid, about 3 GB more than the Java memory you'll set in the panel |
+| `ORCH_HOST_PORTS` | The ports game servers may use. The default covers the usual ones (Project Zomboid from 16261) |
 | `TZ` | Your time zone. Schedules and log times use it |
 
 ```bash
+docker compose build steam      # the image game servers run
 docker compose up -d --build
 ```
 
@@ -70,7 +77,8 @@ Then:
 2. Sign in as `owner` with `PANEL_OWNER_PASSWORD` from `.env`.
 3. Set a new password, then scan the 2FA QR code with an authenticator app.
    Keep the recovery codes somewhere safe, off this PC.
-4. Press **Start** on the dashboard. The first start downloads the game (a few
+4. Create a server (Project Zomboid, its name and memory; the panel picks its
+   ports), then press **Start**. The first start downloads the game (a few
    GB) and takes a few minutes. Watch it on **Console**.
 5. In **Configuration**, set the server's public name, password and welcome
    message. In **Schedules**, check the time zone and the daily restart.
@@ -81,7 +89,8 @@ that, change passwords in the panel.
 ## 3. Open it to friends
 
 On the router:
-- Forward **UDP 16261–16262** (game) and **TCP 8443** (panel) to `LAN_IP`.
+- Forward each server's game ports (the panel shows them; the first Project
+  Zomboid server gets **UDP 16261–16262**) and **TCP 8443** (panel) to `LAN_IP`.
 - Add a DHCP reservation so this PC keeps `LAN_IP`.
 - Leave any existing 80/443 forwards as they are.
 
@@ -106,17 +115,18 @@ The server only runs while this PC is on and someone is signed in.
 | To… | Do |
 |---|---|
 | Start, stop, restart, update the game | The panel's dashboard and **Game server** page |
-| See why something failed | Panel **Console**, or `docker compose logs -f pz` / `panel` |
-| Update the panel | `git pull`, then `docker compose up -d --build panel`. The game keeps running |
-| Update the agent (`pz` image) | `docker compose up -d --build pz`. The world is saved first, and the game starts again by itself; players are dropped for a few minutes |
-| Stop everything | `docker compose stop`. It waits up to 4 minutes for the world to save |
-| Run the agent without the panel | `docker compose exec pz node /app/agentctl.mjs status` (also `start`, `stop`, `cmd "players"`, `logs`) |
+| See why something failed | Panel **Console**, or `docker logs -f gameserver-panel-srv-<id>` / `docker compose logs -f panel` |
+| Update the panel | `git pull`, then `docker compose up -d --build panel orchestrator`. The games keep running |
+| Update the servers' image | `docker compose build steam`. A server picks it up when its container is recreated (a new memory limit does that; a proper update button comes with M7) |
+| Stop everything | Stop each game in the panel (the world is saved), then `docker compose stop` |
+| Run a server's agent without the panel | `docker exec gameserver-panel-srv-<id> node /app/agentctl.mjs status` (also `start`, `stop`, `cmd "players"`, `logs`) |
 
-Backups land in `BACKUP_DIR`:
+Backups land in `BACKUP_DIR/<server id>/`:
 - `pz-<server>-<time>-<trigger>.tar.zst` are world backups, each with a `.json`
   sidecar holding its checksum and contents. They're listed in the panel.
-- `panel/panel-<time>.sqlite` are nightly copies of the panel's own database
-  (users, 2FA, settings, history). The last 7 are kept.
+- `BACKUP_DIR/panel/panel-<time>.sqlite` are nightly copies of the panel's own
+  database (users, 2FA, settings, history, every server's secrets). The last 7
+  are kept.
 
 Copy `BACKUP_DIR` to another disk or cloud storage now and then. A backup on
 the same PC doesn't survive that PC dying.
@@ -146,8 +156,11 @@ If the server won't start after a restore, **Backups** also offers **Undo
 restore**, which puts the replaced files straight back.
 
 **"The panel cannot reach the game server container".** Run
-`docker compose ps`. If `pz` is restarting, `docker compose logs pz` says why.
-After a PC restart, give it a minute.
+`docker ps -a --filter label=gsp.server=<id>`. If the server's container is
+restarting, `docker logs gameserver-panel-srv-<id>` says why; `docker compose
+logs orchestrator` shows what the orchestrator refused. After a PC restart,
+give it a minute. A server whose container won't run can still be removed by
+the owner (forced removal, which says whether the final backup was taken).
 
 **Friends can't join.** Check in this order:
 1. The server shows *Online* on the dashboard.

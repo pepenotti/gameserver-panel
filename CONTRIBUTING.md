@@ -9,8 +9,8 @@ built until the PRD says so (its change control, §14).
 One coherent, green unit of work per commit. Subject in the imperative; the
 body says *why* and names the PRD requirement IDs or the milestone the commit
 serves (`M1`, `CFG-07`, `NFR-09`, `D11`, …). The commit-msg hook in
-`.githooks/` rejects messages without one (enable it once per clone with
-`git config core.hooksPath .githooks`).
+`.githooks/` rejects messages without one, and runs the privacy check on the
+message (enable it once per clone with `git config core.hooksPath .githooks`).
 
 Merge and revert commits need one too, so give them a message instead of
 git's default:
@@ -29,7 +29,8 @@ skips the audit.
 `VERSION` is the single source of truth, and it changes only in the
 integrator's merge commits on `main`: a patch bump for every merged branch, a
 minor bump when a milestone completes. Branches never bump it. While the
-major is 0, a breaking change is a minor bump too.
+major is 0, a breaking change is a minor bump too. The images copy it next to
+their bundles: the panel, the orchestrator and every agent report it.
 
 ```sh
 git merge --no-ff --no-commit <branch>
@@ -79,24 +80,52 @@ case-insensitive regex per line). `--range main..HEAD` checks a branch's
 commit messages and added lines; the commit-msg hook checks each message.
 Hits show the file, line and pattern number, never the text.
 
+## Packages
+| Package | What it is |
+|---|---|
+| `shared` | Types and rules both sides use: permissions, the agent API, the orchestrator API (`orchestrator-api.ts`) |
+| `formats` | The file and wire formats games share (pure) |
+| `archive` | tar, zstd, and `RootedFiles`: a server's files on disk, rooted and link-free |
+| `adapter-api` | The adapter contract and its shared test suites |
+| `adapter-<game>` | One game (`adapter-pz`); `adapters` is the one list of them |
+| `agent` | Runs inside each server's container: the game, its console, installer and files |
+| `orchestrator` | The only component with Docker access |
+| `panel` | The API: accounts, servers, settings, backups, schedules |
+| `web` | The UI (React) |
+
+`tools/` holds the fakes the dev loop and tests use: the fake orchestrator
+(`tools/fake-orchestrator`), a recording Docker API (`tools/fake-docker`) and
+fake games (`tools/fake-pz`).
+
 ## Architecture guard rails
 - `packages/formats` is pure: no I/O, no Node APIs beyond Buffer. The file and
   wire formats games share (ini, Lua data, VDF, RCON frames, steamcmd output)
   live there; a game's own formats (PZ's mod.info and log lines) live in its
   adapter package. Both are tested against captured output in `fixtures/<game>/`
   (`fixtures/pz/b42/`) — real captured output, not guesses.
-- The core (`shared`, `formats`, `adapter-api`, `agent`, `panel`, `web`) never
-  imports a game adapter (NFR-08): it works through the contract in
-  `packages/adapter-api`, and only the agent's entry point and the panel's
-  wiring (`packages/panel/src/wiring.ts`) pick adapters, from
-  `@gsp/adapters`. ESLint enforces it, and `scripts/core-agnostic.test.ts`
-  also refuses a game's app ids, file names and console commands in the core.
-- The **agent** (`packages/agent`, runs in the `pz` container) is the only thing
-  that spawns the game, speaks RCON or runs steamcmd. It knows nothing about users.
-- The **panel** never spawns the game or opens RCON; it goes through the agent
-  client. Every route declares a permission from `packages/shared/src/permissions.ts`.
-- Never edit the game install dir (`/opt/pz`): steamcmd `validate` overwrites it.
-  JVM flags go on the command line.
+- The core (`shared`, `formats`, `archive`, `adapter-api`, `agent`,
+  `orchestrator`, `panel`, `web`) never imports a game adapter (NFR-08): it
+  works through the contract in `packages/adapter-api`, and only the agent's
+  entry point and the panel's wiring (`packages/panel/src/wiring.ts`) pick
+  adapters, from `@gsp/adapters`. ESLint enforces it, and
+  `scripts/core-agnostic.test.ts` also refuses a game's app ids, file names and
+  console commands in the core.
+- The **orchestrator** (`packages/orchestrator`) is the only component with
+  Docker access (D3, NFR-02). It takes a narrow spec from the panel, derives
+  the image, user, capabilities, mounts, networks and names itself, and
+  refuses anything else. Nothing else gets the Docker socket, and it gets no
+  network. A change to what it accepts is a change to
+  `packages/shared/src/orchestrator-api.ts`, a frozen contract.
+- The **agent** (`packages/agent`, one per server, inside that server's
+  container) is the only thing that spawns the game, speaks RCON or runs
+  steamcmd, and the only thing that touches a server's files (D11): the panel
+  reads, writes, backs up and restores them through the agent's file and
+  archive routes, never through a mount. It knows nothing about users.
+- The **panel** never spawns the game, opens RCON or reads a server's files; it
+  goes through that server's agent client, with that server's own token. Every
+  route declares a permission from `packages/shared/src/permissions.ts`.
+- Never edit a game's install dir (`/opt/game` in a server's container):
+  steamcmd `validate` overwrites it. JVM flags go on the command line.
 - `SandboxVars.lua` / `spawnregions.lua` are executed by the game. Only the
   data-only serializer in `packages/formats` may write them.
 - `spawn` with argument arrays only; never a shell string.

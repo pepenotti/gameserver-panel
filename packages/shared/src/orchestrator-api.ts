@@ -52,7 +52,18 @@ export interface HealthResponse {
   api: number;
 }
 
-/** `GET /v1/host`: what the host can run (HST-05) and has (SRV-05). */
+/** An inclusive range of host ports, e.g. `{ from: 16261, to: 16299 }`. */
+export interface PortRangeInfo {
+  from: number;
+  to: number;
+}
+
+/**
+ * `GET /v1/host`: what the host can run (HST-05) and has (SRV-05), and what
+ * this install lets a server ask for. The last two come from the
+ * orchestrator's own settings; an orchestrator older than them leaves them
+ * out, and then only its refusals tell.
+ */
 export interface HostInfo {
   arch: CpuArch;
   cpus: number;
@@ -60,7 +71,14 @@ export interface HostInfo {
   dockerVersion: string;
   /** Docker's `OperatingSystem`, e.g. "Docker Desktop" or "Ubuntu 24.04 LTS". */
   os: string;
+  /** `ORCH_HOST_PORTS`: the only host ports a server may publish (SRV-01), low to high as configured. */
+  hostPorts?: PortRangeInfo[];
+  /** `ORCH_MAX_MEM_MB`: the most memory one server may be given, MiB (SRV-05). */
+  maxMemMb?: number;
 }
+
+/** The port every server's agent listens on inside its container: never published, and no game port may take it. */
+export const AGENT_CONTAINER_PORT = 8081;
 
 /**
  * Environment keys a spec may set besides the fixed ones: the agent's

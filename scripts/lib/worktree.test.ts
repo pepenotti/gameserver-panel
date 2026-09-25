@@ -18,15 +18,13 @@ describe('slot env', () => {
       PANEL_HOST: 'wt1.localhost',
       LAN_IP: '127.0.0.1',
       PANEL_PORT: '30143',
-      PZ_GAME_PORT: '30161',
-      PZ_UDP_PORT: '30162',
       BACKUP_DIR: './.tmp/backups',
       // The orchestrator's game servers stay in the slot's game ports, and may run fake images.
       ORCH_HOST_PORTS: '30150-30199',
       ORCH_ALLOW_FAKE: '1',
       SERVER_IMAGE_VARIANT: 'fake',
       ORCH_MAX_SERVERS: '4',
-      ORCH_MAX_MEM_MB: '4096',
+      ORCH_MAX_MEM_MB: '6144',
     });
     expect(devHost(0)).toBe('wt0.localhost');
     expect(slotOverrides(0).PANEL_HOST).toBe('wt0.localhost');
@@ -38,11 +36,9 @@ describe('slot env', () => {
     const b = parseEnvFile(fillEnv(example, '', { overrides: slotOverrides(3) }).text);
     expect(checkEnv(a, [])).toEqual([]);
     expect(a.PANEL_PORT).toBe('30343');
-    expect(a.AGENT_TOKEN).toMatch(/^[0-9a-f]{64}$/);
-    expect(a.AGENT_TOKEN).not.toBe(b.AGENT_TOKEN);
     expect(a.ORCH_TOKEN).toMatch(/^[0-9a-f]{64}$/);
-    expect(a.ORCH_TOKEN).not.toBe(a.AGENT_TOKEN);
     expect(a.ORCH_TOKEN).not.toBe(b.ORCH_TOKEN);
+    expect(a.PANEL_OWNER_PASSWORD).not.toBe(b.PANEL_OWNER_PASSWORD);
     expect(a.ORCH_HOST_PORTS).toBe('30350-30399');
     expect(a.ORCH_ALLOW_FAKE).toBe('1');
     expect(a.PANEL_OWNER_PASSWORD).not.toBe('');
@@ -77,22 +73,29 @@ describe('slot env', () => {
     expect(prod.ORCH_ALLOW_FAKE).toBe('0');
     expect(prod.SERVER_IMAGE_VARIANT).toBe('');
     expect(prod.ORCH_HOST_PORTS).toMatch(/^\d+(-\d+)?(,\d+(-\d+)?)*$/);
-    expect(prod).not.toHaveProperty('PZ_MEM_LIMIT');
+    // Servers are the orchestrator's: nothing in .env describes one any more (their secrets are per server, in the database).
+    for (const gone of ['PZ_MEM_LIMIT', 'AGENT_TOKEN', 'PZ_ADMIN_PASSWORD', 'PZ_SERVER_NAME', 'PZ_GAME_PORT', 'PZ_UDP_PORT']) expect(prod, gone).not.toHaveProperty(gone);
   });
 });
 
 describe('fillEnv', () => {
-  const ex = '# c\nA=\nAGENT_TOKEN=\nB=keep\n';
+  const ex = '# c\nA=\nORCH_TOKEN=\nB=keep\n';
 
   it('generates empty secrets and keeps existing values (init-env)', () => {
     const { text, generated } = fillEnv(ex, 'B=mine\nEXTRA=1\n');
-    expect(generated).toEqual(['AGENT_TOKEN']);
-    expect(text).toMatch(/^# c\nA=\nAGENT_TOKEN=[0-9a-f]{64}\nB=mine\nEXTRA=1\n$/);
+    expect(generated).toEqual(['ORCH_TOKEN']);
+    expect(text).toMatch(/^# c\nA=\nORCH_TOKEN=[0-9a-f]{64}\nB=mine\nEXTRA=1\n$/);
   });
 
   it('applies overrides and appends unknown ones under a comment', () => {
     const { text } = fillEnv(ex, '', { overrides: { A: 'x', NEW: 'y' }, extrasComment: 'slot' });
-    expect(text).toMatch(/^# c\nA=x\nAGENT_TOKEN=[0-9a-f]{64}\nB=keep\n\n# slot\nNEW=y\n$/);
+    expect(text).toMatch(/^# c\nA=x\nORCH_TOKEN=[0-9a-f]{64}\nB=keep\n\n# slot\nNEW=y\n$/);
+  });
+
+  it('keeps settings an older .env has that the example no longer lists (AGENT_TOKEN of a stack before the orchestrator)', () => {
+    const { text, generated } = fillEnv(ex, 'AGENT_TOKEN=old\n');
+    expect(generated).toEqual(['ORCH_TOKEN']);
+    expect(text).toMatch(/\nAGENT_TOKEN=old\n$/);
   });
 });
 

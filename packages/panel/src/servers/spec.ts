@@ -1,5 +1,5 @@
 import type { PanelAdapter, PortDecl } from '@gsp/adapter-api';
-import type { PortMapping, PortProto, ServerSpec } from '@gsp/shared';
+import { AGENT_CONTAINER_PORT, type PortMapping, type PortProto, type PortRangeInfo, type ServerSpec } from '@gsp/shared';
 import { HttpError } from '../http/context';
 import type { ServerRow } from './store';
 
@@ -73,17 +73,55 @@ export function takenPorts(rows: readonly ServerRow[], adapterOf: (id: string) =
 const MIN_PORT = 1024;
 const MAX_PORT = 65535;
 
+/** Ranges as `ORCH_HOST_PORTS` writes them: `30150-30199`, `2456-2499,16261-16299`. */
+export function formatPortRanges(ranges: readonly PortRangeInfo[]): string {
+  return ranges.map((r) => (r.from === r.to ? String(r.from) : `${r.from}-${r.to}`)).join(',');
+}
+
+const inRanges = (port: number, ranges: readonly PortRangeInfo[] | undefined) => !ranges || ranges.some((r) => port >= r.from && port <= r.to);
+
+/**
+ * Two of the server's ports on one number and protocol inside its container
+ * (a port that must be the same inside and out takes its host number; every
+ * other one listens on its default), or one on its agent's port. Published
+ * same-inside-and-out ports without a host port yet are left out.
+ */
+function insideClash(all: readonly PortDecl[], hosts: Readonly<Record<string, number>>): { port: number; proto: PortProto; with: string } | null {
+  const seen = new Map<string, string>([[`${AGENT_CONTAINER_PORT}/tcp`, 'agent']]);
+  for (const d of all) {
+    const host = hosts[d.id];
+    const fixedByHost = d.publish && d.sameInsideOut;
+    if (fixedByHost && host === undefined) continue;
+    const inside = fixedByHost ? host! : d.default;
+    const key = `${inside}/${d.proto}`;
+    const other = seen.get(key);
+    if (other !== undefined) return { port: inside, proto: d.proto, with: other === 'agent' ? 'agent' : 'self' };
+    seen.set(key, d.id);
+  }
+  return null;
+}
+
 /**
  * The host ports of a new server (SRV-01): the ones asked for, checked, and
- * the rest picked near the adapter's defaults, shifted together (PZ's two
- * UDP ports stay a pair) past anything taken. Refusals name the port.
+ * the rest picked together (PZ's two UDP ports stay a pair, in the order
+ * of their defaults) past anything taken. `allowed` is where this install
+ * lets servers publish (`HostInfo.hostPorts`, from `ORCH_HOST_PORTS`;
+ * undefined: an orchestrator that doesn't say, so anywhere from 1024 up).
+ * Picked ports sit near the adapter's defaults when those are allowed,
+ * shifted by the width of the block, else as low as they fit in the
+ * allowed ranges. Ports that must be the same inside and out never land on
+ * another of the server's ports or its agent's. Refusals name the port.
  */
-export function planPorts(adapter: PanelAdapter, requested: Readonly<Record<string, number>> | undefined, taken: readonly TakenPort[]): Record<string, number> {
+export function planPorts(adapter: PanelAdapter, requested: Readonly<Record<string, number>> | undefined, taken: readonly TakenPort[], allowed?: readonly PortRangeInfo[]): Record<string, number> {
   const decls = publishedPorts(adapter);
   const asked = requested ?? {};
+  const ranges = allowed?.length ? [...allowed].sort((a, b) => a.from - b.from) : undefined;
   for (const [id, port] of Object.entries(asked)) {
     if (!decls.some((d) => d.id === id)) throw new HttpError(400, 'unknown-port', undefined, { port: id });
     if (!Number.isInteger(port) || port < MIN_PORT || port > MAX_PORT) throw new HttpError(400, 'invalid-port', undefined, { port: id, min: MIN_PORT, max: MAX_PORT });
+    if (ranges && !inRanges(port, ranges)) {
+      throw new HttpError(400, 'invalid-port', undefined, { port: id, min: ranges[0]!.from, max: Math.max(...ranges.map((r) => r.to)), ranges: formatPortRanges(ranges) });
+    }
   }
   const clash = (port: number, proto: PortProto, mine: TakenPort[]) => [...taken, ...mine].find((t) => t.port === port && t.proto === proto);
   const out: Record<string, number> = {};
@@ -96,21 +134,37 @@ export function planPorts(adapter: PanelAdapter, requested: Readonly<Record<stri
     out[d.id] = port;
     mine.push({ port, proto: d.proto, by: 'self' });
   }
+  const inside = insideClash(adapter.meta.ports, out);
+  if (inside) throw new HttpError(409, 'port-conflict', undefined, inside);
   const missing = decls.filter((d) => out[d.id] === undefined);
   if (missing.length === 0) return out;
-  // Shift the missing ones together, by the width of the adapter's default block.
-  const span = Math.max(...missing.map((d) => d.default)) - Math.min(...missing.map((d) => d.default)) + 1;
-  for (let shift = 0; ; shift += span) {
-    if (missing.some((d) => d.default + shift > MAX_PORT)) throw new HttpError(409, 'no-free-port');
+
+  const low = Math.min(...missing.map((d) => d.default));
+  const span = Math.max(...missing.map((d) => d.default)) - low + 1;
+  /** The missing ports placed from `base` on, as their defaults are placed from `low`; null when that doesn't fit. */
+  const place = (base: number): Record<string, number> | null => {
     const trial = [...mine];
-    const fits = missing.every((d) => {
-      const port = d.default + shift;
-      if (port < MIN_PORT || clash(port, d.proto, trial)) return false;
+    const placed = { ...out };
+    for (const d of missing) {
+      const port = base + d.default - low;
+      if (port < MIN_PORT || port > MAX_PORT || !inRanges(port, ranges) || clash(port, d.proto, trial)) return null;
       trial.push({ port, proto: d.proto, by: 'self' });
-      return true;
-    });
-    if (!fits) continue;
-    for (const d of missing) out[d.id] = d.default + shift;
-    return out;
+      placed[d.id] = port;
+    }
+    return insideClash(adapter.meta.ports, placed) ? null : placed;
+  };
+  // Near the defaults (the ports players and guides know), while this install allows them…
+  for (let base = low; base + span - 1 <= MAX_PORT; base += span) {
+    if (ranges && !missing.every((d) => inRanges(base + d.default - low, ranges))) break;
+    const placed = place(base);
+    if (placed) return placed;
   }
+  // …else as low as they fit where it lets servers publish.
+  for (const r of ranges ?? []) {
+    for (let base = Math.max(r.from, MIN_PORT); base + span - 1 <= Math.min(r.to, MAX_PORT); base++) {
+      const placed = place(base);
+      if (placed) return placed;
+    }
+  }
+  throw new HttpError(409, 'no-free-port');
 }
