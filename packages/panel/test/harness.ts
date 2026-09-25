@@ -220,6 +220,7 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     agentUrl: 'http://agent.invalid',
     agentToken: 'x'.repeat(40),
     orchestrator: null,
+    serverImageVariant: null,
     pzDataDir: path.join(tmp, 'data'),
     pzInstallDir: path.join(tmp, 'install'),
     backupDir: path.join(tmp, 'backups'),

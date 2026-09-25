@@ -22,7 +22,7 @@ export function publishedPorts(adapter: PanelAdapter): PortDecl[] {
  * ports that must be the same inside and out). Everything that makes the
  * container safe is the orchestrator's to derive from `id`.
  */
-export function buildSpec(row: ServerRow, adapter: PanelAdapter, o: { agentToken: string; tz: string }): ServerSpec {
+export function buildSpec(row: ServerRow, adapter: PanelAdapter, o: { agentToken: string; tz: string; variant?: string | null }): ServerSpec {
   const ports: PortMapping[] = [];
   const env: ServerSpec['env'] = { AGENT_TOKEN: o.agentToken, GAME_ADAPTER: adapter.meta.id, TZ: o.tz };
   if (row.flavour !== null) env.GAME_FLAVOUR = row.flavour;
@@ -34,6 +34,8 @@ export function buildSpec(row: ServerRow, adapter: PanelAdapter, o: { agentToken
     env[`GAME_PORT_${p.id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`] = String(container);
   }
   const spec: ServerSpec = { id: row.id, runtime: adapter.meta.runtime, env, ports, memoryMb: row.memLimitMb };
+  // The install's image variant (`SERVER_IMAGE_VARIANT`: the fake game images in dev and test slots).
+  if (o.variant) spec.variant = o.variant;
   if (row.cpus !== null) spec.cpus = row.cpus;
   return spec;
 }

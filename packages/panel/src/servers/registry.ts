@@ -327,7 +327,7 @@ export class DbServerRegistry implements ServerRegistry {
       createdBy: userId,
       sort: Math.max(0, ...rows.list().map((r) => r.sort)) + 1,
     };
-    const spec = buildSpec(draft, adapter, { agentToken: secrets[AGENT_TOKEN_SECRET]!, tz: this.d.tz });
+    const spec = buildSpec(draft, adapter, { agentToken: secrets[AGENT_TOKEN_SECRET]!, tz: this.d.tz, variant: this.d.env.serverImageVariant });
     // The row is the wanted state: written first, so a crash before the container exists is repaired by reconcile.
     const row = rows.insert({ ...draft, spec: redactSpec(spec) }, secrets);
     if (input.launch) new ServerSettings(this.d.db, id).setRaw('launch', launch);
@@ -474,7 +474,7 @@ export class DbServerRegistry implements ServerRegistry {
         const token = rows.secrets(row.id)[AGENT_TOKEN_SECRET];
         if (!token) throw new Error('no agent token stored');
         // Rebuilt from the row, so a changed time zone or a newer panel's derivation reaches the container.
-        const spec = buildSpec(row, adapter, { agentToken: token, tz: this.d.tz });
+        const spec = buildSpec(row, adapter, { agentToken: token, tz: this.d.tz, variant: this.d.env.serverImageVariant });
         const before = containers.find((c) => c.id === row.id);
         let c = await orchestrator.apply(spec);
         if (!before || before.specHash !== c.specHash) report.applied.push(row.id);

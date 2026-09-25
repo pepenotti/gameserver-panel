@@ -32,7 +32,8 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...base, AGENT_TOKEN: 'short' })).toThrow(/32/);
     expect(() => loadEnv({ ...base, PZ_SERVER_NAME: '../etc' })).toThrow(/PZ_SERVER_NAME/);
     expect(() => loadEnv({ AGENT_URL: 'http://pz:8081' })).toThrow(/AGENT_TOKEN must be set with AGENT_URL/);
-    expect(() => loadEnv({ ...base, ORCH_SOCKET: '/run/orch/orch.sock' })).toThrow(/ORCH_TOKEN/);
+    expect(() => loadEnv({ ...base, ORCH_SOCKET: '/run/orch/orch.sock' })).toThrow(/ORCH_SOCKET and ORCH_TOKEN must be set together/);
+    expect(() => loadEnv({ ...base, ORCH_TOKEN: 'o'.repeat(40) })).toThrow(/together/);
     expect(() => loadEnv({ ...base, ORCH_SOCKET: '/run/orch/orch.sock', ORCH_TOKEN: 'short' })).toThrow(/ORCH_TOKEN/);
   });
 
@@ -41,6 +42,11 @@ describe('loadEnv', () => {
     expect(loadEnv({})).toMatchObject({ agentUrl: '', agentToken: '', orchestrator: null });
     expect(loadEnv(base)).toMatchObject({ agentUrl: 'http://pz:8081', agentToken: base.AGENT_TOKEN });
     expect(loadEnv({ ...base, ORCH_SOCKET: '/run/orch/orch.sock', ORCH_TOKEN: 'o'.repeat(40) }).orchestrator).toEqual({ socket: '/run/orch/orch.sock', token: 'o'.repeat(40) });
+    // Development and test slots run the fake game images.
+    expect(loadEnv(base).serverImageVariant).toBeNull();
+    expect(loadEnv({ ...base, SERVER_IMAGE_VARIANT: '' }).serverImageVariant).toBeNull();
+    expect(loadEnv({ ...base, SERVER_IMAGE_VARIANT: 'fake' }).serverImageVariant).toBe('fake');
+    expect(() => loadEnv({ ...base, SERVER_IMAGE_VARIANT: 'Fake Images' })).toThrow(/SERVER_IMAGE_VARIANT/);
   });
 
   it('listens on TCP by default, or on a unix socket (PANEL_LISTEN, NFR-03)', () => {

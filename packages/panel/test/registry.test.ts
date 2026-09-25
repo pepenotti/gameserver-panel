@@ -332,6 +332,17 @@ describe('reconcile (SRV-06)', () => {
     expect(p.deps.audit.list({ action: 'server.reconcile' })[0]).toMatchObject({ actorType: SYSTEM.type, ok: false });
   });
 
+  it("asks for the install's image variant, and recreates containers when it changes", async () => {
+    const p = await makePanel({ serverImageVariant: 'fake' });
+    await create(p);
+    expect(p.orch.containers.get('pz-two')!.spec.variant).toBe('fake');
+    // The same database under a production environment: the spec changes, the container is recreated and started.
+    const prod = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    expect(await prod.deps.servers.reconcile()).toMatchObject({ applied: ['pz-two'], started: ['pz-two'] });
+    expect(p.orch.containers.get('pz-two')!.spec).not.toHaveProperty('variant');
+    expect(prod.deps.serverRows.get('pz-two')!.spec).not.toHaveProperty('variant');
+  });
+
   it("reaches an orchestrator-run server's agent where its container says, once the orchestrator told", async () => {
     const p = await makePanel();
     await create(p);

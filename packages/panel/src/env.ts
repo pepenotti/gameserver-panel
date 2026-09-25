@@ -22,6 +22,12 @@ export interface PanelEnv {
    * token. Null: this install has none, and servers can't be created.
    */
   orchestrator: { socket: string; token: string } | null;
+  /**
+   * The image variant every new server's spec asks for (`SERVER_IMAGE_VARIANT`,
+   * `ServerSpec.variant`): `fake` in development and test slots, so they run
+   * the fake game images; null in production.
+   */
+  serverImageVariant: string | null;
   /** Mounted pz-data volume (PZ -cachedir). */
   pzDataDir: string;
   /** Mounted game install, read-only. */
@@ -101,7 +107,10 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): PanelEnv {
   if (agentUrl && !agentToken) throw new Error('AGENT_TOKEN must be set with AGENT_URL');
   const orchSocket = env.ORCH_SOCKET ?? '';
   const orchToken = env.ORCH_TOKEN ?? '';
-  if (orchSocket && orchToken.length < 32) throw new Error('ORCH_TOKEN must be set with ORCH_SOCKET, at least 32 characters');
+  if (!orchSocket !== !orchToken) throw new Error('ORCH_SOCKET and ORCH_TOKEN must be set together');
+  if (orchToken && orchToken.length < 32) throw new Error('ORCH_TOKEN must be at least 32 characters');
+  const variant = (env.SERVER_IMAGE_VARIANT ?? '').trim();
+  if (variant && !/^[a-z0-9][a-z0-9._-]{0,31}$/.test(variant)) throw new Error('SERVER_IMAGE_VARIANT must be 1-32 lowercase letters, digits, dots, dashes or underscores');
   const serverName = env.PZ_SERVER_NAME ?? 'zomboid';
   if (!/^[A-Za-z0-9_-]{1,32}$/.test(serverName)) throw new Error('PZ_SERVER_NAME must be 1-32 letters, digits, _ or -');
   const origins = (env.PANEL_ORIGINS ?? 'https://localhost:8443')
@@ -125,6 +134,7 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): PanelEnv {
     agentUrl,
     agentToken,
     orchestrator: orchSocket ? { socket: orchSocket, token: orchToken } : null,
+    serverImageVariant: variant || null,
     pzDataDir: env.PZ_DATA_DIR ?? '/data',
     pzInstallDir: env.PZ_INSTALL_DIR ?? '/opt/pz',
     backupDir: env.BACKUP_DIR ?? '/backups',
