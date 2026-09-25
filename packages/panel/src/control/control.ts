@@ -23,6 +23,8 @@ export interface ControlDeps {
   server: ServerHandle;
   /** For the safety backup before an update. */
   backups: Pick<BackupService, 'hasData' | 'create'>;
+  /** Before the game starts: the registry recreates a container that waits for changed settings (SRV-05). */
+  beforeStart?: () => Promise<void>;
 }
 
 export class Control {
@@ -74,8 +76,13 @@ export class Control {
     ctx.step('acting', { countdownEndsAt: null, cancellable: false });
   }
 
-  /** Start the game: the adapter's before-start hook, then the agent with the stored launch settings. */
+  /**
+   * Start the game: its container brought in line first (new memory or CPU
+   * limits wait for this moment), the adapter's before-start hook, then the
+   * agent with the stored launch settings.
+   */
   async startAgent(o: { lockId?: string; by?: string | null; hints?: ToAgentOptions } = {}): Promise<void> {
+    await this.d.beforeStart?.();
     const launch = this.d.server.launchEnvelope(o.hints);
     await this.d.server.adapter.hooks?.beforeStart?.(this.d.server.ctx(o.by ?? null));
     await this.d.agent.start(launch, o.lockId);

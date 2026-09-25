@@ -24,6 +24,10 @@ export interface ServerSummary {
   ports: { id: string; port: number; proto: PortProto }[];
   /** Container memory limit, MiB. */
   memLimitMb: number;
+  /** CPU limit in cores; null: none. */
+  cpus: number | null;
+  /** Its container waits to be recreated with changed settings (new limits) at the game's next start. */
+  containerPending: boolean;
   /** Whether the orchestrator runs it; false: the server the install's environment describes (`default`), which only the stack itself can remove. */
   managed: boolean;
   /** The signed-in user's role there, and what it lets them do. */
@@ -61,7 +65,7 @@ export interface AdapterSummary {
   launch: { schema: (LaunchOption | OptionMeta)[]; secrets: { key: string; label: I18n }[] };
 }
 
-function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants'>): ServerSummary | null {
+function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 'servers'>): ServerSummary | null {
   const who = principal(user);
   const grants = deps.grants.forUser(user.id);
   const role = roleOn(who, grants, s.id);
@@ -80,6 +84,8 @@ function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants'>): S
     nextRestart: s.scheduler.nextRuns().restart,
     ports: s.adapter.meta.ports.filter((p) => s.row.ports[p.id] !== undefined).map((p) => ({ id: p.id, port: s.row.ports[p.id]!, proto: p.proto })),
     memLimitMb: s.row.memLimitMb,
+    cpus: s.row.cpus,
+    containerPending: deps.servers.containerPending(s.id),
     managed: s.row.spec !== null,
     role,
     permissions: permissionsOn(who, grants, s.id),
@@ -161,13 +167,13 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
 
 /**
  * Changing and removing one server (under `/api/servers/:sid`, so the guard
- * resolves it and checks the permission there): rename or reorder with
- * `server.update`; remove (SRV-04) with `server.delete`, after typing its
- * name. Deleting its backups too, or skipping the final backup, is the
- * owner's choice alone.
+ * resolves it and checks the permission there): rename, reorder or change
+ * its memory and CPU limits (SRV-05) with `server.update`; remove (SRV-04)
+ * with `server.delete`, after typing its name. Deleting its backups too,
+ * or skipping the final backup, is the owner's choice alone.
  */
 export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
-  app.patch<{ Body: { name?: string; sort?: number } }>(
+  app.patch<{ Body: { name?: string; sort?: number; memLimitMb?: number; cpus?: number | null } }>(
     '',
     {
       config: { permission: 'server.update' },
@@ -176,7 +182,13 @@ export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
           type: 'object',
           additionalProperties: false,
           minProperties: 1,
-          properties: { name: { type: 'string', minLength: 1, maxLength: 64 }, sort: { type: 'integer', minimum: 0, maximum: 1_000_000 } },
+          properties: {
+            name: { type: 'string', minLength: 1, maxLength: 64 },
+            sort: { type: 'integer', minimum: 0, maximum: 1_000_000 },
+            // SRV-05: its container is recreated with them now if the game is stopped, else at its next start.
+            memLimitMb: { type: 'integer', minimum: 256, maximum: 1_048_576 },
+            cpus: { type: 'number', exclusiveMinimum: 0, maximum: 256, nullable: true },
+          },
         },
       },
     },

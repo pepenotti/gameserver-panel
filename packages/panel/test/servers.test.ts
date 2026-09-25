@@ -122,6 +122,39 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
   });
 });
 
+describe('memory and CPU limits through the API (SRV-05)', () => {
+  it("changes a server's limits with server.update, and moves them with the game's memory", async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    p.orch.maxMemMb = 8192;
+    expect((await createTwo(owner, { launch: { memoryMb: 2048 } })).json()).toMatchObject({ memLimitMb: 5120, cpus: null, containerPending: false });
+    const admin = await friend(p, owner, 'two-admin', 'admin', { 'pz-two': 'admin' });
+    const op = await friend(p, owner, 'two-op', 'operator', { 'pz-two': 'operator' });
+
+    expect((await op.req('PATCH', '/api/servers/pz-two', { memLimitMb: 6144 })).json()).toEqual({ error: 'forbidden' });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 6144, cpus: 1.5 })).json()).toMatchObject({ id: 'pz-two', memLimitMb: 6144, cpus: 1.5, containerPending: false });
+    expect(p.orch.containers.get('pz-two')!.spec).toMatchObject({ memoryMb: 6144, cpus: 1.5 });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 9000 })).json()).toMatchObject({ error: 'orchestrator-refused', field: 'memLimitMb', maxMb: 8192 });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 100 })).json()).toMatchObject({ error: 'validation' });
+
+    // While the game runs, the new limit waits for its next start, and the list says so.
+    p.fakes('pz-two').feed.status_ = fakeStatus({ state: 'running' });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 7168 })).json()).toMatchObject({ memLimitMb: 7168, containerPending: true });
+    expect(((await owner.get('/api/servers')).json() as { id: string; containerPending: boolean }[]).find((s) => s.id === 'pz-two')).toMatchObject({ containerPending: true });
+    p.fakes('pz-two').feed.status_ = fakeStatus();
+
+    // More memory for the game: its container's limit follows, keeping the room it had (7168 - 5120).
+    const launch = (await admin.get('/api/servers/pz-two/server/launch')).json() as Record<string, unknown>;
+    expect((await admin.req('PUT', '/api/servers/pz-two/server/launch', { ...launch, memoryMb: 3072 })).statusCode).toBe(200);
+    expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(8192);
+    expect(p.orch.containers.get('pz-two')!.spec.memoryMb).toBe(8192);
+    // Beyond what the host gives one server: refused, and the launch settings stay as they were.
+    const refused = await admin.req('PUT', '/api/servers/pz-two/server/launch', { ...launch, memoryMb: 6144 });
+    expect(refused.json()).toMatchObject({ error: 'orchestrator-refused', maxMb: 8192 });
+    expect(((await admin.get('/api/servers/pz-two/server/launch')).json() as { memoryMb: number }).memoryMb).toBe(3072);
+  });
+});
+
 describe('routes of one server (ACC-02)', () => {
   it('answers 401 signed out, and 404 for a server that is unknown or not yours, never 403', async () => {
     const p = await makePanel();
