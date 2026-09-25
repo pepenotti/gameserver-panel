@@ -93,4 +93,5 @@ export default {
   'server-unmanaged': 'Este servidor es parte de la instalación y no se puede borrar desde acá.',
   'server-running': 'Primero apagá el servidor.',
   'final-backup-failed': 'Falló la copia de seguridad final, así que no se borró nada.',
+  'role-follows-grants': 'Esta cuenta solo tiene acceso a algunos servidores: su rol se elige en cada uno.',
 } satisfies Translations['errors'];

@@ -5,10 +5,11 @@ import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import type { ModSource, PanelAdapter } from '@gsp/adapter-api';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
-import { ORCHESTRATOR_API_VERSION, type AgentStatus, type CpuArch, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
+import { ORCHESTRATOR_API_VERSION, type AgentStatus, type CpuArch, type GrantRole, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { bootstrapOwner } from '../src/auth/bootstrap';
+import { syncRoleWithGrants } from '../src/auth/grants';
 import { SESSION_COOKIE } from '../src/auth/sessions';
 import { base32Decode, currentStep, hotp } from '../src/auth/totp';
 import { openDb, type Db } from '../src/db/db';
@@ -316,4 +317,50 @@ export async function ownerReady(p: TestPanel): Promise<{ client: Client; secret
   const setup = (await c.post('/api/auth/totp/setup')).json() as { secret: string };
   const enabled = (await c.post('/api/auth/totp/enable', { code: totpCode(setup.secret, 0) })).json() as { recoveryCodes: string[] };
   return { client: c, secret: setup.secret, password, recoveryCodes: enabled.recoveryCodes };
+}
+
+/**
+ * A friend signed in and ready: password changed, 2FA enrolled when their
+ * role needs it. With `grants`, an account of scope `granted` holding those
+ * roles (a bare role: on `default`; `null`: on nothing).
+ */
+export async function friend(p: TestPanel, owner: Client, name: string, role: 'viewer' | 'operator' | 'admin', grants?: GrantRole | Record<string, GrantRole> | null): Promise<Client> {
+  const created = (await owner.post('/api/users', { username: name, password: 'Temporal-12345', role })).json() as { id: number };
+  if (grants !== undefined) {
+    p.deps.users.setScope(created.id, 'granted');
+    const byServer = grants === null ? {} : typeof grants === 'string' ? { default: grants } : grants;
+    for (const [sid, r] of Object.entries(byServer)) p.deps.grants.set(created.id, sid, r);
+    syncRoleWithGrants(p.deps.users, p.deps.grants, created.id);
+  }
+  const c = new Client(p.app);
+  await c.post('/api/auth/login', { username: name, password: 'Temporal-12345' });
+  const after = (await c.post('/api/auth/password', { current: 'Temporal-12345', next: 'La-mia-propia-2026' })).json() as { pending: string | null };
+  if (after.pending === 'enrol') {
+    const { secret } = (await c.post('/api/auth/totp/setup')).json() as { secret: string };
+    await c.post('/api/auth/totp/enable', { code: totpCode(secret, 0) });
+  }
+  return c;
+}
+
+/** What a websocket received, parsed. */
+export type WsSeen = { type: string; serverId?: string; servers?: { serverId: string }[] } & Record<string, unknown>;
+
+/** Opens the websocket as `c` and collects what it receives. */
+export async function listenWs(p: TestPanel, c: Client): Promise<{ ws: { terminate(): void }; messages: WsSeen[] }> {
+  await p.app.ready();
+  const messages: WsSeen[] = [];
+  const ws = await p.app.injectWS('/api/ws', { headers: { origin: ORIGIN, cookie: `${SESSION_COOKIE}=${c.cookie}` } }, {
+    onInit: (sock) => sock.on('message', (d) => messages.push(JSON.parse(d.toString()) as WsSeen)),
+  });
+  await until(() => messages.length > 0);
+  return { ws, messages };
+}
+
+/** Waits until `ok()` holds (at most `ms`, scaled like every test timeout); throws when it never does. */
+export async function until(ok: () => boolean, ms = 2000): Promise<void> {
+  const end = Date.now() + ms * Number(process.env.TEST_TIME_SCALE || 1);
+  while (!ok()) {
+    if (Date.now() > end) throw new Error('timed out waiting for a condition');
+    await new Promise((r) => setTimeout(r, 5));
+  }
 }

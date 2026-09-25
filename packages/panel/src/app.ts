@@ -22,7 +22,7 @@ import { resetRoutes } from './routes/reset';
 import { notificationRoutes, scheduleRoutes } from './routes/schedules';
 import { serverScope } from './routes/scope';
 import { serverRoutes } from './routes/server';
-import { serverListRoutes } from './routes/servers';
+import { serverAdminRoutes, serverListRoutes } from './routes/servers';
 import { meRoutes, userRoutes } from './routes/users';
 import { wsRoutes } from './routes/ws';
 
@@ -96,6 +96,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
 
   // Each server's routes, under /api/servers/:sid (ACC-02: resolved and checked per server).
   await serverScope(app, (s) => {
+    serverAdminRoutes(s, deps);
     statusRoutes(s, deps);
     metaRoutes(s, deps);
     serverRoutes(s, deps);

@@ -36,6 +36,8 @@ export interface CreateServerInput {
   /** The owner accepted the game's EULA (D6), for adapters with the `eula` capability. */
   eulaAccepted?: boolean;
   by: Actor;
+  /** Where the request came from, for the audit log. */
+  ip?: string | null;
 }
 
 export interface RemoveServerOptions {
@@ -46,6 +48,7 @@ export interface RemoveServerOptions {
   /** Take the final backup first (default); only the owner may skip it, for a server whose data can't be reached. */
   finalBackup?: boolean;
   by: Actor;
+  ip?: string | null;
 }
 
 export interface RemoveReport {
@@ -79,7 +82,7 @@ export interface ServerRegistry {
   /** SRV-01: validate, write the row, ask the orchestrator for the container, build the context. */
   create(input: CreateServerInput): Promise<ServerContext>;
   /** Rename or reorder; the server's context is rebuilt around its new row. */
-  update(id: string, patch: ServerPatch, by: Actor): Promise<ServerContext>;
+  update(id: string, patch: ServerPatch, by: Actor, ip?: string | null): Promise<ServerContext>;
   /** SRV-04: final backup, container and volumes removed, then the row and everything keyed to it. */
   remove(id: string, o: RemoveServerOptions): Promise<RemoveReport>;
   reconcile(): Promise<ReconcileReport>;
@@ -339,14 +342,14 @@ export class DbServerRegistry implements ServerRegistry {
       if (applied) await orchestrator.remove(id, { removeVolumes: true }).catch(() => undefined);
       rows.purge(id);
       const err = orchestratorError(e);
-      audit.log({ actor: input.by, serverId: id, action: 'server.create', detail: { adapter: adapter.meta.id, error: err.code }, ok: false });
+      audit.log({ actor: input.by, ip: input.ip ?? null, serverId: id, action: 'server.create', detail: { adapter: adapter.meta.id, error: err.code }, ok: false });
       throw err;
     }
 
     const ctx = this.build(row);
     this.contexts.set(id, ctx);
     this.activate(ctx);
-    audit.log({ actor: input.by, serverId: id, action: 'server.create', target: name, detail: { adapter: adapter.meta.id, flavour, ports, memLimitMb, cpus: row.cpus } });
+    audit.log({ actor: input.by, ip: input.ip ?? null, serverId: id, action: 'server.create', target: name, detail: { adapter: adapter.meta.id, flavour, ports, memLimitMb, cpus: row.cpus } });
     this.changed();
     return ctx;
   }
@@ -361,7 +364,7 @@ export class DbServerRegistry implements ServerRegistry {
 
   // ------------------------------------------------------------------ update
 
-  update(id: string, patch: ServerPatch, by: Actor): Promise<ServerContext> {
+  update(id: string, patch: ServerPatch, by: Actor, ip: string | null = null): Promise<ServerContext> {
     return this.exclusive(async () => {
       const old = this.contexts.get(id);
       if (!old) throw new HttpError(404, 'server-not-found');
@@ -379,7 +382,7 @@ export class DbServerRegistry implements ServerRegistry {
       const ctx = this.build(row);
       this.contexts.set(id, ctx);
       if (wasRunning) this.activate(ctx);
-      this.d.audit.log({ actor: by, serverId: id, action: 'server.update', target: row.name, detail: { before: { name: old.row.name, sort: old.row.sort }, after: next } });
+      this.d.audit.log({ actor: by, ip, serverId: id, action: 'server.update', target: row.name, detail: { before: { name: old.row.name, sort: old.row.sort }, after: next } });
       this.changed();
       return ctx;
     });
@@ -410,7 +413,7 @@ export class DbServerRegistry implements ServerRegistry {
         finalBackup = b.name;
       } catch (e) {
         const message = (e as Error).message;
-        audit.log({ actor: o.by, serverId: id, action: 'server.delete', detail: { step: 'final-backup', error: message }, ok: false });
+        audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', detail: { step: 'final-backup', error: message }, ok: false });
         throw new HttpError(409, 'final-backup-failed', message, { message });
       }
     }
@@ -421,7 +424,7 @@ export class DbServerRegistry implements ServerRegistry {
       // Already gone is what we wanted.
       if (!(e instanceof OrchestratorCallError && e.code === 'not-found')) {
         const err = orchestratorError(e);
-        audit.log({ actor: o.by, serverId: id, action: 'server.delete', detail: { step: 'container', error: err.code, finalBackup }, ok: false });
+        audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', detail: { step: 'container', error: err.code, finalBackup }, ok: false });
         throw err;
       }
     }
@@ -441,7 +444,7 @@ export class DbServerRegistry implements ServerRegistry {
       // Only ever the server's own folder, never the backups root (which holds `default`'s).
       if (path.resolve(ctx.backups.dir) === own) rmSync(own, { recursive: true, force: true });
     }
-    audit.log({ actor: o.by, serverId: id, action: 'server.delete', target: ctx.row.name, detail: { keepBackups: o.keepBackups, finalBackup } });
+    audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', target: ctx.row.name, detail: { keepBackups: o.keepBackups, finalBackup } });
     this.changed();
     return { finalBackup };
   }
