@@ -320,6 +320,38 @@ describe('the audit log by server and actor (ACC-03, AST-02)', () => {
     const op = await friend(p, owner, 'server-op', 'operator', 'operator');
     expect((await op.get('/api/audit')).statusCode).toBe(403);
   });
+
+  it('lists the host’s own entries alone with server=- (ACC-03), to those who see them', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    await owner.post('/api/servers/default/server/start');
+    await p.srv.ops.idle();
+    await createTwo(owner);
+    const adm = await friend(p, owner, 'server-admin', 'admin', 'admin');
+    const everywhere = await friend(p, owner, 'all-admin', 'admin');
+
+    type Entry = { id: number; action: string; serverId: string | null };
+    const host = (await owner.get('/api/audit?server=-')).json() as Entry[];
+    expect(host.map((e) => e.action)).toEqual(expect.arrayContaining(['auth.login', 'user.create']));
+    expect(host.every((e) => e.serverId === null)).toBe(true);
+    // Exactly the host entries of the whole log, newest first, filtered and paged by the API.
+    const all = (await owner.get('/api/audit?limit=500')).json() as Entry[];
+    expect(host).toEqual(all.filter((e) => e.serverId === null));
+    const logins = (await owner.get('/api/audit?server=-&action=auth.login')).json() as Entry[];
+    expect(logins.length).toBeGreaterThan(1);
+    expect(logins.every((e) => e.action === 'auth.login' && e.serverId === null)).toBe(true);
+    const older = (await owner.get(`/api/audit?server=-&limit=1&before=${host[0]!.id}`)).json() as Entry[];
+    expect(older).toEqual([host[1]]);
+    expect((await everywhere.get('/api/audit?server=-')).json()).toEqual((await owner.get('/api/audit?server=-')).json());
+
+    // An admin of some servers never sees host entries, with or without the filter.
+    expect((await adm.get('/api/audit?server=-')).json()).toEqual([]);
+    expect(((await adm.get('/api/audit')).json() as Entry[]).every((e) => e.serverId === 'default')).toBe(true);
+    const op = await friend(p, owner, 'server-op', 'operator', 'operator');
+    expect((await op.get('/api/audit?server=-')).statusCode).toBe(403);
+    // Only "-" means the host; anything else still has to be a server id.
+    for (const bad of ['--', '-x', '*', '']) expect((await owner.get(`/api/audit?server=${bad}`)).statusCode, bad).toBe(400);
+  });
 });
 
 describe('the websocket (ACC-02)', () => {

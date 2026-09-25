@@ -56,8 +56,8 @@ export interface AuditQuery {
   beforeId?: number;
   /** Actions starting with this. */
   action?: string;
-  /** Only this server's entries (ACC-03). */
-  serverId?: string;
+  /** Only this server's entries (ACC-03); null: only host entries (about no server). */
+  serverId?: string | null;
   /** Only entries about one of these servers (or none: host entries are left out). */
   serverIds?: readonly string[];
 }
@@ -106,7 +106,9 @@ export class Audit {
       where.push('action LIKE ?');
       args.push(`${opts.action}%`);
     }
-    if (opts.serverId !== undefined) {
+    if (opts.serverId === null) {
+      where.push('server_id IS NULL');
+    } else if (opts.serverId !== undefined) {
       where.push('server_id = ?');
       args.push(opts.serverId);
     }
