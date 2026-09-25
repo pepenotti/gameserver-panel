@@ -1,15 +1,22 @@
-import { once } from 'node:events';
-import { createReadStream } from 'node:fs';
-import type { Writable } from 'node:stream';
+import { Writable } from 'node:stream';
+import { finished } from 'node:stream/promises';
 
 /**
  * Minimal streaming tar (POSIX ustar + PAX extended headers), enough for
  * backups: regular files and directories only. Reading rejects every other
  * entry type (links, devices), so a crafted archive can't smuggle one in.
+ *
+ * Vendor PAX records (`GSP.<key>`) carry notes about one entry, such as a
+ * database that was copied without a snapshot; other readers ignore them.
  */
 
-const BLOCK = 512;
+export const BLOCK = 512;
 const ZERO = Buffer.alloc(BLOCK);
+/** The two zero blocks that end an archive. */
+export const END_OF_ARCHIVE: Buffer = Buffer.alloc(2 * BLOCK);
+const MAX_USTAR_SIZE = 0o77777777777;
+const MAX_PAX_BYTES = 1 << 20;
+const META_KEY = /^GSP\.[A-Za-z0-9._-]{1,64}$/;
 
 export interface TarEntry {
   name: string;
@@ -17,6 +24,8 @@ export interface TarEntry {
   size: number;
   mode: number;
   mtime: number;
+  /** Notes about the entry, as `GSP.*` PAX records (`GSP.warning`). */
+  meta?: Record<string, string>;
 }
 
 export class TarError extends Error {}
@@ -40,7 +49,7 @@ function rawHeader(name: string, size: number, type: string, mode: number, mtime
   h.write(octal(0, 8), 108, 8, 'ascii');
   h.write(octal(0, 8), 116, 8, 'ascii');
   h.write(octal(size, 12), 124, 12, 'ascii');
-  h.write(octal(Math.floor(mtime), 12), 136, 12, 'ascii');
+  h.write(octal(Math.max(0, Math.floor(mtime)), 12), 136, 12, 'ascii');
   h.write('        ', 148, 8, 'ascii');
   h.write(type, 156, 1, 'ascii');
   h.write('ustar\0', 257, 6, 'ascii');
@@ -51,73 +60,104 @@ function rawHeader(name: string, size: number, type: string, mode: number, mtime
   return h;
 }
 
-/** Header block(s) for an entry, with a PAX header when the name or size don't fit ustar. */
+/** Header block(s) for an entry, with a PAX header when the name, size or notes don't fit ustar. */
 export function headerFor(e: TarEntry): Buffer {
-  const nameBytes = Buffer.byteLength(e.name);
-  const needsPax = nameBytes > 99 || e.size > 0o77777777777 || /[^\x20-\x7e]/.test(e.name);
+  const size = e.type === 'dir' ? 0 : e.size;
+  const meta = Object.entries(e.meta ?? {}).filter(([k]) => META_KEY.test(k));
+  const needsPax = Buffer.byteLength(e.name) > 99 || size > MAX_USTAR_SIZE || /[^\x20-\x7e]/.test(e.name) || meta.length > 0;
   const type = e.type === 'dir' ? '5' : '0';
-  if (!needsPax) return rawHeader(e.name, e.type === 'dir' ? 0 : e.size, type, e.mode, e.mtime);
+  if (!needsPax) return rawHeader(e.name, size, type, e.mode, e.mtime);
   const records = [paxRecord('path', e.name)];
-  if (e.size > 0o77777777777) records.push(paxRecord('size', String(e.size)));
+  if (size > MAX_USTAR_SIZE) records.push(paxRecord('size', String(size)));
+  for (const [k, v] of meta) records.push(paxRecord(k, v.replace(/[\r\n]+/g, ' ').slice(0, 2000)));
   const pax = Buffer.concat(records);
   const paxBlocks = Buffer.alloc(Math.ceil(pax.length / BLOCK) * BLOCK);
   pax.copy(paxBlocks);
   const shortName = e.name.replace(/[^\x20-\x7e]/g, '_').slice(-99);
-  return Buffer.concat([
-    rawHeader('PaxHeader', pax.length, 'x', 0o644, e.mtime),
-    paxBlocks,
-    rawHeader(shortName, e.type === 'dir' ? 0 : Math.min(e.size, 0o77777777777), type, e.mode, e.mtime),
-  ]);
+  return Buffer.concat([rawHeader('PaxHeader', pax.length, 'x', 0o644, e.mtime), paxBlocks, rawHeader(shortName, Math.min(size, MAX_USTAR_SIZE), type, e.mode, e.mtime)]);
 }
 
+/**
+ * Writes `buf`; when the stream is full, waits until it drains. Rejects when
+ * it fails or closes first (a reader that went away), rather than waiting
+ * for a drain that never comes.
+ */
+export async function writeOrFail(out: Writable, buf: Buffer): Promise<void> {
+  if (out.destroyed || out.writableEnded) throw out.errored ?? new TarError('The archive stream is closed');
+  if (out.write(buf)) return;
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      out.off('drain', onDrain);
+      out.off('error', onError);
+      out.off('close', onClose);
+    };
+    const onDrain = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = (e: Error) => {
+      cleanup();
+      reject(e);
+    };
+    const onClose = () => {
+      cleanup();
+      reject(out.errored ?? new TarError('The archive stream closed'));
+    };
+    out.on('drain', onDrain);
+    out.on('error', onError);
+    out.on('close', onClose);
+  });
+}
+
+/** Zero bytes that fill a file's data up to the next block. */
+export function padding(size: number): Buffer {
+  return ZERO.subarray(0, (BLOCK - (size % BLOCK)) % BLOCK);
+}
+
+/** Writes an archive into a stream (a zstd compressor, a file). */
 export class TarPacker {
   bytes = 0;
 
   constructor(private readonly out: Writable) {}
 
   private async write(buf: Buffer): Promise<void> {
+    if (buf.length === 0) return;
     this.bytes += buf.length;
-    if (!this.out.write(buf)) await once(this.out, 'drain');
+    await writeOrFail(this.out, buf);
   }
 
-  async addDir(name: string, mtimeSec: number): Promise<void> {
-    await this.write(headerFor({ name: name.endsWith('/') ? name : `${name}/`, type: 'dir', size: 0, mode: 0o755, mtime: mtimeSec }));
+  async addDir(name: string, mtimeSec: number, meta?: Record<string, string>): Promise<void> {
+    await this.write(headerFor({ name: name.endsWith('/') ? name : `${name}/`, type: 'dir', size: 0, mode: 0o755, mtime: mtimeSec, meta }));
   }
 
   async addBuffer(name: string, data: Buffer, mtimeSec: number): Promise<void> {
     await this.write(headerFor({ name, type: 'file', size: data.length, mode: 0o644, mtime: mtimeSec }));
     await this.write(data);
-    const pad = (BLOCK - (data.length % BLOCK)) % BLOCK;
-    if (pad) await this.write(ZERO.subarray(0, pad));
+    await this.write(padding(data.length));
   }
 
   /**
-   * Stream a file. If it changes size while being read (a hot backup), exactly
-   * `size` bytes are still written — truncated or zero-padded — so the archive
-   * stays well-formed.
+   * Starts a file entry and returns where its bytes go: exactly `size` of
+   * them, then `end()` (what `unpack` does with a sink), which pads the entry.
    */
-  async addFile(name: string, absPath: string, size: number, mtimeSec: number): Promise<void> {
+  async addFile(name: string, size: number, mtimeSec: number): Promise<Writable> {
     await this.write(headerFor({ name, type: 'file', size, mode: 0o644, mtime: mtimeSec }));
     let written = 0;
-    if (size > 0) {
-      for await (const chunk of createReadStream(absPath, { end: size - 1, highWaterMark: 1 << 20 }) as AsyncIterable<Buffer>) {
-        const part = chunk.subarray(0, size - written);
-        await this.write(part);
-        written += part.length;
-        if (written >= size) break;
-      }
-    }
-    while (written < size) {
-      const n = Math.min(size - written, 1 << 20);
-      await this.write(Buffer.alloc(n));
-      written += n;
-    }
-    const pad = (BLOCK - (size % BLOCK)) % BLOCK;
-    if (pad) await this.write(ZERO.subarray(0, pad));
+    return new Writable({
+      write: (chunk: Buffer, _enc, cb) => {
+        written += chunk.length;
+        if (written > size) return cb(new TarError(`More bytes than announced for ${name}`));
+        this.write(chunk).then(() => cb(), cb);
+      },
+      final: (cb) => {
+        if (written !== size) return cb(new TarError(`Fewer bytes than announced for ${name}`));
+        this.write(padding(size)).then(() => cb(), cb);
+      },
+    });
   }
 
   async finish(): Promise<void> {
-    await this.write(Buffer.concat([ZERO, ZERO]));
+    await this.write(END_OF_ARCHIVE);
   }
 }
 
@@ -144,10 +184,19 @@ function parsePax(buf: Buffer): Record<string, string> {
   return out;
 }
 
+/** Writes `part` into `sink`, waiting while it is full; rejects with the sink's error. */
+async function feed(sink: Writable, part: Buffer, failed: () => Error | null): Promise<void> {
+  const err = failed();
+  if (err) throw err;
+  await writeOrFail(sink, part);
+}
+
 /**
  * Read a tar stream entry by entry. `onEntry` returns where to write a file's
  * bytes (or null to skip them). Any entry that isn't a plain file or
- * directory is an error.
+ * directory is an error. After the end of the archive the rest of the input
+ * is read too (whoever produces it finishes cleanly); on an error the input
+ * is left as it is, and closing it is the caller's.
  */
 export async function unpack(input: AsyncIterable<Buffer>, onEntry: (e: TarEntry) => Promise<Writable | null>): Promise<number> {
   const it = input[Symbol.asyncIterator]();
@@ -159,7 +208,10 @@ export async function unpack(input: AsyncIterable<Buffer>, onEntry: (e: TarEntry
     while (buf.length < n && !done) {
       const r = await it.next();
       if (r.done) done = true;
-      else buf = buf.length ? Buffer.concat([buf, r.value]) : r.value;
+      else {
+        const chunk = Buffer.isBuffer(r.value) ? r.value : Buffer.from((r.value as Uint8Array).buffer, (r.value as Uint8Array).byteOffset, (r.value as Uint8Array).byteLength);
+        buf = buf.length ? Buffer.concat([buf, chunk]) : chunk;
+      }
     }
     return buf.length >= n;
   };
@@ -167,6 +219,12 @@ export async function unpack(input: AsyncIterable<Buffer>, onEntry: (e: TarEntry
     const out = buf.subarray(0, n);
     buf = buf.subarray(n);
     return out;
+  };
+  const drain = async (): Promise<number> => {
+    while (!done) {
+      if ((await it.next()).done) done = true;
+    }
+    return count;
   };
 
   let pax: Record<string, string> = {};
@@ -178,7 +236,7 @@ export async function unpack(input: AsyncIterable<Buffer>, onEntry: (e: TarEntry
     }
     const h = take(BLOCK);
     if (h.equals(ZERO)) {
-      if (++zeros === 2) return count;
+      if (++zeros === 2) return drain();
       continue;
     }
     zeros = 0;
@@ -192,7 +250,7 @@ export async function unpack(input: AsyncIterable<Buffer>, onEntry: (e: TarEntry
     if (prefix) name = `${prefix}/${name}`;
 
     if (type === 'x' || type === 'g') {
-      if (size > 1 << 20) throw new TarError('PAX header too large');
+      if (size > MAX_PAX_BYTES) throw new TarError('PAX header too large');
       if (!(await fill(size))) throw new TarError('Truncated archive');
       const data = take(size);
       const padBytes = (BLOCK - (size % BLOCK)) % BLOCK;
@@ -201,8 +259,12 @@ export async function unpack(input: AsyncIterable<Buffer>, onEntry: (e: TarEntry
       if (type === 'x') pax = parsePax(data);
       continue;
     }
-    if (pax.path) name = pax.path;
-    if (pax.size) size = Number(pax.size);
+    if (pax.path !== undefined) name = pax.path;
+    if (pax.size !== undefined) {
+      size = Number(pax.size);
+      if (!Number.isSafeInteger(size) || size < 0) throw new TarError('Corrupt PAX size');
+    }
+    const meta = Object.fromEntries(Object.entries(pax).filter(([k]) => META_KEY.test(k)));
     pax = {};
 
     let entryType: TarEntry['type'];
@@ -212,18 +274,28 @@ export async function unpack(input: AsyncIterable<Buffer>, onEntry: (e: TarEntry
     if (entryType === 'dir') size = 0;
 
     const entry: TarEntry = { name, type: entryType, size, mode: parseOctal(h.subarray(100, 108)), mtime: parseOctal(h.subarray(136, 148)) };
+    if (Object.keys(meta).length) entry.meta = meta;
     count++;
     const sink = await onEntry(entry);
-    let left = size;
-    while (left > 0) {
-      if (buf.length === 0 && !(await fill(1))) throw new TarError('Truncated archive');
-      const part = take(Math.min(left, buf.length));
-      left -= part.length;
-      if (sink && !sink.write(part)) await once(sink, 'drain');
-    }
-    if (sink) {
-      sink.end();
-      await once(sink, 'finish');
+    let sinkError: Error | null = null;
+    sink?.on('error', (e) => {
+      sinkError ??= e;
+    });
+    try {
+      let left = size;
+      while (left > 0) {
+        if (buf.length === 0 && !(await fill(1))) throw new TarError('Truncated archive');
+        const part = take(Math.min(left, buf.length));
+        left -= part.length;
+        if (sink) await feed(sink, part, () => sinkError);
+      }
+      if (sink) {
+        sink.end();
+        await finished(sink);
+      }
+    } catch (e) {
+      sink?.destroy();
+      throw e;
     }
     const padBytes = (BLOCK - (size % BLOCK)) % BLOCK;
     if (padBytes) {

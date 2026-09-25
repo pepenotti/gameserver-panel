@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { rmSync } from 'node:fs';
-import path from 'node:path';
 import type { ResetDecl } from '@gsp/adapter-api';
+import { isFolderId } from '@gsp/archive';
 import type { AgentStatus } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { Control, GameLang } from '../control/control';
@@ -22,7 +21,7 @@ export interface LastRestore {
   backup: string;
   parts: BackupPart[];
   at: string;
-  /** Present until the restored server has started once. */
+  /** The trash folder (next to the server's data) holding what the restore replaced; present until the restored server has started once. */
   trash: string | null;
 }
 
@@ -36,8 +35,8 @@ export interface FlowDeps {
   settings: KeyValueSettings;
   config: ConfigStore;
   server: ServerHandle;
-  /** The server's data folder (staging and trash live inside it, on the same volume). */
-  dataDir: string;
+  /** @deprecated Unused since restores stage and swap through `ServerFiles`, next to the data (D11). */
+  dataDir?: string;
 }
 
 /** How long a running server may take to save before the backup copies anyway. */
@@ -69,6 +68,8 @@ export function waitForStatus(feed: AgentFeed, pred: (s: AgentStatus) => boolean
 }
 
 export class BackupFlows {
+  private purging: Promise<void> | null = null;
+
   constructor(private readonly d: FlowDeps) {}
 
   private get state(): string | undefined {
@@ -117,10 +118,11 @@ export class BackupFlows {
   }
 
   /**
-   * Restore chosen parts of a backup. The server is stopped (players warned),
-   * a safety backup is taken, the archive is unpacked to a staging folder and
-   * swapped in by rename; the old files stay in a trash folder until the
-   * server has started again, so a bad restore can be rolled back.
+   * Restore chosen parts of a backup (BAK-03). The archive's checksum is
+   * verified, the server is stopped (players warned), a safety backup is
+   * taken, the archive is staged next to the server's data and swapped in by
+   * rename; the old files stay in a trash folder until the server has
+   * started again, so a bad restore can be undone.
    */
   startRestore(by: string | null, name: string, parts: BackupPart[], opts: { countdownSec: number; lang: GameLang }): OpState {
     const info = this.d.backups.get(name);
@@ -140,9 +142,6 @@ export class BackupFlows {
         if (info.sha256 && (await this.d.backups.sha256(name)) !== info.sha256) throw new Error('The backup file is damaged (checksum mismatch)');
 
         const lock = await this.d.agent.lock('restore', 3 * 3_600_000);
-        const id = randomUUID();
-        const staging = path.join(this.d.dataDir, '.staging', id);
-        const trash = path.join(this.d.dataDir, '.trash', id);
         const wasRunning = ['running', 'starting'].includes(this.state ?? '');
         try {
           await this.d.control.countdown(ctx, 'restore', opts.countdownSec, opts.lang);
@@ -154,20 +153,28 @@ export class BackupFlows {
           await this.d.backups.create({ trigger: 'pre-restore', hot: false });
 
           ctx.step('extracting', { progress: 0 });
-          await this.d.backups.extract(name, usable, staging, (f) => ctx.step('extracting', { progress: Math.round(f * 100) }));
+          let last = 0;
+          const { stagingId, rels } = await this.d.backups.stage(name, usable, (f) => {
+            if (f - last >= 0.02 || f === 1) {
+              last = f;
+              ctx.step('extracting', { progress: Math.round(f * 100) });
+            }
+          });
           ctx.step('swapping', { progress: null });
-          this.d.backups.swapIn(usable, staging, trash);
-          this.d.settings.setRaw<LastRestore>('lastRestore', { id, backup: name, parts: usable, at: new Date().toISOString(), trash });
+          const { trashId } = await this.d.backups.swap(stagingId, rels);
+          // Only the latest restore can be undone: an older one's trash goes.
+          const previous = this.lastRestore()?.trash;
+          if (previous) await this.d.backups.purgeTrash(previous).catch(() => undefined);
+          this.d.settings.setRaw<LastRestore>('lastRestore', { id: randomUUID(), backup: name, parts: usable, at: new Date().toISOString(), trash: trashId });
 
           if (wasRunning) {
             ctx.step('starting');
             await this.d.control.startAgent({ lockId: lock.id, by });
             const s = await waitForStatus(this.d.feed, (x) => x.state === 'running' || x.state === 'failed', 30 * 60_000);
             if (s.state !== 'running') throw new Error('Restored, but the server did not start. Use "undo restore" to go back.');
-            this.purgeTrash();
+            await this.purgeTrash();
           }
         } finally {
-          rmSync(staging, { recursive: true, force: true });
           await this.d.agent.unlock(lock.id).catch(() => undefined);
         }
       },
@@ -206,7 +213,7 @@ export class BackupFlows {
           await this.d.backups.create({ trigger: 'pre-reset', hot: false });
 
           ctx.step('deleting');
-          for (const part of decl.removeParts) for (const rel of this.d.backups.partPaths(part)) rmSync(path.join(this.d.dataDir, rel), { recursive: true, force: true });
+          await this.d.backups.removeParts(decl.removeParts);
           await decl.after?.(this.d.server.ctx(by), { newSeed: opts.newSeed, ...(opts.preset ? { preset: opts.preset } : {}) });
           this.d.settings.setRaw('pendingRestart', null);
 
@@ -223,21 +230,42 @@ export class BackupFlows {
   }
 
   lastRestore(): LastRestore | null {
-    return this.d.settings.getRaw<LastRestore>('lastRestore');
+    const last = this.d.settings.getRaw<LastRestore>('lastRestore');
+    // Before D11 the trash was a folder path on the panel's disk; that one can't be undone through the agent.
+    if (last?.trash && !isFolderId(last.trash)) return { ...last, trash: null };
+    return last;
   }
 
-  /** Drop the pre-restore files once the restored world has proven it starts. */
-  purgeTrash(): void {
+  /**
+   * Drop the pre-restore files once the restored world has proven it starts.
+   * Never fails: an agent that can't be reached keeps the trash until the
+   * next start. One at a time: the restore and the server's first "running"
+   * both ask for it.
+   */
+  purgeTrash(): Promise<void> {
+    this.purging ??= this.purgeTrashNow().finally(() => {
+      this.purging = null;
+    });
+    return this.purging;
+  }
+
+  private async purgeTrashNow(): Promise<void> {
     const last = this.lastRestore();
     if (!last?.trash) return;
-    rmSync(last.trash, { recursive: true, force: true });
-    this.d.settings.setRaw<LastRestore>('lastRestore', { ...last, trash: null });
+    try {
+      await this.d.backups.purgeTrash(last.trash);
+    } catch {
+      return;
+    }
+    // Unless a newer restore replaced it meanwhile.
+    if (this.lastRestore()?.id === last.id) this.d.settings.setRaw<LastRestore>('lastRestore', { ...last, trash: null });
   }
 
   /** Put back what the last restore replaced (only while its trash still exists). */
   startUndoRestore(by: string | null): OpState {
     const last = this.lastRestore();
     if (!last?.trash) throw new HttpError(409, 'nothing-to-undo');
+    const trash = last.trash;
     return this.d.ops.start('restore', by, async (ctx) => {
       const lock = await this.d.agent.lock('undo restore', 3_600_000);
       try {
@@ -246,8 +274,7 @@ export class BackupFlows {
           await this.d.agent.stop({ reason: 'undo restore' }, lock.id);
         }
         ctx.step('swapping');
-        this.d.backups.rollback(last.parts, last.trash!);
-        rmSync(last.trash!, { recursive: true, force: true });
+        await this.d.backups.undo(trash);
         this.d.settings.setRaw<LastRestore>('lastRestore', { ...last, trash: null });
       } finally {
         await this.d.agent.unlock(lock.id).catch(() => undefined);

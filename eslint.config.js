@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 // NFR-08: the core never imports a game adapter. Only the composition roots
 // (the agent's and the panel's entry points) pick adapters, through
 // @gsp/adapters; everything else sees the contract in @gsp/adapter-api.
-const CORE = 'packages/{shared,formats,adapter-api,agent,orchestrator,panel,web}/src/**/*.{ts,tsx}';
+const CORE = 'packages/{shared,formats,adapter-api,archive,agent,orchestrator,panel,web}/src/**/*.{ts,tsx}';
 const COMPOSITION_ROOTS = ['packages/agent/src/main.ts', 'packages/panel/src/main.ts', 'packages/panel/src/wiring.ts'];
 const GAME_ADAPTER_IMPORTS = {
   patterns: [

@@ -10,6 +10,7 @@
   "dependencies": {
     "@gsp/adapter-api": "*",
     "@gsp/adapters": "*",
+    "@gsp/archive": "*",
     "@gsp/formats": "*",
     "@gsp/shared": "*"
   },

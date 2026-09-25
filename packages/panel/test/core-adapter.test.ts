@@ -5,8 +5,7 @@ import { PassThrough } from 'node:stream';
 import { zstdDecompressSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { Capability } from '@gsp/adapter-api';
-import { globToRegExp } from '../src/backups/glob';
-import { unpack } from '../src/backups/tar';
+import { globToRegExp, unpack } from '@gsp/archive';
 import { Client, makePanel, ownerReady, type TestPanel } from './harness';
 
 async function asRole(p: TestPanel, owner: Client, role: 'viewer' | 'operator') {
