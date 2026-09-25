@@ -50,7 +50,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | POST | `/api/servers` | `servers.create` | `body { id: string, name: string, adapter: string, flavour?: string \| null, launch?: object, ports?: { [key]: integer }, memLimitMb?: integer, cpus?: number \| null, eulaAccepted?: boolean }` |
 | GET | `/api/ws` | session | — |
 
-## One server: `/api/servers/:sid` (60 routes)
+## One server: `/api/servers/:sid` (61 routes)
 
 `:sid` is the server's id. The permission is checked on that server; the capability is what its game must support.
 
@@ -58,6 +58,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 |---|---|---|---|---|
 | GET | `/api/servers/:sid/limits` | `server.update` | — | — |
 | PATCH | `/api/servers/:sid` | `server.update` | — | `body { name?: string, sort?: integer, memLimitMb?: integer, cpus?: number \| null }` |
+| POST | `/api/servers/:sid/eula` | `server.eula` | — | `body { accept: true }` |
 | DELETE | `/api/servers/:sid` | `server.delete` | — | `body { confirm: string, keepBackups?: boolean, finalBackup?: boolean, force?: boolean }` |
 | GET | `/api/servers/:sid/status` | `server.view` | — | — |
 | GET | `/api/servers/:sid/meta` | `server.view` | — | — |

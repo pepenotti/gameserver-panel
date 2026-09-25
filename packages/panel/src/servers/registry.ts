@@ -37,6 +37,13 @@ export interface CreateServerInput {
   cpus?: number | null;
   /** The owner accepted the game's EULA (D6), for adapters with the `eula` capability. */
   eulaAccepted?: boolean;
+  /**
+   * Whether `by` may accept a game's EULA (`server.eula`: the owner); default
+   * true. One who may must accept it to create the server; one who may not
+   * creates it with the EULA pending, and it can't start until the owner
+   * accepts (`acceptEula`).
+   */
+  mayAcceptEula?: boolean;
   by: Actor;
   /** Where the request came from, for the audit log. */
   ip?: string | null;
@@ -114,6 +121,13 @@ export interface ServerRegistry {
   prepareStart(id: string): Promise<void>;
   /** Whether a server's container waits to be recreated from its changed settings at its game's next start. */
   containerPending(id: string): boolean;
+  /**
+   * D6: the owner accepts the game's agreement (the route checks
+   * `server.eula`); recorded with who and when, and audited. The server may
+   * start from then on. 409 `eula-not-needed` for a game without one; a
+   * second acceptance changes nothing.
+   */
+  acceptEula(id: string, by: Actor, ip?: string | null): ServerContext;
   /** SRV-04: final backup, container and volumes removed, then the row and everything keyed to it. */
   remove(id: string, o: RemoveServerOptions): Promise<RemoveReport>;
   reconcile(): Promise<ReconcileReport>;
@@ -436,7 +450,11 @@ export class DbServerRegistry implements ServerRegistry {
     // An adapter with flavours needs one of them; one without takes none.
     if (flavours.length ? !flavours.some((f) => f.id === flavour) : flavour !== null) throw new HttpError(400, 'unknown-flavour', undefined, { flavours: flavours.map((f) => f.id) });
     const caps: Set<Capability> = capabilitiesOf(adapter, flavour);
-    if (caps.has('eula') && input.eulaAccepted !== true) throw new HttpError(400, 'eula-required');
+    // D6: only the owner accepts a game's EULA. The owner accepts it here; anyone else leaves it to them.
+    const mayAccept = input.mayAcceptEula !== false;
+    if (caps.has('eula') && mayAccept && input.eulaAccepted !== true) throw new HttpError(400, 'eula-required');
+    if (caps.has('eula') && !mayAccept && input.eulaAccepted === true) throw new HttpError(403, 'eula-owner-only');
+    const eulaAccepted = caps.has('eula') && mayAccept;
 
     // Secrets: the agent's token and every secret the adapter declares, generated here and kept only in `servers.secrets`.
     const secrets: Record<string, string> = { [AGENT_TOKEN_SECRET]: randomBytes(32).toString('base64url') };
@@ -486,8 +504,8 @@ export class DbServerRegistry implements ServerRegistry {
       memLimitMb,
       cpus: input.cpus ?? null,
       spec: null,
-      eulaAcceptedAt: caps.has('eula') ? new Date().toISOString() : null,
-      eulaAcceptedBy: caps.has('eula') ? userId : null,
+      eulaAcceptedAt: eulaAccepted ? new Date().toISOString() : null,
+      eulaAcceptedBy: eulaAccepted ? userId : null,
       createdAt: '',
       createdBy: userId,
       sort: Math.max(0, ...rows.list().map((r) => r.sort)) + 1,
@@ -515,6 +533,27 @@ export class DbServerRegistry implements ServerRegistry {
     this.contexts.set(id, ctx);
     this.activate(ctx);
     audit.log({ actor: input.by, ip: input.ip ?? null, serverId: id, action: 'server.create', target: name, detail: { adapter: adapter.meta.id, flavour, ports, memLimitMb, cpus: row.cpus } });
+    if (eulaAccepted) this.auditEula(input.by, input.ip ?? null, row);
+    this.changed();
+    return ctx;
+  }
+
+  // -------------------------------------------------------------------- EULA
+
+  private auditEula(by: Actor, ip: string | null, row: ServerRow): void {
+    const agreement = this.d.adapterFor(row.adapter).meta.eula;
+    this.d.audit.log({ actor: by, ip, serverId: row.id, action: 'server.eula', target: row.name, detail: { agreement: agreement?.url ?? null } });
+  }
+
+  acceptEula(id: string, by: Actor, ip: string | null = null): ServerContext {
+    const ctx = this.contexts.get(id);
+    if (!ctx) throw new HttpError(404, 'server-not-found');
+    if (!ctx.handle.has('eula')) throw new HttpError(409, 'eula-not-needed');
+    // Accepted once is accepted: the first acceptance (who, when) stays on record.
+    if (!ctx.handle.eulaPending()) return ctx;
+    const row = this.d.rows.get(id)!;
+    this.d.rows.setEula(id, new Date().toISOString(), by.user?.id ?? null);
+    this.auditEula(by, ip, row);
     this.changed();
     return ctx;
   }

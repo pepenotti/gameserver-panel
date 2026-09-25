@@ -6,6 +6,8 @@ import path from 'node:path';
 export interface StoredLaunch {
   adapter: string;
   params: unknown;
+  /** The envelope's `eulaAccepted`, when it had one (D6). */
+  eulaAccepted?: boolean;
 }
 
 /** Name of the control channel's secret in `PersistedState.secrets` (`RuntimeState.controlSecret`). */
@@ -71,8 +73,10 @@ export class StateStore {
     }
     let launch: StoredLaunch | null = null;
     if (isObject(raw.launch)) {
-      if (typeof raw.launch.adapter === 'string' && 'params' in raw.launch) launch = { adapter: raw.launch.adapter, params: raw.launch.params };
-      else {
+      if (typeof raw.launch.adapter === 'string' && 'params' in raw.launch) {
+        launch = { adapter: raw.launch.adapter, params: raw.launch.params };
+        if (typeof raw.launch.eulaAccepted === 'boolean') launch.eulaAccepted = raw.launch.eulaAccepted;
+      } else {
         // Bare launch params from before the agent ran adapters.
         launch = { adapter: this.o.adapter, params: raw.launch };
         migrated = true;

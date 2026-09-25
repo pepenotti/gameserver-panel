@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { permissionsOn, roleOn, SERVER_ID_PATTERN, type CpuArch, type Permission, type PortProto, type PortRangeInfo, type Role } from '@gsp/shared';
-import type { I18n, LaunchOption, OptionMeta, PortDecl } from '@gsp/adapter-api';
+import { can, permissionsOn, roleOn, SERVER_ID_PATTERN, type CpuArch, type Permission, type PortProto, type PortRangeInfo, type Role } from '@gsp/shared';
+import type { Agreement, I18n, LaunchOption, OptionMeta, PortDecl } from '@gsp/adapter-api';
 import type { UserRow } from '../auth/users';
 import { actor, HttpError, principal, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
@@ -33,6 +33,21 @@ export interface ServerSummary {
   /** The signed-in user's role there, and what it lets them do. */
   role: Role;
   permissions: Permission[];
+  /**
+   * For a game whose license the owner must accept (D6): the agreement, and
+   * when and by whom it was accepted (null while it waits: the server can't
+   * start). Null for games without one.
+   */
+  eula: EulaSummary | null;
+}
+
+/** A game's agreement on a server (D6). */
+export interface EulaSummary {
+  name: I18n;
+  url: string;
+  acceptedAt: string | null;
+  /** The username of whoever accepted it, while that account exists. */
+  acceptedBy: string | null;
 }
 
 /** The host in `GET /api/adapters`. */
@@ -74,11 +89,21 @@ export interface AdapterSummary {
   capabilities: string[];
   /** The license must be accepted when creating a server (D6). */
   eula: boolean;
+  /** That license: what it is called and where to read it; null without one. */
+  agreement: Agreement | null;
   /** Its launch settings form; the secrets it needs are generated, never asked for. */
   launch: { schema: (LaunchOption | OptionMeta)[]; secrets: { key: string; label: I18n }[] };
 }
 
-function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 'servers'>): ServerSummary | null {
+/** The server's agreement and its acceptance, read live (an acceptance doesn't rebuild the server's context). */
+function eulaOf(s: ServerContext, deps: Pick<Deps, 'users'>): EulaSummary | null {
+  const e = s.handle.eula();
+  const agreement = s.adapter.meta.eula;
+  if (!e || !agreement) return null;
+  return { name: agreement.name, url: agreement.url, acceptedAt: e.at, acceptedBy: e.by === null ? null : (deps.users.byId(e.by)?.username ?? null) };
+}
+
+function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 'servers' | 'users'>): ServerSummary | null {
   const who = principal(user);
   const grants = deps.grants.forUser(user.id);
   const role = roleOn(who, grants, s.id);
@@ -102,6 +127,7 @@ function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 's
     managed: s.row.spec !== null,
     role,
     permissions: permissionsOn(who, grants, s.id),
+    eula: eulaOf(s, deps),
   };
 }
 
@@ -150,6 +176,7 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
         memory: a.meta.memory,
         capabilities: a.meta.capabilities,
         eula: a.meta.capabilities.includes('eula'),
+        agreement: a.meta.eula ?? null,
         launch: { schema: a.launch.schema, secrets: (a.launch.secrets ?? []).map((x) => ({ key: x.key, label: x.label })) },
       })),
     };
@@ -182,7 +209,9 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
       },
     },
     async (req): Promise<ServerSummary> => {
-      const ctx = await deps.servers.create({ ...req.body, by: actor(req), ip: req.ip });
+      // D6: only the owner accepts a game's EULA; anyone else creates the server with it waiting for them.
+      const mayAcceptEula = can(req.auth!.user.role, 'server.eula');
+      const ctx = await deps.servers.create({ ...req.body, mayAcceptEula, by: actor(req), ip: req.ip });
       return summary(ctx, req.auth!.user, deps)!;
     },
   );
@@ -224,6 +253,19 @@ export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
     },
     async (req): Promise<ServerSummary> => {
       const ctx = await deps.servers.update(srvOf(req).id, req.body, actor(req), req.ip);
+      return summary(ctx, req.auth!.user, deps)!;
+    },
+  );
+
+  // D6: the owner accepts the game's license (EULA) for this server, having read it; recorded and audited.
+  app.post<{ Body: { accept: true } }>(
+    '/eula',
+    {
+      config: { permission: 'server.eula' },
+      schema: { body: { type: 'object', required: ['accept'], additionalProperties: false, properties: { accept: { type: 'boolean', enum: [true] } } } },
+    },
+    async (req): Promise<ServerSummary> => {
+      const ctx = deps.servers.acceptEula(srvOf(req).id, actor(req), req.ip);
       return summary(ctx, req.auth!.user, deps)!;
     },
   );

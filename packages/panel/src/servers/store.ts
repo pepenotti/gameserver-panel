@@ -184,6 +184,11 @@ export class ServersStore {
     this.db.prepare('UPDATE servers SET secrets = ? WHERE id = ?').run(JSON.stringify(secrets), id);
   }
 
+  /** Records who accepted the game's agreement, and when (D6). */
+  setEula(id: string, at: string, by: number | null): void {
+    this.db.prepare('UPDATE servers SET eula_accepted_at = ?, eula_accepted_by = ? WHERE id = ?').run(at, by, id);
+  }
+
   setSpec(id: string, spec: ServerSpec | null): void {
     this.db.prepare('UPDATE servers SET spec = ? WHERE id = ?').run(spec ? JSON.stringify(spec) : null, id);
   }

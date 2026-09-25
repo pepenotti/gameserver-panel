@@ -27,6 +27,15 @@ export interface ServerHandleDeps {
   /** The settings service; late-bound because it runs adapter code with this handle's contexts. */
   config: () => ConfigStore;
   adapter: PanelAdapter;
+  /** When the owner accepted the game's agreement, and who (D6), as stored now; absent: never. */
+  eula?: () => EulaAcceptance;
+}
+
+/** An acceptance of a game's agreement (`servers.eula_accepted_at/by`, D6). */
+export interface EulaAcceptance {
+  at: string | null;
+  /** User id of whoever accepted. */
+  by: number | null;
 }
 
 /**
@@ -80,9 +89,28 @@ export class ServerHandle {
     return (this.d.adapter.launch.secrets ?? []).map((s) => s.key).filter((k) => !held[k]);
   }
 
-  /** Launch params for the agent; throws when the adapter can't turn `s` into params. */
+  /** The acceptance of the game's agreement, for a game that has one (`eula`, D6); null for the others. */
+  eula(): EulaAcceptance | null {
+    if (!this.has('eula')) return null;
+    return this.d.eula?.() ?? { at: null, by: null };
+  }
+
+  /** The game needs its agreement accepted before it may start, and the owner hasn't yet (D6). */
+  eulaPending(): boolean {
+    const e = this.eula();
+    return e !== null && e.at === null;
+  }
+
+  /**
+   * Launch params for the agent; throws when the adapter can't turn `s` into
+   * params. A game with an agreement also gets whether the owner accepted it
+   * (`eulaAccepted`), so its adapter writes the game's acceptance only then.
+   */
   launchEnvelope(o: ToAgentOptions = {}, s: unknown = this.launchSettings()): LaunchEnvelope {
-    return { adapter: this.d.adapter.meta.id, params: this.d.adapter.launch.toAgent(this.ref, s, this.secrets(), o) };
+    const envelope: LaunchEnvelope = { adapter: this.d.adapter.meta.id, params: this.d.adapter.launch.toAgent(this.ref, s, this.secrets(), o) };
+    const eula = this.eula();
+    if (eula) envelope.eulaAccepted = eula.at !== null;
+    return envelope;
   }
 
   /** The config files as adapter code writes them (resets, hooks): as `actor`, no busy checks. */

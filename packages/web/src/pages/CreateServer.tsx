@@ -8,6 +8,8 @@ import { Link, useNavigate } from 'react-router';
 import { api, ApiError } from '../api/http';
 import { localize, type AdapterSummary, type AdaptersResponse } from '../api/meta';
 import { serverHref, SERVERS_KEY, useServers, withServer, type ServerSummary } from '../api/server';
+import { useSession } from '../api/session';
+import { AgreementLink } from '../components/Eula';
 import { LaunchField, launchDefault, launchKey } from '../components/LaunchField';
 import { useErrorText } from '../lib/format';
 import { createErrorField, formatRanges, idProblem, MAX_PORT, maxGameMemory, MIN_PORT, nameProblem, portProblem, publishedPorts, slugify, suggestPorts, type CreateField } from '../lib/servers';
@@ -51,6 +53,8 @@ export function CreateServer() {
   const adapters = useQuery({ queryKey: ['adapters'], queryFn: () => api<AdaptersResponse>('GET', '/api/adapters'), staleTime: 60_000 });
   const unsupported = useUnsupported(adapters.data?.host ?? null);
   const l = (v: Parameters<typeof localize>[0]) => localize(v, i18n.language);
+  // D6: only the owner accepts a game's license.
+  const mayAcceptEula = useSession().can('server.eula');
 
   const [adapterId, setAdapterId] = useState<string | null>(null);
   const [flavour, setFlavour] = useState<string | null>(null);
@@ -147,7 +151,7 @@ export function CreateServer() {
     return null;
   })();
   const launchMissing = adapter ? adapter.launch.schema.some((o) => o.key !== memoryKey && (o.type === 'integer' || o.type === 'decimal') && typeof launch[o.key] !== 'number') : false;
-  const valid = !!adapter && unsupported(adapter) === null && !nameErr && !idErr && published.every((d) => portErr(d.id) === null) && !memErr && !launchMissing && (!adapter.eula || eula);
+  const valid = !!adapter && unsupported(adapter) === null && !nameErr && !idErr && published.every((d) => portErr(d.id) === null) && !memErr && !launchMissing && (!adapter.eula || !mayAcceptEula || eula);
   // Typing clears what the API said about that field.
   const clear = (f: CreateField) => setApiErrors((e) => ({ ...e, [f]: undefined }));
   const shown = (f: CreateField, local: string | null, touched: boolean) => apiErrors[f] ?? (touched || tried ? (local ?? undefined) : undefined);
@@ -178,7 +182,7 @@ export function CreateServer() {
         launch,
         ports: sentPorts,
         ...(memoryKey ? {} : { memLimitMb }),
-        ...(adapter.eula ? { eulaAccepted: eula } : {}),
+        ...(adapter.eula && mayAcceptEula ? { eulaAccepted: eula } : {}),
       });
       qc.setQueryData<ServerSummary[]>(SERVERS_KEY, (cur) => withServer(cur, created));
       notifications.show({ color: 'green', message: t('create.created', { name: created.name }) });
@@ -387,8 +391,15 @@ export function CreateServer() {
 
           {adapter.eula && (
             <Card withBorder>
-              {/* The license text and its link come with the game that needs them (M3); the API still refuses without it. */}
-              <Checkbox label={t('create.eula', { game: l(adapter.name) })} checked={eula} onChange={(e) => setEula(e.currentTarget.checked)} error={tried && !eula ? t('errors.eula-required') : undefined} />
+              {/* D6: only the owner accepts a game's license; anyone else creates the server with it waiting for them. */}
+              {mayAcceptEula ? (
+                <Stack gap="xs">
+                  {adapter.agreement && <AgreementLink agreement={adapter.agreement} />}
+                  <Checkbox label={t('create.eula', { game: l(adapter.name) })} checked={eula} onChange={(e) => setEula(e.currentTarget.checked)} error={tried && !eula ? t('errors.eula-required') : undefined} />
+                </Stack>
+              ) : (
+                <Text size="sm">{t('create.eulaOwner', { game: l(adapter.name) })}</Text>
+              )}
             </Card>
           )}
 

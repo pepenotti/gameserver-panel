@@ -15,6 +15,7 @@ import create from './es/create';
 import dashboard from './es/dashboard';
 import discord from './es/discord';
 import errors from './es/errors';
+import eula from './es/eula';
 import files from './es/files';
 import hostSettings from './es/hostSettings';
 import mods from './es/mods';
@@ -50,6 +51,7 @@ export const es: Translations = {
   server,
   servers,
   create,
+  eula,
   hostSettings,
   config,
   backups,

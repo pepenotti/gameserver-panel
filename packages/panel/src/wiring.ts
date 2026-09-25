@@ -31,7 +31,7 @@ import { PlayersService } from './players/service';
 import { ConfigProposals } from './proposals/service';
 import { HostJobs } from './scheduler/host-jobs';
 import { Scheduler } from './scheduler/scheduler';
-import { capabilitiesOf, ServerHandle } from './server/handle';
+import { capabilitiesOf, ServerHandle, type EulaAcceptance } from './server/handle';
 import type { ServerContext } from './servers/context';
 import { NoOrchestrator, type OrchestratorClient } from './servers/orchestrator';
 import { OrchestratorHttp } from './servers/orchestrator-http';
@@ -70,6 +70,8 @@ export interface ServerParts {
   backupDir: string;
   /** Before its game starts (the registry's `ServerHooks`). */
   beforeStart?: () => Promise<void>;
+  /** Its game's agreement, as accepted now (D6): read live, so an acceptance needs no rebuild. */
+  eula?: () => EulaAcceptance;
 }
 
 /**
@@ -97,6 +99,7 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
     settings,
     adapter,
     config: (): ConfigStore => config,
+    eula: parts.eula,
   });
   const config: ConfigService = new ConfigService({ db, settings, feed, adapter, server: handle, files });
   const players = new PlayersService({ db, feed, server: handle });
@@ -264,6 +267,10 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
         mods: o.mods,
         backupDir: backupDirOf(env, row),
         beforeStart: managed ? hooks.beforeStart : undefined,
+        eula: () => {
+          const r = serverRows.get(row.id);
+          return { at: r?.eulaAcceptedAt ?? null, by: r?.eulaAcceptedBy ?? null };
+        },
       });
     },
   });

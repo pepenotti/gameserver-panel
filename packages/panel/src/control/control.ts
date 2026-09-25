@@ -1,6 +1,7 @@
 import type { AnnounceKind, Lang, ToAgentOptions } from '@gsp/adapter-api';
 import type { AgentApi } from '../agent/client';
 import type { BackupService } from '../backups/service';
+import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
 import type { OpContext, OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
@@ -82,13 +83,20 @@ export class Control {
    * agent with the stored launch settings.
    */
   async startAgent(o: { lockId?: string; by?: string | null; hints?: ToAgentOptions } = {}): Promise<void> {
+    this.assertEula();
     await this.d.beforeStart?.();
     const launch = this.d.server.launchEnvelope(o.hints);
     await this.d.server.adapter.hooks?.beforeStart?.(this.d.server.ctx(o.by ?? null));
     await this.d.agent.start(launch, o.lockId);
   }
 
+  /** 409 `eula-required` while the game's agreement waits for the owner (D6): nothing starts it before then. */
+  private assertEula(): void {
+    if (this.d.server.eulaPending()) throw new HttpError(409, 'eula-required', "The owner has to accept the game's license (EULA) before it can start");
+  }
+
   start(by: string | null): OpState {
+    this.assertEula();
     return this.d.ops.start('start', by, async (ctx) => {
       ctx.step('starting');
       await this.startAgent({ by });
@@ -109,6 +117,7 @@ export class Control {
   }
 
   restart(by: string | null, countdownSec: number, lang: GameLang): OpState {
+    this.assertEula();
     return this.d.ops.start(
       'restart',
       by,

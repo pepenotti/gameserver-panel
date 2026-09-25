@@ -117,8 +117,10 @@ export interface AdapterSummary {
   ports: PortDecl[];
   memory: { minMb: number; defaultMb: number; overheadMb: number };
   capabilities: string[];
-  /** Its license must be accepted when creating a server. */
+  /** Its license must be accepted before a server of it runs (by the owner, D6). */
   eula: boolean;
+  /** That license: its name and where to read it; null without one. */
+  agreement: { name: I18n; url: string } | null;
   launch: { schema: LaunchOption[]; secrets: { key: string; label: I18n }[] };
 }
 

@@ -31,6 +31,7 @@ const other: PanelAdapter = {
     ],
     ports: [{ id: 'game', proto: 'tcp', default: 25565, publish: true, sameInsideOut: false, label: { en: 'Game', es: 'Juego' } }],
     capabilities: [...pzPanelAdapter.meta.capabilities, 'eula'],
+    eula: { name: { en: 'Test EULA', es: 'EULA de prueba' }, url: 'https://eula.example/terms' },
   },
 };
 
