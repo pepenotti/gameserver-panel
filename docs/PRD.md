@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.8 |
+| Status | Draft 0.9 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -155,7 +155,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | SRV-01 | P0 | Create a server from an adapter: name, game, flavour and version, ports, memory limit. Port conflicts with other servers and with the host are refused. |
 | SRV-02 | P0 | List servers with their state, players, version and next scheduled restart. Each server has its own pages. |
 | SRV-03 | P0 | Start, stop, restart and kill. Stop and restart use countdown warnings wherever the game can message players. |
-| SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. |
+| SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. The owner may force the removal of a server that can't be stopped or won't run: the final backup is still taken when possible, and the result says when it wasn't and why. |
 | SRV-05 | P0 | Memory and CPU limits per server. A host view warns when the limits add up to more than the host has. |
 | SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart. |
 | SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server. |
@@ -483,3 +483,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.6 | 2026-09-24 | M1 closed: the adapter contract carries the server context panel-side adapter code needs, declared launch secrets and secret console arguments; NFR-08 is also enforced by tests (no game names in the core or the web). |
 | 0.7 | 2026-09-24 | M2 contract step: server routes under `/api/servers/<id>` and web pages under `/s/<id>`; host vs server permissions and account scope (§5); unknown or ungranted servers answer "not found"; the orchestrator's server spec and the agent's file and archive routes (D11) are fixed; actor-typed audit; Q9 answered. |
 | 0.8 | 2026-09-24 | M2 wave: the orchestrator service (only Docker holder, derived hardening, refusal-tested), server files and backups through each server's agent (D11), servers created, renamed and removed through the API with per-server roles, per-server schedules and Discord override (SCH-03 wording), `PANEL_LISTEN` unix socket behind the proxy, generated `docs/api.md`. |
+| 0.9 | 2026-09-25 | M2 follow-ups: the orchestrator reports the host ports and memory it allows, new servers get free ports inside those ranges, memory and CPU limit changes apply at once (stopped) or at the next start (running), owner-only forced removal (SRV-04 wording), compose cleaned of the pre-orchestrator server settings. |

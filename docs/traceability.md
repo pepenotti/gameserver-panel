@@ -6,12 +6,12 @@ without a milestone is a PRD bug.
 
 | ID | Priority | Milestones | Proven by |
 |---|---|---|---|
-| SRV-01 | P0 | M2 | `panel/test/registry.test.ts` "creating a server" (spec, secrets, ports, every refusal, rollback); `panel/test/servers.test.ts` create API |
+| SRV-01 | P0 | M2 | `panel/test/registry.test.ts` "creating a server" (spec, secrets, ports, every refusal, rollback); `panel/test/servers.test.ts` create API; ports inside the orchestrator's ranges: `registry.test.ts` (slot ranges, other ranges, clashes inside the container), `orchestrator/test/http.test.ts` (host reports ports and memory), `servers.test.ts` (adapters host) |
 | SRV-02 | P0 | M2 | `panel/test/servers.test.ts` "the server list" (state, players, version, next restart, role, ports); UI in M2-D |
 | SRV-03 | P0 | M2 | `panel/test/server.test.ts` (start, stop, restart, kill, countdown warnings and cancel), per server under `/api/servers/:sid`; `panel/test/cross-server.test.ts` (only that server's users) |
-| SRV-04 | P0 | M2 | `panel/test/registry.test.ts` "removing a server" (typed name, stopped, final backup, container + volumes, rows purged, audit kept); `panel/test/servers.test.ts` delete API |
-| SRV-05 | P0 | M2 | `orchestrator/test/docker-backend.test.ts` (memory and CPU limits, `ORCH_MAX_MEM_MB`); capacity warning in M7 |
-| SRV-06 | P0 | M2 | `panel/test/registry.test.ts` "reconcile" (re-apply, recreate, start, retry); orchestrator derives restart `unless-stopped` (`docker-backend.test.ts`); real restart check in M2-E |
+| SRV-04 | P0 | M2 | `panel/test/registry.test.ts` "removing a server" (typed name, stopped, final backup, container + volumes, rows purged, audit kept); `panel/test/servers.test.ts` delete API; forced removal: `registry.test.ts` (busy, running, unreachable agent), `servers.test.ts` (owner-only force) |
+| SRV-05 | P0 | M2 | `orchestrator/test/docker-backend.test.ts` (memory and CPU limits, `ORCH_MAX_MEM_MB`); capacity warning in M7; `registry.test.ts` "changing memory and CPU limits (SRV-05)" and create-time memory refusal; `servers.test.ts` limits through the API |
+| SRV-06 | P0 | M2 | `panel/test/registry.test.ts` "reconcile" (re-apply, recreate, start, retry); orchestrator derives restart `unless-stopped` (`docker-backend.test.ts`); real restart check in M2-E; `registry.test.ts` reconcile keeps a running game's container while a change waits |
 | SRV-07 | P0 | M2 | `panel/test/schedules.test.ts` per-server block (a crash alert names its server); `panel/test/cross-server.test.ts` (alerts reach only that server's users) |
 | SRV-08 | P1 | M7 | — |
 | SRV-09 | P2 | after v1 | — |
@@ -58,7 +58,7 @@ without a milestone is a PRD bug.
 | ACC-01 | P0 | M1 | `panel/test/auth.test.ts`, `panel/test/users.test.ts`, `panel/test/cli.test.ts` (panelctl) |
 | ACC-02 | P0 | M2 | `shared/test/permissions.test.ts`; `panel/test/cross-server.test.ts` (generated from the route table, both directions, websocket); `panel/test/servers.test.ts` grants/scope API; `panel/test/api-first.test.ts` |
 | ACC-03 | P0 | M2 | `panel/test/servers.test.ts` (audit by server); `panel/test/migrations.test.ts` (backfill) |
-| HST-01 | P0 | M2 | `orchestrator/test/*` (spec, Docker backend, HTTP); `scripts/lib/stack-guard.test.ts`; compose rendered by `stack.mjs config`; real stack in M2-E |
+| HST-01 | P0 | M2 | `orchestrator/test/*` (spec, Docker backend, HTTP); `scripts/lib/stack-guard.test.ts`; compose rendered by `stack.mjs config`; real stack in M2-E; `scripts/lib/worktree.test.ts` (fresh `.env` has no pre-orchestrator settings); checklist `docs/verification/m2-acceptance.md` |
 | HST-02 | P0 | M1 | `panel/test/env.test.ts` (PANEL_HOST default Caddy accepts); `caddy validate` of `docker/caddy/Caddyfile` in both TLS modes (see `docs/verification/pz-b42.md`); real stack run in M2-E |
 | HST-03 | P1 | M7 | — |
 | HST-04 | P2 | after v1 | — |
@@ -74,8 +74,8 @@ without a milestone is a PRD bug.
 | AST-05 | P2 | after v1 | — |
 | AST-06 | P2 | after v1 | — |
 | NFR-01 | NFR | M8 | — |
-| NFR-02 | NFR | M2 | `orchestrator/test/spec.test.ts` (every refusal), `orchestrator/test/docker-backend.test.ts` (derived hardening field by field, other stacks untouched), `orchestrator/test/http.test.ts` (token on every route); real `docker inspect` in M2-E |
-| NFR-03 | NFR | M2 | `orchestrator/test/docker-backend.test.ts` (own network per server, only named volumes); `panel/test/listen.test.ts` (unix socket, 0666, X-Forwarded-For from the proxy only); files through the agent: `agent/test/files.test.ts`, `panel/test/server-files.test.ts`; reachability checked for real in M2-E |
+| NFR-02 | NFR | M2 | `orchestrator/test/spec.test.ts` (every refusal), `orchestrator/test/docker-backend.test.ts` (derived hardening field by field, other stacks untouched), `orchestrator/test/http.test.ts` (token on every route); real `docker inspect` in M2-E; real check: `docs/verification/m2-acceptance.md` steps 5–6 |
+| NFR-03 | NFR | M2 | `orchestrator/test/docker-backend.test.ts` (own network per server, only named volumes); `panel/test/listen.test.ts` (unix socket, 0666, X-Forwarded-For from the proxy only); files through the agent: `agent/test/files.test.ts`, `panel/test/server-files.test.ts`; reachability checked for real in M2-E; real check: `docs/verification/m2-acceptance.md` steps 5–6 |
 | NFR-04 | NFR | M8 | — |
 | NFR-05 | NFR | M8 | — |
 | NFR-06 | NFR | M8 | — |
