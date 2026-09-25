@@ -1,5 +1,5 @@
-import type { LaunchSecretDecl, OptionMeta, SecretBag, ServerRef, ToAgentOptions } from '@gsp/adapter-api';
-import type { LaunchParams } from '@gsp/shared';
+import type { LaunchOption, LaunchSecretDecl, SecretBag, ServerRef, ToAgentOptions } from '@gsp/adapter-api';
+import type { PzLaunch } from '../../shared/launch';
 
 /** The launch settings the panel stores (the settings row `launch`). */
 export interface PzLaunchSettings {
@@ -16,13 +16,17 @@ export const PZ_LAUNCH_DEFAULTS: Readonly<PzLaunchSettings> = { memoryMb: 8192, 
 const MEMORY = { min: 2048, max: 32768, step: 512 };
 const BRANCH = /^[A-Za-z0-9._-]{1,64}$/;
 
-export const PZ_LAUNCH_SCHEMA: OptionMeta[] = [
+export const PZ_LAUNCH_SCHEMA: LaunchOption[] = [
   {
     key: 'memoryMb',
     type: 'integer',
+    role: 'memory',
+    unit: 'MiB',
+    step: MEMORY.step,
     min: MEMORY.min,
     max: MEMORY.max,
     default: String(PZ_LAUNCH_DEFAULTS.memoryMb),
+    label: { en: 'Java memory', es: 'Memoria de Java' },
     description: {
       en: `Java heap for the game, in MiB (a multiple of ${MEMORY.step}). The container needs about 3 GB more.`,
       es: `Memoria de Java para el juego, en MiB (múltiplo de ${MEMORY.step}). El contenedor necesita unos 3 GB más.`,
@@ -31,7 +35,9 @@ export const PZ_LAUNCH_SCHEMA: OptionMeta[] = [
   {
     key: 'branch',
     type: 'string',
+    role: 'version',
     default: PZ_LAUNCH_DEFAULTS.branch,
+    label: { en: 'Steam branch', es: 'Rama de Steam' },
     description: {
       en: 'Steam branch to install and run (public, unstable, legacy41, a pinned build…).',
       es: 'Rama de Steam que se instala y ejecuta (public, unstable, legacy41, una versión fija…).',
@@ -41,6 +47,7 @@ export const PZ_LAUNCH_SCHEMA: OptionMeta[] = [
     key: 'updateOnStart',
     type: 'boolean',
     default: String(PZ_LAUNCH_DEFAULTS.updateOnStart),
+    label: { en: 'Update before every start', es: 'Actualizar antes de cada inicio' },
     description: {
       en: 'Check for a game update with steamcmd before every start.',
       es: 'Buscar una actualización del juego con steamcmd antes de cada inicio.',
@@ -69,7 +76,7 @@ export const PZ_LAUNCH_SECRETS: LaunchSecretDecl[] = [
 ];
 
 /** `afterInstall`: the start follows an install the panel just ran, so the pre-start update would only repeat it. */
-export function pzToAgent(srv: ServerRef, s: PzLaunchSettings, secrets: SecretBag, hints: ToAgentOptions = {}): LaunchParams {
+export function pzToAgent(srv: ServerRef, s: PzLaunchSettings, secrets: SecretBag, hints: ToAgentOptions = {}): PzLaunch {
   const v = parsePzLaunchSettings(s);
   const adminPassword = secrets[PZ_SECRET_ADMIN_PASSWORD];
   if (!adminPassword) throw new Error('The server admin password is not set');

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
-import { get } from '../../api/http';
+import { useServerApi } from '../../api/server';
 import { formatDateTime, useErrorText } from '../../lib/format';
 import { getProposal, propose, useFileLabel, type ConfigMeta, type FileDecl, type Proposal, type ProposalPreview, type Value } from './api';
 import { ConfigFiles } from './ConfigFiles';
@@ -71,16 +71,17 @@ function Missing() {
 
 function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
   const { t } = useTranslation();
+  const sapi = useServerApi();
   const errorText = useErrorText();
   const layout = useLayouts()(file.schemaId!);
   const [presetPreview, setPresetPreview] = useState<ProposalPreview | null>(null);
-  const q = useQuery({ queryKey: ['config', 'values', file.id], queryFn: () => get<{ values: Record<string, Value>; missing: boolean }>(`/api/config/values?id=${encodeURIComponent(file.id)}`) });
+  const q = useQuery({ queryKey: ['config', 'values', file.id, sapi.sid], queryFn: () => sapi<{ values: Record<string, Value>; missing: boolean }>('GET', `/config/values?id=${encodeURIComponent(file.id)}`) });
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
   if (!q.data) return <Loader />;
   if (q.data.missing) return <Missing />;
   const presets = meta.presetFile === file.id ? meta.presets : [];
   const previewPreset = (name: string) =>
-    void propose({ fileId: file.id, preset: name }).then(setPresetPreview, (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
+    void propose(sapi, { fileId: file.id, preset: name }).then(setPresetPreview, (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
   return (
     <Stack>
       {layout.help && (
@@ -116,7 +117,7 @@ function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
             </Menu>
           )
         }
-        onPropose={(changes) => propose({ fileId: file.id, changes })}
+        onPropose={(changes) => propose(sapi, { fileId: file.id, changes })}
       />
       <ProposalModal preview={presetPreview} title={t('config.presetPreview')} onClose={() => setPresetPreview(null)} onApplied={() => setPresetPreview(null)} />
     </Stack>
@@ -126,12 +127,13 @@ function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
 /** Changes waiting for someone to approve them (AST-03): submitted through the API, or left open. */
 function PendingProposals() {
   const { t, i18n } = useTranslation();
+  const sapi = useServerApi();
   const errorText = useErrorText();
   const fileLabel = useFileLabel();
   const [review, setReview] = useState<ProposalPreview | null>(null);
-  const q = useQuery({ queryKey: ['config', 'proposals', 'pending'], queryFn: () => get<Proposal[]>('/api/config/proposals?status=pending'), refetchInterval: 30_000 });
+  const q = useQuery({ queryKey: ['config', 'proposals', 'pending', sapi.sid], queryFn: () => sapi<Proposal[]>('GET', '/config/proposals?status=pending'), refetchInterval: 30_000 });
   const open = (id: string) =>
-    void getProposal(id).then(
+    void getProposal(sapi, id).then(
       (p) => setReview({ ...p, id: p.id, fileId: p.fileId }),
       (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }),
     );
@@ -166,9 +168,10 @@ function PendingProposals() {
 
 export function Config() {
   const { t } = useTranslation();
+  const sapi = useServerApi();
   const [params, setParams] = useSearchParams();
-  const meta = useQuery({ queryKey: ['config', 'meta'], queryFn: () => get<ConfigMeta>('/api/config/meta'), staleTime: Infinity });
-  const pending = useQuery({ queryKey: ['config', 'pending'], queryFn: () => get<{ since: string; reasons: string[] } | null>('/api/config/pending'), refetchInterval: 30_000 });
+  const meta = useQuery({ queryKey: ['config', 'meta', sapi.sid], queryFn: () => sapi<ConfigMeta>('GET', '/config/meta'), staleTime: Infinity });
+  const pending = useQuery({ queryKey: ['config', 'pending', sapi.sid], queryFn: () => sapi<{ since: string; reasons: string[] } | null>('GET', '/config/pending'), refetchInterval: 30_000 });
   const forms = meta.data?.files.filter((f) => f.schemaId && meta.data.schemas[f.schemaId]) ?? [];
   const requested = params.get('tab');
   const tab = requested && (['files', 'history'].includes(requested) || forms.some((f) => f.id === requested)) ? requested : (forms[0]?.id ?? 'files');

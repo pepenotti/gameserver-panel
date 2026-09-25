@@ -1,9 +1,16 @@
-import type { BanList, PlayerAccount, PlayerOps, PlayerTarget, ServerCtx } from '@gsp/adapter-api';
+import type { AccessLevel, BanList, PlayerAccount, PlayerOps, PlayerTarget, ServerCtx } from '@gsp/adapter-api';
 import { assertSteamId, assertUsername, quoteArg, RconProtocolError } from '@gsp/formats';
 import { ACCOUNTS, BANS, type ServerDbInput } from '../../shared/actions';
 
-/** B42 access levels accepted by `setaccesslevel` (from the 42.20.4 help text), plus "none". */
-export const PZ_ACCESS_LEVELS = ['none', 'observer', 'gm', 'overseer', 'moderator', 'admin'] as const;
+/** B42 access levels accepted by `setaccesslevel` (from the 42.20.4 help text), plus "none", lowest first. */
+export const PZ_ACCESS_LEVELS: readonly AccessLevel[] = [
+  { id: 'none', label: { en: 'Player', es: 'Jugador' } },
+  { id: 'observer', label: { en: 'Observer', es: 'Observador' } },
+  { id: 'gm', label: { en: 'GM', es: 'GM' } },
+  { id: 'overseer', label: { en: 'Overseer', es: 'Supervisor' } },
+  { id: 'moderator', label: { en: 'Moderator', es: 'Moderador' } },
+  { id: 'admin', label: { en: 'Admin', es: 'Admin' } },
+];
 
 /** Reads through the agent must not hold a page for as long as a download may take. */
 const READ_TIMEOUT_MS = 15_000;
@@ -70,6 +77,8 @@ function target(t: PlayerTarget): { steamId: string } | { username: string } {
 
 export const pzPlayers: PlayerOps = {
   accessLevels: PZ_ACCESS_LEVELS,
+  // banuser takes a username, banid a SteamID; the IP bans the game lists can't be made from here.
+  banTargets: ['username', 'steamId'],
 
   async kick(ctx, username, reason) {
     const args = `${userArg(username)}${reasonArg(reason)}`;
@@ -91,7 +100,7 @@ export const pzPlayers: PlayerOps = {
   },
 
   async setAccess(ctx, username, level) {
-    if (!(PZ_ACCESS_LEVELS as readonly string[]).includes(level)) throw new RconProtocolError('Unknown access level');
+    if (!PZ_ACCESS_LEVELS.some((l) => l.id === level)) throw new RconProtocolError('Unknown access level');
     return run(ctx, `setaccesslevel ${userArg(username)} ${level}`);
   },
 

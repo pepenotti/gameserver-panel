@@ -4,6 +4,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useServerApi } from '../../api/server';
 import { useErrorText } from '../../lib/format';
 import { applyProposal, rejectProposal, useFileLabel, type ApplyOutcome, type ApplyResult, type ProposalPreview } from './api';
 import { DiffView } from './DiffView';
@@ -45,6 +46,7 @@ export function ProposalModal({ preview, mode = 'own', title, onClose, onApplied
   const fileLabel = useFileLabel();
   const notice = useApplyNotice();
   const qc = useQueryClient();
+  const sapi = useServerApi();
   const [busy, setBusy] = useState<'apply' | 'reject' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +58,7 @@ export function ProposalModal({ preview, mode = 'own', title, onClose, onApplied
     if (preview?.id) {
       setBusy('reject');
       try {
-        await rejectProposal(preview.id);
+        await rejectProposal(sapi, preview.id);
       } catch {
         // Already decided elsewhere: nothing left to discard.
       }
@@ -70,7 +72,7 @@ export function ProposalModal({ preview, mode = 'own', title, onClose, onApplied
     setBusy('apply');
     setError(null);
     try {
-      const r = await applyProposal(preview.id);
+      const r = await applyProposal(sapi, preview.id);
       notice(r);
       await qc.invalidateQueries({ queryKey: ['config'] });
       onApplied(r);

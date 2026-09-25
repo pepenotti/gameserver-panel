@@ -1,7 +1,7 @@
 import { Alert, Button, PasswordInput, Stack, Text } from '@mantine/core';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { post } from '../../api/http';
+import { api } from '../../api/http';
 import { useSession } from '../../api/session';
 import type { SessionInfo } from '../../api/types';
 import { useErrorText } from '../../lib/format';
@@ -26,7 +26,7 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      apply(await post<SessionInfo>('/api/auth/password', { current, next }));
+      apply(await api<SessionInfo>('POST', '/api/auth/password', { current, next }));
       setCurrent('');
       setNext('');
       setRepeat('');

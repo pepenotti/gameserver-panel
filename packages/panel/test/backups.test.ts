@@ -116,16 +116,16 @@ async function setup() {
 describe('creating backups', () => {
   it('archives world, accounts and configs with a manifest and checksum', async () => {
     const { p, c } = await setup();
-    await c.post('/api/backups');
-    await p.deps.ops.idle();
-    const { backups } = (await c.get('/api/backups')).json() as { backups: { name: string; sha256: string; size: number; manifest: Record<string, unknown> }[] };
+    await c.post('/api/servers/default/backups');
+    await p.srv.ops.idle();
+    const { backups } = (await c.get('/api/servers/default/backups')).json() as { backups: { name: string; sha256: string; size: number; manifest: Record<string, unknown> }[] };
     expect(backups).toHaveLength(1);
     const b = backups[0]!;
     expect(b.name).toMatch(/^pz-zomboid-\d{8}T\d{6}Z-manual\.tar\.zst$/);
     expect(b.manifest).toMatchObject({ serverName: 'zomboid', mode: 'cold', trigger: 'manual', parts: ['world', 'accounts', 'configs'], files: 5 });
     const file = readFileSync(path.join(p.deps.env.backupDir, b.name));
     expect(createHash('sha256').update(file).digest('hex')).toBe(b.sha256);
-    expect(await p.deps.backups.readManifest(path.join(p.deps.env.backupDir, b.name))).toMatchObject({ serverName: 'zomboid' });
+    expect(await p.srv.backups.readManifest(path.join(p.deps.env.backupDir, b.name))).toMatchObject({ serverName: 'zomboid' });
   });
 
   it('takes a consistent hot copy of the databases while the server runs', async () => {
@@ -140,7 +140,7 @@ describe('creating backups', () => {
       p.agent.calls.push('save');
       return { ok: true };
     };
-    const info = await p.deps.flows.backupNow(null, 'manual');
+    const info = await p.srv.flows.backupNow(null, 'manual');
     live.close();
     expect(info.manifest.mode).toBe('hot');
     // Both databases went through SQLite (the adapter's sqlite globs), not the plain-file fallback.
@@ -151,10 +151,10 @@ describe('creating backups', () => {
 
   it('keeps the newest ten manual backups and never drops pinned ones', async () => {
     const { p } = await setup();
-    const first = await p.deps.backups.create({ trigger: 'manual', hot: false });
-    p.deps.backups.setPinned(first.name, true);
-    for (let i = 0; i < 11; i++) await p.deps.backups.create({ trigger: 'manual', hot: false });
-    const names = p.deps.backups.list().map((b) => b.name);
+    const first = await p.srv.backups.create({ trigger: 'manual', hot: false });
+    p.srv.backups.setPinned(first.name, true);
+    for (let i = 0; i < 11; i++) await p.srv.backups.create({ trigger: 'manual', hot: false });
+    const names = p.srv.backups.list().map((b) => b.name);
     expect(names).toHaveLength(11);
     expect(names).toContain(first.name);
   });
@@ -163,33 +163,33 @@ describe('creating backups', () => {
 describe('restoring', () => {
   it('puts back the chosen parts, keeps a safety copy, and can be undone', async () => {
     const { p, c } = await setup();
-    const b = await p.deps.backups.create({ trigger: 'manual', hot: false });
+    const b = await p.srv.backups.create({ trigger: 'manual', hot: false });
     seedWorld(p, 'v2');
 
-    const op = await c.post(`/api/backups/${b.name}/restore`, { parts: ['world', 'configs'] });
+    const op = await c.post(`/api/servers/default/backups/${b.name}/restore`, { parts: ['world', 'configs'] });
     expect(op.statusCode).toBe(200);
-    await p.deps.ops.idle();
-    expect(p.deps.bus.currentOp()).toMatchObject({ kind: 'restore', ok: true });
+    await p.srv.ops.idle();
+    expect(p.srv.ops.last()).toMatchObject({ kind: 'restore', ok: true });
 
     expect(read(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe('time-v1');
     expect(readFileSync(path.join(p.deps.env.pzDataDir, 'Saves/Multiplayer/zomboid/map/10/20.bin'))[0]).toBe(1);
     expect(read(p, 'Server/zomboid.ini')).toContain('PublicName=v1');
     // Accounts weren't selected, so they keep the newer state.
     expect(dbValue(path.join(p.deps.env.pzDataDir, 'db/zomboid.db'), 'whitelist')).toBe('v2');
-    expect(p.deps.backups.list().some((x) => x.manifest.trigger === 'pre-restore')).toBe(true);
+    expect(p.srv.backups.list().some((x) => x.manifest.trigger === 'pre-restore')).toBe(true);
     // The agent lock was taken and released.
     expect(p.agent.calls).not.toContain('start');
 
-    await c.post('/api/backups/undo-restore');
-    await p.deps.ops.idle();
+    await c.post('/api/servers/default/backups/undo-restore');
+    await p.srv.ops.idle();
     expect(read(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe('time-v2');
     expect(read(p, 'Server/zomboid.ini')).toContain('PublicName=v2');
-    expect((await c.post('/api/backups/undo-restore')).json()).toEqual({ error: 'nothing-to-undo' });
+    expect((await c.post('/api/servers/default/backups/undo-restore')).json()).toEqual({ error: 'nothing-to-undo' });
   });
 
   it('stops a running server, restores, and starts it again', async () => {
     const { p, c } = await setup();
-    const b = await p.deps.backups.create({ trigger: 'manual', hot: false });
+    const b = await p.srv.backups.create({ trigger: 'manual', hot: false });
     p.feed.status_ = fakeStatus({ state: 'running' });
     p.agent.start = async () => {
       p.agent.calls.push('start');
@@ -204,33 +204,33 @@ describe('restoring', () => {
       p.feed.status_ = fakeStatus({ state: 'stopped' });
       return p.feed.status_;
     };
-    await c.post(`/api/backups/${b.name}/restore`, { parts: ['world'] });
-    await p.deps.ops.idle();
+    await c.post(`/api/servers/default/backups/${b.name}/restore`, { parts: ['world'] });
+    await p.srv.ops.idle();
     expect(p.agent.calls.filter((x) => x === 'stop' || x === 'start')).toEqual(['stop', 'start']);
-    expect(p.deps.bus.currentOp()).toMatchObject({ ok: true });
+    expect(p.srv.ops.last()).toMatchObject({ ok: true });
     // Started fine, so the pre-restore files were cleaned up.
-    expect(p.deps.flows.lastRestore()?.trash).toBeNull();
+    expect(p.srv.flows.lastRestore()?.trash).toBeNull();
   });
 
   it('refuses a damaged archive and one from a newer game build', async () => {
     const { p, c } = await setup();
-    const b = await p.deps.backups.create({ trigger: 'manual', hot: false });
+    const b = await p.srv.backups.create({ trigger: 'manual', hot: false });
     const file = path.join(p.deps.env.backupDir, b.name);
     const bytes = readFileSync(file);
     bytes[bytes.length - 5] = bytes[bytes.length - 5]! ^ 0xff;
     writeFileSync(file, bytes);
-    await c.post(`/api/backups/${b.name}/restore`, { parts: ['world'] });
-    await p.deps.ops.idle();
-    expect(p.deps.bus.currentOp()).toMatchObject({ ok: false, error: expect.stringMatching(/damaged/) });
+    await c.post(`/api/servers/default/backups/${b.name}/restore`, { parts: ['world'] });
+    await p.srv.ops.idle();
+    expect(p.srv.ops.last()).toMatchObject({ ok: false, error: expect.stringMatching(/damaged/) });
     expect(read(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe('time-v1');
 
-    const b2 = await p.deps.backups.create({ trigger: 'manual', hot: false });
+    const b2 = await p.srv.backups.create({ trigger: 'manual', hot: false });
     const side = path.join(p.deps.env.backupDir, `${b2.name}.json`);
     const meta = JSON.parse(readFileSync(side, 'utf8'));
     meta.manifest.buildId = '99999999';
     writeFileSync(side, JSON.stringify(meta));
-    expect((await c.post(`/api/backups/${b2.name}/restore`, { parts: ['world'] })).json()).toEqual({ error: 'backup-from-newer-build' });
-    expect((await c.post('/api/backups/..%2F..%2Fetc/restore', { parts: ['world'] })).statusCode).toBe(400);
+    expect((await c.post(`/api/servers/default/backups/${b2.name}/restore`, { parts: ['world'] })).json()).toEqual({ error: 'backup-from-newer-build' });
+    expect((await c.post('/api/servers/default/backups/..%2F..%2Fetc/restore', { parts: ['world'] })).statusCode).toBe(400);
   });
 
   it('never writes outside the staging folder, whatever the archive says', async () => {
@@ -244,7 +244,7 @@ describe('restoring', () => {
     writeFileSync(path.join(p.deps.env.backupDir, name), zstdCompressSync(evilTar));
     writeFileSync(path.join(p.deps.env.backupDir, `${name}.json`), JSON.stringify({ size: 1, sha256: '', pinned: false, manifest: { serverName: 'zomboid', parts: ['world'], trigger: 'upload', createdAt: '2026-01-01T00:00:00Z', bytes: 1 } }));
     const staging = path.join(p.deps.env.pzDataDir, '.staging', 'evil');
-    await expect(p.deps.backups.extract(name, ['world'], staging)).rejects.toThrow(/Unsafe path/);
+    await expect(p.srv.backups.extract(name, ['world'], staging)).rejects.toThrow(/Unsafe path/);
     expect(existsSync(path.join(p.deps.env.pzDataDir, '..', 'escaped.txt'))).toBe(false);
   });
 });
@@ -252,8 +252,8 @@ describe('restoring', () => {
 describe('download and upload', () => {
   it('lets admins download and the owner upload; not operators', async () => {
     const { p, c } = await setup();
-    const b = await p.deps.backups.create({ trigger: 'manual', hot: false });
-    const dl = await c.get(`/api/backups/${b.name}/download`);
+    const b = await p.srv.backups.create({ trigger: 'manual', hot: false });
+    const dl = await c.get(`/api/servers/default/backups/${b.name}/download`);
     expect(dl.statusCode).toBe(200);
     expect(dl.headers['content-disposition']).toContain(b.name);
     expect(dl.rawPayload.length).toBe(b.size);
@@ -266,7 +266,7 @@ describe('download and upload', () => {
     ]);
     const up = await p.app.inject({
       method: 'POST',
-      url: '/api/backups/upload',
+      url: '/api/servers/default/backups/upload',
       headers: { origin: 'https://panel.test:8443', cookie: `__Host-gspsid=${c.cookie}`, 'x-gsp-csrf': c.csrf!, 'content-type': `multipart/form-data; boundary=${boundary}` },
       payload: body,
     });
@@ -277,9 +277,9 @@ describe('download and upload', () => {
     const op = new Client(p.app);
     await op.post('/api/auth/login', { username: 'op1', password: 'Temporal-12345' });
     await op.post('/api/auth/password', { current: 'Temporal-12345', next: 'Operador-propio-1' });
-    expect((await op.get(`/api/backups/${b.name}/download`)).statusCode).toBe(403);
-    expect((await op.get('/api/backups')).statusCode).toBe(200);
-    expect((await op.post('/api/backups')).statusCode).toBe(200);
-    await p.deps.ops.idle();
+    expect((await op.get(`/api/servers/default/backups/${b.name}/download`)).statusCode).toBe(403);
+    expect((await op.get('/api/servers/default/backups')).statusCode).toBe(200);
+    expect((await op.post('/api/servers/default/backups')).statusCode).toBe(200);
+    await p.srv.ops.idle();
   });
 });

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requiresTotp } from '@gsp/shared';
-import { del, get, post } from '../api/http';
+import { api } from '../api/http';
 import { useSession } from '../api/session';
 import type { DeviceSession } from '../api/types';
 import { LangSwitch } from '../components/LangSwitch';
@@ -23,9 +23,9 @@ export function Profile() {
   const [disableOpen, disable] = useDisclosure();
   const [pw, setPw] = useState('');
   const [disableError, setDisableError] = useState<string | null>(null);
-  const devices = useQuery({ queryKey: ['me', 'sessions'], queryFn: () => get<DeviceSession[]>('/api/me/sessions') });
+  const devices = useQuery({ queryKey: ['me', 'sessions'], queryFn: () => api<DeviceSession[]>('GET', '/api/me/sessions') });
   const revoke = useMutation({
-    mutationFn: (id: string) => del(`/api/me/sessions/${id}`),
+    mutationFn: (id: string) => api('DELETE', `/api/me/sessions/${id}`),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['me', 'sessions'] }),
   });
   if (!session) return null;
@@ -130,7 +130,7 @@ export function Profile() {
           <Button
             color="red"
             onClick={() =>
-              void post('/api/auth/totp/disable', { password: pw }).then(
+              void api('POST', '/api/auth/totp/disable', { password: pw }).then(
                 () => {
                   setPw('');
                   disable.close();

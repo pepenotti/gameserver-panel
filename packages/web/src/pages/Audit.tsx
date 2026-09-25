@@ -3,7 +3,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { get } from '../api/http';
+import { api } from '../api/http';
 import type { AuditEntry } from '../api/types';
 import { formatDateTime } from '../lib/format';
 
@@ -16,7 +16,7 @@ export function Audit() {
   const q = useInfiniteQuery({
     queryKey: ['audit', debounced],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) => get<AuditEntry[]>(`/api/audit?limit=${PAGE}${pageParam ? `&before=${pageParam}` : ''}${debounced ? `&action=${debounced}` : ''}`),
+    queryFn: ({ pageParam }) => api<AuditEntry[]>('GET', `/api/audit?limit=${PAGE}${pageParam ? `&before=${pageParam}` : ''}${debounced ? `&action=${debounced}` : ''}`),
     getNextPageParam: (last) => (last.length === PAGE ? last[last.length - 1]!.id : undefined),
   });
   const rows = q.data?.pages.flat() ?? [];

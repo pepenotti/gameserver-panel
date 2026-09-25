@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AgentEvent, AgentStatus, JobInfo, JobResult, SeqEvent } from '@gsp/shared';
+import { useServerScope } from './server';
 
 export interface LogLine {
   seq: number;
@@ -36,9 +37,8 @@ export interface Notice {
   message: string;
 }
 
-export interface LiveState {
-  /** Browser <-> panel websocket. */
-  socket: 'connecting' | 'open' | 'closed';
+/** One server as the websocket keeps it. */
+export interface LiveServer {
   /** Panel <-> agent stream. */
   agentConnected: boolean;
   status: AgentStatus | null;
@@ -50,15 +50,30 @@ export interface LiveState {
   notices: Notice[];
 }
 
-const MAX_LOGS = 3000;
-const initial: LiveState = { socket: 'connecting', agentConnected: false, status: null, logs: [], players: null, job: null, alerts: [], op: null, notices: [] };
-const Ctx = createContext<LiveState>(initial);
+/** What a page sees: its server's live state, and the socket's. */
+export interface LiveState extends LiveServer {
+  /** Browser <-> panel websocket. */
+  socket: 'connecting' | 'open' | 'closed';
+}
 
+interface Store {
+  socket: LiveState['socket'];
+  servers: Record<string, LiveServer>;
+  /** Notices about the host (no server). */
+  hostNotices: Notice[];
+}
+
+const MAX_LOGS = 3000;
+const emptyServer: LiveServer = { agentConnected: false, status: null, logs: [], players: null, job: null, alerts: [], op: null, notices: [] };
+const Ctx = createContext<Store>({ socket: 'connecting', servers: {}, hostNotices: [] });
+
+/** What `/api/ws` sends (mirrors `WsMessage` in packages/panel/src/routes/ws.ts). */
 type ServerMsg =
-  | { type: 'hello'; agentConnected: boolean; status: AgentStatus | null; logs: SeqEvent[]; op: Op | null }
-  | { type: 'op'; op: Op }
-  | { type: 'notice'; kind: string; message: string }
-  | ({ type: 'event' } & SeqEvent)
+  | { type: 'hello'; servers: { serverId: string; agentConnected: boolean; status: AgentStatus | null; logs: SeqEvent[]; op: Op | null }[] }
+  | { type: 'gone'; serverId: string }
+  | { type: 'op'; serverId: string; op: Op }
+  | { type: 'notice'; serverId: string | null; kind: string; message: string }
+  | ({ type: 'event'; serverId: string } & SeqEvent)
   | { type: 'pong' };
 
 function toLog(e: SeqEvent): LogLine | null {
@@ -66,10 +81,13 @@ function toLog(e: SeqEvent): LogLine | null {
   return ev.type === 'log' ? { seq: e.seq, at: e.at, stream: ev.stream, line: ev.line } : null;
 }
 
-/** One websocket per tab; reconnects with backoff and batches log lines per frame. */
+/**
+ * One websocket per tab for every server the user may see; reconnects with
+ * backoff and batches log lines per frame. `useLive()` picks the page's server.
+ */
 export function LiveProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {
-  const [state, setState] = useState<LiveState>(initial);
-  const pending = useRef<LogLine[]>([]);
+  const [store, setStore] = useState<Store>({ socket: 'connecting', servers: {}, hostNotices: [] });
+  const pending = useRef<Record<string, LogLine[]>>({});
 
   useEffect(() => {
     if (!enabled) return;
@@ -79,64 +97,87 @@ export function LiveProvider({ enabled, children }: { enabled: boolean; children
     let retry: number | undefined;
     let raf: number | undefined;
 
+    const patch = (sid: string, f: (s: LiveServer) => Partial<LiveServer>) =>
+      setStore((st) => {
+        const cur = st.servers[sid] ?? emptyServer;
+        return { ...st, servers: { ...st.servers, [sid]: { ...cur, ...f(cur) } } };
+      });
+
     const flush = () => {
       raf = undefined;
       const add = pending.current;
-      pending.current = [];
-      if (add.length) setState((s) => ({ ...s, logs: [...s.logs, ...add].slice(-MAX_LOGS) }));
+      pending.current = {};
+      for (const [sid, lines] of Object.entries(add)) if (lines.length) patch(sid, (s) => ({ logs: [...s.logs, ...lines].slice(-MAX_LOGS) }));
     };
 
     const connect = () => {
-      setState((s) => ({ ...s, socket: 'connecting' }));
+      setStore((st) => ({ ...st, socket: 'connecting' }));
       ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/ws`);
       ws.onopen = () => {
         delay = 1000;
-        setState((s) => ({ ...s, socket: 'open' }));
+        setStore((st) => ({ ...st, socket: 'open' }));
       };
       ws.onmessage = (m) => {
         const msg = JSON.parse(String(m.data)) as ServerMsg;
-        if (msg.type === 'hello') {
-          setState((s) => ({
-            ...s,
-            agentConnected: msg.agentConnected,
-            status: msg.status,
-            players: msg.status?.players ? { count: msg.status.players.count, names: msg.status.players.names } : null,
-            logs: msg.logs.map(toLog).filter((l): l is LogLine => l !== null),
-            op: msg.op,
-          }));
-          return;
+        switch (msg.type) {
+          case 'hello':
+            for (const h of msg.servers) {
+              patch(h.serverId, () => ({
+                agentConnected: h.agentConnected,
+                status: h.status,
+                players: h.status?.players ? { count: h.status.players.count, names: h.status.players.names } : null,
+                logs: h.logs.map(toLog).filter((l): l is LogLine => l !== null),
+                op: h.op,
+              }));
+            }
+            return;
+          case 'gone':
+            setStore((st) => {
+              const { [msg.serverId]: _gone, ...rest } = st.servers;
+              return { ...st, servers: rest };
+            });
+            return;
+          case 'op':
+            patch(msg.serverId, () => ({ op: msg.op }));
+            return;
+          case 'notice': {
+            const n = { at: new Date().toISOString(), kind: msg.kind, message: msg.message };
+            if (msg.serverId === null) setStore((st) => ({ ...st, hostNotices: [...st.hostNotices, n].slice(-20) }));
+            else patch(msg.serverId, (s) => ({ notices: [...s.notices, n].slice(-20) }));
+            return;
+          }
+          case 'event':
+            break;
+          default:
+            return;
         }
-        if (msg.type === 'op') {
-          setState((s) => ({ ...s, op: msg.op }));
-          return;
-        }
-        if (msg.type === 'notice') {
-          setState((s) => ({ ...s, notices: [...s.notices, { at: new Date().toISOString(), kind: msg.kind, message: msg.message }].slice(-20) }));
-          return;
-        }
-        if (msg.type !== 'event') return;
+        const sid = msg.serverId;
         const ev = msg.event;
         switch (ev.type) {
           case 'log':
-            pending.current.push({ seq: msg.seq, at: msg.at, stream: ev.stream, line: ev.line });
+            (pending.current[sid] ??= []).push({ seq: msg.seq, at: msg.at, stream: ev.stream, line: ev.line });
             raf ??= requestAnimationFrame(flush);
             break;
           case 'state':
-            setState((s) => ({ ...s, agentConnected: true, status: ev.status, players: ev.status.players ? { count: ev.status.players.count, names: ev.status.players.names } : ev.status.state === 'running' ? s.players : null }));
+            patch(sid, (s) => ({
+              agentConnected: true,
+              status: ev.status,
+              players: ev.status.players ? { count: ev.status.players.count, names: ev.status.players.names } : ev.status.state === 'running' ? s.players : null,
+            }));
             break;
           case 'players':
-            setState((s) => ({ ...s, players: { count: ev.count, names: ev.names } }));
+            patch(sid, () => ({ players: { count: ev.count, names: ev.names } }));
             break;
           case 'job':
-            setState((s) => ({ ...s, job: { ...ev.job, result: ev.result } }));
+            patch(sid, () => ({ job: { ...ev.job, result: ev.result } }));
             break;
           case 'alert':
-            setState((s) => ({ ...s, alerts: [...s.alerts, { seq: msg.seq, at: msg.at, kind: ev.kind, message: ev.message }].slice(-20) }));
+            patch(sid, (s) => ({ alerts: [...s.alerts, { seq: msg.seq, at: msg.at, kind: ev.kind, message: ev.message }].slice(-20) }));
             break;
         }
       };
       ws.onclose = (e) => {
-        setState((s) => ({ ...s, socket: 'closed' }));
+        setStore((st) => ({ ...st, socket: 'closed' }));
         // 4001: the session ended server-side; the next API call shows the login.
         if (stopped || e.code === 4001) return;
         retry = window.setTimeout(connect, delay);
@@ -154,9 +195,13 @@ export function LiveProvider({ enabled, children }: { enabled: boolean; children
     };
   }, [enabled]);
 
-  return <Ctx.Provider value={state}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }
 
+/** The page's server's live state (empty outside a server's pages), with the socket's. */
 export function useLive(): LiveState {
-  return useContext(Ctx);
+  const store = useContext(Ctx);
+  const sid = useServerScope()?.sid ?? null;
+  const server = (sid && store.servers[sid]) || emptyServer;
+  return { ...server, socket: store.socket, notices: sid ? server.notices : store.hostNotices };
 }

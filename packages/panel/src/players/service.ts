@@ -1,4 +1,4 @@
-import type { BanList, PlayerAccount, PlayerOps, PlayerTarget } from '@gsp/adapter-api';
+import type { AccessLevel, BanList, PlayerAccount, PlayerOps, PlayerTarget } from '@gsp/adapter-api';
 import { RconProtocolError } from '@gsp/formats';
 import { nowIso, type Db } from '../db/db';
 import { HttpError } from '../http/context';
@@ -34,7 +34,11 @@ export class PlayersService {
 
   constructor(private readonly d: PlayersDeps) {
     // After a panel restart, sessions left open belong to a previous run.
-    d.db.prepare('UPDATE player_sessions SET left_at = ? WHERE left_at IS NULL').run(nowIso());
+    d.db.prepare('UPDATE player_sessions SET left_at = ? WHERE server_id = ? AND left_at IS NULL').run(nowIso(), d.server.ref.id);
+  }
+
+  private get serverId(): string {
+    return this.d.server.ref.id;
   }
 
   onPresence(l: (e: PresenceEvent) => void): () => void {
@@ -50,14 +54,14 @@ export class PlayersService {
     for (const n of next) {
       if (!this.online.has(n)) {
         this.online.set(n, now);
-        this.d.db.prepare('INSERT INTO player_sessions (username, joined_at) VALUES (?, ?)').run(n, now);
+        this.d.db.prepare('INSERT INTO player_sessions (server_id, username, joined_at) VALUES (?, ?, ?)').run(this.serverId, n, now);
         events.push({ kind: 'join', username: n, at: now });
       }
     }
     for (const n of [...this.online.keys()]) {
       if (!next.has(n)) {
         this.online.delete(n);
-        this.d.db.prepare('UPDATE player_sessions SET left_at = ? WHERE username = ? AND left_at IS NULL').run(now, n);
+        this.d.db.prepare('UPDATE player_sessions SET left_at = ? WHERE server_id = ? AND username = ? AND left_at IS NULL').run(now, this.serverId, n);
         events.push({ kind: 'leave', username: n, at: now });
       }
     }
@@ -78,7 +82,7 @@ export class PlayersService {
   }
 
   history(limit = 200): PlayerSession[] {
-    return (this.d.db.prepare('SELECT id, username, joined_at, left_at FROM player_sessions ORDER BY id DESC LIMIT ?').all(Math.min(limit, 1000)) as {
+    return (this.d.db.prepare('SELECT id, username, joined_at, left_at FROM player_sessions WHERE server_id = ? ORDER BY id DESC LIMIT ?').all(this.serverId, Math.min(limit, 1000)) as {
       id: number;
       username: string;
       joined_at: string;
@@ -93,7 +97,7 @@ export class PlayersService {
   }
 
   /** Access levels `setAccess` takes (empty when the game has none). */
-  accessLevels(): readonly string[] {
+  accessLevels(): readonly AccessLevel[] {
     return this.ops?.accessLevels ?? [];
   }
 

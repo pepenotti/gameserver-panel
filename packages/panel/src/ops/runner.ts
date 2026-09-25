@@ -16,16 +16,27 @@ export interface OpContext {
 }
 
 /**
- * Runs one heavy operation at a time. Two people pressing "restart" and
- * "restore" at once must not interleave; the second gets a 409 instead.
+ * Runs one heavy operation at a time on one server. Two people pressing
+ * "restart" and "restore" at once must not interleave; the second gets a
+ * 409 instead. Other servers have their own runner and aren't held up.
  */
 export class OpRunner {
   private current: { state: OpState; abort: AbortController } | null = null;
+  private lastState: OpState | null = null;
 
-  constructor(private readonly bus: PanelBus) {}
+  constructor(
+    private readonly bus: PanelBus,
+    /** The server whose operations these are. */
+    readonly serverId: string,
+  ) {}
 
   get busy(): OpState | null {
     return this.current?.state ?? null;
+  }
+
+  /** The running operation, else the last one (how it ended), else null. */
+  last(): OpState | null {
+    return this.lastState;
   }
 
   /** Starts `fn` in the background and returns its initial state. */
@@ -46,7 +57,10 @@ export class OpRunner {
       error: null,
     };
     this.current = { state, abort };
-    const publish = () => this.bus.emit({ type: 'op', op: { ...state } });
+    const publish = () => {
+      this.lastState = { ...state };
+      this.bus.emit({ type: 'op', serverId: this.serverId, op: { ...state } });
+    };
     const ctx: OpContext = {
       signal: abort.signal,
       step: (step, patch = {}) => {

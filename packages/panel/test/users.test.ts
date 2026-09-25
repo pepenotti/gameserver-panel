@@ -30,7 +30,7 @@ describe('user management', () => {
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);
     const { client: op } = await friend(p, owner, 'operator');
-    expect((await op.get('/api/status')).statusCode).toBe(200);
+    expect((await op.get('/api/servers/default/status')).statusCode).toBe(200);
     expect((await op.get('/api/users')).json()).toEqual({ error: 'forbidden' });
     expect((await op.get('/api/audit')).statusCode).toBe(403);
     expect((await op.post('/api/users', { username: 'x', password: 'y', role: 'viewer' })).statusCode).toBe(403);
@@ -51,7 +51,7 @@ describe('user management', () => {
     const { client: owner } = await ownerReady(p);
     const { client: op, body } = await friend(p, owner, 'operator');
     expect((await owner.req('PATCH', `/api/users/${body.user.id}`, { role: 'viewer' })).statusCode).toBe(200);
-    expect((await op.get('/api/status')).statusCode).toBe(401);
+    expect((await op.get('/api/servers/default/status')).statusCode).toBe(401);
 
     const again = new Client(p.app);
     await again.post('/api/auth/login', { username: 'amigo-operator', password: 'La-mia-propia-2026' });
@@ -89,7 +89,8 @@ describe('websocket', () => {
     p.feed.emit({ type: 'log', stream: 'out', line: 'hello from pz' });
     p.feed.emit({ type: 'players', count: 1, names: ['alice'] });
     await new Promise((r) => setTimeout(r, 50));
-    expect(messages[0]).toMatchObject({ type: 'hello', agentConnected: true });
+    expect(messages[0]).toMatchObject({ type: 'hello', servers: [{ serverId: 'default', agentConnected: true }] });
+    expect(messages.slice(1).every((m) => (m as { serverId?: string }).serverId === 'default')).toBe(true);
     expect(messages.slice(1).map((m) => m.event?.type)).toEqual(['log', 'players']);
     ws.terminate();
   });
@@ -110,7 +111,7 @@ describe('websocket', () => {
     p.feed.emit({ type: 'log', stream: 'out', line: 'secret-ish console line' });
     p.feed.emit({ type: 'state', status: p.feed.status_! });
     await new Promise((r) => setTimeout(r, 50));
-    expect(messages[0]).toMatchObject({ type: 'hello', logs: [] });
+    expect(messages[0]).toMatchObject({ type: 'hello', servers: [{ serverId: 'default', logs: [] }] });
     expect(messages.slice(1).map((m) => m.event?.type)).toEqual(['state']);
     ws.terminate();
   });

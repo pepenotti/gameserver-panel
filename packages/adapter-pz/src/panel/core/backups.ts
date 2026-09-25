@@ -56,6 +56,7 @@ export const PZ_RESETS: ResetDecl[] = [
     label: { en: 'New world', es: 'Mundo nuevo' },
     permission: 'reset.world',
     removeParts: ['world'],
+    options: { newSeed: true, preset: true },
     after: newWorld('world'),
   },
   {
@@ -63,6 +64,7 @@ export const PZ_RESETS: ResetDecl[] = [
     label: { en: 'New world and accounts', es: 'Mundo y cuentas nuevos' },
     permission: 'reset.full',
     removeParts: ['world', 'accounts'],
+    options: { newSeed: true, preset: true },
     after: newWorld('full'),
   },
   {

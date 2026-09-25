@@ -77,10 +77,10 @@ const iniLine = (p: TestPanel, key: string) => getIniValue(parseIni(readFileSync
 describe('adding mods', () => {
   it('adds by URL, downloads, reads the B42 mod.info and writes the ini lines', async () => {
     const { p, c } = await setup();
-    const r = await c.post('/api/mods', { refs: ['https://steamcommunity.com/sharedfiles/filedetails/?id=2544353492'] });
+    const r = await c.post('/api/servers/default/mods', { refs: ['https://steamcommunity.com/sharedfiles/filedetails/?id=2544353492'] });
     expect(r.json()).toMatchObject({ added: ['2544353492'] });
-    await p.deps.ops.idle();
-    const list = (await c.get('/api/mods')).json() as { items: { workshopId: string; title: string; mods: { modId: string; versionFolder: string; compatible: boolean }[] }[]; enabled: { modId: string }[] };
+    await p.srv.ops.idle();
+    const list = (await c.get('/api/servers/default/mods')).json() as { items: { workshopId: string; title: string; mods: { modId: string; versionFolder: string; compatible: boolean }[] }[]; enabled: { modId: string }[] };
     expect(list.items[0]).toMatchObject({ title: 'Has Been Read', mods: [{ modId: 'P4HasBeenRead', versionFolder: '42.15', compatible: true }] });
     // A single-mod item is enabled on arrival.
     expect(list.enabled).toEqual([{ modId: 'P4HasBeenRead', workshopId: '2544353492' }]);
@@ -91,28 +91,28 @@ describe('adding mods', () => {
 
   it('expands collections and refuses items that are not Project Zomboid mods', async () => {
     const { p, c } = await setup();
-    const r = (await c.post('/api/mods', { refs: ['9999999999'] })).json() as { added: string[] };
+    const r = (await c.post('/api/servers/default/mods', { refs: ['9999999999'] })).json() as { added: string[] };
     expect(r.added.sort()).toEqual(['2544353492', '2946364542']);
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
 
     const s2 = fakeSteam({ '5555555555': { title: 'Skyrim mod', app: 72850 } });
     const p2 = await makePanel({}, { mods: [s2.source] });
     const { client } = await ownerReady(p2);
-    expect((await client.post('/api/mods', { refs: ['5555555555'] })).json()).toMatchObject({ error: 'mod-not-for-game', ids: ['5555555555'] });
-    expect((await client.post('/api/mods', { refs: ['https://evil.example/?id=1'] })).json()).toMatchObject({ error: 'invalid-mod-ref' });
+    expect((await client.post('/api/servers/default/mods', { refs: ['5555555555'] })).json()).toMatchObject({ error: 'mod-not-for-game', ids: ['5555555555'] });
+    expect((await client.post('/api/servers/default/mods', { refs: ['https://evil.example/?id=1'] })).json()).toMatchObject({ error: 'invalid-mod-ref' });
   });
 });
 
 describe('health checks', () => {
   it('flags B41-only mods, missing dependencies and load order', async () => {
     const { p, c } = await setup();
-    await c.post('/api/mods', { refs: ['2725378876', '2503622437'] });
-    await p.deps.ops.idle();
+    await c.post('/api/servers/default/mods', { refs: ['2725378876', '2503622437'] });
+    await p.srv.ops.idle();
     // They Knew has no B42 folder; Skill Recovery Journal requires two mods we don't have.
-    const issues = ((await c.get('/api/mods')).json() as { issues: { kind: string; modId?: string; requires?: string }[] }).issues;
+    const issues = ((await c.get('/api/servers/default/mods')).json() as { issues: { kind: string; modId?: string; requires?: string }[] }).issues;
     expect(issues).toEqual(
       expect.arrayContaining([
-        { kind: 'not-b42', modId: 'TheyKnew', reason: 'no-b42-folder' },
+        { kind: 'incompatible-version', modId: 'TheyKnew', reason: 'no-matching-folder' },
         { kind: 'missing-dependency', modId: 'SkillRecoveryJournal', requires: 'ChuckleberryFinnAlertSystem', availableIn: null },
         { kind: 'missing-dependency', modId: 'SkillRecoveryJournal', requires: 'errorMagnifier', availableIn: null },
       ]),
@@ -133,14 +133,14 @@ describe('health checks', () => {
 describe('enabling and ordering', () => {
   it('writes the chosen order, puts map mods before the vanilla map, and needs a restart when running', async () => {
     const { p, c } = await setup();
-    await c.post('/api/mods', { refs: ['2544353492', '2946364542'] });
-    await p.deps.ops.idle();
+    await c.post('/api/servers/default/mods', { refs: ['2544353492', '2946364542'] });
+    await p.srv.ops.idle();
     // Give Search Containers a map folder, as map mods have.
     const mapDir = path.join(p.deps.env.pzDataDir, '.workshop', 'steamapps', 'workshop', 'content', '108600', '2946364542', 'mods', 'Search Containers', '42.0', 'media', 'maps', 'Raven Creek');
     mkdirSync(mapDir, { recursive: true });
     writeFileSync(path.join(mapDir, 'map.info'), 'title=Raven Creek');
-    await p.deps.mods.rescan();
-    const r = await c.req('PUT', '/api/mods/enabled', {
+    await p.srv.mods.rescan();
+    const r = await c.req('PUT', '/api/servers/default/mods/enabled', {
       enabled: [
         { modId: 'SearchContainers', workshopId: '2946364542' },
         { modId: 'P4HasBeenRead', workshopId: '2544353492' },
@@ -149,14 +149,14 @@ describe('enabling and ordering', () => {
     expect(r.statusCode).toBe(200);
     expect(iniLine(p, 'Mods')).toBe('\\SearchContainers;\\P4HasBeenRead');
     expect(iniLine(p, 'Map')).toBe('Raven Creek;Muldraugh, KY');
-    expect((await c.req('PUT', '/api/mods/enabled', { enabled: [{ modId: 'Nope', workshopId: '2946364542' }] })).json()).toMatchObject({ error: 'unknown-mod' });
+    expect((await c.req('PUT', '/api/servers/default/mods/enabled', { enabled: [{ modId: 'Nope', workshopId: '2946364542' }] })).json()).toMatchObject({ error: 'unknown-mod' });
   });
 
   it('removes an item and its mods from the ini', async () => {
     const { p, c } = await setup();
-    await c.post('/api/mods', { refs: ['2544353492'] });
-    await p.deps.ops.idle();
-    await c.req('DELETE', '/api/mods/2544353492');
+    await c.post('/api/servers/default/mods', { refs: ['2544353492'] });
+    await p.srv.ops.idle();
+    await c.req('DELETE', '/api/servers/default/mods/2544353492');
     expect(iniLine(p, 'Mods')).toBe('');
     expect(iniLine(p, 'WorkshopItems')).toBe('');
   });
@@ -167,7 +167,7 @@ describe('enabling and ordering', () => {
     writeFileSync(iniPath(p), 'WorkshopItems=2544353492\nMods=P4HasBeenRead\n');
     await fakeDownloads(p);
     await p.agent.action(WORKSHOP_DOWNLOAD, { ids: ['2544353492'] });
-    const list = (await c.get('/api/mods')).json() as { enabled: { modId: string }[] };
+    const list = (await c.get('/api/servers/default/mods')).json() as { enabled: { modId: string }[] };
     expect(list.enabled.map((e) => e.modId)).toEqual(['P4HasBeenRead']);
   });
 });
@@ -179,10 +179,10 @@ describe('updates', () => {
     const p = await makePanel({}, { mods: [s.source] });
     fakeDownloads(p);
     const { client } = await ownerReady(p);
-    await client.post('/api/mods', { refs: ['2544353492'] });
-    await p.deps.ops.idle();
-    expect(((await client.post('/api/mods/check')).json() as { updates: string[] }).updates).toEqual([]);
+    await client.post('/api/servers/default/mods', { refs: ['2544353492'] });
+    await p.srv.ops.idle();
+    expect(((await client.post('/api/servers/default/mods/check')).json() as { updates: string[] }).updates).toEqual([]);
     items['2544353492'].updated = 2000;
-    expect(((await client.post('/api/mods/check')).json() as { updates: string[] }).updates).toEqual(['2544353492']);
+    expect(((await client.post('/api/servers/default/mods/check')).json() as { updates: string[] }).updates).toEqual(['2544353492']);
   });
 });

@@ -119,7 +119,6 @@ describe('adapter routes', () => {
     expect(await v.json()).toMatchObject({ installed: { channel: 'legacy41', build: '24909800' }, versions: [{ id: 'public' }, { id: 'legacy41' }] });
     const status = (await (await fetch(`${base}/v1/status`, { headers: auth() })).json()) as AgentStatus;
     expect(status.installedInfo).toMatchObject({ channel: 'legacy41' });
-    expect(status.installed).toEqual({ buildId: '24909800', branch: 'legacy41' });
   });
 
   it('no longer answers the pre-adapter steamcmd routes', async () => {

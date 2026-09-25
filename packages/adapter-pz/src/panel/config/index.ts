@@ -3,13 +3,61 @@
  * spawn files, their schemas, managed keys and presets (CFG-01…10).
  * Paths and behaviour measured on 42.20.4 (docs/verification/pz-b42.md).
  */
-import type { AfterWriteResult, ConfigFileDecl, EditableRoot, OptionMeta, PanelAdapterConfig, Scalar, ServerCtx, ServerRef } from '@gsp/adapter-api';
+import type { AfterWriteResult, ConfigFileDecl, EditableRoot, OptionGroup, OptionMeta, PanelAdapterConfig, Scalar, ServerCtx, ServerRef } from '@gsp/adapter-api';
 import { flattenScalars, parseLuaData } from '@gsp/formats';
 import { parseLogLine, PZ_PATTERNS } from '../../shared/log';
 import metaJson from './option-meta.json';
 
 /** Settings metadata generated from the game's own files (scripts/gen-option-meta.ts). */
 export const PZ_OPTION_META = metaJson as { source: string; ini: OptionMeta[]; sandbox: OptionMeta[] };
+
+/** The ini form's groups (CFG-10), in order; the rare ones sit behind "Advanced". */
+export const PZ_INI_GROUPS: OptionGroup[] = [
+  { id: 'general', label: { en: 'General', es: 'General' } },
+  { id: 'players', label: { en: 'Players', es: 'Jugadores' } },
+  { id: 'pvp', label: { en: 'PvP', es: 'PvP' } },
+  { id: 'safehouses', label: { en: 'Safehouses & factions', es: 'Refugios y facciones' } },
+  { id: 'chat', label: { en: 'Chat & voice', es: 'Chat y voz' } },
+  { id: 'backups', label: { en: 'Built-in backups', es: 'Copias propias del juego' }, advanced: true },
+  { id: 'anticheat', label: { en: 'Anti-cheat', es: 'Anti-trampas' }, advanced: true },
+  { id: 'other', label: { en: 'Everything else', es: 'Todo lo demás' }, advanced: true },
+];
+
+/** Which ini group a key belongs to: the first test that matches; `other` otherwise. */
+const INI_GROUP_TESTS: [string, (k: string) => boolean][] = [
+  ['general', (k) => ['PublicName', 'PublicDescription', 'ServerWelcomeMessage', 'Public', 'Open', 'Password', 'MaxPlayers', 'PauseEmpty', 'SaveWorldEveryMinutes', 'Seed', 'ResetID'].includes(k)],
+  ['pvp', (k) => /^(PVP|Safety|ShowSafety|War)/.test(k)],
+  ['safehouses', (k) => /^(PlayerSafehouse|AdminSafehouse|Safehouse|SafeHouse|MaxSafezoneSize|DisableSafehouse|Faction)/.test(k)],
+  ['chat', (k) => /^(GlobalChat|ChatStreams|ChatMessage|Voice|BadWord|GoodWord|DisableRadio)/.test(k)],
+  ['backups', (k) => k.startsWith('Backups')],
+  ['anticheat', (k) => /^(AntiCheat|DoLuaChecksum|SteamVAC|MaxPacketsPerSecond|SpeedLimit|ClientCommandFilter|ClientActionLogs|PerkLogs|ItemNumbersLimit)/.test(k)],
+  [
+    'players',
+    (k) =>
+      /^(SpawnItems|SpawnPoint|Sleep|PlayerRespawn|DropOffWhiteList|MaxAccountsPerUser|AllowNonAscii|DisplayUserName|ShowFirstAndLastName|MouseOverToSeeDisplayName|HidePlayersBehindYou|Announce|KnockedDownAllowed|AllowCoop|UsernameDisguises|HideDisguisedUserName|PlayerBumpPlayer|MapRemotePlayerVisibility|ShowCoordinates|RemovePlayerCorpses)/.test(k),
+  ],
+];
+
+export function pzIniGroupOf(key: string): string {
+  return INI_GROUP_TESTS.find(([, test]) => test(key))?.[0] ?? 'other';
+}
+
+/** The sandbox form's groups: its top-level tables, the plain options first. */
+export const PZ_SANDBOX_GROUPS: OptionGroup[] = [
+  { id: 'general', label: { en: 'General', es: 'General' } },
+  { id: 'ZombieLore', label: { en: 'Zombie lore', es: 'Comportamiento zombi' } },
+  { id: 'Map', label: { en: 'Map', es: 'Mapa' } },
+  { id: 'ZombieConfig', label: { en: 'Zombie population', es: 'Población zombi' }, advanced: true },
+  { id: 'MultiplierConfig', label: { en: 'Skill XP', es: 'Experiencia por habilidad' }, advanced: true },
+  { id: 'Basement', label: { en: 'Basements', es: 'Sótanos' }, advanced: true },
+];
+
+/** A sandbox key's group: its table (`ZombieLore.Speed` → `ZombieLore`), `general` for the plain ones. */
+export function pzSandboxGroupOf(key: string): string {
+  return key.includes('.') ? key.split('.')[0]! : 'general';
+}
+
+const withGroup = (list: OptionMeta[], groupOf: (key: string) => string): OptionMeta[] => list.map((o) => ({ ...o, group: groupOf(o.key) }));
 
 /** Owned by the agent (ports, RCON, UPnP) or the mod manager (mod lists, map order): never edited by hand. */
 export const MANAGED_INI = ['RCONPort', 'RCONPassword', 'DefaultPort', 'UDPPort', 'UPnP', 'Mods', 'WorkshopItems', 'Map'];
@@ -178,7 +226,8 @@ async function loadPreset(ctx: ServerCtx, name: string): Promise<Record<string, 
 export const pzPanelConfig: PanelAdapterConfig = {
   files,
   roots,
-  schemas: { ini: PZ_OPTION_META.ini, sandbox: PZ_OPTION_META.sandbox },
+  schemas: { ini: withGroup(PZ_OPTION_META.ini, pzIniGroupOf), sandbox: withGroup(PZ_OPTION_META.sandbox, pzSandboxGroupOf) },
+  groups: { ini: PZ_INI_GROUPS, sandbox: PZ_SANDBOX_GROUPS },
   // The agent writes the ports and the RCON password before every start; the panel only pins UPnP off.
   managedValues: () => ({ ini: { UPnP: 'false' } }),
   afterWrite,

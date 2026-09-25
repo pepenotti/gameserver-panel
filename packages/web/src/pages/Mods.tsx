@@ -5,7 +5,7 @@ import { IconArrowDown, IconArrowUp, IconExternalLink, IconTrash } from '@tabler
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { del, get, post, put } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import type { Capability } from '../api/meta';
 import { useMeta } from '../api/useMeta';
@@ -72,7 +72,8 @@ function SourceMods({ sourceName, itemUrl }: { sourceName: string; itemUrl: (id:
   const errorText = useErrorText();
   const qc = useQueryClient();
   const live = useLive();
-  const q = useQuery({ queryKey: ['mods'], queryFn: () => get<ModsResponse>('/api/mods') });
+  const sapi = useServerApi();
+  const q = useQuery({ queryKey: ['mods', sapi.sid], queryFn: () => sapi<ModsResponse>('GET', '/mods') });
   const [refs, setRefs] = useState('');
   const [adding, setAdding] = useState(false);
   const busy = !!live.op && !live.op.done;
@@ -86,7 +87,7 @@ function SourceMods({ sourceName, itemUrl }: { sourceName: string; itemUrl: (id:
 
   const saveEnabled = async (enabled: Enabled[]) => {
     try {
-      const r = await put<{ restartNeeded: boolean }>('/api/mods/enabled', { enabled });
+      const r = await sapi<{ restartNeeded: boolean }>('PUT', '/mods/enabled', { enabled });
       if (r.restartNeeded) notifications.show({ color: 'orange', message: t('mods.restartNeeded') });
       refresh();
     } catch (e) {
@@ -102,7 +103,7 @@ function SourceMods({ sourceName, itemUrl }: { sourceName: string; itemUrl: (id:
     if (!list.length) return;
     setAdding(true);
     try {
-      const r = await post<{ added: string[] }>('/api/mods', { refs: list });
+      const r = await sapi<{ added: string[] }>('POST', '/mods', { refs: list });
       notifications.show({ color: 'green', message: t('mods.added', { count: r.added.length }) });
       setRefs('');
       refresh();
@@ -140,7 +141,7 @@ function SourceMods({ sourceName, itemUrl }: { sourceName: string; itemUrl: (id:
             size="xs"
             disabled={busy || !data?.items.length}
             onClick={() =>
-              void post<{ updates: string[] }>('/api/mods/check').then((r) => {
+              void sapi<{ updates: string[] }>('POST', '/mods/check', {}).then((r) => {
                 notifications.show({ color: r.updates.length ? 'orange' : 'green', message: r.updates.length ? t('mods.updatesFound', { count: r.updates.length }) : t('mods.noUpdates') });
                 refresh();
               }, fail)
@@ -148,7 +149,7 @@ function SourceMods({ sourceName, itemUrl }: { sourceName: string; itemUrl: (id:
           >
             {t('mods.check')}
           </Button>
-          <Button variant="default" size="xs" disabled={busy || !data?.items.length} onClick={() => void post('/api/mods/download', {}).catch(fail)}>
+          <Button variant="default" size="xs" disabled={busy || !data?.items.length} onClick={() => void sapi('POST', '/mods/download', {}).catch(fail)}>
             {t('mods.download')}
           </Button>
         </Group>
@@ -178,7 +179,7 @@ function SourceMods({ sourceName, itemUrl }: { sourceName: string; itemUrl: (id:
       <Card withBorder>
         <Group justify="space-between" mb={4}>
           <Text fw={600}>{t('mods.loadOrder')}</Text>
-          <Button size="compact-xs" variant="default" disabled={enabled.length < 2} onClick={() => void post('/api/mods/sort').then(refresh, fail)}>
+          <Button size="compact-xs" variant="default" disabled={enabled.length < 2} onClick={() => void sapi('POST', '/mods/sort', {}).then(refresh, fail)}>
             {t('mods.autoSort')}
           </Button>
         </Group>
@@ -258,7 +259,7 @@ function SourceMods({ sourceName, itemUrl }: { sourceName: string; itemUrl: (id:
                         children: <Text size="sm">{t('mods.removeConfirm', { title: item.title })}</Text>,
                         labels: { confirm: t('mods.remove'), cancel: t('common.cancel') },
                         confirmProps: { color: 'red' },
-                        onConfirm: () => void del(`/api/mods/${item.workshopId}`).then(refresh, fail),
+                        onConfirm: () => void sapi('DELETE', `/mods/${item.workshopId}`).then(refresh, fail),
                       })
                     }
                   >

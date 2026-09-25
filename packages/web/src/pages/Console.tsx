@@ -3,7 +3,7 @@ import { useDebouncedValue, useDisclosure } from '@mantine/hooks';
 import { IconHelp } from '@tabler/icons-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { post } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive, type LogLine } from '../api/live';
 import { CONSOLE_CAPABILITIES, type CommandDoc } from '../api/meta';
 import { useSession } from '../api/session';
@@ -41,6 +41,7 @@ export function Console() {
   const errorText = useErrorText();
   const { can } = useSession();
   const { logs, status } = useLive();
+  const sapi = useServerApi();
   const { meta, has, l, gameName } = useMeta();
   const catalog = (meta?.consoleCatalog ?? []).filter((c) => !c.permission || can(c.permission));
   const quick = catalog.filter((c) => !takesArguments(c)).slice(0, MAX_QUICK);
@@ -71,7 +72,7 @@ export function Console() {
     setHistory((h) => [c, ...h.filter((x) => x !== c)].slice(0, 50));
     setHistPos(-1);
     try {
-      const r = await post<{ via: string; output: string | null }>('/api/server/command', { command: c });
+      const r = await sapi<{ via: string; output: string | null }>('POST', '/server/command', { command: c });
       setReplies((rs) => [...rs, { id: ++replyId.current, command: c, output: r.output?.trim() || t('console.noOutput') }].slice(-30));
       setCommand('');
     } catch (e) {

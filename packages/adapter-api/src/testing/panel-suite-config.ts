@@ -102,6 +102,23 @@ export function panelAdapterConfigSuite<S>(adapter: PanelAdapter<S>, opts: Panel
       }
     });
 
+    it('option groups are labelled, and every option is in a declared group (CFG-10)', () => {
+      for (const [id, groups] of Object.entries(cfg.groups ?? {})) {
+        expect(cfg.schemas[id], `groups for unknown schema ${id}`).toBeDefined();
+        expectUnique(
+          groups.map((g) => g.id),
+          `groups of schema ${id}`,
+        );
+        for (const g of groups) expectI18n(g.label, `group ${id}.${g.id}`);
+        const known = new Set(groups.map((g) => g.id));
+        const strays = (cfg.schemas[id] ?? []).filter((o) => o.group === undefined || !known.has(o.group)).map((o) => o.key);
+        expect(strays, `options of schema ${id} outside its groups`).toEqual([]);
+      }
+      for (const [id, schema] of Object.entries(cfg.schemas)) {
+        if (!cfg.groups?.[id]) expect(schema.filter((o) => o.group !== undefined).map((o) => o.key), `schema ${id} names groups it doesn't declare`).toEqual([]);
+      }
+    });
+
     if (!opts.server) return;
     const server = opts.server;
 

@@ -62,6 +62,9 @@ services:
       AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}
       AGENT_URL: http://pz:8081
       PZ_SERVER_NAME: ${PZ_SERVER_NAME:-zomboid}
+      # Its published ports, recorded in the panel's server list (the pz service publishes them).
+      GAME_PORT_GAME: ${PZ_GAME_PORT:-16261}
+      GAME_PORT_UDP: ${PZ_UDP_PORT:-16262}
       # The adapter's launch secrets, as GAME_SECRET_<KEY> (the key in upper snake case).
       GAME_SECRET_ADMIN_PASSWORD: ${PZ_ADMIN_PASSWORD:?run node scripts/init-env.mjs first}
       # Exactly the addresses people type; anything else is refused as cross-site.

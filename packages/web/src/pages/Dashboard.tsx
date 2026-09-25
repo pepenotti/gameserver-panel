@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AgentStatus } from '@gsp/shared';
-import { get } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import { OpBanner } from '../components/OpBanner';
 import { ServerControls } from '../components/ServerControls';
@@ -38,15 +38,16 @@ function Stat({ label, children }: { label: string; children: ReactNode }) {
 export function Dashboard() {
   const { t } = useTranslation();
   const live = useLive();
+  const sapi = useServerApi();
   const dur = useDuration();
   const rel = useRelative();
-  const q = useQuery({ queryKey: ['status'], queryFn: () => get<StatusResponse>('/api/status'), refetchInterval: 30_000 });
+  const q = useQuery({ queryKey: ['status', sapi.sid], queryFn: () => sapi<StatusResponse>('GET', '/status'), refetchInterval: 30_000 });
   const s = live.status ?? q.data?.agent ?? null;
   const connected = live.socket === 'open' ? live.agentConnected : (q.data?.agentConnected ?? false);
   const players = live.players ?? s?.players ?? null;
   const dataDisk = s?.disks[0];
   const drift = s ? Math.round((new Date(s.now).getTime() - Date.now()) / 1000) : 0;
-  // Adapter-neutral fields (M1); the legacy `gameVersion`, `installed` and `rcon` are deprecated.
+  // Adapter-neutral: what is installed and the control channel, whatever the game.
   const installed = s?.installedInfo ?? null;
   const control = s?.control;
   // The panel talks to a running game through its control channel (RCON, REST); stdin has no connection to lose.

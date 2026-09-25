@@ -15,7 +15,7 @@ import type {
   VersionsResponse,
 } from '@gsp/adapter-api';
 import { makeRedactor } from '@gsp/formats';
-import type { AgentStatus, AlertKind, CommandResponse, ControlKind, JobInfo, JobKind, PublicLaunchParams, ServerState } from '@gsp/shared';
+import type { AgentStatus, AlertKind, CommandResponse, ControlKind, JobInfo, JobKind, PublicLaunch, ServerState } from '@gsp/shared';
 import type { AgentConfig } from './config';
 import type { EventHub } from './events';
 import { GameRun } from './game';
@@ -244,12 +244,8 @@ export class Agent {
       readyAt: this.readyAt?.toISOString() ?? null,
       lastExit: this.lastExit,
       failure: this.failure,
-      gameVersion: s.gameVersion,
-      // `installed` and `rcon` are the pre-adapter fields; the panel moves to `installedInfo` and `control`.
-      installed: info ? { buildId: info.build ?? '', branch: info.channel ?? '' } : null,
-      installedInfo: info ?? undefined,
+      installedInfo: info,
       players: this.players,
-      rcon: this.channelKind === 'rcon' ? { connected, lastError: this.controlError } : { connected: false, lastError: null },
       control: { kind: this.channelKind, connected, lastError: this.controlError },
       lock: this.lock ? { holder: this.lock.holder, expiresAt: new Date(this.lock.expiresAt).toISOString() } : null,
       job: this.job,
@@ -262,11 +258,11 @@ export class Agent {
   }
 
   /** The stored launch without its secrets: top-level fields holding one of the adapter's secrets are left out. */
-  private publicLaunch(): PublicLaunchParams | null {
+  private publicLaunch(): PublicLaunch | null {
     const p = this.params;
     if (!isObject(p)) return null;
     const secrets = new Set(this.adapter.secrets(p, this.runtimeState()));
-    return Object.fromEntries(Object.entries(p).filter(([, v]) => !(typeof v === 'string' && secrets.has(v)))) as unknown as PublicLaunchParams;
+    return Object.fromEntries(Object.entries(p).filter(([, v]) => !(typeof v === 'string' && secrets.has(v))));
   }
 
   private setState(next: ServerState): void {

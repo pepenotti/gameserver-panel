@@ -11,6 +11,7 @@ export default {
   reset: 'Reiniciar',
   schedules: 'Programación',
   users: 'Usuarios',
+  servers: 'Servidores',
   audit: 'Registro de actividad',
   profile: 'Mi cuenta',
   logout: 'Cerrar sesión',

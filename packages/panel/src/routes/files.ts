@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 import { FILE_ID } from './config';
 
@@ -8,14 +9,14 @@ import { FILE_ID } from './config';
  * reason, and one file's text (secrets masked). Saving goes through
  * proposals (routes/proposals.ts).
  */
-export function fileRoutes(app: FastifyInstance, deps: Deps): void {
+export function fileRoutes(app: FastifyInstance, _deps: Deps): void {
   const perm = { permission: 'config.edit' as const };
 
-  app.get('/api/config/files', { config: perm }, async () => deps.config.listFiles());
+  app.get('/config/files', { config: perm }, async (req) => srvOf(req).config.listFiles());
 
   app.get<{ Querystring: { id: string } }>(
-    '/api/config/files/content',
+    '/config/files/content',
     { config: perm, schema: { querystring: { type: 'object', required: ['id'], properties: { id: FILE_ID } } } },
-    async (req) => deps.config.content(req.query.id),
+    async (req) => srvOf(req).config.content(req.query.id),
   );
 }

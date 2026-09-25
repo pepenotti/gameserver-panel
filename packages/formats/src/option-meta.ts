@@ -18,6 +18,12 @@ export interface OptionMeta {
   default?: string;
   options?: { value: number; label: Localized }[];
   description: Localized;
+  /** What forms call the option; without it, a name derived from the key. */
+  label?: Localized;
+  /** Id of the group the option is shown in (the adapter's option groups for its schema, CFG-10). */
+  group?: string;
+  /** A rare setting: shown under "Advanced" (CFG-10) even when its group is a common one. */
+  advanced?: boolean;
 }
 
 /** One language's metadata for an option, before `mergeLanguages`. */

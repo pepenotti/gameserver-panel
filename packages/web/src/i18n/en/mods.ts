@@ -29,7 +29,7 @@ export default {
   down: 'Move down',
   // Issue kinds and reasons are codes from the panel and the game adapter's mod scan.
   issues: {
-    'not-b42': '{{modId}} is not made for this game version; it will not load.',
+    'incompatible-version': '{{modId}} is not made for this game version; it will not load.',
     'missing-dependency': '{{modId}} needs {{requires}}, which is not enabled.',
     'missing-dependency-available': '{{modId}} needs {{requires}}: enable it below.',
     order: '{{modId}} must load after {{requires}}. Use "Sort by dependencies".',
@@ -37,7 +37,7 @@ export default {
     'not-downloaded': 'Item {{workshopId}} has not been downloaded yet.',
   },
   reasons: {
-    'no-b42-folder': 'not for this game version',
+    'no-matching-folder': 'not for this game version',
     'needs-newer-game': 'needs a newer game build',
     'too-old-for-game': 'too old for this build',
   },

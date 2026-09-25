@@ -1,7 +1,7 @@
 import { Alert, Anchor, Button, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { post } from '../../api/http';
+import { api } from '../../api/http';
 import { useSession } from '../../api/session';
 import type { SessionInfo } from '../../api/types';
 import { useErrorText } from '../../lib/format';
@@ -24,7 +24,7 @@ export function Login() {
     setBusy(true);
     setError(null);
     try {
-      apply(mfa ? await post<SessionInfo>('/api/auth/mfa', { code: code.trim() }) : await post<SessionInfo>('/api/auth/login', { username: username.trim(), password }));
+      apply(mfa ? await api<SessionInfo>('POST', '/api/auth/mfa', { code: code.trim() }) : await api<SessionInfo>('POST', '/api/auth/login', { username: username.trim(), password }));
       setPassword('');
     } catch (err) {
       setError(errorText(err));

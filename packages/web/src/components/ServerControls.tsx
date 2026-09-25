@@ -5,7 +5,7 @@ import { notifications } from '@mantine/notifications';
 import { IconDeviceFloppy, IconMessage, IconPlayerPlay, IconPlayerStop, IconRefresh } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { post } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
@@ -17,6 +17,7 @@ export function ServerControls() {
   const errorText = useErrorText();
   const { can } = useSession();
   const live = useLive();
+  const sapi = useServerApi();
   const { has } = useMeta();
   const [saving, setSaving] = useState(false);
   const [countdown, setCountdown] = useState('300');
@@ -33,8 +34,7 @@ export function ServerControls() {
 
   if (!can('server.control') && !canBroadcast) return null;
 
-  const run = (path: string, body: unknown = {}) =>
-    post(path, body).catch((e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
+  const run = (call: () => Promise<unknown>) => call().catch((e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
 
   const confirm = (text: string, onConfirm: () => void) =>
     modals.openConfirmModal({
@@ -52,13 +52,13 @@ export function ServerControls() {
         <Group gap="xs">
           {can('server.control') && (
             <>
-              <Button leftSection={<IconPlayerPlay size={16} />} color="green" disabled={!down || busy || !live.agentConnected} onClick={() => void run('/api/server/start')}>
+              <Button leftSection={<IconPlayerPlay size={16} />} color="green" disabled={!down || busy || !live.agentConnected} onClick={() => void run(() => sapi('POST', '/server/start', {}))}>
                 {t('controls.start')}
               </Button>
-              <Button leftSection={<IconRefresh size={16} />} disabled={!up || busy} onClick={() => confirm(t('controls.restartConfirm'), () => void run('/api/server/restart', { countdownSec: cd }))}>
+              <Button leftSection={<IconRefresh size={16} />} disabled={!up || busy} onClick={() => confirm(t('controls.restartConfirm'), () => void run(() => sapi('POST', '/server/restart', { countdownSec: cd })))}>
                 {t('controls.restart')}
               </Button>
-              <Button leftSection={<IconPlayerStop size={16} />} color="red" variant="light" disabled={!up || busy} onClick={() => confirm(t('controls.stopConfirm'), () => void run('/api/server/stop', { countdownSec: cd }))}>
+              <Button leftSection={<IconPlayerStop size={16} />} color="red" variant="light" disabled={!up || busy} onClick={() => confirm(t('controls.stopConfirm'), () => void run(() => sapi('POST', '/server/stop', { countdownSec: cd })))}>
                 {t('controls.stop')}
               </Button>
               {canSave && (
@@ -70,7 +70,7 @@ export function ServerControls() {
                   onClick={() => {
                     setSaving(true);
                     // `{ok:true}` once the game has finished saving; 502 `save-failed` otherwise.
-                    void post<{ ok: boolean }>('/api/server/save')
+                    void sapi<{ ok: boolean }>('POST', '/server/save', {})
                       .then(
                         () => notifications.show({ color: 'green', message: t('controls.saved') }),
                         (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }),
@@ -119,7 +119,7 @@ export function ServerControls() {
           <Button
             disabled={!message.trim()}
             onClick={() =>
-              void post('/api/server/broadcast', { message: message.trim() }).then(
+              void sapi('POST', '/server/broadcast', { message: message.trim() }).then(
                 () => {
                   notifications.show({ color: 'green', message: t('controls.sent') });
                   setMessage('');

@@ -19,8 +19,8 @@ async function asRole(p: TestPanel, owner: Client, role: 'viewer' | 'operator') 
 
 /** The same adapter without some capabilities. */
 function without(p: TestPanel, ...caps: Capability[]): void {
-  const a = p.deps.adapter;
-  p.deps.adapter = { ...a, meta: { ...a.meta, capabilities: a.meta.capabilities.filter((c) => !caps.includes(c)) } };
+  const a = p.srv.adapter;
+  p.srv.adapter = { ...a, meta: { ...a.meta, capabilities: a.meta.capabilities.filter((c) => !caps.includes(c)) } };
 }
 
 describe('capability guard', () => {
@@ -29,26 +29,26 @@ describe('capability guard', () => {
     const { client: c } = await ownerReady(p);
     without(p, 'kick', 'broadcast', 'updateCheck');
 
-    const kick = await c.post('/api/players/kick', { username: 'rick' });
+    const kick = await c.post('/api/servers/default/players/kick', { username: 'rick' });
     expect(kick.statusCode).toBe(409);
     expect(kick.json()).toEqual({ error: 'capability-unsupported', capability: 'kick' });
-    expect((await c.post('/api/server/broadcast', { message: 'hola' })).json()).toMatchObject({ error: 'capability-unsupported' });
-    expect((await c.get('/api/server/updates')).statusCode).toBe(409);
+    expect((await c.post('/api/servers/default/server/broadcast', { message: 'hola' })).json()).toMatchObject({ error: 'capability-unsupported' });
+    expect((await c.get('/api/servers/default/server/updates')).statusCode).toBe(409);
     // Nothing reached the game.
     expect(p.agent.calls).toEqual([]);
 
     // What the game still supports works.
-    expect((await c.post('/api/players/ban', { username: 'rick' })).statusCode).toBe(200);
+    expect((await c.post('/api/servers/default/players/ban', { username: 'rick' })).statusCode).toBe(200);
     // Permissions come first: someone who may not kick learns nothing about the game.
     const viewer = await asRole(p, c, 'viewer');
-    expect((await viewer.post('/api/players/kick', { username: 'rick' })).statusCode).toBe(403);
+    expect((await viewer.post('/api/servers/default/players/kick', { username: 'rick' })).statusCode).toBe(403);
   });
 
   it('refuses mods when the game has no mod source', async () => {
     const p = await makePanel({}, { mods: [] });
     const { client: c } = await ownerReady(p);
-    expect((await c.get('/api/mods')).json()).toMatchObject({ error: 'capability-unsupported' });
-    expect((await c.post('/api/mods', { refs: ['2544353492'] })).statusCode).toBe(409);
+    expect((await c.get('/api/servers/default/mods')).json()).toMatchObject({ error: 'capability-unsupported' });
+    expect((await c.post('/api/servers/default/mods', { refs: ['2544353492'] })).statusCode).toBe(409);
   });
 });
 
@@ -56,19 +56,20 @@ describe('GET /api/meta', () => {
   it("describes the server's adapter to any signed-in user", async () => {
     const p = await makePanel();
     const { client: c } = await ownerReady(p);
-    const m = (await c.get('/api/meta')).json() as {
+    const m = (await c.get('/api/servers/default/meta')).json() as {
       adapter: { id: string; name: { en: string } };
       server: { gameName: string };
       capabilities: string[];
       launch: { schema: { key: string }[]; secrets: { key: string; label: { en: string } }[] };
       backupParts: { id: string; label: { en: string; es: string } }[];
-      resets: { id: string; permission: string; removeParts: string[] }[];
-      accessLevels: string[];
+      resets: { id: string; permission: string; removeParts: string[]; options: { newSeed?: boolean; preset?: boolean } }[];
+      accessLevels: { id: string; label: { en: string; es: string } }[];
+      banTargets: string[];
       modSources: { id: string; capability: string }[];
       consoleCatalog: { name: string }[];
     };
     expect(m.adapter).toMatchObject({ id: 'pz', name: { en: 'Project Zomboid' } });
-    expect(m.server).toEqual({ id: 'default', gameName: 'zomboid', flavour: null });
+    expect(m.server).toEqual({ id: 'default', name: 'zomboid', gameName: 'zomboid', flavour: null });
     expect(m.capabilities).toEqual(expect.arrayContaining(['kick', 'ban', 'whitelist', 'broadcast', 'mods:workshop', 'updateCheck']));
     expect(m.launch.schema.map((o) => o.key)).toEqual(['memoryMb', 'branch', 'updateOnStart']);
     // Which secrets the server needs, never their values.
@@ -76,24 +77,26 @@ describe('GET /api/meta', () => {
     expect(JSON.stringify(m)).not.toContain('AdminPw-123456');
     expect(m.backupParts.map((x) => x.id)).toEqual(['world', 'accounts', 'configs']);
     expect(m.resets).toEqual([
-      expect.objectContaining({ id: 'world', permission: 'reset.world', removeParts: ['world'] }),
-      expect.objectContaining({ id: 'full', permission: 'reset.full', removeParts: ['world', 'accounts'] }),
-      expect.objectContaining({ id: 'factory', permission: 'reset.factory', removeParts: ['world', 'accounts', 'configs'] }),
+      expect.objectContaining({ id: 'world', permission: 'reset.world', removeParts: ['world'], options: { newSeed: true, preset: true } }),
+      expect.objectContaining({ id: 'full', permission: 'reset.full', removeParts: ['world', 'accounts'], options: { newSeed: true, preset: true } }),
+      expect.objectContaining({ id: 'factory', permission: 'reset.factory', removeParts: ['world', 'accounts', 'configs'], options: {} }),
     ]);
-    expect(m.accessLevels).toEqual(['none', 'observer', 'gm', 'overseer', 'moderator', 'admin']);
-    expect(m.modSources).toEqual([expect.objectContaining({ id: 'workshop', capability: 'mods:workshop' })]);
+    expect(m.accessLevels.map((l) => l.id)).toEqual(['none', 'observer', 'gm', 'overseer', 'moderator', 'admin']);
+    expect(m.accessLevels[0]).toEqual({ id: 'none', label: { en: 'Player', es: 'Jugador' } });
+    expect(m.banTargets).toEqual(['username', 'steamId']);
+    expect(m.modSources).toEqual([expect.objectContaining({ id: 'steam-workshop', capability: 'mods:workshop' })]);
     expect(m.consoleCatalog.map((x) => x.name)).toContain('servermsg');
 
     const viewer = await asRole(p, c, 'viewer');
-    expect((await viewer.get('/api/meta')).statusCode).toBe(200);
-    expect((await new Client(p.app).get('/api/meta')).statusCode).toBe(401);
+    expect((await viewer.get('/api/servers/default/meta')).statusCode).toBe(200);
+    expect((await new Client(p.app).get('/api/servers/default/meta')).statusCode).toBe(401);
   });
 
   it('follows the adapter: a capability it drops is gone', async () => {
     const p = await makePanel();
     const { client: c } = await ownerReady(p);
     without(p, 'kick');
-    expect(((await c.get('/api/meta')).json() as { capabilities: string[] }).capabilities).not.toContain('kick');
+    expect(((await c.get('/api/servers/default/meta')).json() as { capabilities: string[] }).capabilities).not.toContain('kick');
   });
 });
 
@@ -130,7 +133,7 @@ describe('backups never follow links', () => {
       fileLink = false;
     }
 
-    const b = await p.deps.backups.create({ trigger: 'manual', hot: false });
+    const b = await p.srv.backups.create({ trigger: 'manual', hot: false });
     const names: string[] = [];
     const src = new PassThrough();
     src.end(zstdDecompressSync(readFileSync(path.join(p.deps.env.backupDir, b.name))));

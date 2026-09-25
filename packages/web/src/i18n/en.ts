@@ -23,6 +23,7 @@ import reset from './en/reset';
 import roles from './en/roles';
 import schedules from './en/schedules';
 import server from './en/server';
+import servers from './en/servers';
 import state from './en/state';
 import support from './en/support';
 import time from './en/time';
@@ -44,6 +45,7 @@ export const en = {
   ops,
   console: consoleNs,
   server,
+  servers,
   config,
   backups,
   reset,

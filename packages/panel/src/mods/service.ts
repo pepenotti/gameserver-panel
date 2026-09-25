@@ -6,7 +6,7 @@ import type { AgentFeed } from '../http/deps';
 import type { OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
 import type { ServerHandle } from '../server/handle';
-import type { Settings } from '../settings';
+import type { KeyValueSettings } from '../settings';
 
 /** A mod source's item as the API shows it (`workshopId` is the item id, whatever the source). */
 export interface ModItem {
@@ -33,12 +33,12 @@ export type ModIssue =
   | { kind: 'missing-dependency'; modId: string; requires: string; availableIn: string | null }
   | { kind: 'order'; modId: string; requires: string }
   | { kind: 'incompatible'; modId: string; with: string }
-  // The kind keeps the name today's web UI translates; the mod can't load on this game version.
-  | { kind: 'not-b42'; modId: string; reason: string | null }
+  // The mod can't load on the game version the server runs; `reason` is the mod source's code.
+  | { kind: 'incompatible-version'; modId: string; reason: string | null }
   | { kind: 'not-downloaded'; workshopId: string };
 
 interface Row {
-  workshop_id: string;
+  item_id: string;
   title: string;
   preview_url: string | null;
   time_updated: number;
@@ -54,7 +54,8 @@ export interface ModsDeps {
   db: Db;
   feed: AgentFeed;
   ops: OpRunner;
-  settings: Settings;
+  /** The server's own settings. */
+  settings: KeyValueSettings;
   config: ConfigStore;
   server: ServerHandle;
   /** The adapter's mod sources; the first one serves the (single) mod list until servers can have several. */
@@ -102,17 +103,23 @@ export class ModsService {
     return this.d.sources.length > 0;
   }
 
+  private get serverId(): string {
+    return this.d.server.ref.id;
+  }
+
   private gameVersion(): string {
-    return this.d.feed.status_?.gameVersion ?? '';
+    return this.d.feed.status_?.installedInfo?.version ?? '';
   }
 
   private rows(): Row[] {
-    return this.d.db.prepare('SELECT * FROM mods ORDER BY added_at, workshop_id').all() as unknown as Row[];
+    const s = this.d.sources[0];
+    if (!s) return [];
+    return this.d.db.prepare('SELECT * FROM server_mods WHERE server_id = ? AND source = ? ORDER BY added_at, item_id').all(this.serverId, s.id) as unknown as Row[];
   }
 
   private toItem(r: Row, downloaded: boolean): ModItem {
     return {
-      workshopId: r.workshop_id,
+      workshopId: r.item_id,
       title: r.title,
       previewUrl: r.preview_url,
       timeUpdated: r.time_updated,
@@ -130,12 +137,12 @@ export class ModsService {
     const source = this.source();
     const ctx = this.d.server.ctx();
     const version = this.gameVersion();
-    return Promise.all(this.rows().map(async (r) => this.toItem(r, (await source.scan(ctx, r.workshop_id, version).catch(() => null)) !== null)));
+    return Promise.all(this.rows().map(async (r) => this.toItem(r, (await source.scan(ctx, r.item_id, version).catch(() => null)) !== null)));
   }
 
   /** Item ids, without touching the server's files. */
   itemIds(): string[] {
-    return this.rows().map((r) => r.workshop_id);
+    return this.rows().map((r) => r.item_id);
   }
 
   enabled(): EnabledMod[] {
@@ -163,9 +170,9 @@ export class ModsService {
     if (bad.length) throw new HttpError(400, 'mod-not-for-game', undefined, { ids: bad.map((x) => x.id) });
     const now = nowIso();
     const ins = this.d.db.prepare(
-      'INSERT INTO mods (workshop_id, title, preview_url, time_updated, added_at, added_by, last_checked) VALUES (?,?,?,?,?,?,?) ON CONFLICT(workshop_id) DO UPDATE SET title = excluded.title, preview_url = excluded.preview_url, time_updated = excluded.time_updated, last_checked = excluded.last_checked',
+      'INSERT INTO server_mods (server_id, source, item_id, title, preview_url, time_updated, added_at, added_by, last_checked) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(server_id, source, item_id) DO UPDATE SET title = excluded.title, preview_url = excluded.preview_url, time_updated = excluded.time_updated, last_checked = excluded.last_checked',
     );
-    for (const x of details) ins.run(x.id, x.title, x.previewUrl, x.timeUpdated, now, by, now);
+    for (const x of details) ins.run(this.serverId, source.id, x.id, x.title, x.previewUrl, x.timeUpdated, now, by, now);
     const op = this.startDownload(
       details.map((x) => x.id),
       by,
@@ -180,7 +187,7 @@ export class ModsService {
       ctx.step('downloading');
       const r = await source.download(this.d.server.ctx(by), ids);
       if (!r.ok) {
-        for (const id of ids) this.d.db.prepare('UPDATE mods SET error = ? WHERE workshop_id = ?').run(r.error ?? 'download failed', id);
+        for (const id of ids) this.d.db.prepare('UPDATE server_mods SET error = ? WHERE server_id = ? AND source = ? AND item_id = ?').run(r.error ?? 'download failed', this.serverId, source.id, id);
         throw new Error(r.error ?? 'download failed');
       }
       ctx.step('scanning');
@@ -195,17 +202,19 @@ export class ModsService {
     const ctx = this.d.server.ctx();
     const version = this.gameVersion();
     for (const r of this.rows()) {
-      if (ids && !ids.includes(r.workshop_id)) continue;
-      const mods = await source.scan(ctx, r.workshop_id, version).catch(() => null);
+      if (ids && !ids.includes(r.item_id)) continue;
+      const mods = await source.scan(ctx, r.item_id, version).catch(() => null);
       if (!mods) continue;
-      this.d.db.prepare('UPDATE mods SET info = ?, scanned_updated = time_updated, error = ? WHERE workshop_id = ?').run(JSON.stringify(mods), mods.length ? null : 'no mods found in this item', r.workshop_id);
+      this.d.db
+        .prepare('UPDATE server_mods SET info = ?, scanned_updated = time_updated, error = ? WHERE server_id = ? AND source = ? AND item_id = ?')
+        .run(JSON.stringify(mods), mods.length ? null : 'no mods found in this item', this.serverId, source.id, r.item_id);
       // A single-mod item is enabled on arrival (first scan only, so a later
       // rescan never re-enables something an admin turned off); multi-mod
       // items (variants) wait for a choice.
       const firstScan = r.info === '[]';
       const enabled = this.enabled();
-      if (firstScan && mods.length === 1 && !enabled.some((e) => e.workshopId === r.workshop_id)) {
-        await this.setEnabled([...enabled, { modId: mods[0]!.modId, workshopId: r.workshop_id }], null);
+      if (firstScan && mods.length === 1 && !enabled.some((e) => e.workshopId === r.item_id)) {
+        await this.setEnabled([...enabled, { modId: mods[0]!.modId, workshopId: r.item_id }], null);
       }
     }
   }
@@ -214,7 +223,7 @@ export class ModsService {
 
   private knownMods(): Map<string, { workshopId: string; mod: ModEntry }> {
     const m = new Map<string, { workshopId: string; mod: ModEntry }>();
-    for (const r of this.rows()) for (const mod of JSON.parse(r.info) as ModEntry[]) if (!m.has(mod.modId)) m.set(mod.modId, { workshopId: r.workshop_id, mod });
+    for (const r of this.rows()) for (const mod of JSON.parse(r.info) as ModEntry[]) if (!m.has(mod.modId)) m.set(mod.modId, { workshopId: r.item_id, mod });
     return m;
   }
 
@@ -242,7 +251,7 @@ export class ModsService {
   }
 
   async remove(workshopId: string, by: string | null): Promise<{ restartNeeded: boolean }> {
-    const r = this.d.db.prepare('DELETE FROM mods WHERE workshop_id = ?').run(workshopId);
+    const r = this.d.db.prepare('DELETE FROM server_mods WHERE server_id = ? AND source = ? AND item_id = ?').run(this.serverId, this.source().id, workshopId);
     if (Number(r.changes) === 0) throw new HttpError(404, 'not-found');
     this.d.settings.setRaw(
       'mods.enabled',
@@ -283,7 +292,7 @@ export class ModsService {
     if (current.missing) return;
     const { items, enabled } = source.fromConfig(current.values);
     const now = nowIso();
-    for (const id of items) this.d.db.prepare('INSERT OR IGNORE INTO mods (workshop_id, title, added_at, added_by) VALUES (?, ?, ?, ?)').run(id, id, now, null);
+    for (const id of items) this.d.db.prepare('INSERT OR IGNORE INTO server_mods (server_id, source, item_id, title, added_at, added_by) VALUES (?, ?, ?, ?, ?, ?)').run(this.serverId, source.id, id, id, now, null);
     await this.rescan();
     const known = this.knownMods();
     this.d.settings.setRaw(
@@ -303,7 +312,7 @@ export class ModsService {
     for (const e of enabled) {
       const k = known.get(e.modId);
       if (!k) continue;
-      if (!k.mod.compatible) out.push({ kind: 'not-b42', modId: e.modId, reason: k.mod.reason });
+      if (!k.mod.compatible) out.push({ kind: 'incompatible-version', modId: e.modId, reason: k.mod.reason });
       for (const r of k.mod.require) {
         if (!pos.has(r)) out.push({ kind: 'missing-dependency', modId: e.modId, requires: r, availableIn: known.get(r)?.workshopId ?? null });
         else if (pos.get(r)! > pos.get(e.modId)!) out.push({ kind: 'order', modId: e.modId, requires: r });
@@ -317,14 +326,17 @@ export class ModsService {
   async checkUpdates(): Promise<string[]> {
     const rows = this.rows();
     if (rows.length === 0 || !this.available) return [];
-    const details = await this.source().details(rows.map((r) => r.workshop_id));
+    const source = this.source();
+    const details = await source.details(rows.map((r) => r.item_id));
     const now = nowIso();
     for (const x of details) {
       if (!x.ok) continue;
-      this.d.db.prepare('UPDATE mods SET title = ?, preview_url = ?, time_updated = ?, last_checked = ? WHERE workshop_id = ?').run(x.title, x.previewUrl, x.timeUpdated, now, x.id);
+      this.d.db
+        .prepare('UPDATE server_mods SET title = ?, preview_url = ?, time_updated = ?, last_checked = ? WHERE server_id = ? AND source = ? AND item_id = ?')
+        .run(x.title, x.previewUrl, x.timeUpdated, now, this.serverId, source.id, x.id);
     }
     return this.rows()
       .filter((r) => r.scanned_updated > 0 && r.time_updated > r.scanned_updated)
-      .map((r) => r.workshop_id);
+      .map((r) => r.item_id);
   }
 }

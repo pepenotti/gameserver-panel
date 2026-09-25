@@ -40,7 +40,7 @@ const [cmd, ...rest] = process.argv.slice(2);
 const summary = (s) => ({
   state: s.state,
   desired: s.desired,
-  gameVersion: s.gameVersion,
+  gameVersion: s.installedInfo?.version ?? null,
   installed: s.installedInfo ?? null,
   players: s.players,
   failure: s.failure,

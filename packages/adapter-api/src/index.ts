@@ -16,20 +16,29 @@ import type {
   AgentStatus,
   CommandRequest,
   CommandResponse,
+  CpuArch,
+  DirEntry,
+  FileKind,
+  FileStat,
   InstalledInfo,
   JobKind,
   JobResult,
+  PackRequest,
   Permission,
+  RootId,
+  RuntimeFamily,
+  ServerFilesErrorCode,
   VersionInfo,
   VersionsResponse,
 } from '@gsp/shared';
 
 export type { AgentStatus, CommandResponse, FormatId, InstalledInfo, JobKind, JobResult, Lang, OptionMeta, Permission, Scalar, VersionInfo, VersionsResponse };
+// The file shapes are the agent API's (`/v1/fs/*`, `/v1/archive/*`, D11), so the wire and the contract can't drift.
+export type { DirEntry, FileKind, FileStat, PackRequest, RootId, RuntimeFamily, ServerFilesErrorCode };
 
 // =================================================================== common
 
-export type Arch = 'amd64' | 'arm64';
-export type RuntimeFamily = 'steam' | 'java' | 'native';
+export type Arch = CpuArch;
 export type I18n = { en: string; es: string };
 
 export type Capability =
@@ -96,9 +105,6 @@ export interface AdapterMeta {
 
 // ============================================================== server files
 
-/** A file root of a server: `data` and `install`, plus any `FileRoots.extra` key. */
-export type RootId = 'data' | 'install' | (string & Record<never, never>);
-
 /** Absolute, in-container folders a server's files live in. */
 export interface FileRoots {
   /** World, configs, logs: everything backups cover. */
@@ -108,38 +114,13 @@ export interface FileRoots {
   extra?: Record<string, string>;
 }
 
-export type FileKind = 'file' | 'dir' | 'symlink' | 'other';
-
-export interface FileStat {
-  kind: FileKind;
-  size: number;
-  mtimeMs: number;
-}
-
-export interface DirEntry extends FileStat {
-  name: string;
-}
-
-export interface PackRequest {
-  root: RootId;
-  /** Files or folders under `root`; folders are walked, missing paths skipped. */
-  rels: string[];
-  /** Globs (relative to `root`) of SQLite databases, copied as consistent snapshots while the game runs. */
-  sqlite?: string[];
-  /** Path prefix inside the archive (today's backups use `data/`). */
-  prefix?: string;
-}
-
-/**
- * `code` of the errors `ServerFiles` implementations throw. Paths are always
- * relative to a root; absolute paths, `..` and symlinks leading out are refused.
- */
-export type ServerFilesErrorCode = 'invalid-path' | 'outside-root' | 'not-a-file' | 'not-a-dir' | 'too-large' | 'unknown-root';
-
 /**
  * A server's files as the panel reaches them (D11: through that server's
- * agent). Staging, swap and trash work in the `data` root; an uncompressed
- * tar stream is what `pack` produces and `stage` consumes.
+ * agent, `/v1/fs/*` and `/v1/archive/*` in `@gsp/shared`'s agent API, one
+ * route per method). Paths are always relative to a root; absolute paths,
+ * `..` and symlinks leading out are refused with a `ServerFilesErrorCode`.
+ * Staging, swap and trash work in the `data` root; an uncompressed tar
+ * stream is what `pack` produces and `stage` consumes.
  */
 export interface ServerFiles {
   /** Null when nothing is there. */
@@ -424,11 +405,21 @@ export interface AfterWriteResult {
   warnings: string[];
 }
 
+/** A group of a settings form (CFG-10); options name theirs in `OptionMeta.group`. */
+export interface OptionGroup {
+  id: string;
+  label: I18n;
+  /** Shown behind "Advanced" rather than with the common settings. */
+  advanced?: boolean;
+}
+
 export interface PanelAdapterConfig {
   files(srv: ServerRef): ConfigFileDecl[];
   roots(srv: ServerRef): EditableRoot[];
   /** Form schemas by `ConfigFileDecl.schemaId`. */
   schemas: Record<string, OptionMeta[]>;
+  /** Each schema's groups, in the order forms show them (by schema id); options without a known group go last. */
+  groups?: Record<string, OptionGroup[]>;
   /** Values the panel sets for managed keys, by file id then key; managed keys not listed keep what is on disk. */
   managedValues(srv: ServerRef): Record<string, Record<string, string>>;
   /** After the panel wrote a file of a running server (e.g. the game's reload command, then its log). */
@@ -462,6 +453,8 @@ export interface ResetDecl {
   permission: Permission;
   /** `backups.parts` ids deleted by this reset (after a safety backup). */
   removeParts: string[];
+  /** The `ResetOptions` this scope uses (a new seed, a preset); the others are ignored. */
+  options?: { newSeed?: boolean; preset?: boolean };
   after?(ctx: ServerCtx, o: ResetOptions): Promise<void>;
 }
 
@@ -471,6 +464,16 @@ export type AnnounceKind = 'restart' | 'stop' | 'update' | 'restore' | 'reset';
 export interface PlayerTarget {
   username?: string;
   steamId?: string;
+  ip?: string;
+}
+
+/** What a ban can name: `PlayerTarget`'s fields. */
+export type BanTarget = 'username' | 'steamId' | 'ip';
+
+/** An access level `setAccess` takes, with its name for people. */
+export interface AccessLevel {
+  id: string;
+  label: I18n;
 }
 
 export interface PlayerAccount {
@@ -491,8 +494,10 @@ export interface BanList {
  * can't take are refused with `RconProtocolError` from `@gsp/formats`.
  */
 export interface PlayerOps {
-  /** Levels `setAccess` accepts. */
-  accessLevels?: readonly string[];
+  /** Levels `setAccess` accepts, lowest first. */
+  accessLevels?: readonly AccessLevel[];
+  /** The `PlayerTarget` fields `ban` and `unban` accept; a UI offers only these. */
+  banTargets?: readonly BanTarget[];
   kick?(ctx: ServerCtx, username: string, reason?: string): Promise<string>;
   ban?(ctx: ServerCtx, target: PlayerTarget, reason?: string): Promise<string>;
   unban?(ctx: ServerCtx, target: PlayerTarget): Promise<string>;
@@ -583,11 +588,21 @@ export interface ToAgentOptions {
   afterInstall?: boolean;
 }
 
+/** A launch setting (memory, version…): an option plus what the server pages need to know about it. */
+export interface LaunchOption extends OptionMeta {
+  /** `version`: pins what gets installed (UPD-02); `memory`: sizes the game (SRV-05 adds `meta.memory.overheadMb` for the container). */
+  role?: 'version' | 'memory';
+  /** Unit of a number, shown next to it (`MiB`). */
+  unit?: string;
+  /** Increment a number must be a multiple of. */
+  step?: number;
+}
+
 export interface PanelAdapter<S = unknown> {
   meta: AdapterMeta;
   launch: {
     /** Launch settings form (memory, branch…). */
-    schema: OptionMeta[];
+    schema: LaunchOption[];
     /** Secrets `toAgent` needs; not part of the form or of `S`. */
     secrets?: LaunchSecretDecl[];
     defaults(): S;

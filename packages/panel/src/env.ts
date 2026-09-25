@@ -22,6 +22,12 @@ export interface PanelEnv {
    * until M2 keeps them per server); see `secretEnvName`.
    */
   secrets: Readonly<Record<string, string>>;
+  /**
+   * Published ports of the server the environment describes, by
+   * `PortDecl.id` (`GAME_PORT_<ID>`); the `default` server's row takes them
+   * when it is first written (servers/store.ts).
+   */
+  ports: Readonly<Record<string, number>>;
   /** Exact origins (scheme://host:port) allowed to change anything. */
   origins: string[];
   owner: { username: string; password: string } | null;
@@ -51,6 +57,19 @@ function loadSecrets(env: NodeJS.ProcessEnv): Record<string, string> {
   for (const [name, value] of Object.entries(env)) {
     const m = /^GAME_SECRET_([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*)$/.exec(name);
     if (m && value) out[camel(m[1]!)] = value;
+  }
+  return out;
+}
+
+/** `GAME_PORT_<ID>` → ports by id (`GAME_PORT_UDP=16262` → `{ udp: 16262 }`). */
+function loadPorts(env: NodeJS.ProcessEnv): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [name, value] of Object.entries(env)) {
+    const m = /^GAME_PORT_([A-Z0-9_]+)$/.exec(name);
+    if (!m || !value) continue;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error(`${name} must be a port number`);
+    out[m[1]!.toLowerCase()] = n;
   }
   return out;
 }
@@ -100,6 +119,7 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): PanelEnv {
     serverName,
     // Which ones the adapter needs is checked when the panel is wired (wiring.ts).
     secrets: loadSecrets(env),
+    ports: loadPorts(env),
     origins,
     owner: ownerUser && ownerPass ? { username: ownerUser, password: ownerPass } : null,
     trustProxy: env.TRUST_PROXY ?? 'loopback,uniquelocal',

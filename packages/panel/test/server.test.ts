@@ -20,9 +20,9 @@ describe('server controls', () => {
       launched = l;
       return fakeStatus({ state: 'starting' });
     };
-    const r = await c.post('/api/server/start');
+    const r = await c.post('/api/servers/default/server/start');
     expect(r.json()).toMatchObject({ kind: 'start', done: false });
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(launched).toEqual({
       adapter: 'pz',
       params: { serverName: 'zomboid', adminUsername: 'admin', adminPassword: 'AdminPw-123456', memoryMb: 8192, branch: 'public', updateOnStart: true },
@@ -34,8 +34,8 @@ describe('server controls', () => {
     const c = await ready();
     const ini = path.join(p.deps.env.pzDataDir, 'Server', 'zomboid.ini');
     expect(existsSync(ini)).toBe(false);
-    await c.post('/api/server/start');
-    await p.deps.ops.idle();
+    await c.post('/api/servers/default/server/start');
+    await p.srv.ops.idle();
     expect(readFileSync(ini, 'utf8')).toContain('SaveWorldEveryMinutes=10');
     expect(p.agent.calls).toEqual(['start']);
   });
@@ -43,8 +43,8 @@ describe('server controls', () => {
   it('restarts immediately when nobody is online, even with a countdown', async () => {
     const c = await ready();
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
-    await c.post('/api/server/restart', { countdownSec: 300 });
-    await p.deps.ops.idle();
+    await c.post('/api/servers/default/server/restart', { countdownSec: 300 });
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'start']);
     expect(p.agent.calls.some((x) => x.startsWith('command:servermsg'))).toBe(false);
   });
@@ -56,10 +56,10 @@ describe('server controls', () => {
     it('warns players on the way down, then restarts', async () => {
       const c = await ready();
       p.feed.status_ = fakeStatus({ state: 'running', players: { count: 2, names: ['a', 'b'], at: '' } });
-      const op = (await c.post('/api/server/restart', { countdownSec: 60 })).json() as { id: string; cancellable: boolean };
+      const op = (await c.post('/api/servers/default/server/restart', { countdownSec: 60 })).json() as { id: string; cancellable: boolean };
       expect(op.cancellable).toBe(true);
       await vi.advanceTimersByTimeAsync(61_000);
-      await p.deps.ops.idle();
+      await p.srv.ops.idle();
       const msgs = p.agent.calls.filter((x) => x.startsWith('command:servermsg'));
       expect(msgs).toEqual([
         'command:servermsg "El servidor se reinicia en 1 minuto. Busquen un lugar seguro."',
@@ -72,24 +72,24 @@ describe('server controls', () => {
     it('can be cancelled, and tells the players', async () => {
       const c = await ready();
       p.feed.status_ = fakeStatus({ state: 'running', players: { count: 1, names: ['a'], at: '' } });
-      const op = (await c.post('/api/server/stop', { countdownSec: 300 })).json() as { id: string };
+      const op = (await c.post('/api/servers/default/server/stop', { countdownSec: 300 })).json() as { id: string };
       await vi.advanceTimersByTimeAsync(5_000);
-      expect((await c.post(`/api/ops/${op.id}/cancel`)).statusCode).toBe(200);
-      await p.deps.ops.idle();
+      expect((await c.post(`/api/servers/default/ops/${op.id}/cancel`)).statusCode).toBe(200);
+      await p.srv.ops.idle();
       expect(p.agent.calls).not.toContain('stop');
       expect(p.agent.calls.at(-1)).toBe('command:servermsg "Se canceló el reinicio del servidor."');
-      expect(p.deps.bus.currentOp()).toMatchObject({ step: 'cancelled', done: true, ok: false });
+      expect(p.srv.ops.last()).toMatchObject({ step: 'cancelled', done: true, ok: false });
     });
 
     it('runs one operation at a time', async () => {
       const c = await ready();
       p.feed.status_ = fakeStatus({ state: 'running', players: { count: 1, names: ['a'], at: '' } });
-      await c.post('/api/server/restart', { countdownSec: 60 });
-      const second = await c.post('/api/server/stop');
+      await c.post('/api/servers/default/server/restart', { countdownSec: 60 });
+      const second = await c.post('/api/servers/default/server/stop');
       expect(second.statusCode).toBe(409);
       expect(second.json()).toMatchObject({ error: 'busy', op: { kind: 'restart' } });
       await vi.advanceTimersByTimeAsync(61_000);
-      await p.deps.ops.idle();
+      await p.srv.ops.idle();
     });
   });
 
@@ -108,9 +108,9 @@ describe('server controls', () => {
       p.agent.calls.push('start');
       return fakeStatus({ state: 'starting' });
     };
-    await c.req('PUT', '/api/server/launch', { memoryMb: 6144, branch: 'legacy41', updateOnStart: true });
-    await c.post('/api/server/update', { validate: true });
-    await p.deps.ops.idle();
+    await c.req('PUT', '/api/servers/default/server/launch', { memoryMb: 6144, branch: 'legacy41', updateOnStart: true });
+    await c.post('/api/servers/default/server/update', { validate: true });
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'install', 'start']);
     const params = { serverName: 'zomboid', adminUsername: 'admin', adminPassword: 'AdminPw-123456', memoryMb: 6144, branch: 'legacy41' };
     expect(installed).toEqual({ validate: true, launch: { adapter: 'pz', params: { ...params, updateOnStart: true } } });
@@ -126,11 +126,11 @@ describe('server controls', () => {
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
     p.agent.install = async () => {
       // The backup is already there when the install starts.
-      p.agent.calls.push(`install after ${p.deps.backups.list().map((b) => `${b.manifest.trigger}/${b.manifest.mode}`).join(',')}`);
+      p.agent.calls.push(`install after ${p.srv.backups.list().map((b) => `${b.manifest.trigger}/${b.manifest.mode}`).join(',')}`);
       return { ok: true };
     };
-    await c.post('/api/server/update', {});
-    await p.deps.ops.idle();
+    await c.post('/api/servers/default/server/update', {});
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'install after pre-update/cold', 'start']);
   });
 
@@ -138,17 +138,17 @@ describe('server controls', () => {
     const c = await ready();
     p.feed.status_ = fakeStatus({ state: 'running' });
     p.agent.install = async () => ({ ok: false, error: "Error! App '380870' state is 0x202 after update job." });
-    await c.post('/api/server/update', {});
-    await p.deps.ops.idle();
+    await c.post('/api/servers/default/server/update', {});
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'start']);
-    expect(p.deps.bus.currentOp()).toMatchObject({ ok: false, error: expect.stringContaining('0x202') });
+    expect(p.srv.ops.last()).toMatchObject({ ok: false, error: expect.stringContaining('0x202') });
   });
 
   it('validates launch settings', async () => {
     const c = await ready();
-    expect((await c.req('PUT', '/api/server/launch', { memoryMb: 1000, branch: 'public', updateOnStart: true })).statusCode).toBe(400);
-    expect((await c.req('PUT', '/api/server/launch', { memoryMb: 8192, branch: 'x; rm -rf', updateOnStart: true })).statusCode).toBe(400);
-    expect((await c.req('PUT', '/api/server/launch', { memoryMb: 10240, branch: 'public', updateOnStart: false })).json()).toEqual({ memoryMb: 10240, branch: 'public', updateOnStart: false });
+    expect((await c.req('PUT', '/api/servers/default/server/launch', { memoryMb: 1000, branch: 'public', updateOnStart: true })).statusCode).toBe(400);
+    expect((await c.req('PUT', '/api/servers/default/server/launch', { memoryMb: 8192, branch: 'x; rm -rf', updateOnStart: true })).statusCode).toBe(400);
+    expect((await c.req('PUT', '/api/servers/default/server/launch', { memoryMb: 10240, branch: 'public', updateOnStart: false })).json()).toEqual({ memoryMb: 10240, branch: 'public', updateOnStart: false });
   });
 
   it('reports whether an update is available for the configured branch', async () => {
@@ -164,7 +164,7 @@ describe('server controls', () => {
         ],
       };
     };
-    const r = (await c.get('/api/server/updates')).json();
+    const r = (await c.get('/api/servers/default/server/updates')).json();
     // The response keeps its Steam-branch shape for the current web UI.
     expect(r).toEqual({
       installed: { buildId: '24909800', branch: 'public' },
@@ -177,26 +177,26 @@ describe('server controls', () => {
     expect(asked).toEqual([{ launch: { adapter: 'pz', params: expect.objectContaining({ branch: 'public' }) } }]);
 
     p.agent.versions = async () => ({ installed: { version: null, channel: 'public', build: '25000000' }, versions: [{ id: 'public', build: '25000000' }] });
-    expect(((await c.get('/api/server/updates')).json() as { updateAvailable: boolean }).updateAvailable).toBe(false);
+    expect(((await c.get('/api/servers/default/server/updates')).json() as { updateAvailable: boolean }).updateAvailable).toBe(false);
   });
 });
 
 describe('console and broadcast', () => {
   it('sends quoted broadcasts and refuses quote injection', async () => {
     const c = await ready();
-    expect((await c.post('/api/server/broadcast', { message: 'Reinicio a las 6' })).statusCode).toBe(200);
+    expect((await c.post('/api/servers/default/server/broadcast', { message: 'Reinicio a las 6' })).statusCode).toBe(200);
     expect(p.agent.calls.at(-1)).toBe('command:servermsg "Reinicio a las 6"');
-    expect((await c.post('/api/server/broadcast', { message: 'x" ; quit "' })).json()).toEqual({ error: 'invalid-message' });
+    expect((await c.post('/api/servers/default/server/broadcast', { message: 'x" ; quit "' })).json()).toEqual({ error: 'invalid-message' });
   });
 
   it('runs raw commands for admins and hides secret arguments in the audit log', async () => {
     const c = await ready();
-    expect((await c.post('/api/server/command', { command: '/players' })).json()).toEqual({ via: 'rcon', output: 'ok' });
+    expect((await c.post('/api/servers/default/server/command', { command: '/players' })).json()).toEqual({ via: 'rcon', output: 'ok' });
     expect(p.agent.calls.at(-1)).toBe('command:players');
-    await c.post('/api/server/command', { command: 'setpassword "bob" "hunter22"' });
+    await c.post('/api/servers/default/server/command', { command: 'setpassword "bob" "hunter22"' });
     const last = p.deps.audit.list({ action: 'server.command' })[0]!;
     expect(last.detail).toBe('setpassword <arguments hidden>');
-    expect((await c.post('/api/server/command', { command: 'save\nquit' })).statusCode).toBe(400);
+    expect((await c.post('/api/servers/default/server/command', { command: 'save\nquit' })).statusCode).toBe(400);
   });
 
   it('keeps raw console away from operators', async () => {
@@ -206,9 +206,9 @@ describe('console and broadcast', () => {
     const op = new Client(p.app);
     await op.post('/api/auth/login', { username: 'op1', password: 'Temporal-12345' });
     await op.post('/api/auth/password', { current: 'Temporal-12345', next: 'Operador-propio-1' });
-    expect((await op.post('/api/server/command', { command: 'players' })).statusCode).toBe(403);
-    expect((await op.post('/api/server/kill')).statusCode).toBe(403);
-    expect((await op.post('/api/server/broadcast', { message: 'hola' })).statusCode).toBe(200);
+    expect((await op.post('/api/servers/default/server/command', { command: 'players' })).statusCode).toBe(403);
+    expect((await op.post('/api/servers/default/server/kill')).statusCode).toBe(403);
+    expect((await op.post('/api/servers/default/server/broadcast', { message: 'hola' })).statusCode).toBe(200);
   });
 
   it('hides the arguments of commands the adapter marks as secret', async () => {
@@ -224,8 +224,8 @@ describe('console and broadcast', () => {
     // Through the route, with the game's own catalog.
     const c = await ready();
     p.feed.status_ = fakeStatus({ state: 'running' });
-    await c.post('/api/server/command', { command: 'setpassword "bob" "hunter2-secret"' });
-    await c.post('/api/server/command', { command: 'players' });
+    await c.post('/api/servers/default/server/command', { command: 'setpassword "bob" "hunter2-secret"' });
+    await c.post('/api/servers/default/server/command', { command: 'players' });
     const details = p.deps.audit.list({ action: 'server.command' }).map((a) => a.detail);
     expect(details).toEqual(expect.arrayContaining(['setpassword <arguments hidden>', 'players']));
     expect(details.join()).not.toContain('hunter2');

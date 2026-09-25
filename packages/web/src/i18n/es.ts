@@ -24,6 +24,7 @@ import reset from './es/reset';
 import roles from './es/roles';
 import schedules from './es/schedules';
 import server from './es/server';
+import servers from './es/servers';
 import state from './es/state';
 import support from './es/support';
 import time from './es/time';
@@ -45,6 +46,7 @@ export const es: Translations = {
   ops,
   console: consoleNs,
   server,
+  servers,
   config,
   backups,
   reset,

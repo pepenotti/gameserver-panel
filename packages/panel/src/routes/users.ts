@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { ROLES, type Role } from '@gsp/shared';
+import { canHost, ROLES, SERVER_ID_PATTERN, type Role } from '@gsp/shared';
 import { toPublic, type Lang } from '../auth/users';
-import { actor, HttpError } from '../http/context';
+import { actor, HttpError, principal, serversAllowing } from '../http/context';
 import type { Deps } from '../http/deps';
 
 const idParam = { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } } as const;
@@ -37,7 +37,7 @@ export function meRoutes(app: FastifyInstance, deps: Deps): void {
     const target = sessions.listForUser(req.auth!.user.id).find((s) => s.id_hash.startsWith(req.params.id) && req.params.id.length === 16);
     if (!target) throw new HttpError(404, 'not-found');
     sessions.revoke(target.id_hash);
-    deps.audit.log({ user: actor(req), action: 'auth.session.revoke', ip: req.ip });
+    deps.audit.log({ actor: actor(req), action: 'auth.session.revoke', ip: req.ip });
     return { ok: true };
   });
 }
@@ -69,7 +69,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
     async (req) => {
       // New accounts pick their own password at first login.
       const u = await users.create({ ...req.body, mustChangePassword: true });
-      audit.log({ user: actor(req), action: 'user.create', target: u.username, detail: { role: u.role }, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'user.create', target: u.username, detail: { role: u.role }, ip: req.ip });
       return toPublic(u);
     },
   );
@@ -95,7 +95,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
       if (req.body.disabled !== undefined) users.setDisabled(target.id, req.body.disabled);
       // A role change or disable takes effect everywhere now.
       sessions.revokeAllForUser(target.id);
-      audit.log({ user: actor(req), action: 'user.update', target: target.username, detail: req.body, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'user.update', target: target.username, detail: req.body, ip: req.ip });
       return toPublic(users.byId(target.id)!);
     },
   );
@@ -112,7 +112,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
       if (target.id === req.auth!.user.id) throw new HttpError(400, 'use-own-password-change');
       await users.setPassword(target.id, req.body.password, { mustChange: true });
       sessions.revokeAllForUser(target.id);
-      audit.log({ user: actor(req), action: 'user.reset-password', target: target.username, ip: req.ip });
+      audit.log({ actor: actor(req), action: 'user.reset-password', target: target.username, ip: req.ip });
       return toPublic(users.byId(target.id)!);
     },
   );
@@ -123,7 +123,7 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
     if (target.id === req.auth!.user.id) throw new HttpError(400, 'cannot-reset-own-2fa');
     users.disableTotp(target.id);
     sessions.revokeAllForUser(target.id);
-    audit.log({ user: actor(req), action: 'user.reset-2fa', target: target.username, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'user.reset-2fa', target: target.username, ip: req.ip });
     return toPublic(users.byId(target.id)!);
   });
 
@@ -131,22 +131,43 @@ export function userRoutes(app: FastifyInstance, deps: Deps): void {
     const target = users.byId(req.params.id);
     if (!target) throw new HttpError(404, 'not-found');
     users.delete(target.id);
-    audit.log({ user: actor(req), action: 'user.delete', target: target.username, ip: req.ip });
+    audit.log({ actor: actor(req), action: 'user.delete', target: target.username, ip: req.ip });
     return { ok: true };
   });
 
-  app.get<{ Querystring: { before?: number; action?: string; limit?: number } }>(
+  /**
+   * The audit log (ACC-03), filterable by server. Admins on every server see
+   * all of it; an admin on some servers sees only those servers' entries,
+   * and a server they can't see is "not found".
+   */
+  app.get<{ Querystring: { before?: number; action?: string; limit?: number; server?: string } }>(
     '/api/audit',
     {
-      config: { permission: 'audit.view' },
+      config: { permission: 'audit.view', perServer: true },
       schema: {
         querystring: {
           type: 'object',
           additionalProperties: false,
-          properties: { before: { type: 'integer', minimum: 1 }, action: { type: 'string', maxLength: 40, pattern: '^[a-z0-9.-]*$' }, limit: { type: 'integer', minimum: 1, maximum: 500 } },
+          properties: {
+            before: { type: 'integer', minimum: 1 },
+            action: { type: 'string', maxLength: 40, pattern: '^[a-z0-9.-]*$' },
+            limit: { type: 'integer', minimum: 1, maximum: 500 },
+            server: { type: 'string', pattern: SERVER_ID_PATTERN.source },
+          },
         },
       },
     },
-    async (req) => audit.list({ beforeId: req.query.before, action: req.query.action, limit: req.query.limit }),
+    async (req) => {
+      const user = req.auth!.user;
+      const q = { beforeId: req.query.before, action: req.query.action, limit: req.query.limit };
+      const everywhere = canHost(principal(user), 'audit.view');
+      const mine = everywhere ? null : serversAllowing(deps, user, 'audit.view');
+      if (req.query.server !== undefined) {
+        // Entries outlive deleted servers, so an admin on every server may ask for any id.
+        if (mine && !mine.includes(req.query.server)) throw new HttpError(404, 'server-not-found');
+        return audit.list({ ...q, serverId: req.query.server });
+      }
+      return audit.list(mine ? { ...q, serverIds: mine } : q);
+    },
   );
 }

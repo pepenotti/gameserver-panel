@@ -1,4 +1,4 @@
-import { isRole, type Role } from '@gsp/shared';
+import { isRole, isScope, type Role, type Scope } from '@gsp/shared';
 import { nowIso, tx, type Db } from '../db/db';
 import { checkPasswordPolicy, hashPassword, type PasswordProblem } from './passwords';
 import { delayAfter } from './throttle';
@@ -11,6 +11,8 @@ export interface UserRow {
   username: string;
   password_hash: string;
   role: Role;
+  /** `all`: the role applies on every server; `granted`: only where `server_grants` says (ACC-02). */
+  scope: Scope;
   lang: Lang;
   totp_secret: string | null;
   totp_enabled: number;
@@ -28,6 +30,7 @@ export interface PublicUser {
   id: number;
   username: string;
   role: Role;
+  scope: Scope;
   lang: Lang;
   totpEnabled: boolean;
   mustChangePassword: boolean;
@@ -52,6 +55,8 @@ export function toPublic(u: UserRow): PublicUser {
     id: u.id,
     username: u.username,
     role: u.role,
+    // The owner acts everywhere, whatever is stored.
+    scope: u.role === 'owner' ? 'all' : u.scope,
     lang: u.lang,
     totpEnabled: u.totp_enabled === 1,
     mustChangePassword: u.must_change_password === 1,
@@ -116,6 +121,19 @@ export class Users {
     if (!u) throw new UserError('not-found');
     if (u.role === 'owner' || role === 'owner') throw new UserError('owner-immutable');
     this.db.prepare('UPDATE users SET role = ?, updated_at = ? WHERE id = ?').run(role, nowIso(), id);
+  }
+
+  /**
+   * `all`: the role applies on every server; `granted`: only on servers with
+   * a grant (then keep `role` at the highest grant, `roleForGrants`). The
+   * owner is always `all`.
+   */
+  setScope(id: number, scope: Scope): void {
+    const u = this.byId(id);
+    if (!u) throw new UserError('not-found');
+    if (!isScope(scope)) throw new UserError('invalid-scope');
+    if (u.role === 'owner') throw new UserError('owner-immutable');
+    this.db.prepare('UPDATE users SET scope = ?, updated_at = ? WHERE id = ?').run(scope, nowIso(), id);
   }
 
   setLang(id: number, lang: Lang): void {

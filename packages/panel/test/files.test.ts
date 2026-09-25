@@ -230,7 +230,7 @@ const find = (entries: TreeEntry[], name: string): TreeEntry | undefined => {
 describe('text editor API (CFG-07, CFG-08)', () => {
   it('lists the declared files and the editable folders, each file editable or not with a reason', async () => {
     const { c } = await editor();
-    const r = (await c.get('/api/config/files')).json() as { files: { id: string; exists: boolean; editable: boolean; reason: string | null; highlight: string }[]; folders: EditableFolder[] };
+    const r = (await c.get('/api/servers/default/config/files')).json() as { files: { id: string; exists: boolean; editable: boolean; reason: string | null; highlight: string }[]; folders: EditableFolder[] };
     expect(r.files.map((f) => [f.id, f.exists, f.editable, f.reason, f.highlight])).toEqual([
       ['ini', true, true, null, 'properties'],
       ['sandbox', true, true, null, 'lua'],
@@ -258,18 +258,18 @@ describe('text editor API (CFG-07, CFG-08)', () => {
   it('opens and saves a file of an editable folder through a proposal, with its history', async () => {
     const { p, c, data } = await editor();
     const id = 'path:data/Lua/mymod/settings.json';
-    const content = (await c.get(`/api/config/files/content?id=${id}`)).json() as { text: string; sha256: string; format: string; highlight: string; readonlyReason: null };
+    const content = (await c.get(`/api/servers/default/config/files/content?id=${id}`)).json() as { text: string; sha256: string; format: string; highlight: string; readonlyReason: null };
     expect(content).toMatchObject({ text: '{\n  "reward": 5\n}\n', format: 'json', highlight: 'json', readonlyReason: null });
-    const bad = await c.post('/api/config/proposals', { fileId: id, text: '{\n  "reward": 5,\n}\n', baseSha256: content.sha256 });
+    const bad = await c.post('/api/servers/default/config/proposals', { fileId: id, text: '{\n  "reward": 5,\n}\n', baseSha256: content.sha256 });
     expect(bad.json()).toEqual({ error: 'invalid-file', issues: [{ line: 3, col: 1, message: 'Trailing comma before "}"' }] });
-    const ok = (await c.post('/api/config/proposals', { fileId: id, text: '{\n  "reward": 10\n}\n', baseSha256: content.sha256 })).json() as { id: string; applies: string };
+    const ok = (await c.post('/api/servers/default/config/proposals', { fileId: id, text: '{\n  "reward": 10\n}\n', baseSha256: content.sha256 })).json() as { id: string; applies: string };
     expect(ok.applies).toBe('restart');
-    await c.post(`/api/config/proposals/${ok.id}/apply`);
+    await c.post(`/api/servers/default/config/proposals/${ok.id}/apply`);
     expect(readFileSync(path.join(data, 'Lua', 'mymod', 'settings.json'), 'utf8')).toBe('{\n  "reward": 10\n}\n');
-    expect(p.deps.config.historyOf(id).map((h) => h.note)).toEqual(['changed reward', 'on disk before this change']);
-    expect((await c.get(`/api/config/history?file=${id}`)).json()).toHaveLength(2);
+    expect(p.srv.config.historyOf(id).map((h) => h.note)).toEqual(['changed reward', 'on disk before this change']);
+    expect((await c.get(`/api/servers/default/config/history?file=${id}`)).json()).toHaveLength(2);
     // A declared file's path means that file, with its rules and history.
-    expect((await c.get('/api/config/files/content?id=path:data/Server/zomboid.ini')).json()).toMatchObject({ id: 'ini', managedKeys: expect.arrayContaining(['RCONPassword']) });
+    expect((await c.get('/api/servers/default/config/files/content?id=path:data/Server/zomboid.ini')).json()).toMatchObject({ id: 'ini', managedKeys: expect.arrayContaining(['RCONPassword']) });
   });
 
   it('refuses paths that climb out, are absolute or outside the editable folders', async () => {
@@ -285,30 +285,30 @@ describe('text editor API (CFG-07, CFG-08)', () => {
       ['path:backups/x.txt', 'not-editable'],
       ['nope', 'unknown-file'],
     ] as const) {
-      expect((await c.get(`/api/config/files/content?id=${encodeURIComponent(id)}`)).json(), id).toMatchObject({ error });
-      expect((await c.post('/api/config/proposals', { fileId: id, text: 'x' })).json(), id).toMatchObject({ error });
+      expect((await c.get(`/api/servers/default/config/files/content?id=${encodeURIComponent(id)}`)).json(), id).toMatchObject({ error });
+      expect((await c.post('/api/servers/default/config/proposals', { fileId: id, text: 'x' })).json(), id).toMatchObject({ error });
     }
   });
 
   it('never opens or saves binaries, and shows scripts read-only', async () => {
     const { c } = await editor();
-    const get = async (name: string) => (await c.get(`/api/config/files/content?id=path:data/Server/${name}`)).json() as { error?: string; reason?: string; readonlyReason?: string; text?: string };
+    const get = async (name: string) => (await c.get(`/api/servers/default/config/files/content?id=path:data/Server/${name}`)).json() as { error?: string; reason?: string; readonlyReason?: string; text?: string };
     expect(await get('zomboid_plugin.jar')).toEqual({ error: 'not-editable', reason: 'binary' });
     expect(await get('zomboid_blob.txt')).toEqual({ error: 'not-editable', reason: 'binary' });
     expect(await get('zomboid_latin1.txt')).toEqual({ error: 'not-editable', reason: 'not-utf8' });
     expect(await get('zomboid_huge.txt')).toEqual({ error: 'not-editable', reason: 'too-large' });
     expect(await get('zomboid_extra.lua')).toMatchObject({ readonlyReason: 'script', text: 'print("I run as code")\n' });
     for (const name of ['zomboid_plugin.jar', 'zomboid_extra.lua']) {
-      expect((await c.post('/api/config/proposals', { fileId: `path:data/Server/${name}`, text: 'x' })).json(), name).toEqual({ error: 'not-editable', reason: name.endsWith('.jar') ? 'binary' : 'script' });
+      expect((await c.post('/api/servers/default/config/proposals', { fileId: `path:data/Server/${name}`, text: 'x' })).json(), name).toEqual({ error: 'not-editable', reason: name.endsWith('.jar') ? 'binary' : 'script' });
     }
   });
 
   it('refuses text with NUL bytes and text over 1 MiB', async () => {
     const { c } = await editor();
     const id = 'path:data/Server/zomboid_notes.txt';
-    expect((await c.post('/api/config/proposals', { fileId: id, text: 'line one\nnul \0 here' })).json()).toMatchObject({ error: 'invalid-file', issues: [{ line: 2 }] });
+    expect((await c.post('/api/servers/default/config/proposals', { fileId: id, text: 'line one\nnul \0 here' })).json()).toMatchObject({ error: 'invalid-file', issues: [{ line: 2 }] });
     // Under the character limit, over the byte limit.
-    const big = await c.post('/api/config/proposals', { fileId: id, text: 'ñ'.repeat(MAX_TEXT_BYTES / 2 + 1) });
+    const big = await c.post('/api/servers/default/config/proposals', { fileId: id, text: 'ñ'.repeat(MAX_TEXT_BYTES / 2 + 1) });
     expect(big.statusCode).toBe(413);
     expect(big.json()).toEqual({ error: 'too-large' });
   });
@@ -319,18 +319,18 @@ describe('text editor API (CFG-07, CFG-08)', () => {
     writeFileSync(path.join(outside, 'secret.ini'), 'Token=abc\n');
     symlinkSync(outside, path.join(data, 'Lua', 'linked'), 'junction');
     const id = 'path:data/Lua/linked/secret.ini';
-    expect((await c.get(`/api/config/files/content?id=${encodeURIComponent(id)}`)).json()).toEqual({ error: 'not-editable', reason: 'symlink' });
-    expect((await c.post('/api/config/proposals', { fileId: id, text: 'Token=pwned\n' })).json()).toEqual({ error: 'not-editable', reason: 'symlink' });
+    expect((await c.get(`/api/servers/default/config/files/content?id=${encodeURIComponent(id)}`)).json()).toEqual({ error: 'not-editable', reason: 'symlink' });
+    expect((await c.post('/api/servers/default/config/proposals', { fileId: id, text: 'Token=pwned\n' })).json()).toEqual({ error: 'not-editable', reason: 'symlink' });
     expect(readFileSync(path.join(outside, 'secret.ini'), 'utf8')).toBe('Token=abc\n');
-    const tree = (await c.get('/api/config/files')).json() as { folders: EditableFolder[] };
+    const tree = (await c.get('/api/servers/default/config/files')).json() as { folders: EditableFolder[] };
     expect(find(tree.folders[1]!.entries, 'secret.ini')).toBeUndefined();
   });
 
   it('is admin-only and behind sign-in', async () => {
     const p = await makePanel();
     const anon = new Client(p.app);
-    expect((await anon.get('/api/config/files')).statusCode).toBe(401);
-    expect((await anon.get('/api/config/files/content?id=ini')).statusCode).toBe(401);
+    expect((await anon.get('/api/servers/default/config/files')).statusCode).toBe(401);
+    expect((await anon.get('/api/servers/default/config/files/content?id=ini')).statusCode).toBe(401);
     // The reserved routes of the first draft are gone.
     const { client } = await ownerReady(p);
     expect((await client.get('/api/files')).statusCode).toBe(404);

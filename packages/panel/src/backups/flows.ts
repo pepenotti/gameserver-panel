@@ -10,7 +10,7 @@ import { HttpError } from '../http/context';
 import type { OpContext, OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
 import type { ServerHandle } from '../server/handle';
-import type { Settings } from '../settings';
+import type { KeyValueSettings } from '../settings';
 import type { ConfigStore } from '../config/store';
 import type { BackupInfo, BackupPart, BackupService, BackupTrigger } from './service';
 
@@ -32,7 +32,8 @@ export interface FlowDeps {
   ops: OpRunner;
   control: Control;
   backups: BackupService;
-  settings: Settings;
+  /** The server's own settings. */
+  settings: KeyValueSettings;
   config: ConfigStore;
   server: ServerHandle;
   /** The server's data folder (staging and trash live inside it, on the same volume). */
@@ -124,7 +125,7 @@ export class BackupFlows {
   startRestore(by: string | null, name: string, parts: BackupPart[], opts: { countdownSec: number; lang: GameLang }): OpState {
     const info = this.d.backups.get(name);
     const status = this.d.feed.status_;
-    const installedBuild = status?.installedInfo?.build ?? status?.installed?.buildId;
+    const installedBuild = status?.installedInfo?.build;
     const newerBuild = info.manifest.buildId && installedBuild && Number(info.manifest.buildId) > Number(installedBuild);
     if (newerBuild) throw new HttpError(409, 'backup-from-newer-build');
     const known = this.d.backups.parts();

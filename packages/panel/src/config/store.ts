@@ -1,4 +1,4 @@
-import type { FormatId, I18n, OptionMeta, RootId, Scalar } from '@gsp/adapter-api';
+import type { FormatId, I18n, OptionGroup, OptionMeta, RootId, Scalar } from '@gsp/adapter-api';
 import type { DataShape, Highlight, ParseIssue } from '@gsp/formats';
 import type { ReadonlyReason } from '../files/policy';
 
@@ -108,6 +108,8 @@ export interface FileContent {
 export interface ConfigMeta {
   files: Pick<DeclaredFile, 'id' | 'label' | 'format' | 'schemaId' | 'managedKeys' | 'secretKeys' | 'restartKeys'>[];
   schemas: Record<string, OptionMeta[]>;
+  /** Each schema's form groups, in order (CFG-10); options name theirs in `group`. */
+  groups: Record<string, OptionGroup[]>;
   presets: string[];
   /** The file presets apply to (the adapter's `config.presets.fileId`). */
   presetFile: string | null;

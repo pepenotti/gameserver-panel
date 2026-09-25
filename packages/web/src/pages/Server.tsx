@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OptionMeta } from '@gsp/formats';
-import { get, post, put } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import { localize } from '../api/meta';
 import { useMeta } from '../api/useMeta';
@@ -84,20 +84,21 @@ export function Server() {
   const errorText = useErrorText();
   const qc = useQueryClient();
   const live = useLive();
+  const sapi = useServerApi();
   const { meta, has } = useMeta();
   const schema = meta?.launch.schema ?? [];
-  const launch = useQuery({ queryKey: ['launch'], queryFn: () => get<Launch>('/api/server/launch') });
+  const launch = useQuery({ queryKey: ['launch', sapi.sid], queryFn: () => sapi<Launch>('GET', '/server/launch') });
   const [form, setForm] = useState<Launch | null>(null);
   useEffect(() => {
     if (launch.data && !form) setForm(launch.data);
   }, [launch.data, form]);
   // Asking for versions runs a job on the server (steamcmd for Steam games): only on request.
-  const updates = useQuery({ queryKey: ['updates'], queryFn: () => get<Updates>('/api/server/updates'), enabled: false, retry: false });
+  const updates = useQuery({ queryKey: ['updates', sapi.sid], queryFn: () => sapi<Updates>('GET', '/server/updates'), enabled: false, retry: false });
   const body = (l: Launch) => Object.fromEntries(schema.map((o) => [o.key, l[o.key]]));
   const save = useMutation({
-    mutationFn: (l: Launch) => put<Launch>('/api/server/launch', body(l)),
+    mutationFn: (l: Launch) => sapi<Launch>('PUT', '/server/launch', body(l)),
     onSuccess: (l) => {
-      qc.setQueryData(['launch'], l);
+      qc.setQueryData(['launch', sapi.sid], l);
       setForm(l);
       notifications.show({ color: 'green', message: t('common.saved') });
     },
@@ -113,7 +114,7 @@ export function Server() {
   const versions = versionKey ? Array.from(new Set([...(updates.data?.branches.map((b) => b.name) ?? []), String(form?.[versionKey] ?? '')])).filter(Boolean) : undefined;
   const versionChanged = versionKey !== undefined && form !== null && launch.data !== undefined && form[versionKey] !== launch.data[versionKey];
 
-  const act = (path: string, b: unknown) => post(path, b).catch((e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
+  const act = (call: () => Promise<unknown>) => call().catch((e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
   const countdown = () => ((live.players?.count ?? 0) > 0 ? 300 : 0);
 
   return (
@@ -177,7 +178,7 @@ export function Server() {
             <Group>
               <Badge color={updates.data.updateAvailable ? 'orange' : 'green'}>{updates.data.updateAvailable ? t('server.updateAvailable') : t('server.upToDate')}</Badge>
               {updates.data.updateAvailable && (
-                <Button size="xs" disabled={busy} onClick={() => void act('/api/server/update', { countdownSec: countdown() })}>
+                <Button size="xs" disabled={busy} onClick={() => void act(() => sapi('POST', '/server/update', { countdownSec: countdown() }))}>
                   {t('server.updateNow')}
                 </Button>
               )}
@@ -189,7 +190,7 @@ export function Server() {
           <Text size="xs" c="dimmed" maw={480}>
             {t('server.validateHelp')}
           </Text>
-          <Button size="xs" variant="default" disabled={busy} onClick={() => void act('/api/server/update', { validate: true, countdownSec: countdown() })}>
+          <Button size="xs" variant="default" disabled={busy} onClick={() => void act(() => sapi('POST', '/server/update', { validate: true, countdownSec: countdown() }))}>
             {t('server.validate')}
           </Button>
         </Group>
@@ -213,7 +214,7 @@ export function Server() {
                 children: <Text size="sm">{t('server.killConfirm')}</Text>,
                 labels: { confirm: t('server.kill'), cancel: t('common.cancel') },
                 confirmProps: { color: 'red' },
-                onConfirm: () => void act('/api/server/kill', {}),
+                onConfirm: () => void act(() => sapi('POST', '/server/kill', {})),
               })
             }
           >

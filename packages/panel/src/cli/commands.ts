@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { Audit } from '../audit';
+import { Audit, RECOVERY } from '../audit';
 import { Sessions } from '../auth/sessions';
 import { Users } from '../auth/users';
 import { backupPanelDb } from '../backups/panel-db';
@@ -39,7 +39,7 @@ export async function runCli(argv: string[], ctx: { db: Db; backupDir: string; o
       const temp = randomBytes(12).toString('base64url');
       await users.setPassword(u.id, temp, { mustChange: true });
       const n = sessions.revokeAllForUser(u.id);
-      audit.log({ action: 'cli.reset-password', target: u.username, detail: { sessionsRevoked: n } });
+      audit.log({ actor: RECOVERY, action: 'cli.reset-password', target: u.username, detail: { sessionsRevoked: n } });
       ctx.out(`Temporary password for ${u.username}: ${temp}`);
       ctx.out('It must be changed at the next sign-in.');
       return 0;
@@ -49,13 +49,13 @@ export async function runCli(argv: string[], ctx: { db: Db; backupDir: string; o
       if (!u) return 1;
       users.disableTotp(u.id);
       const n = sessions.revokeAllForUser(u.id);
-      audit.log({ action: 'cli.reset-2fa', target: u.username, detail: { sessionsRevoked: n } });
+      audit.log({ actor: RECOVERY, action: 'cli.reset-2fa', target: u.username, detail: { sessionsRevoked: n } });
       ctx.out(`2FA removed for ${u.username}.${u.role === 'admin' || u.role === 'owner' ? ' They will set it up again right after signing in.' : ''}`);
       return 0;
     }
     case 'backup-db': {
       const file = backupPanelDb(ctx.db, ctx.backupDir);
-      audit.log({ action: 'cli.backup-db', detail: file });
+      audit.log({ actor: RECOVERY, action: 'cli.backup-db', detail: file });
       ctx.out(`Saved ${file}`);
       return 0;
     }

@@ -41,7 +41,7 @@ export interface ProposalInput {
 
 export interface Proposal {
   id: string;
-  serverId: string | null;
+  serverId: string;
   fileId: string;
   baseSha256: string;
   note: string | null;
@@ -83,7 +83,7 @@ export interface ProposalService {
 
 interface Row {
   id: string;
-  server_id: string | null;
+  server_id: string;
   file_id: string;
   base_sha256: string;
   content: string;
@@ -120,8 +120,8 @@ export interface ProposalDeps {
   db: Db;
   /** The config store proposals are validated and applied by (a getter: it is built next to this service). */
   config: () => ConfigStore;
-  /** Null while there is one server (M1). */
-  serverId?: string | null;
+  /** The server whose files the proposals change. */
+  serverId: string;
 }
 
 export class ConfigProposals implements ProposalService {
@@ -132,18 +132,20 @@ export class ConfigProposals implements ProposalService {
 
   private row(id: string): Row {
     this.expireOld();
-    const r = this.d.db.prepare(`SELECT ${COLUMNS} FROM proposals WHERE id = ?`).get(id) as Row | undefined;
+    const r = this.d.db.prepare(`SELECT ${COLUMNS} FROM proposals WHERE id = ? AND server_id = ?`).get(id, this.d.serverId) as Row | undefined;
     if (!r) throw new HttpError(404, 'not-found');
     return r;
   }
 
   private expireOld(): void {
     const cutoff = new Date(Date.now() - PROPOSAL_TTL_MS).toISOString();
-    this.d.db.prepare("UPDATE proposals SET status = 'expired', decided_at = ? WHERE status = 'pending' AND created_at < ?").run(nowIso(), cutoff);
+    this.d.db.prepare("UPDATE proposals SET status = 'expired', decided_at = ? WHERE server_id = ? AND status = 'pending' AND created_at < ?").run(nowIso(), this.d.serverId, cutoff);
   }
 
   private decide(id: string, status: ProposalStatus, by: string | null, result: unknown): void {
-    this.d.db.prepare('UPDATE proposals SET status = ?, decided_by = ?, decided_at = ?, result = ? WHERE id = ?').run(status, by, nowIso(), result === undefined ? null : JSON.stringify(result), id);
+    this.d.db
+      .prepare('UPDATE proposals SET status = ?, decided_by = ?, decided_at = ?, result = ? WHERE id = ? AND server_id = ?')
+      .run(status, by, nowIso(), result === undefined ? null : JSON.stringify(result), id, this.d.serverId);
   }
 
   async propose(input: ProposalInput, by: string | null, actorType: ActorType = 'user'): Promise<ProposalPreview> {
@@ -153,10 +155,10 @@ export class ConfigProposals implements ProposalService {
     const id = randomUUID();
     this.d.db
       .prepare('INSERT INTO proposals (id, server_id, file_id, base_sha256, content, note, created_by, created_at, actor_type, status) VALUES (?,?,?,?,?,?,?,?,?,?)')
-      .run(id, this.d.serverId ?? null, p.fileId, p.baseSha256, p.content, p.note, by, nowIso(), actorType, 'pending');
+      .run(id, this.d.serverId, p.fileId, p.baseSha256, p.content, p.note, by, nowIso(), actorType, 'pending');
     this.d.db
-      .prepare(`DELETE FROM proposals WHERE status != 'pending' AND id NOT IN (SELECT id FROM proposals WHERE status != 'pending' ORDER BY created_at DESC LIMIT ${KEEP_DECIDED})`)
-      .run();
+      .prepare(`DELETE FROM proposals WHERE server_id = ? AND status != 'pending' AND id NOT IN (SELECT id FROM proposals WHERE server_id = ? AND status != 'pending' ORDER BY created_at DESC LIMIT ${KEEP_DECIDED})`)
+      .run(this.d.serverId, this.d.serverId);
     return { id, diff: withContext(diffLines(p.before, p.after)), ...preview };
   }
 
@@ -176,8 +178,8 @@ export class ConfigProposals implements ProposalService {
       this.decide(id, 'applied', by, result);
       // Other pending changes to this file were made against the text it had before.
       this.d.db
-        .prepare("UPDATE proposals SET status = 'stale', decided_at = ? WHERE file_id = ? AND status = 'pending' AND id != ? AND base_sha256 != ?")
-        .run(nowIso(), row.file_id, id, sha256);
+        .prepare("UPDATE proposals SET status = 'stale', decided_at = ? WHERE server_id = ? AND file_id = ? AND status = 'pending' AND id != ? AND base_sha256 != ?")
+        .run(nowIso(), this.d.serverId, row.file_id, id, sha256);
       return { ...result, proposal: toProposal(this.row(id)) };
     } finally {
       this.applying.delete(id);
@@ -193,8 +195,8 @@ export class ConfigProposals implements ProposalService {
 
   list(opts: { status?: ProposalStatus; fileId?: string } = {}): Proposal[] {
     this.expireOld();
-    const where: string[] = [];
-    const args: string[] = [];
+    const where: string[] = ['server_id = ?'];
+    const args: string[] = [this.d.serverId];
     if (opts.status) {
       where.push('status = ?');
       args.push(opts.status);
@@ -203,7 +205,7 @@ export class ConfigProposals implements ProposalService {
       where.push('file_id = ?');
       args.push(opts.fileId);
     }
-    const sql = `SELECT ${COLUMNS} FROM proposals ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY created_at DESC, rowid DESC LIMIT 200`;
+    const sql = `SELECT ${COLUMNS} FROM proposals WHERE ${where.join(' AND ')} ORDER BY created_at DESC, rowid DESC LIMIT 200`;
     return (this.d.db.prepare(sql).all(...args) as unknown as Row[]).map(toProposal);
   }
 

@@ -26,8 +26,6 @@ describe('first start', () => {
     h = await makeHarness();
     await h.agent.start(launch, undefined);
     const s = await h.waitFor((x) => x.state === 'running');
-    expect(s.installed).toEqual({ buildId: '24909800', branch: 'public' });
-    expect(s.gameVersion).toBe('42.20.4');
     expect(s.desired).toBe('running');
     expect(s.launch).not.toHaveProperty('adminPassword');
 
@@ -42,7 +40,6 @@ describe('first start', () => {
 
     const withPlayers = await h.waitFor((x) => x.players?.count === 2);
     expect(withPlayers.players!.names).toEqual(['alice', 'bob']);
-    expect(withPlayers.rcon.connected).toBe(true);
     expect(withPlayers.control).toEqual({ kind: 'rcon', connected: true, lastError: null });
   });
 
@@ -90,7 +87,7 @@ describe('install before start', () => {
     await h.agent.stop({}, undefined);
     await h.agent.start({ ...launch, branch: 'legacy41' }, undefined);
     const s = await h.waitFor((x) => x.state === 'running');
-    expect(s.installed).toEqual({ buildId: '24909800', branch: 'legacy41' });
+    expect(s.installedInfo).toMatchObject({ build: '24909800', channel: 'legacy41' });
     expect(h.events.filter((e) => e.event.type === 'job' && e.event.job.kind === 'install' && e.event.result?.ok)).toHaveLength(2);
   });
 
@@ -278,7 +275,7 @@ describe('locks and installs', () => {
     h.agent.setLaunch(envelope({ branch: 'legacy41' }));
     const ok = await h.agent.install({ validate: true }, undefined);
     expect(ok).toEqual({ ok: true });
-    expect(h.agent.status().installed).toEqual({ buildId: '24909800', branch: 'legacy41' });
+    expect(h.agent.status().installedInfo).toMatchObject({ build: '24909800', channel: 'legacy41' });
     expect(h.events.some((e) => e.event.type === 'job' && e.event.job.kind === 'validate' && e.event.job.progress !== null && e.event.job.progress > 50)).toBe(true);
     expect(h.logs().some((l) => l.startsWith('[steamcmd] Success! App'))).toBe(true);
 

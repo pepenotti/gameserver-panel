@@ -1,3 +1,9 @@
+// The panel's HTTP API as the web calls it (AST-01: the UI does nothing the
+// API doesn't). Host routes go through `api`, a server's routes through a
+// `ServerApi` (`serverApi(sid)`, or `useServerApi()` in a server's pages),
+// with the method and path written out at the call so a test can match
+// every call to a route (packages/panel/test/api-first.test.ts).
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -7,6 +13,8 @@ export class ApiError extends Error {
     super(code);
   }
 }
+
+export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 let csrfToken: string | null = null;
 let onUnauthenticated: (() => void) | null = null;
@@ -20,13 +28,15 @@ export function setUnauthenticatedHandler(fn: () => void): void {
   onUnauthenticated = fn;
 }
 
-export async function api<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> {
+/** A host route (`/api/...`). The body is sent as JSON, or as is when it is `FormData` (uploads). */
+export async function api<T>(method: Method, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers['content-type'] = 'application/json';
+  const form = typeof FormData !== 'undefined' && body instanceof FormData;
+  if (body !== undefined && !form) headers['content-type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['x-gsp-csrf'] = csrfToken;
   let res: Response;
   try {
-    res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin' });
+    res = await fetch(path, { method, headers, body: body === undefined ? undefined : form ? (body as FormData) : JSON.stringify(body), credentials: 'same-origin' });
   } catch {
     throw new ApiError(0, 'network');
   }
@@ -46,8 +56,20 @@ export async function api<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   return data as T;
 }
 
-export const get = <T>(path: string) => api<T>('GET', path);
-export const post = <T>(path: string, body: unknown = {}) => api<T>('POST', path, body);
-export const put = <T>(path: string, body: unknown) => api<T>('PUT', path, body);
-export const patch = <T>(path: string, body: unknown) => api<T>('PATCH', path, body);
-export const del = <T>(path: string) => api<T>('DELETE', path);
+/** Where one server's route lives: `/api/servers/<sid><path>`. */
+export function serverPath(sid: string, path: string): string {
+  return `/api/servers/${encodeURIComponent(sid)}${path}`;
+}
+
+/** One server's routes: `sapi('GET', '/backups')` is `GET /api/servers/<sid>/backups`. */
+export interface ServerApi {
+  <T>(method: Method, path: string, body?: unknown): Promise<T>;
+  readonly sid: string;
+  /** A GET route's address, for links (downloads). */
+  url(path: string): string;
+}
+
+export function serverApi(sid: string): ServerApi {
+  const call = <T>(method: Method, path: string, body?: unknown) => api<T>(method, serverPath(sid, path), body);
+  return Object.assign(call, { sid, url: (path: string) => serverPath(sid, path) });
+}

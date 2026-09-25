@@ -1,7 +1,6 @@
-import path from 'node:path';
 import { Cron } from 'croner';
 import type { AgentApi } from '../agent/client';
-import type { Audit } from '../audit';
+import { SCHEDULE, type Audit } from '../audit';
 import type { BackupFlows } from '../backups/flows';
 import type { BackupService } from '../backups/service';
 import type { Control, GameLang } from '../control/control';
@@ -9,7 +8,7 @@ import type { AgentFeed } from '../http/deps';
 import type { ModsService } from '../mods/service';
 import type { DiscordNotifier } from '../notifier/discord';
 import type { OpRunner } from '../ops/runner';
-import type { Settings } from '../settings';
+import type { KeyValueSettings } from '../settings';
 
 export type ApplyPolicy = 'when-empty' | 'restart-countdown' | 'notify-only';
 
@@ -40,7 +39,8 @@ export function timeToCron(hhmm: string): string {
 }
 
 export interface SchedulerDeps {
-  settings: Settings;
+  /** The server's own settings. */
+  settings: KeyValueSettings;
   agent: AgentApi;
   feed: AgentFeed;
   ops: OpRunner;
@@ -50,8 +50,6 @@ export interface SchedulerDeps {
   mods: ModsService;
   notifier: DiscordNotifier;
   audit: Audit;
-  /** Nightly copy of the panel's own database; see backups/panel-db.ts. */
-  backupPanelDb: () => string;
 }
 
 export interface NextRuns {
@@ -59,7 +57,6 @@ export interface NextRuns {
   backup: string | null;
   gameCheck: string | null;
   modCheck: string | null;
-  panelDb: string | null;
 }
 
 export class Scheduler {
@@ -69,6 +66,10 @@ export class Scheduler {
   private pendingModUpdate: string[] = [];
 
   constructor(private readonly d: SchedulerDeps) {}
+
+  private get serverId(): string {
+    return this.d.control.server.ref.id;
+  }
 
   config(): ScheduleSettings {
     const s = this.d.settings.getRaw<Partial<ScheduleSettings>>('schedules') ?? {};
@@ -97,17 +98,15 @@ export class Scheduler {
   reload(): void {
     this.stop();
     const c = this.config();
-    const opts = { timezone: c.timezone, protect: true, catch: (e: unknown) => this.d.audit.log({ action: 'schedule.error', detail: String(e), ok: false }) };
+    const opts = { timezone: c.timezone, protect: true, catch: (e: unknown) => this.d.audit.log({ actor: SCHEDULE, serverId: this.serverId, action: 'schedule.error', detail: String(e), ok: false }) };
     if (c.restarts.enabled) for (const t of c.restarts.times) this.jobs.push({ name: 'restart', cron: new Cron(timeToCron(t), opts, () => this.runRestart()) });
     if (c.backups.enabled) this.jobs.push({ name: 'backup', cron: new Cron(`0 */${Math.max(1, Math.min(24, c.backups.everyHours))} * * *`, opts, () => this.runBackup()) });
     if (c.gameUpdates.enabled) this.jobs.push({ name: 'gameCheck', cron: new Cron(`*/${Math.max(5, Math.min(59, c.gameUpdates.checkEveryMinutes))} * * * *`, opts, () => this.checkGameUpdate()) });
     if (c.modUpdates.enabled) this.jobs.push({ name: 'modCheck', cron: new Cron(`*/${Math.max(5, Math.min(59, c.modUpdates.checkEveryMinutes))} * * * *`, opts, () => this.checkModUpdates()) });
-    // Always on: losing the panel database means re-creating every account and 2FA.
-    this.jobs.push({ name: 'panelDb', cron: new Cron('30 4 * * *', opts, () => this.runPanelDbBackup()) });
   }
 
   nextRuns(): NextRuns {
-    const out: NextRuns = { restart: null, backup: null, gameCheck: null, modCheck: null, panelDb: null };
+    const out: NextRuns = { restart: null, backup: null, gameCheck: null, modCheck: null };
     for (const j of this.jobs) {
       const n = j.cron.nextRun()?.toISOString() ?? null;
       if (n && (!out[j.name] || n < out[j.name]!)) out[j.name] = n;
@@ -124,7 +123,7 @@ export class Scheduler {
   }
 
   private skip(job: string, why: string): void {
-    this.d.audit.log({ action: `schedule.${job}`, detail: `skipped: ${why}`, ok: true });
+    this.d.audit.log({ actor: SCHEDULE, serverId: this.serverId, action: `schedule.${job}`, detail: `skipped: ${why}`, ok: true });
   }
 
   // ----------------------------------------------------------------- jobs
@@ -134,7 +133,7 @@ export class Scheduler {
     if (this.state !== 'running') return this.skip('restart', 'server not running');
     if (this.d.ops.busy) return this.skip('restart', 'another operation is running');
     const c = this.config();
-    this.d.audit.log({ action: 'schedule.restart' });
+    this.d.audit.log({ actor: SCHEDULE, serverId: this.serverId, action: 'schedule.restart' });
     this.d.ops.start(
       'restart',
       'scheduler',
@@ -165,25 +164,16 @@ export class Scheduler {
     );
   }
 
-  runPanelDbBackup(): void {
-    try {
-      const file = this.d.backupPanelDb();
-      this.d.audit.log({ action: 'schedule.panelDb', detail: path.basename(file) });
-    } catch (e) {
-      this.d.audit.log({ action: 'schedule.panelDb', detail: (e as Error).message, ok: false });
-    }
-  }
-
   /** Periodic backup: hot while running (saved first), cold when stopped. */
   async runBackup(): Promise<void> {
     if (this.d.ops.busy) return this.skip('backup', 'another operation is running');
     this.d.ops.start('backup', 'scheduler', async (ctx) => {
       try {
         const b = await this.d.flows.backupNow(ctx, 'scheduled');
-        this.d.audit.log({ action: 'schedule.backup', detail: b.name });
+        this.d.audit.log({ actor: SCHEDULE, serverId: this.serverId, action: 'schedule.backup', detail: b.name });
       } catch (e) {
         // Still fails the op (and so the Discord message); this makes it visible in the activity log too.
-        this.d.audit.log({ action: 'schedule.backup', detail: (e as Error).message, ok: false });
+        this.d.audit.log({ actor: SCHEDULE, serverId: this.serverId, action: 'schedule.backup', detail: (e as Error).message, ok: false });
         throw e;
       }
     });

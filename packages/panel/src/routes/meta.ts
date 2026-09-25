@@ -1,24 +1,27 @@
 import type { FastifyInstance } from 'fastify';
+import { srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
-import { capabilitiesOf } from '../server/handle';
 
 /**
  * What the server's game adapter supports, for the UI to show only that and
- * for AST-04 (machine-readable context). Any signed-in user may read it.
+ * for AST-04 (machine-readable context). Anyone with a role on the server
+ * may read it.
  */
-export function metaRoutes(app: FastifyInstance, deps: Deps): void {
-  app.get('/api/meta', async () => {
-    const a = deps.adapter;
-    const srv = deps.server.ref;
+export function metaRoutes(app: FastifyInstance, _deps: Deps): void {
+  app.get('/meta', { config: { permission: 'server.view' } }, async (req) => {
+    const s = srvOf(req);
+    const a = s.adapter;
+    const srv = s.handle.ref;
     return {
       adapter: a.meta,
-      server: { id: srv.id, gameName: srv.gameName, flavour: srv.flavour },
-      capabilities: [...capabilitiesOf(a, srv.flavour)],
+      server: { id: srv.id, name: s.row.name, gameName: srv.gameName, flavour: srv.flavour },
+      capabilities: [...s.capabilities()],
       // Which secrets the server needs, never their values.
-      launch: { schema: a.launch.schema, secrets: (a.launch.secrets ?? []).map((s) => ({ key: s.key, label: s.label })) },
+      launch: { schema: a.launch.schema, secrets: (a.launch.secrets ?? []).map((x) => ({ key: x.key, label: x.label })) },
       backupParts: a.backups.parts.map((p) => ({ id: p.id, label: p.label })),
-      resets: a.resets.map((r) => ({ id: r.id, label: r.label, permission: r.permission, removeParts: r.removeParts })),
+      resets: a.resets.map((r) => ({ id: r.id, label: r.label, permission: r.permission, removeParts: r.removeParts, options: r.options ?? {} })),
       accessLevels: a.players?.accessLevels ?? [],
+      banTargets: a.players?.banTargets ?? [],
       modSources: (a.mods ?? []).map((m) => ({ id: m.id, capability: m.capability, label: m.label })),
       consoleCatalog: a.consoleCatalog ?? [],
     };

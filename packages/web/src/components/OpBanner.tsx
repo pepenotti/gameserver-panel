@@ -2,7 +2,7 @@ import { Alert, Button, Group, Loader, Progress, Text } from '@mantine/core';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { post } from '../api/http';
+import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
 import { useDuration, useErrorText } from '../lib/format';
@@ -14,6 +14,7 @@ export function OpBanner() {
   const errorText = useErrorText();
   const { op, job } = useLive();
   const { can } = useSession();
+  const sapi = useServerApi();
   const [now, setNow] = useState(Date.now());
   const [cancelError, setCancelError] = useState<string | null>(null);
 
@@ -56,7 +57,7 @@ export function OpBanner() {
           {cancelError ? ` — ${cancelError}` : ''}
         </Text>
         {op.cancellable && !op.done && can('server.control') && (
-          <Button size="xs" variant="default" onClick={() => void post(`/api/ops/${op.id}/cancel`).catch((e: unknown) => setCancelError(errorText(e)))}>
+          <Button size="xs" variant="default" onClick={() => void sapi('POST', `/ops/${op.id}/cancel`, {}).catch((e: unknown) => setCancelError(errorText(e)))}>
             {t('ops.cancel')}
           </Button>
         )}

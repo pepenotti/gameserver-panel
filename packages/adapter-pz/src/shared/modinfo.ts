@@ -92,7 +92,7 @@ export function selectVersionFolder(folders: string[], gameVersion: string): str
 export interface ModCompat {
   folder: string | null;
   compatible: boolean;
-  reason?: 'no-b42-folder' | 'needs-newer-game' | 'too-old-for-game';
+  reason?: 'no-matching-folder' | 'needs-newer-game' | 'too-old-for-game';
 }
 
 export function checkCompat(folders: string[], gameVersion: string, info?: Pick<ModInfo, 'versionMin' | 'versionMax'>): ModCompat {
@@ -100,7 +100,7 @@ export function checkCompat(folders: string[], gameVersion: string, info?: Pick<
   const major = gameVersion.split('.')[0]!;
   if (!folder && !folders.includes('common')) {
     const hasAnyForMajor = folders.some((f) => VERSION_DIR.test(f) && f.split('.')[0] === major);
-    return { folder: null, compatible: false, reason: hasAnyForMajor ? 'needs-newer-game' : 'no-b42-folder' };
+    return { folder: null, compatible: false, reason: hasAnyForMajor ? 'needs-newer-game' : 'no-matching-folder' };
   }
   if (info?.versionMin && compareVersions(gameVersion, info.versionMin) < 0) return { folder, compatible: false, reason: 'needs-newer-game' };
   if (info?.versionMax && compareVersions(gameVersion, info.versionMax) > 0) return { folder, compatible: false, reason: 'too-old-for-game' };

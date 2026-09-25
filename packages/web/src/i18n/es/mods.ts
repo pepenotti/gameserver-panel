@@ -29,7 +29,7 @@ export default {
   up: 'Subir',
   down: 'Bajar',
   issues: {
-    'not-b42': '{{modId}} no está hecho para esta versión del juego; no va a cargar.',
+    'incompatible-version': '{{modId}} no está hecho para esta versión del juego; no va a cargar.',
     'missing-dependency': '{{modId}} necesita {{requires}}, que no está activado.',
     'missing-dependency-available': '{{modId}} necesita {{requires}}: activalo abajo.',
     order: '{{modId}} tiene que cargar después de {{requires}}. Usá "Ordenar por dependencias".',
@@ -37,7 +37,7 @@ export default {
     'not-downloaded': 'El elemento {{workshopId}} todavía no se descargó.',
   },
   reasons: {
-    'no-b42-folder': 'no es para esta versión del juego',
+    'no-matching-folder': 'no es para esta versión del juego',
     'needs-newer-game': 'necesita una build más nueva',
     'too-old-for-game': 'demasiado viejo para esta build',
   },

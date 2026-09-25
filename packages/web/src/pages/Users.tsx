@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Role } from '@gsp/shared';
-import { del, get, patch, post } from '../api/http';
+import { api } from '../api/http';
 import { useSession } from '../api/session';
 import type { PublicUser } from '../api/types';
 import { useErrorText, useRelative } from '../lib/format';
@@ -26,7 +26,7 @@ export function Users() {
   const rel = useRelative();
   const qc = useQueryClient();
   const { session } = useSession();
-  const users = useQuery({ queryKey: ['users'], queryFn: () => get<PublicUser[]>('/api/users') });
+  const users = useQuery({ queryKey: ['users'], queryFn: () => api<PublicUser[]>('GET', '/api/users') });
   const [addOpen, add] = useDisclosure();
   const [form, setForm] = useState({ username: '', role: 'operator' as Role, password: tempPassword() });
   const [shown, setShown] = useState<{ username: string; password: string } | null>(null);
@@ -41,7 +41,7 @@ export function Users() {
   const create = async () => {
     setError(null);
     try {
-      await post('/api/users', { username: form.username.trim(), password: form.password, role: form.role });
+      await api('POST', '/api/users', { username: form.username.trim(), password: form.password, role: form.role });
       setShown({ username: form.username.trim(), password: form.password });
       setForm({ username: '', role: 'operator', password: tempPassword() });
       invalidate();
@@ -106,7 +106,7 @@ export function Users() {
                         data={ASSIGNABLE.map((r) => ({ value: r, label: t(`roles.${r}`) }))}
                         value={u.role}
                         allowDeselect={false}
-                        onChange={(v) => v && act.mutate(() => patch(`/api/users/${u.id}`, { role: v }))}
+                        onChange={(v) => v && act.mutate(() => api('PATCH', `/api/users/${u.id}`, { role: v }))}
                         aria-label={t('users.role')}
                       />
                     )}
@@ -128,12 +128,12 @@ export function Users() {
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
-                          <Menu.Item onClick={() => act.mutate(() => patch(`/api/users/${u.id}`, { disabled: !u.disabled }))}>{u.disabled ? t('users.enable') : t('users.disable')}</Menu.Item>
+                          <Menu.Item onClick={() => act.mutate(() => api('PATCH', `/api/users/${u.id}`, { disabled: !u.disabled }))}>{u.disabled ? t('users.enable') : t('users.disable')}</Menu.Item>
                           <Menu.Item
                             onClick={() => {
                               const password = tempPassword();
                               act.mutate(async () => {
-                                await post(`/api/users/${u.id}/reset-password`, { password });
+                                await api('POST', `/api/users/${u.id}/reset-password`, { password });
                                 setShown({ username: u.username, password });
                                 add.open();
                               });
@@ -148,7 +148,7 @@ export function Users() {
                                   title: t('users.reset2fa'),
                                   children: <Text size="sm">{t('users.reset2faConfirm', { name: u.username })}</Text>,
                                   labels: { confirm: t('common.confirm'), cancel: t('common.cancel') },
-                                  onConfirm: () => act.mutate(() => post(`/api/users/${u.id}/reset-2fa`)),
+                                  onConfirm: () => act.mutate(() => api('POST', `/api/users/${u.id}/reset-2fa`, {})),
                                 })
                               }
                             >
@@ -164,7 +164,7 @@ export function Users() {
                                 children: <Text size="sm">{t('users.deleteConfirm', { name: u.username })}</Text>,
                                 labels: { confirm: t('common.delete'), cancel: t('common.cancel') },
                                 confirmProps: { color: 'red' },
-                                onConfirm: () => act.mutate(() => del(`/api/users/${u.id}`)),
+                                onConfirm: () => act.mutate(() => api('DELETE', `/api/users/${u.id}`)),
                               })
                             }
                           >

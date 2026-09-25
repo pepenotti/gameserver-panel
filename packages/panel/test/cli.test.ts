@@ -22,7 +22,7 @@ describe('panelctl', () => {
     const p = await makePanel();
     const { client, password } = await ownerReady(p);
     expect((await run(p, 'reset-2fa', 'alice')).code).toBe(0);
-    expect((await client.get('/api/status')).statusCode).toBe(401);
+    expect((await client.get('/api/servers/default/status')).statusCode).toBe(401);
     const c = new Client(p.app);
     expect((await c.post('/api/auth/login', { username: 'alice', password })).json()).toMatchObject({ pending: 'enrol' });
     expect(p.deps.audit.list({ action: 'cli.reset-2fa' })[0]).toMatchObject({ target: 'alice', username: null });
@@ -33,7 +33,7 @@ describe('panelctl', () => {
     const { client } = await ownerReady(p);
     const { text } = await run(p, 'reset-password', 'alice');
     const temp = /: (\S+)$/m.exec(text)![1]!;
-    expect((await client.get('/api/status')).statusCode).toBe(401);
+    expect((await client.get('/api/servers/default/status')).statusCode).toBe(401);
     const c = new Client(p.app);
     const login = (await c.post('/api/auth/login', { username: 'alice', password: temp })).json() as { pending: string };
     // 2FA stays on: the second factor comes before the password change.
