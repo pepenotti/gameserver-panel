@@ -4,6 +4,7 @@
 // AST-02), and the websocket's per-server messages.
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli/commands';
+import { OrchestratorCallError } from '../src/servers/orchestrator';
 import { Client, fakeStatus, friend, listenWs, makePanel, ownerReady, until, type TestPanel } from './harness';
 
 /** Creates `pz-two` through the API as `c`. */
@@ -173,6 +174,34 @@ describe('memory and CPU limits through the API (SRV-05)', () => {
     const refused = await admin.req('PUT', '/api/servers/pz-two/server/launch', { ...launch, memoryMb: 6144 });
     expect(refused.json()).toMatchObject({ error: 'orchestrator-refused', maxMb: 8192 });
     expect(((await admin.get('/api/servers/pz-two/server/launch')).json() as { memoryMb: number }).memoryMb).toBe(3072);
+  });
+
+  it('tells an admin of one server the most the host gives a server, before the API refuses more (SRV-05)', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    await createTwo(owner, { launch: { memoryMb: 2048 } });
+    const admin = await friend(p, owner, 'two-admin', 'admin', { 'pz-two': 'admin' });
+    const op = await friend(p, owner, 'two-op', 'operator', { 'pz-two': 'operator' });
+    // It can't create servers, so the host's summary is not for it.
+    expect((await admin.get('/api/adapters')).json()).toEqual({ error: 'forbidden' });
+
+    p.orch.maxMemMb = 6144;
+    expect((await admin.get('/api/servers/pz-two/limits')).json()).toEqual({ maxMemMb: 6144, cpus: 8 });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 6144 + 1024 })).json()).toMatchObject({ error: 'orchestrator-refused', maxMb: 6144 });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { cpus: 9 })).json()).toMatchObject({ error: 'invalid-cpus', max: 8 });
+    // The same answer the host's summary gives those who create servers.
+    const host = ((await owner.get('/api/adapters')).json() as { host: { maxMemMb: number; cpus: number } }).host;
+    expect((await owner.get('/api/servers/pz-two/limits')).json()).toEqual({ maxMemMb: host.maxMemMb, cpus: host.cpus });
+
+    // An orchestrator that doesn't say, or can't be asked: nothing to show, and its refusals still tell.
+    p.orch.maxMemMb = undefined;
+    expect((await admin.get('/api/servers/pz-two/limits')).json()).toEqual({ maxMemMb: null, cpus: 8 });
+    p.orch.failNext.set('host', new OrchestratorCallError(0, 'unreachable', 'connect ECONNREFUSED'));
+    expect((await admin.get('/api/servers/pz-two/limits')).json()).toEqual({ maxMemMb: null, cpus: null });
+
+    // It needs server.update there; a server it has no role on doesn't exist.
+    expect((await op.get('/api/servers/pz-two/limits')).json()).toEqual({ error: 'forbidden' });
+    expect((await admin.get('/api/servers/default/limits')).json()).toEqual({ error: 'server-not-found' });
   });
 });
 
