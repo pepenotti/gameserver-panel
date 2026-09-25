@@ -49,7 +49,7 @@ describe('presence', () => {
   it('emits join/leave events for notifications', async () => {
     const { p } = await setup();
     const seen: string[] = [];
-    p.deps.players.onPresence((e) => seen.push(`${e.kind}:${e.username}`));
+    p.srv.players.onPresence((e) => seen.push(`${e.kind}:${e.username}`));
     p.feed.emit({ type: 'players', count: 1, names: ['carol'] });
     p.feed.emit({ type: 'players', count: 0, names: [] });
     expect(seen).toEqual(['join:carol', 'leave:carol']);

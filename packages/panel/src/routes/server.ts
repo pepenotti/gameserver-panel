@@ -2,7 +2,7 @@ import type { CommandDoc } from '@gsp/adapter-api';
 import { RconProtocolError, type OptionMeta } from '@gsp/formats';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { COUNTDOWNS, type GameLang } from '../control/control';
-import { actor, HttpError } from '../http/context';
+import { by, HttpError, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 
 const countdownBody = {
@@ -19,72 +19,86 @@ export function auditableCommand(cmd: string, catalog: readonly CommandDoc[]): s
   return cmd.slice(0, 300);
 }
 
-/** A JSON schema for the adapter's launch settings form: every key, typed, nothing else. */
-export function launchBodySchema(options: OptionMeta[]): Record<string, unknown> {
-  const prop = (o: OptionMeta): Record<string, unknown> => {
-    const range = { ...(o.min !== undefined ? { minimum: o.min } : {}), ...(o.max !== undefined ? { maximum: o.max } : {}) };
+/**
+ * What is wrong with a launch settings body for the adapter's form: every
+ * key, typed and in range, nothing else. Null when it is fine. (Each server
+ * has its own adapter, so this can't be a route schema.)
+ */
+export function launchBodyProblem(options: OptionMeta[], body: unknown): string | null {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) return 'body must be an object';
+  const b = body as Record<string, unknown>;
+  const keys = new Set(options.map((o) => o.key));
+  const extra = Object.keys(b).find((k) => !keys.has(k));
+  if (extra !== undefined) return `unknown setting ${extra}`;
+  for (const o of options) {
+    const v = b[o.key];
+    if (v === undefined) return `${o.key} is required`;
+    const range = (n: number) => (o.min !== undefined && n < o.min) || (o.max !== undefined && n > o.max);
     switch (o.type) {
       case 'boolean':
-        return { type: 'boolean' };
+        if (typeof v !== 'boolean') return `${o.key} must be true or false`;
+        break;
       case 'integer':
-        return { type: 'integer', ...range };
+        if (typeof v !== 'number' || !Number.isInteger(v) || range(v)) return `${o.key} must be a whole number in range`;
+        break;
       case 'decimal':
-        return { type: 'number', ...range };
+        if (typeof v !== 'number' || !Number.isFinite(v) || range(v)) return `${o.key} must be a number in range`;
+        break;
       case 'enum':
-        return { enum: (o.options ?? []).map((x) => x.value) };
+        if (!(o.options ?? []).some((x) => x.value === v)) return `${o.key} is not one of the choices`;
+        break;
       case 'string':
-        return { type: 'string', maxLength: 200, pattern: '^[^\\r\\n\\u0000]*$' };
+        if (typeof v !== 'string' || v.length > 200 || /[\r\n\0]/.test(v)) return `${o.key} must be one line of at most 200 characters`;
+        break;
     }
-  };
-  return {
-    type: 'object',
-    required: options.map((o) => o.key),
-    additionalProperties: false,
-    properties: Object.fromEntries(options.map((o) => [o.key, prop(o)])),
-  };
+  }
+  return null;
 }
 
 export function serverRoutes(app: FastifyInstance, deps: Deps): void {
-  const { control, ops, agent, audit, server } = deps;
+  const { audit } = deps;
   const lang = (req: FastifyRequest): GameLang => (req.auth?.user.lang === 'en' ? 'en' : 'es');
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
 
-  app.get('/api/ops/current', { config: { permission: 'server.view' } }, async () => ops.busy ?? deps.bus.currentOp());
+  app.get('/api/ops/current', { config: { permission: 'server.view' } }, async (req) => {
+    const { ops } = srvOf(req);
+    return ops.busy ?? ops.last();
+  });
 
   app.post<{ Params: { id: string } }>('/api/ops/:id/cancel', { config: { permission: 'server.control' } }, async (req) => {
-    if (!ops.cancel(req.params.id)) throw new HttpError(409, 'not-cancellable');
-    audit.log({ actor: actor(req), action: 'server.cancel', ip: req.ip });
+    if (!srvOf(req).ops.cancel(req.params.id)) throw new HttpError(409, 'not-cancellable');
+    audit.log({ ...by(req), action: 'server.cancel' });
     return { ok: true };
   });
 
   app.post('/api/server/start', { config: { permission: 'server.control' } }, async (req) => {
-    const op = control.start(who(req));
-    audit.log({ actor: actor(req), action: 'server.start', ip: req.ip });
+    const op = srvOf(req).control.start(who(req));
+    audit.log({ ...by(req), action: 'server.start' });
     return op;
   });
 
   app.post<{ Body: { countdownSec?: number } }>('/api/server/stop', { config: { permission: 'server.control' }, schema: { body: countdownBody } }, async (req) => {
-    const op = control.stop(who(req), req.body?.countdownSec ?? 0, lang(req));
-    audit.log({ actor: actor(req), action: 'server.stop', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
+    const op = srvOf(req).control.stop(who(req), req.body?.countdownSec ?? 0, lang(req));
+    audit.log({ ...by(req), action: 'server.stop', detail: { countdownSec: req.body?.countdownSec ?? 0 } });
     return op;
   });
 
   app.post<{ Body: { countdownSec?: number } }>('/api/server/restart', { config: { permission: 'server.control' }, schema: { body: countdownBody } }, async (req) => {
-    const op = control.restart(who(req), req.body?.countdownSec ?? 0, lang(req));
-    audit.log({ actor: actor(req), action: 'server.restart', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
+    const op = srvOf(req).control.restart(who(req), req.body?.countdownSec ?? 0, lang(req));
+    audit.log({ ...by(req), action: 'server.restart', detail: { countdownSec: req.body?.countdownSec ?? 0 } });
     return op;
   });
 
   // Emergency stop without saving: admins only.
   app.post('/api/server/kill', { config: { permission: 'server.update' } }, async (req) => {
-    const s = await agent.kill();
-    audit.log({ actor: actor(req), action: 'server.kill', ip: req.ip });
+    const s = await srvOf(req).agent.kill();
+    audit.log({ ...by(req), action: 'server.kill' });
     return s;
   });
 
   app.post('/api/server/save', { config: { permission: 'server.control', capability: 'save' } }, async (req) => {
-    const r = await agent.save();
-    audit.log({ actor: actor(req), action: 'server.save', ok: r.ok, ip: req.ip });
+    const r = await srvOf(req).agent.save();
+    audit.log({ ...by(req), action: 'server.save', ok: r.ok });
     if (!r.ok) throw new HttpError(502, 'save-failed', r.error);
     return { ok: true };
   });
@@ -97,12 +111,12 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     },
     async (req) => {
       try {
-        await control.broadcast(req.body.message.trim());
+        await srvOf(req).control.broadcast(req.body.message.trim());
       } catch (e) {
         if (e instanceof RconProtocolError) throw new HttpError(400, 'invalid-message');
         throw e;
       }
-      audit.log({ actor: actor(req), action: 'server.broadcast', detail: req.body.message.slice(0, 300), ip: req.ip });
+      audit.log({ ...by(req), action: 'server.broadcast', detail: req.body.message.slice(0, 300) });
       return { ok: true };
     },
   );
@@ -114,36 +128,41 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
       schema: { body: { type: 'object', required: ['command'], additionalProperties: false, properties: { command: { type: 'string', minLength: 1, maxLength: 1000, pattern: '^[^\\r\\n\\u0000]+$' } } } },
     },
     async (req) => {
+      const s = srvOf(req);
       const cmd = req.body.command.trim().replace(/^\//, '');
-      const r = await agent.command(cmd);
-      audit.log({ actor: actor(req), action: 'server.command', detail: auditableCommand(cmd, server.adapter.consoleCatalog ?? []), ip: req.ip });
+      const r = await s.agent.command(cmd);
+      audit.log({ ...by(req), action: 'server.command', detail: auditableCommand(cmd, s.adapter.consoleCatalog ?? []) });
       return r;
     },
   );
 
-  app.get('/api/server/launch', { config: { permission: 'server.view' } }, async () => server.launchSettings());
+  app.get('/api/server/launch', { config: { permission: 'server.view' } }, async (req) => srvOf(req).handle.launchSettings());
 
   app.put<{ Body: Record<string, unknown> }>(
     '/api/server/launch',
-    { config: { permission: 'server.update' }, schema: { body: launchBodySchema(server.adapter.launch.schema) } },
+    { config: { permission: 'server.update' }, schema: { body: { type: 'object', maxProperties: 100 } } },
     async (req) => {
+      const { handle } = srvOf(req);
+      const problem = launchBodyProblem(handle.adapter.launch.schema, req.body);
+      if (problem) throw new HttpError(400, 'validation', problem, { message: problem });
       // The adapter refuses settings it can't turn into launch params (ranges and formats the form can't express).
       try {
-        server.launchEnvelope({}, req.body);
+        handle.launchEnvelope({}, req.body);
       } catch (e) {
         throw new HttpError(400, 'validation', (e as Error).message);
       }
-      const before = server.launchSettings();
-      server.setLaunchSettings(req.body);
-      audit.log({ actor: actor(req), action: 'server.launch-settings', detail: { before, after: req.body }, ip: req.ip });
-      return server.launchSettings();
+      const before = handle.launchSettings();
+      handle.setLaunchSettings(req.body);
+      audit.log({ ...by(req), action: 'server.launch-settings', detail: { before, after: req.body } });
+      return handle.launchSettings();
     },
   );
 
   // The shape predates adapters (Steam branches); versions map onto it.
-  app.get('/api/server/updates', { config: { permission: 'server.update', capability: 'updateCheck' } }, async () => {
-    const ctx = server.ctx();
-    const check = await server.adapter.updates?.check(ctx, server.launchSettings());
+  app.get('/api/server/updates', { config: { permission: 'server.update', capability: 'updateCheck' } }, async (req) => {
+    const { handle } = srvOf(req);
+    const ctx = handle.ctx();
+    const check = await handle.adapter.updates?.check(ctx, handle.launchSettings());
     const info = await ctx.versions();
     const channel = check?.channel ?? null;
     const latest = info.versions.find((v) => v.id === channel) ?? null;
@@ -163,8 +182,8 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
       schema: { body: { type: 'object', additionalProperties: false, properties: { countdownSec: { enum: [...COUNTDOWNS] }, validate: { type: 'boolean' } } } },
     },
     async (req) => {
-      const op = control.update(who(req), { countdownSec: req.body?.countdownSec ?? 0, validate: req.body?.validate ?? false }, lang(req));
-      audit.log({ actor: actor(req), action: req.body?.validate ? 'server.validate' : 'server.update', detail: { countdownSec: req.body?.countdownSec ?? 0 }, ip: req.ip });
+      const op = srvOf(req).control.update(who(req), { countdownSec: req.body?.countdownSec ?? 0, validate: req.body?.validate ?? false }, lang(req));
+      audit.log({ ...by(req), action: req.body?.validate ? 'server.validate' : 'server.update', detail: { countdownSec: req.body?.countdownSec ?? 0 } });
       return op;
     },
   );

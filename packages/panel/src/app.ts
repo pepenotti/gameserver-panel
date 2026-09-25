@@ -18,7 +18,8 @@ import { modRoutes } from './routes/mods';
 import { playerRoutes } from './routes/players';
 import { proposalRoutes } from './routes/proposals';
 import { resetRoutes } from './routes/reset';
-import { scheduleRoutes } from './routes/schedules';
+import { notificationRoutes, scheduleRoutes } from './routes/schedules';
+import { serverScope } from './routes/scope';
 import { serverRoutes } from './routes/server';
 import { meRoutes, userRoutes } from './routes/users';
 import { wsRoutes } from './routes/ws';
@@ -51,21 +52,27 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
 
   app.get('/api/health', { config: { auth: 'public' } }, async () => ({ ok: true, version: deps.env.version }));
 
+  // The host's routes: accounts, sessions, users, audit, host settings, the websocket.
   authRoutes(app, deps);
   meRoutes(app, deps);
   userRoutes(app, deps);
-  statusRoutes(app, deps);
-  metaRoutes(app, deps);
-  serverRoutes(app, deps);
-  configRoutes(app, deps);
-  fileRoutes(app, deps);
-  proposalRoutes(app, deps);
-  backupRoutes(app, deps);
-  resetRoutes(app, deps);
-  playerRoutes(app, deps);
-  modRoutes(app, deps);
-  scheduleRoutes(app, deps);
+  notificationRoutes(app, deps);
   wsRoutes(app, deps);
+
+  // Each server's routes (ACC-02: resolved and checked per server).
+  await serverScope(app, (s) => {
+    statusRoutes(s, deps);
+    metaRoutes(s, deps);
+    serverRoutes(s, deps);
+    configRoutes(s, deps);
+    fileRoutes(s, deps);
+    proposalRoutes(s, deps);
+    backupRoutes(s, deps);
+    resetRoutes(s, deps);
+    playerRoutes(s, deps);
+    modRoutes(s, deps);
+    scheduleRoutes(s, deps);
+  });
 
   app.setNotFoundHandler({ preHandler: undefined }, (req, reply) => {
     if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'not-found' });

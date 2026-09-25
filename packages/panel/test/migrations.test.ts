@@ -147,14 +147,14 @@ describe('migration 6 (several servers)', () => {
       expect.objectContaining({ id: DEFAULT_SERVER_ID, name: 'zomboid', adapter: 'pz', gameName: 'zomboid', ports: { game: 16261, udp: 30162 }, memLimitMb: 6144 + 3072, spec: null }),
     ]);
     expect(new ServersStore(db).secrets(DEFAULT_SERVER_ID)).toEqual({});
-    expect(p.deps.server.launchSettings()).toEqual({ memoryMb: 6144, branch: 'public', updateOnStart: false });
-    expect(p.deps.scheduler.config().restarts).toMatchObject({ enabled: false, times: ['05:30'] });
+    expect(p.srv.handle.launchSettings()).toEqual({ memoryMb: 6144, branch: 'public', updateOnStart: false });
+    expect(p.srv.scheduler.config().restarts).toMatchObject({ enabled: false, times: ['05:30'] });
     expect(p.deps.notifier.config().webhookUrl).toMatch(/^https:\/\/discord\.com\//);
-    expect(p.deps.mods.enabled()).toEqual([{ modId: 'Hydrocraft', workshopId: '2544353492' }]);
-    expect(p.deps.mods.itemIds().sort()).toEqual(['2169435993', '2544353492']);
-    expect(p.deps.config.historyOf('ini').map((v) => v.note)).toEqual(['raw edit']);
-    expect(p.deps.changes.list({ status: 'pending' }).map((x) => x.serverId)).toEqual(['default']);
-    expect(p.deps.flows.lastRestore()).toMatchObject({ id: 'r1', backup: 'b' });
+    expect(p.srv.mods.enabled()).toEqual([{ modId: 'Hydrocraft', workshopId: '2544353492' }]);
+    expect(p.srv.mods.itemIds().sort()).toEqual(['2169435993', '2544353492']);
+    expect(p.srv.config.historyOf('ini').map((v) => v.note)).toEqual(['raw edit']);
+    expect(p.srv.changes.list({ status: 'pending' }).map((x) => x.serverId)).toEqual(['default']);
+    expect(p.srv.flows.lastRestore()).toMatchObject({ id: 'r1', backup: 'b' });
     // Booting again adds nothing.
     await makePanel({}, { db });
     expect(new ServersStore(db).count()).toBe(1);

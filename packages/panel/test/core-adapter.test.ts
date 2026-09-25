@@ -19,8 +19,8 @@ async function asRole(p: TestPanel, owner: Client, role: 'viewer' | 'operator') 
 
 /** The same adapter without some capabilities. */
 function without(p: TestPanel, ...caps: Capability[]): void {
-  const a = p.deps.adapter;
-  p.deps.adapter = { ...a, meta: { ...a.meta, capabilities: a.meta.capabilities.filter((c) => !caps.includes(c)) } };
+  const a = p.srv.adapter;
+  p.srv.adapter = { ...a, meta: { ...a.meta, capabilities: a.meta.capabilities.filter((c) => !caps.includes(c)) } };
 }
 
 describe('capability guard', () => {
@@ -69,7 +69,7 @@ describe('GET /api/meta', () => {
       consoleCatalog: { name: string }[];
     };
     expect(m.adapter).toMatchObject({ id: 'pz', name: { en: 'Project Zomboid' } });
-    expect(m.server).toEqual({ id: 'default', gameName: 'zomboid', flavour: null });
+    expect(m.server).toEqual({ id: 'default', name: 'zomboid', gameName: 'zomboid', flavour: null });
     expect(m.capabilities).toEqual(expect.arrayContaining(['kick', 'ban', 'whitelist', 'broadcast', 'mods:workshop', 'updateCheck']));
     expect(m.launch.schema.map((o) => o.key)).toEqual(['memoryMb', 'branch', 'updateOnStart']);
     // Which secrets the server needs, never their values.
@@ -133,7 +133,7 @@ describe('backups never follow links', () => {
       fileLink = false;
     }
 
-    const b = await p.deps.backups.create({ trigger: 'manual', hot: false });
+    const b = await p.srv.backups.create({ trigger: 'manual', hot: false });
     const names: string[] = [];
     const src = new PassThrough();
     src.end(zstdDecompressSync(readFileSync(path.join(p.deps.env.backupDir, b.name))));

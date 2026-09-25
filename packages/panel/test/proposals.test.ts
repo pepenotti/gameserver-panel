@@ -43,7 +43,7 @@ describe('proposals (AST-03)', () => {
     const applied = (await c.post(`/api/config/proposals/${r.id}/apply`)).json() as { applied: string; proposal: { status: string; decidedBy: string } };
     expect(applied).toMatchObject({ applied: 'next-start', proposal: { status: 'applied', decidedBy: 'alice' } });
     expect(ini().PVP).toBe('false');
-    expect(p.deps.config.historyOf('ini')[0]).toMatchObject({ note: 'no more PvP', username: 'alice' });
+    expect(p.srv.config.historyOf('ini')[0]).toMatchObject({ note: 'no more PvP', username: 'alice' });
     expect((await c.post(`/api/config/proposals/${r.id}/apply`)).json()).toMatchObject({ error: 'not-pending', status: 'applied' });
     expect(p.deps.audit.list({ action: 'config.propose' })).toHaveLength(1);
   });
@@ -140,7 +140,7 @@ describe('proposals (AST-03)', () => {
 
   it('are wired as the panel service', async () => {
     const { p } = await setup();
-    const r = await p.deps.changes.propose({ fileId: 'ini', changes: { PVP: 'false' } }, 'alice', 'assistant');
-    expect(p.deps.changes.list({ fileId: 'ini' })).toMatchObject([{ id: r.id, actorType: 'assistant' }]);
+    const r = await p.srv.changes.propose({ fileId: 'ini', changes: { PVP: 'false' } }, 'alice', 'assistant');
+    expect(p.srv.changes.list({ fileId: 'ini' })).toMatchObject([{ id: r.id, actorType: 'assistant' }]);
   });
 });

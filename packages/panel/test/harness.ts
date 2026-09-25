@@ -13,6 +13,7 @@ import { base32Decode, currentStep, hotp } from '../src/auth/totp';
 import { openDb, type Db } from '../src/db/db';
 import type { PanelEnv } from '../src/env';
 import type { AgentFeed, Deps } from '../src/http/deps';
+import type { ServerContext } from '../src/servers/context';
 import { createPanelDeps } from '../src/wiring';
 
 export const ORIGIN = 'https://panel.test:8443';
@@ -95,6 +96,8 @@ export interface TestPanel {
   deps: Deps;
   feed: FakeFeed;
   agent: ReturnType<typeof fakeAgent>;
+  /** The one server (`default`): its services. */
+  srv: ServerContext;
 }
 
 export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: ModSource[]; fetch?: typeof fetch; db?: Db } = {}): Promise<TestPanel> {
@@ -127,7 +130,7 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
   const deps = createPanelDeps({ env, db, agent, feed, fetch: opts.fetch ?? noNetwork, mods: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })] });
   await bootstrapOwner(deps);
   const app = await buildApp(deps);
-  return { app, deps, feed, agent };
+  return { app, deps, feed, agent, srv: deps.servers.get('default')! };
 }
 
 /** A tiny cookie-jar client that behaves like the web UI (Origin + CSRF header). */

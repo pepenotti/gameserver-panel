@@ -58,7 +58,7 @@ describe('Discord notifications', () => {
     p.feed.emit({ type: 'state', status: fakeStatus({ state: 'starting' }) });
     p.feed.emit({ type: 'state', status: fakeStatus({ state: 'running' }) });
     p.feed.emit({ type: 'players', count: 1, names: ['rick'] });
-    p.deps.bus.emit({ type: 'op', op: { id: '1', kind: 'backup', startedAt: '', startedBy: 'alice', step: 'failed', countdownEndsAt: null, cancellable: false, progress: null, done: true, ok: false, error: 'disk full' } });
+    p.deps.bus.emit({ type: 'op', serverId: 'default', op: { id: '1', kind: 'backup', startedAt: '', startedBy: 'alice', step: 'failed', countdownEndsAt: null, cancellable: false, progress: null, done: true, ok: false, error: 'disk full' } });
     await p.deps.notifier.drain();
     expect(d.posts.map((x) => x.body.embeds[0]!.title)).toEqual(['🟢 Servidor en línea', '➡️ Entró rick', '⚠️ Falló la copia de seguridad']);
     expect(d.posts[2]!.body.embeds[0]!.description).toBe('👤 alice — disk full');
@@ -106,10 +106,10 @@ describe('schedules', () => {
     await c.req('PUT', '/api/schedules', { ...cur, restarts: { enabled: true, times: ['06:00'], countdownSec: 0, backupWhileStopped: true } });
     seedWorld(p);
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
-    await p.deps.scheduler.runRestart();
-    await p.deps.ops.idle();
+    await p.srv.scheduler.runRestart();
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'start']);
-    expect(p.deps.backups.list().map((b) => b.manifest.trigger)).toEqual(['scheduled']);
+    expect(p.srv.backups.list().map((b) => b.manifest.trigger)).toEqual(['scheduled']);
     expect(((await c.get('/api/status')).json() as { lastBackup: unknown }).lastBackup).toMatchObject({ trigger: 'scheduled', mode: 'cold' });
   });
 
@@ -117,7 +117,7 @@ describe('schedules', () => {
     const { p } = await setup();
     const dir = path.join(p.deps.env.backupDir, 'panel');
     for (let i = 0; i < 9; i++) backupPanelDb(p.deps.db, p.deps.env.backupDir, 7, new Date(Date.UTC(2026, 8, 1 + i, 4, 30)));
-    p.deps.scheduler.runPanelDbBackup();
+    p.deps.hostJobs.runPanelDbBackup();
     const kept = readdirSync(dir).sort();
     expect(kept).toHaveLength(7);
     expect(kept[0]).toBe('panel-20260904T043000Z.sqlite');
@@ -125,17 +125,17 @@ describe('schedules', () => {
     const copy = new DatabaseSync(path.join(dir, kept.at(-1)!), { readOnly: true });
     expect(copy.prepare('SELECT username FROM users').all()).toEqual([{ username: 'alice' }]);
     copy.close();
-    p.deps.scheduler.reload();
-    expect(p.deps.scheduler.nextRuns().panelDb).not.toBeNull();
-    p.deps.scheduler.stop();
+    p.deps.hostJobs.start();
+    expect(p.deps.hostJobs.nextRuns().panelDb).not.toBeNull();
+    p.deps.hostJobs.stop();
   });
 
   it('runs the periodic backup while stopped, cold, and audits it', async () => {
     const { p } = await setup();
     seedWorld(p);
-    await p.deps.scheduler.runBackup();
-    await p.deps.ops.idle();
-    expect(p.deps.backups.list().map((b) => [b.manifest.trigger, b.manifest.mode])).toEqual([['scheduled', 'cold']]);
+    await p.srv.scheduler.runBackup();
+    await p.srv.ops.idle();
+    expect(p.srv.backups.list().map((b) => [b.manifest.trigger, b.manifest.mode])).toEqual([['scheduled', 'cold']]);
     expect(p.deps.audit.list({ action: 'schedule.backup' })[0]).toMatchObject({ ok: true });
   });
 
@@ -143,27 +143,27 @@ describe('schedules', () => {
     const { p } = await setup();
     seedWorld(p);
     p.feed.status_ = fakeStatus({ state: 'running' });
-    await p.deps.scheduler.runBackup();
-    await p.deps.ops.idle();
+    await p.srv.scheduler.runBackup();
+    await p.srv.ops.idle();
     // The agent's save waits for the game to finish writing.
     expect(p.agent.calls).toEqual(['save']);
-    expect(p.deps.backups.list()[0]!.manifest.mode).toBe('hot');
+    expect(p.srv.backups.list()[0]!.manifest.mode).toBe('hot');
   });
 
   it('audits a periodic backup that fails', async () => {
     const { p } = await setup();
     seedWorld(p);
-    p.deps.backups.create = async () => {
+    p.srv.backups.create = async () => {
       throw new Error('disk full');
     };
-    await p.deps.scheduler.runBackup();
-    await p.deps.ops.idle();
+    await p.srv.scheduler.runBackup();
+    await p.srv.ops.idle();
     expect(p.deps.audit.list({ action: 'schedule.backup' })[0]).toMatchObject({ ok: false, detail: 'disk full' });
   });
 
   it('skips the restart when the server is stopped', async () => {
     const { p } = await setup();
-    await p.deps.scheduler.runRestart();
+    await p.srv.scheduler.runRestart();
     expect(p.agent.calls).toEqual([]);
     expect(p.deps.audit.list({ action: 'schedule.restart' })[0]!.detail).toBe('skipped: server not running');
   });
@@ -172,12 +172,12 @@ describe('schedules', () => {
     const { p } = await setup();
     p.agent.versions = async () => ({ installed: { version: '42.20.4', channel: 'public', build: '100' }, versions: [{ id: 'public', build: '200' }] });
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 2, names: ['a', 'b'], at: '' } });
-    await p.deps.scheduler.checkGameUpdate();
-    expect(p.deps.ops.busy).toBeNull();
+    await p.srv.scheduler.checkGameUpdate();
+    expect(p.srv.ops.busy).toBeNull();
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
-    await p.deps.scheduler.checkGameUpdate();
-    expect(p.deps.ops.busy).toMatchObject({ kind: 'update', startedBy: 'scheduler' });
-    await p.deps.ops.idle();
+    await p.srv.scheduler.checkGameUpdate();
+    expect(p.srv.ops.busy).toMatchObject({ kind: 'update', startedBy: 'scheduler' });
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'install', 'start']);
   });
 });

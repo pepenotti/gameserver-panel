@@ -16,8 +16,8 @@ function actorLabel(by: string | null): string {
   return by && by !== 'scheduler' ? `👤 ${by}` : '🕒 auto';
 }
 
-/** Route live events to Discord. Returns an unsubscribe function. */
-export function wireNotifications(d: { feed: AgentFeed; players: PlayersService; bus: PanelBus; notifier: DiscordNotifier }): () => void {
+/** Route one server's live events to Discord. Returns an unsubscribe function. */
+export function wireNotifications(d: { serverId: string; feed: AgentFeed; players: PlayersService; bus: PanelBus; notifier: DiscordNotifier }): () => void {
   let last: string | null = null;
   const offFeed = d.feed.onEvent((e) => {
     const ev = e.event;
@@ -36,7 +36,7 @@ export function wireNotifications(d: { feed: AgentFeed; players: PlayersService;
   });
   const offPlayers = d.players.onPresence((p) => d.notifier.notify(p.kind === 'join' ? 'playerJoin' : 'playerLeave', { name: p.username }));
   const offBus = d.bus.on((e) => {
-    if (e.type !== 'op' || !e.op.done) return;
+    if (e.type !== 'op' || e.serverId !== d.serverId || !e.op.done) return;
     const event = OP_EVENT[e.op.kind];
     if (!event || e.op.step === 'cancelled') return;
     const detail = [actorLabel(e.op.startedBy), e.op.error ?? ''].filter(Boolean).join(' — ');

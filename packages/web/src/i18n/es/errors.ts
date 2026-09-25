@@ -25,6 +25,7 @@ export default {
   'cannot-reset-own-2fa': 'No podés reiniciar tu propio 2FA.',
   validation: 'Hay campos que no son válidos.',
   'not-found': 'No encontrado.',
+  'server-not-found': 'Ese servidor no existe, o no tenés acceso a él.',
   'not-implemented': 'Todavía no está disponible.',
   network: 'No se puede conectar con el panel. Revisá tu conexión.',
   'agent-unreachable': 'El contenedor del servidor del juego no responde.',

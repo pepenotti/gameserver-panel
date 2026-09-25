@@ -8,7 +8,6 @@ import { createZstdCompress, createZstdDecompress } from 'node:zlib';
 import type { BackupPartDecl } from '@gsp/adapter-api';
 import type { AgentFeed } from '../http/deps';
 import { HttpError } from '../http/context';
-import type { PanelEnv } from '../env';
 import type { ServerHandle } from '../server/handle';
 import { globToRegExp, matchesAny } from './glob';
 import { TarError, TarPacker, unpack } from './tar';
@@ -85,7 +84,12 @@ function exists(abs: string): boolean {
 }
 
 export interface BackupDeps {
-  env: PanelEnv;
+  /** Where this server's archives go. */
+  dir: string;
+  /** The server's data root on the panel's disk (until M2-C packs through the agent, D11). */
+  dataDir: string;
+  /** Recorded in each manifest. */
+  panelVersion: string;
   feed: AgentFeed;
   server: ServerHandle;
   /** The enabled mods, recorded in each manifest. */
@@ -100,8 +104,9 @@ export class BackupService {
     this.nameRe = new RegExp(`^${prefix}-[A-Za-z0-9_-]{1,32}-\\d{8}T\\d{6}Z-(${TRIGGERS.join('|')})(-\\d+)?\\.tar\\.zst$`);
   }
 
-  private get dir(): string {
-    return this.d.env.backupDir;
+  /** Where this server's archives are. */
+  get dir(): string {
+    return this.d.dir;
   }
 
   private get name(): string {
@@ -139,7 +144,7 @@ export class BackupService {
 
   /** Whether anything a backup would cover exists (there is something to protect). */
   hasData(): boolean {
-    return this.parts().some((p) => this.partPaths(p).some((rel) => exists(path.join(this.d.env.pzDataDir, rel))));
+    return this.parts().some((p) => this.partPaths(p).some((rel) => exists(path.join(this.d.dataDir, rel))));
   }
 
   // ------------------------------------------------------------------ list
@@ -216,7 +221,7 @@ export class BackupService {
 
   private sourceBytes(parts: BackupPart[]): number {
     let total = 0;
-    for (const part of parts) for (const p of this.partPaths(part)) for (const f of walk(this.d.env.pzDataDir, p)) if (f.st.isFile()) total += f.st.size;
+    for (const part of parts) for (const p of this.partPaths(part)) for (const f of walk(this.d.dataDir, p)) if (f.st.isFile()) total += f.st.size;
     return total;
   }
 
@@ -228,7 +233,7 @@ export class BackupService {
    */
   async create(opts: { trigger: BackupTrigger; hot: boolean; onProgress?: (fraction: number) => void }): Promise<BackupInfo> {
     mkdirSync(this.dir, { recursive: true });
-    const data = this.d.env.pzDataDir;
+    const data = this.d.dataDir;
     const parts = this.parts().filter((p) => this.partPaths(p).some((rel) => exists(path.join(data, rel))));
     const total = this.sourceBytes(parts);
     const free = statfsSync(this.dir);
@@ -276,7 +281,7 @@ export class BackupService {
         parts,
         files: 0,
         bytes: total,
-        panelVersion: this.d.env.version,
+        panelVersion: this.d.panelVersion,
       };
       // Written first so a reader can check it before unpacking gigabytes.
       await tar.addBuffer('manifest.json', Buffer.from(JSON.stringify(manifest, null, 2)), createdAt.getTime() / 1000);
@@ -432,7 +437,7 @@ export class BackupService {
    * moving what was there into `trash` for rollback.
    */
   swapIn(parts: BackupPart[], staging: string, trash: string): void {
-    const data = this.d.env.pzDataDir;
+    const data = this.d.dataDir;
     for (const part of parts) {
       for (const rel of this.partPaths(part)) {
         const live = path.join(data, rel);
@@ -451,7 +456,7 @@ export class BackupService {
 
   /** Undo swapIn: put the trash back. */
   rollback(parts: BackupPart[], trash: string): void {
-    const data = this.d.env.pzDataDir;
+    const data = this.d.dataDir;
     for (const part of parts) {
       for (const rel of this.partPaths(part)) {
         const kept = path.join(trash, rel);

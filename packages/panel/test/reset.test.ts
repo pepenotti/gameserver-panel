@@ -33,8 +33,8 @@ describe('reset', () => {
   it('world: new world with a backup first, keeps accounts and settings, bumps ResetID', async () => {
     const { p, c } = await setup();
     expect((await c.post('/api/reset', { scope: 'world', confirm: 'zomboid', newSeed: true })).statusCode).toBe(200);
-    await p.deps.ops.idle();
-    expect(p.deps.bus.currentOp()).toMatchObject({ kind: 'reset', ok: true });
+    await p.srv.ops.idle();
+    expect(p.srv.ops.last()).toMatchObject({ kind: 'reset', ok: true });
     expect(exists(p, 'Saves/Multiplayer/zomboid')).toBe(false);
     expect(exists(p, 'db/zomboid.db')).toBe(true);
     const v = ini(p);
@@ -43,8 +43,8 @@ describe('reset', () => {
     expect(v.ResetID).not.toBe('1');
     expect(v.Seed).toMatch(/^[A-Za-z]{16}$/);
     // The adapter's reset step goes through the settings service: history names who did it.
-    expect(p.deps.config.historyOf('ini')[0]).toMatchObject({ note: 'reset (world)', username: 'alice' });
-    const pre = p.deps.backups.list().filter((b) => b.manifest.trigger === 'pre-reset');
+    expect(p.srv.config.historyOf('ini')[0]).toMatchObject({ note: 'reset (world)', username: 'alice' });
+    const pre = p.srv.backups.list().filter((b) => b.manifest.trigger === 'pre-reset');
     expect(pre).toHaveLength(1);
     expect(pre[0]!.manifest.parts).toEqual(['world', 'accounts', 'configs']);
   });
@@ -60,22 +60,22 @@ describe('reset', () => {
     expect(exists(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe(true);
 
     expect((await c.post('/api/reset', { scope: 'world', confirm: 'zomboid', preset: 'Apocalypse' })).statusCode).toBe(200);
-    await p.deps.ops.idle();
-    expect(p.deps.bus.currentOp()).toMatchObject({ kind: 'reset', ok: true });
+    await p.srv.ops.idle();
+    expect(p.srv.ops.last()).toMatchObject({ kind: 'reset', ok: true });
     expect(readFileSync(path.join(p.deps.env.pzDataDir, 'Server', 'zomboid_SandboxVars.lua'), 'utf8')).toMatch(/Zombies = 1,/);
-    expect(p.deps.config.historyOf('sandbox')[0]).toMatchObject({ note: 'preset Apocalypse', username: 'alice' });
+    expect(p.srv.config.historyOf('sandbox')[0]).toMatchObject({ note: 'preset Apocalypse', username: 'alice' });
   });
 
   it('full: also wipes accounts; factory: also settings, then first-run defaults', async () => {
     const { p, c } = await setup();
     await c.post('/api/reset', { scope: 'full', confirm: 'zomboid' });
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(exists(p, 'db/zomboid.db')).toBe(false);
     expect(ini(p).PublicName).toBe('Mi server');
 
     seed(p);
     await c.post('/api/reset', { scope: 'factory', confirm: 'zomboid' });
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(ini(p)).toEqual({ SaveWorldEveryMinutes: '10' });
     expect(exists(p, 'Server/zomboid_SandboxVars.lua')).toBe(false);
   });
@@ -84,7 +84,7 @@ describe('reset', () => {
     const { p, c } = await setup();
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
     await c.post('/api/reset', { scope: 'world', confirm: 'zomboid' });
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(p.agent.calls.filter((x) => x === 'stop' || x === 'start')).toEqual(['stop', 'start']);
   });
 
@@ -94,8 +94,8 @@ describe('reset', () => {
     mkdirSync(path.dirname(p.deps.env.backupDir), { recursive: true });
     writeFileSync(p.deps.env.backupDir, 'not a folder');
     await c.post('/api/reset', { scope: 'world', confirm: 'zomboid' });
-    await p.deps.ops.idle();
-    expect(p.deps.bus.currentOp()).toMatchObject({ ok: false });
+    await p.srv.ops.idle();
+    expect(p.srv.ops.last()).toMatchObject({ ok: false });
     expect(exists(p, 'Saves/Multiplayer/zomboid/map_t.bin')).toBe(true);
   });
 
@@ -112,6 +112,6 @@ describe('reset', () => {
     expect((await a.post('/api/reset', { scope: 'full', confirm: 'zomboid' })).statusCode).toBe(403);
     expect((await a.post('/api/reset', { scope: 'factory', confirm: 'zomboid' })).statusCode).toBe(403);
     expect((await a.post('/api/reset', { scope: 'world', confirm: 'zomboid' })).statusCode).toBe(200);
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
   });
 });

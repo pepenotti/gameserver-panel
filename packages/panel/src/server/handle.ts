@@ -2,15 +2,11 @@ import type { Capability, ConfigAccess, PanelAdapter, SecretBag, ServerCtx, Serv
 import type { LaunchEnvelope, VersionsResponse } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { ConfigStore } from '../config/store';
-import type { PanelEnv } from '../env';
 import type { AgentFeed } from '../http/deps';
 import type { KeyValueSettings } from '../settings';
 
 /** Settings row with the adapter's launch settings (its `S`). */
 const LAUNCH_KEY = 'launch';
-
-/** The panel's one server until M2 (servers get ids of their own then). */
-export const DEFAULT_SERVER_ID = 'default';
 
 /** What a server can do: its flavour's capabilities, or the adapter's. */
 export function capabilitiesOf(adapter: PanelAdapter, flavour: string | null): Set<Capability> {
@@ -19,7 +15,10 @@ export function capabilitiesOf(adapter: PanelAdapter, flavour: string | null): S
 }
 
 export interface ServerHandleDeps {
-  env: Pick<PanelEnv, 'serverName' | 'secrets'>;
+  /** Which server: its id, the name its game uses for its files, its flavour. */
+  ref: ServerRef;
+  /** The secrets the panel holds for it, by `LaunchSecretDecl.key` (the environment's for the server it describes, else the row's). */
+  secrets: () => Readonly<Record<string, string>>;
   agent: AgentApi;
   feed: AgentFeed;
   files: ServerFiles;
@@ -31,15 +30,15 @@ export interface ServerHandleDeps {
 }
 
 /**
- * The one game server the panel runs (until M2): its adapter, its stored
- * launch settings and secrets, and the `ServerCtx` adapter code runs with.
- * Every service shares its `ref`.
+ * One game server as adapter code sees it: its adapter, its stored launch
+ * settings and secrets, and the `ServerCtx` adapter code runs with. Every
+ * service of the server shares its `ref`.
  */
 export class ServerHandle {
   readonly ref: ServerRef;
 
   constructor(private readonly d: ServerHandleDeps) {
-    this.ref = { id: DEFAULT_SERVER_ID, gameName: d.env.serverName, flavour: null };
+    this.ref = { ...d.ref };
   }
 
   get adapter(): PanelAdapter {
@@ -66,9 +65,10 @@ export class ServerHandle {
 
   /** The secrets the adapter declares (`launch.secrets`) that the panel holds values for. */
   secrets(): SecretBag {
+    const held = this.d.secrets();
     const out: Record<string, string> = {};
     for (const s of this.d.adapter.launch.secrets ?? []) {
-      const v = this.d.env.secrets[s.key];
+      const v = held[s.key];
       if (v) out[s.key] = v;
     }
     return out;
@@ -76,7 +76,8 @@ export class ServerHandle {
 
   /** Declared secrets without a value: the panel can't start the server without them. */
   missingSecrets(): string[] {
-    return (this.d.adapter.launch.secrets ?? []).map((s) => s.key).filter((k) => !this.d.env.secrets[k]);
+    const held = this.d.secrets();
+    return (this.d.adapter.launch.secrets ?? []).map((s) => s.key).filter((k) => !held[k]);
   }
 
   /** Launch params for the agent; throws when the adapter can't turn `s` into params. */

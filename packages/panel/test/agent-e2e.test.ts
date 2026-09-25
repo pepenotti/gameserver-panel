@@ -13,7 +13,7 @@ import { AgentClient } from '../src/agent/client';
 import { openDb } from '../src/db/db';
 import { LocalServerFiles } from '../src/files/local';
 import { ServerHandle } from '../src/server/handle';
-import { Settings } from '../src/settings';
+import { ServerSettings } from '../src/settings';
 
 const ADMIN_PASSWORD = 'E2e-admin-pw-2026';
 const WAIT_MS = 15_000 * TIME_SCALE;
@@ -90,11 +90,12 @@ describe('agent and panel, end to end', () => {
       // The panel's side of the server: its adapter, launch settings and secrets, as wiring.ts builds it.
       const adapter = panelAdapter('pz');
       const handle = new ServerHandle({
-        env: { serverName: 'testsrv', secrets: { adminPassword: ADMIN_PASSWORD } },
+        ref: { id: 'default', gameName: 'testsrv', flavour: null },
+        secrets: () => ({ adminPassword: ADMIN_PASSWORD }),
         agent: client,
         feed: client,
         files: new LocalServerFiles({ data: h.cfg.dataDir!, install: h.cfg.installDir! }),
-        settings: new Settings(openDb(':memory:')),
+        settings: new ServerSettings(openDb(':memory:'), 'default'),
         config: () => {
           throw new Error('no config store in this test');
         },

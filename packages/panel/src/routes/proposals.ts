@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Scalar } from '@gsp/adapter-api';
 import { MAX_TEXT_BYTES } from '../files/policy';
-import { actor, HttpError } from '../http/context';
+import { by, HttpError, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 import { PROPOSAL_STATUSES, type ProposalInput, type ProposalStatus } from '../proposals/service';
 import { FILE_ID } from './config';
@@ -15,7 +15,7 @@ const idParam = { type: 'object', required: ['id'], properties: { id: { type: 's
  * editor alike (CFG-07).
  */
 export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
-  const { changes, audit } = deps;
+  const { audit } = deps;
   const who = (req: FastifyRequest) => req.auth?.user.username ?? null;
 
   app.post<{ Body: ProposalInput }>(
@@ -47,8 +47,8 @@ export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
       // Fastify would coerce a typed union (true → "true"), so scalar types are checked here.
       for (const v of Object.values(b.changes ?? {}) as unknown[]) if (v !== null && !['string', 'number', 'boolean'].includes(typeof v)) throw new HttpError(400, 'validation');
       if (b.changes) for (const k of Object.keys(b.changes)) if (k.length > 200) throw new HttpError(400, 'validation');
-      const r = await changes.propose({ ...b, changes: b.changes as Record<string, Scalar | null> | undefined }, who(req));
-      if (r.id) audit.log({ actor: actor(req), action: 'config.propose', target: b.fileId, detail: { proposal: r.id, keys: r.changedKeys.slice(0, 50) }, ip: req.ip });
+      const r = await srvOf(req).changes.propose({ ...b, changes: b.changes as Record<string, Scalar | null> | undefined }, who(req));
+      if (r.id) audit.log({ ...by(req), action: 'config.propose', target: b.fileId, detail: { proposal: r.id, keys: r.changedKeys.slice(0, 50) } });
       return r;
     },
   );
@@ -56,27 +56,26 @@ export function proposalRoutes(app: FastifyInstance, deps: Deps): void {
   app.get<{ Querystring: { status?: ProposalStatus; file?: string } }>(
     '/api/config/proposals',
     { config: perm, schema: { querystring: { type: 'object', properties: { status: { enum: PROPOSAL_STATUSES }, file: FILE_ID } } } },
-    async (req) => changes.list({ status: req.query.status, fileId: req.query.file }),
+    async (req) => srvOf(req).changes.list({ status: req.query.status, fileId: req.query.file }),
   );
 
-  app.get<{ Params: { id: string } }>('/api/config/proposals/:id', { config: perm, schema: { params: idParam } }, async (req) => changes.get(req.params.id));
+  app.get<{ Params: { id: string } }>('/api/config/proposals/:id', { config: perm, schema: { params: idParam } }, async (req) => srvOf(req).changes.get(req.params.id));
 
   app.post<{ Params: { id: string } }>('/api/config/proposals/:id/apply', { config: perm, schema: { params: idParam } }, async (req) => {
-    const r = await changes.apply(req.params.id, who(req));
+    const r = await srvOf(req).changes.apply(req.params.id, who(req));
     // Keys only: the history has the text, and the audit log never holds a secret.
     audit.log({
-      actor: actor(req),
+      ...by(req),
       action: 'config.apply',
       target: r.proposal.fileId,
       detail: { proposal: r.proposal.id, applied: r.applied, keys: r.changedKeys.slice(0, 50), reapplied: r.reapplied.map((x) => x.key) },
-      ip: req.ip,
     });
     return r;
   });
 
   app.post<{ Params: { id: string } }>('/api/config/proposals/:id/reject', { config: perm, schema: { params: idParam } }, async (req) => {
-    const p = changes.reject(req.params.id, who(req));
-    audit.log({ actor: actor(req), action: 'config.reject', target: p.fileId, detail: { proposal: p.id }, ip: req.ip });
+    const p = srvOf(req).changes.reject(req.params.id, who(req));
+    audit.log({ ...by(req), action: 'config.reject', target: p.fileId, detail: { proposal: p.id } });
     return p;
   });
 }

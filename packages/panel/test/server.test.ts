@@ -22,7 +22,7 @@ describe('server controls', () => {
     };
     const r = await c.post('/api/server/start');
     expect(r.json()).toMatchObject({ kind: 'start', done: false });
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(launched).toEqual({
       adapter: 'pz',
       params: { serverName: 'zomboid', adminUsername: 'admin', adminPassword: 'AdminPw-123456', memoryMb: 8192, branch: 'public', updateOnStart: true },
@@ -35,7 +35,7 @@ describe('server controls', () => {
     const ini = path.join(p.deps.env.pzDataDir, 'Server', 'zomboid.ini');
     expect(existsSync(ini)).toBe(false);
     await c.post('/api/server/start');
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(readFileSync(ini, 'utf8')).toContain('SaveWorldEveryMinutes=10');
     expect(p.agent.calls).toEqual(['start']);
   });
@@ -44,7 +44,7 @@ describe('server controls', () => {
     const c = await ready();
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
     await c.post('/api/server/restart', { countdownSec: 300 });
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'start']);
     expect(p.agent.calls.some((x) => x.startsWith('command:servermsg'))).toBe(false);
   });
@@ -59,7 +59,7 @@ describe('server controls', () => {
       const op = (await c.post('/api/server/restart', { countdownSec: 60 })).json() as { id: string; cancellable: boolean };
       expect(op.cancellable).toBe(true);
       await vi.advanceTimersByTimeAsync(61_000);
-      await p.deps.ops.idle();
+      await p.srv.ops.idle();
       const msgs = p.agent.calls.filter((x) => x.startsWith('command:servermsg'));
       expect(msgs).toEqual([
         'command:servermsg "El servidor se reinicia en 1 minuto. Busquen un lugar seguro."',
@@ -75,10 +75,10 @@ describe('server controls', () => {
       const op = (await c.post('/api/server/stop', { countdownSec: 300 })).json() as { id: string };
       await vi.advanceTimersByTimeAsync(5_000);
       expect((await c.post(`/api/ops/${op.id}/cancel`)).statusCode).toBe(200);
-      await p.deps.ops.idle();
+      await p.srv.ops.idle();
       expect(p.agent.calls).not.toContain('stop');
       expect(p.agent.calls.at(-1)).toBe('command:servermsg "Se canceló el reinicio del servidor."');
-      expect(p.deps.bus.currentOp()).toMatchObject({ step: 'cancelled', done: true, ok: false });
+      expect(p.srv.ops.last()).toMatchObject({ step: 'cancelled', done: true, ok: false });
     });
 
     it('runs one operation at a time', async () => {
@@ -89,7 +89,7 @@ describe('server controls', () => {
       expect(second.statusCode).toBe(409);
       expect(second.json()).toMatchObject({ error: 'busy', op: { kind: 'restart' } });
       await vi.advanceTimersByTimeAsync(61_000);
-      await p.deps.ops.idle();
+      await p.srv.ops.idle();
     });
   });
 
@@ -110,7 +110,7 @@ describe('server controls', () => {
     };
     await c.req('PUT', '/api/server/launch', { memoryMb: 6144, branch: 'legacy41', updateOnStart: true });
     await c.post('/api/server/update', { validate: true });
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'install', 'start']);
     const params = { serverName: 'zomboid', adminUsername: 'admin', adminPassword: 'AdminPw-123456', memoryMb: 6144, branch: 'legacy41' };
     expect(installed).toEqual({ validate: true, launch: { adapter: 'pz', params: { ...params, updateOnStart: true } } });
@@ -126,11 +126,11 @@ describe('server controls', () => {
     p.feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: '' } });
     p.agent.install = async () => {
       // The backup is already there when the install starts.
-      p.agent.calls.push(`install after ${p.deps.backups.list().map((b) => `${b.manifest.trigger}/${b.manifest.mode}`).join(',')}`);
+      p.agent.calls.push(`install after ${p.srv.backups.list().map((b) => `${b.manifest.trigger}/${b.manifest.mode}`).join(',')}`);
       return { ok: true };
     };
     await c.post('/api/server/update', {});
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'install after pre-update/cold', 'start']);
   });
 
@@ -139,9 +139,9 @@ describe('server controls', () => {
     p.feed.status_ = fakeStatus({ state: 'running' });
     p.agent.install = async () => ({ ok: false, error: "Error! App '380870' state is 0x202 after update job." });
     await c.post('/api/server/update', {});
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(p.agent.calls).toEqual(['stop', 'start']);
-    expect(p.deps.bus.currentOp()).toMatchObject({ ok: false, error: expect.stringContaining('0x202') });
+    expect(p.srv.ops.last()).toMatchObject({ ok: false, error: expect.stringContaining('0x202') });
   });
 
   it('validates launch settings', async () => {

@@ -1,15 +1,19 @@
 import type { FastifyInstance } from 'fastify';
 import { isWebhookUrl, maskWebhook, NOTIFY_EVENTS, type DiscordSettings } from '../notifier/discord';
 import type { ScheduleSettings } from '../scheduler/scheduler';
-import { actor, HttpError } from '../http/context';
+import { by, HttpError, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 
 const policy = { enum: ['when-empty', 'restart-countdown', 'notify-only'] } as const;
 
 export function scheduleRoutes(app: FastifyInstance, deps: Deps): void {
-  const { scheduler, notifier, audit } = deps;
+  const { audit } = deps;
+  const next = (s: ReturnType<typeof srvOf>) => ({ ...s.scheduler.nextRuns(), ...deps.hostJobs.nextRuns() });
 
-  app.get('/api/schedules', { config: { permission: 'schedules.view' } }, async () => ({ settings: scheduler.config(), next: scheduler.nextRuns() }));
+  app.get('/api/schedules', { config: { permission: 'schedules.view' } }, async (req) => {
+    const s = srvOf(req);
+    return { settings: s.scheduler.config(), next: next(s) };
+  });
 
   app.put<{ Body: ScheduleSettings }>(
     '/api/schedules',
@@ -57,17 +61,25 @@ export function scheduleRoutes(app: FastifyInstance, deps: Deps): void {
       },
     },
     async (req) => {
+      const s = srvOf(req);
       try {
-        scheduler.save(req.body);
+        s.scheduler.save(req.body);
       } catch (e) {
         throw new HttpError(400, 'invalid-schedule', (e as Error).message, { message: (e as Error).message });
       }
-      audit.log({ actor: actor(req), action: 'schedules.update', detail: req.body, ip: req.ip });
-      return { settings: scheduler.config(), next: scheduler.nextRuns() };
+      audit.log({ ...by(req), action: 'schedules.update', detail: req.body });
+      return { settings: s.scheduler.config(), next: next(s) };
     },
   );
+}
 
-  // ----------------------------------------------------------- Discord
+/**
+ * The Discord webhook (SCH-03): one for the host, so these are host routes;
+ * `notifications.manage` is checked as "on every server". A server's own
+ * override (`discord.override`) comes with the server list (M2).
+ */
+export function notificationRoutes(app: FastifyInstance, deps: Deps): void {
+  const { audit, notifier } = deps;
   const view = () => {
     const c = notifier.config();
     return { ...c, webhookUrl: maskWebhook(c.webhookUrl), configured: !!c.webhookUrl };
@@ -103,7 +115,7 @@ export function scheduleRoutes(app: FastifyInstance, deps: Deps): void {
         webhookUrl = url;
       }
       notifier.save({ webhookUrl, lang: req.body.lang, events: { ...cur.events, ...req.body.events } });
-      audit.log({ actor: actor(req), action: 'notifications.update', detail: { lang: req.body.lang, events: req.body.events, webhookChanged: webhookUrl !== cur.webhookUrl }, ip: req.ip });
+      audit.log({ ...by(req), action: 'notifications.update', detail: { lang: req.body.lang, events: req.body.events, webhookChanged: webhookUrl !== cur.webhookUrl } });
       return view();
     },
   );

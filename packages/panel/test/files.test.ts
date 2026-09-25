@@ -266,7 +266,7 @@ describe('text editor API (CFG-07, CFG-08)', () => {
     expect(ok.applies).toBe('restart');
     await c.post(`/api/config/proposals/${ok.id}/apply`);
     expect(readFileSync(path.join(data, 'Lua', 'mymod', 'settings.json'), 'utf8')).toBe('{\n  "reward": 10\n}\n');
-    expect(p.deps.config.historyOf(id).map((h) => h.note)).toEqual(['changed reward', 'on disk before this change']);
+    expect(p.srv.config.historyOf(id).map((h) => h.note)).toEqual(['changed reward', 'on disk before this change']);
     expect((await c.get(`/api/config/history?file=${id}`)).json()).toHaveLength(2);
     // A declared file's path means that file, with its rules and history.
     expect((await c.get('/api/config/files/content?id=path:data/Server/zomboid.ini')).json()).toMatchObject({ id: 'ini', managedKeys: expect.arrayContaining(['RCONPassword']) });

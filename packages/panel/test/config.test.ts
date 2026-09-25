@@ -120,14 +120,14 @@ describe('server settings (ini)', () => {
     const { p, c } = await setup({ withFiles: false });
     expect((await c.get('/api/config/values?id=ini')).json()).toEqual({ values: {}, missing: true, sha256: null });
     await c.post('/api/server/start');
-    await p.deps.ops.idle();
+    await p.srv.ops.idle();
     expect(ini(p)).toEqual({ SaveWorldEveryMinutes: '10' });
-    expect(p.deps.config.historyOf('ini').map((h) => h.note)).toEqual(['first-run defaults']);
+    expect(p.srv.config.historyOf('ini').map((h) => h.note)).toEqual(['first-run defaults']);
   });
 
   it('keeps working for the services that call the store directly, all asynchronously', async () => {
     const { p } = await setup();
-    const config = p.deps.config;
+    const config = p.srv.config;
     expect((await config.values('ini')).values.RCONPassword).toBe(MASK);
     await config.setDirect('ini', { Mods: 'modA;modB' }, 'alice', 'mod list');
     expect(ini(p).Mods).toBe('modA;modB');
@@ -184,13 +184,13 @@ describe('sandbox', () => {
     await c.post(`/api/config/proposals/${proposed.id}/apply`);
     const v = ((await c.get('/api/config/values?id=sandbox')).json() as { values: Record<string, unknown> }).values;
     expect(v).toMatchObject({ Zombies: 1, 'ZombieLore.Speed': 3 });
-    expect(p.deps.config.historyOf('sandbox')[0]!.note).toBe('preset Apocalypse');
+    expect(p.srv.config.historyOf('sandbox')[0]!.note).toBe('preset Apocalypse');
     expect((await c.post('/api/config/proposals', { fileId: 'sandbox', preset: '../../etc' })).statusCode).toBe(404);
     // A preset only applies to the file the adapter names.
     expect((await c.post('/api/config/proposals', { fileId: 'ini', preset: 'Apocalypse' })).statusCode).toBe(404);
     // The path the reset flow uses.
-    expect(await p.deps.config.presets()).toEqual(['Apocalypse']);
-    expect(await p.deps.config.applyPreset('Apocalypse', null, { force: true })).toMatchObject({ applied: 'unchanged', applied_keys: 2 });
+    expect(await p.srv.config.presets()).toEqual(['Apocalypse']);
+    expect(await p.srv.config.applyPreset('Apocalypse', null, { force: true })).toMatchObject({ applied: 'unchanged', applied_keys: 2 });
   });
 });
 
@@ -223,7 +223,7 @@ describe('history (CFG-03)', () => {
     ]);
     await c.post(`/api/config/proposals/${proposed.id}/apply`);
     expect(ini(p).PVP).toBe('true');
-    expect(p.deps.config.historyOf('ini')[0]!.note).toBe(`revert to version ${original!.id}`);
+    expect(p.srv.config.historyOf('ini')[0]!.note).toBe(`revert to version ${original!.id}`);
     expect((await c.post('/api/config/proposals', { fileId: 'sandbox', revert: original!.id })).statusCode).toBe(404);
   });
 

@@ -17,17 +17,20 @@ export interface OpState {
   error: string | null;
 }
 
-export type PanelEvent = { type: 'op'; op: OpState } | { type: 'notice'; kind: string; message: string; permission: Permission };
+/**
+ * Panel-side events for the websocket (agent events come from each server's
+ * feed). Every event names its server; a notice without one is about the
+ * host. `permission` is checked on that server (or on the host).
+ */
+export type PanelEvent = { type: 'op'; serverId: string; op: OpState } | { type: 'notice'; serverId: string | null; kind: string; message: string; permission: Permission };
 
 type Listener = (e: PanelEvent) => void;
 
-/** Panel-side events for the websocket (agent events come from the agent feed). */
+/** One bus for the whole panel: the websocket filters it per client and server. */
 export class PanelBus {
   private readonly listeners = new Set<Listener>();
-  private lastOp: OpState | null = null;
 
   emit(e: PanelEvent): void {
-    if (e.type === 'op') this.lastOp = e.op;
     for (const l of this.listeners) {
       try {
         l(e);
@@ -35,10 +38,6 @@ export class PanelBus {
         // ignore listener failures
       }
     }
-  }
-
-  currentOp(): OpState | null {
-    return this.lastOp;
   }
 
   on(l: Listener): () => void {

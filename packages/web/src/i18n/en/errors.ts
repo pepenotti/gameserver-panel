@@ -23,6 +23,7 @@ export default {
   'cannot-reset-own-2fa': 'You cannot reset your own 2FA.',
   validation: 'Some fields are not valid.',
   'not-found': 'Not found.',
+  'server-not-found': 'There is no such server, or you have no access to it.',
   'not-implemented': 'Not available yet.',
   network: 'Cannot reach the panel. Check your connection.',
   'agent-unreachable': 'The game server container is not responding.',

@@ -1,7 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
-import { can, type Permission, type SeqEvent } from '@gsp/shared';
+import { can, roleOn, type Permission, type SeqEvent } from '@gsp/shared';
+import type { UserRow } from '../auth/users';
+import { principal } from '../http/context';
 import type { Deps } from '../http/deps';
+import { DEFAULT_SERVER_ID } from '../servers/store';
 
 /** Which permission each agent event needs before a browser may see it. */
 const TOPIC: Record<SeqEvent['event']['type'], Permission> = {
@@ -18,7 +21,11 @@ const HARD_LIMIT = 8_000_000;
 export function wsRoutes(app: FastifyInstance, deps: Deps): void {
   app.get('/api/ws', { websocket: true, config: { permission: 'server.view' } }, (socket: WebSocket, req) => {
     const a = req.auth!;
-    let role = a.user.role;
+    // The one server until the websocket carries several (M2).
+    const srv = deps.servers.get(DEFAULT_SERVER_ID)!;
+    const roleNow = (u: UserRow) => roleOn(principal(u), deps.grants.forUser(u.id), srv.id);
+    let role = roleNow(a.user);
+    const may = (p: Permission) => role !== null && can(role, p);
     const sessionHash = a.session.id_hash;
 
     const send = (msg: unknown, droppable = false) => {
@@ -33,20 +40,21 @@ export function wsRoutes(app: FastifyInstance, deps: Deps): void {
 
     send({
       type: 'hello',
-      agentConnected: deps.feed.connected,
-      status: deps.feed.status_,
-      logs: can(role, 'log.view') ? deps.feed.recentLogs() : [],
-      op: deps.bus.currentOp(),
+      agentConnected: srv.feed.connected,
+      status: srv.feed.status_,
+      logs: may('log.view') ? srv.feed.recentLogs() : [],
+      op: srv.ops.last(),
     });
 
-    const off = deps.feed.onEvent((e) => {
-      if (!can(role, TOPIC[e.event.type])) return;
+    const off = srv.feed.onEvent((e) => {
+      if (!may(TOPIC[e.event.type])) return;
       send({ type: 'event', ...e }, e.event.type === 'log');
     });
 
     const offBus = deps.bus.on((e) => {
+      if (e.serverId !== srv.id) return;
       if (e.type === 'op') send({ type: 'op', op: e.op });
-      else if (can(role, e.permission)) send({ type: 'notice', kind: e.kind, message: e.message });
+      else if (may(e.permission)) send({ type: 'notice', kind: e.kind, message: e.message });
     });
 
     // Sessions can be revoked or roles changed while the socket is open.
@@ -57,7 +65,7 @@ export function wsRoutes(app: FastifyInstance, deps: Deps): void {
         socket.close(4001, 'session ended');
         return;
       }
-      role = user.role;
+      role = roleNow(user);
     }, 30_000);
 
     socket.on('message', (raw) => {
