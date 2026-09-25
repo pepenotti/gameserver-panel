@@ -43,7 +43,7 @@ function NameCard() {
             {t('servers.idLine', { id: server.id })}
           </Text>
         </Stack>
-        <Button size="xs" variant="default" onClick={rename.open}>
+        <Button size="xs" variant="default" onClick={rename.open} style={{ flexShrink: 0 }}>
           {t('servers.rename')}
         </Button>
       </Group>

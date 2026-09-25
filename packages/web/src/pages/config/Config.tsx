@@ -33,13 +33,14 @@ function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
   return (
     <Stack>
       {(file.managedKeys.length > 0 || file.restartKeys === '*') && (
-        <Alert variant="light" icon={<IconInfoCircle />}>
+        <Alert variant="light" color="blue" icon={<IconInfoCircle />}>
           {[file.restartKeys === '*' ? t('config.restartAllNote') : '', file.managedKeys.length > 0 ? t('config.managedNote') : ''].filter(Boolean).join(' ')}
         </Alert>
       )}
       <OptionsForm
-        // FALLBACK: `VERSION` is a file-format key one adapter's schema lists as a setting; hidden until the
-        // adapter marks it managed or leaves it out of the schema.
+        // FALLBACK: `VERSION` is a file-format key one adapter's schema lists as a setting. Left out of the
+        // schema here, it shows only behind Advanced (a setting the schema doesn't describe) until the adapter
+        // marks it managed or drops it from the schema.
         metas={(meta.schemas[file.schemaId!] ?? []).filter((m) => m.key !== 'VERSION')}
         values={q.data.values}
         groups={meta.groups[file.schemaId!] ?? []}

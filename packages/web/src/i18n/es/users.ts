@@ -38,7 +38,7 @@ export default {
   grantsGrantedHelp: '{{name}} solo ve los servidores que tengan un rol acá.',
   grants2fa: 'Los administradores necesitan 2FA: lo van a configurar en su próximo ingreso.',
   grantNone: 'Sin acceso',
-  grantNoneAll: 'Rol de la cuenta ({{role}})',
+  grantNoneAll: 'Como la cuenta',
   actsAs: 'actúa como {{role}}',
   noAccess: 'sin acceso',
   roleOn: 'Rol en {{server}}',

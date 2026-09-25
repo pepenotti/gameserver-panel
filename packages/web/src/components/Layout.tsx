@@ -101,7 +101,8 @@ function ServerSwitcher({ list, sid, onPicked }: { list: ServerSummary[]; sid: s
       aria-label={t('nav.switchServer')}
       data={list.map((s) => ({ value: s.id, label: s.name }))}
       value={sid}
-      onChange={pick}
+      // Any option, the shown one too: from a host page, picking it opens that server.
+      onOptionSubmit={pick}
       allowDeselect={false}
       searchable={list.length > 6}
       mx={4}
@@ -218,6 +219,8 @@ export function Layout({ children }: { children: ReactNode }) {
                     key={n.to}
                     component={RouterLink}
                     to={href}
+                    // The router marks a link current on its sub-pages too: the dashboard (`/`) only on itself.
+                    end={n.to === '/'}
                     label={t(n.label)}
                     leftSection={<n.icon size={18} stroke={1.6} />}
                     active={!onHostPage && (n.to === '/' ? location.pathname === href || location.pathname === href.slice(0, -1) : location.pathname.startsWith(href))}

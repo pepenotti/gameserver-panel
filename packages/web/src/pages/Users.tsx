@@ -57,7 +57,7 @@ function GrantsModal({ user, opened, onClose }: { user: UserWithGrants | null; o
       setSaving(null);
     }
   };
-  const none = user.scope === 'all' ? t('users.grantNoneAll', { role: t(`roles.${user.role}`) }) : t('users.grantNone');
+  const none = user.scope === 'all' ? t('users.grantNoneAll') : t('users.grantNone');
   const needs2fa = !user.totpEnabled && user.grants.some((g) => requiresTotp(g.role));
   return (
     <Modal opened={opened} onClose={onClose} title={t('users.grantsTitle', { name: user.username })} size="lg" centered>
@@ -74,39 +74,35 @@ function GrantsModal({ user, opened, onClose }: { user: UserWithGrants | null; o
             {t('users.noServers')}
           </Text>
         )}
-        <Table.ScrollContainer minWidth={420}>
-          <Table verticalSpacing="xs">
-            <Table.Tbody>
-              {servers.data?.map((s) => {
-                const grant = user.grants.find((g) => g.serverId === s.id)?.role ?? null;
-                const effective = roleOnServer(user, s.id);
-                return (
-                  <Table.Tr key={s.id}>
-                    <Table.Td>
-                      <Text size="sm" fw={500}>
-                        {s.name}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {localize(s.adapterName, i18n.language)} · {effective ? t('users.actsAs', { role: t(`roles.${effective}`) }) : t('users.noAccess')}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td w={200}>
-                      <Select
-                        size="xs"
-                        aria-label={t('users.roleOn', { server: s.name })}
-                        data={[{ value: '', label: none }, ...GRANT_ROLES.map((r) => ({ value: r, label: t(`roles.${r}`) }))]}
-                        value={grant ?? ''}
-                        allowDeselect={false}
-                        disabled={saving !== null}
-                        onChange={(v) => v !== null && v !== (grant ?? '') && void set(s.id, v === '' ? null : (v as GrantRole))}
-                      />
-                    </Table.Td>
-                  </Table.Tr>
-                );
-              })}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+        <Stack gap={0}>
+          {servers.data?.map((s) => {
+            const grant = user.grants.find((g) => g.serverId === s.id)?.role ?? null;
+            const effective = roleOnServer(user, s.id);
+            return (
+              // On a phone the select drops below the server's name.
+              <Group key={s.id} justify="space-between" wrap="wrap" gap="xs" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                <Stack gap={0} style={{ flex: '1 1 180px', minWidth: 0 }}>
+                  <Text size="sm" fw={500} truncate>
+                    {s.name}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {localize(s.adapterName, i18n.language)} · {effective ? t('users.actsAs', { role: t(`roles.${effective}`) }) : t('users.noAccess')}
+                  </Text>
+                </Stack>
+                <Select
+                  size="xs"
+                  w={{ base: '100%', xs: 200 }}
+                  aria-label={t('users.roleOn', { server: s.name })}
+                  data={[{ value: '', label: none }, ...GRANT_ROLES.map((r) => ({ value: r, label: t(`roles.${r}`) }))]}
+                  value={grant ?? ''}
+                  allowDeselect={false}
+                  disabled={saving !== null}
+                  onChange={(v) => v !== null && v !== (grant ?? '') && void set(s.id, v === '' ? null : (v as GrantRole))}
+                />
+              </Group>
+            );
+          })}
+        </Stack>
         <Group justify="flex-end">
           <Button onClick={onClose}>{t('common.close')}</Button>
         </Group>
@@ -285,7 +281,7 @@ export function Users() {
                   </Table.Td>
                   <Table.Td>{serversCell(u)}</Table.Td>
                   <Table.Td>
-                    <Badge color={u.totpEnabled ? 'green' : 'gray'} variant="light">
+                    <Badge color={u.totpEnabled ? 'green' : 'gray'} variant="light" style={{ overflow: 'visible' }} miw="max-content">
                       {u.totpEnabled ? t('profile.twoFactorOn') : t('profile.twoFactorOff')}
                     </Badge>
                   </Table.Td>

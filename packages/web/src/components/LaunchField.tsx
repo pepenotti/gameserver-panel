@@ -32,7 +32,7 @@ export function LaunchField({ o, value, onChange, versions, error, min }: { o: L
   const label = launchLabel(o, i18n.language);
   const description = localize(o.description, i18n.language) || undefined;
   // The field stays narrow; its description may use the card's width.
-  const common = { label, description, error, maw: 560, styles: { input: { maxWidth: 260 } } };
+  const common = { label, description, error, maw: 560, styles: { wrapper: { maxWidth: 260 } } };
   switch (o.type) {
     case 'boolean':
       return <Switch label={label} description={description} error={error} checked={value === true} onChange={(e) => onChange(e.currentTarget.checked)} />;

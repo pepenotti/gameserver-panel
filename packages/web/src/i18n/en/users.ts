@@ -36,7 +36,7 @@ export default {
   grantsGrantedHelp: '{{name}} only sees the servers with a role here.',
   grants2fa: 'Admins need 2FA: they will set it up at their next sign-in.',
   grantNone: 'No access',
-  grantNoneAll: 'Account role ({{role}})',
+  grantNoneAll: 'As the account',
   actsAs: 'acts as {{role}}',
   noAccess: 'no access',
   roleOn: 'Role on {{server}}',
