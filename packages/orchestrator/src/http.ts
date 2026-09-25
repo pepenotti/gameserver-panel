@@ -1,0 +1,153 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+import http from 'node:http';
+import { ORCHESTRATOR_API_VERSION, SERVER_ID_PATTERN, type HealthResponse } from '@gsp/shared';
+import type { Backend } from './backend';
+import { badRequest, notFound, OrchError } from './errors';
+import type { Policy } from './policy';
+import { parseEmpty, parseSpec, parseStop } from './spec';
+
+const MAX_BODY = 64 * 1024;
+/** `/v1/servers/:id` and `/v1/servers/:id/<action>`, matched on the raw path (no dot-segment folding). */
+const SERVER_ROUTE = /^\/v1\/servers\/([^/]*)(?:\/([^/]*))?$/;
+const ACTIONS: ReadonlySet<string> = new Set(['start', 'stop', 'restart', 'stats']);
+
+export interface OrchestratorServerOptions {
+  backend: Backend;
+  /** `ORCH_TOKEN`: every request carries it as a bearer token. */
+  token: string;
+  /** This build, reported by `/v1/health`. */
+  version: string;
+  policy: Policy;
+  /** One line per request (method, path, status, time); never bodies. */
+  log?: (line: string) => void;
+}
+
+function sameToken(given: string, expected: string): boolean {
+  // Hash both so the comparison is constant-time whatever the lengths.
+  const a = createHash('sha256').update(given).digest();
+  const b = createHash('sha256').update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+async function readBody(req: http.IncomingMessage): Promise<unknown> {
+  let size = 0;
+  const chunks: Buffer[] = [];
+  for await (const c of req) {
+    size += (c as Buffer).length;
+    if (size > MAX_BODY) throw new OrchError('bad-request', 'Body too large', undefined, 413);
+    chunks.push(c as Buffer);
+  }
+  if (size === 0) return undefined;
+  const type = req.headers['content-type'] ?? '';
+  if (!/^application\/json(\s*;|$)/i.test(type)) throw new OrchError('bad-request', 'Expected application/json', undefined, 415);
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+  } catch {
+    throw badRequest('Invalid JSON');
+  }
+}
+
+function send(res: http.ServerResponse, status: number, body: unknown): void {
+  const text = JSON.stringify(body);
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'content-length': Buffer.byteLength(text) });
+  res.end(text);
+}
+
+const methodNotAllowed = () => new OrchError('bad-request', 'Method not allowed', undefined, 405);
+
+/**
+ * The orchestrator API (`@gsp/shared` orchestrator-api, D3): bearer token on
+ * every request, strict JSON bodies, only the routes of the contract. Ids are
+ * checked on the raw path, so `..`, encoded slashes, upper case and long ids
+ * never reach the backend.
+ */
+export function createOrchestratorServer(o: OrchestratorServerOptions): http.Server {
+  if (o.token.length < 32) throw new Error('The orchestrator token must be at least 32 characters');
+
+  async function route(req: http.IncomingMessage): Promise<[number, unknown]> {
+    const auth = req.headers.authorization ?? '';
+    if (!auth.startsWith('Bearer ') || !sameToken(auth.slice(7), o.token)) throw new OrchError('unauthorized', 'Unauthorized');
+
+    const raw = req.url ?? '/';
+    const q = raw.indexOf('?');
+    const path = q < 0 ? raw : raw.slice(0, q);
+    const query = new URLSearchParams(q < 0 ? '' : raw.slice(q + 1));
+    const method = req.method ?? 'GET';
+    const body = await readBody(req);
+    const noQuery = () => {
+      if (query.size) throw badRequest('This route takes no query parameters');
+    };
+    const noBody = () => {
+      if (body !== undefined) throw badRequest('This route takes no body');
+    };
+
+    if (path === '/v1/health' || path === '/v1/host' || path === '/v1/servers') {
+      if (method !== 'GET') throw methodNotAllowed();
+      noQuery();
+      noBody();
+      if (path === '/v1/health') {
+        await o.backend.ping();
+        const health: HealthResponse = { ok: true, version: o.version, api: ORCHESTRATOR_API_VERSION };
+        return [200, health];
+      }
+      return [200, path === '/v1/host' ? await o.backend.host() : await o.backend.list()];
+    }
+
+    const m = SERVER_ROUTE.exec(path);
+    if (!m) throw notFound('No such route');
+    const [, id = '', action] = m;
+    if (action !== undefined && !ACTIONS.has(action)) throw notFound('No such route');
+    if (!SERVER_ID_PATTERN.test(id)) throw badRequest('The server id must be 2-24 characters: a-z first, then a-z, 0-9 and -', 'id');
+
+    if (action === undefined) {
+      if (method === 'PUT') {
+        noQuery();
+        return [200, await o.backend.apply(parseSpec(body, id, o.policy))];
+      }
+      if (method === 'DELETE') {
+        noBody();
+        for (const k of query.keys()) if (k !== 'removeVolumes') throw badRequest(`Unknown query parameter ${k.slice(0, 40)}`);
+        const rv = query.getAll('removeVolumes');
+        if (rv.length > 1 || (rv[0] !== undefined && rv[0] !== 'true' && rv[0] !== 'false')) throw badRequest('removeVolumes must be true or false', 'removeVolumes');
+        return [200, await o.backend.remove(id, rv[0] === 'true')];
+      }
+      throw methodNotAllowed();
+    }
+    noQuery();
+    if (action === 'stats') {
+      if (method !== 'GET') throw methodNotAllowed();
+      noBody();
+      return [200, await o.backend.stats(id)];
+    }
+    if (method !== 'POST') throw methodNotAllowed();
+    if (action === 'start') {
+      parseEmpty(body);
+      return [200, await o.backend.start(id)];
+    }
+    const { timeoutSec } = parseStop(body);
+    return [200, action === 'stop' ? await o.backend.stop(id, timeoutSec) : await o.backend.restart(id, timeoutSec)];
+  }
+
+  return http.createServer((req, res) => {
+    const started = Date.now();
+    void route(req)
+      .then(([status, body]) => {
+        send(res, status, body);
+        return status;
+      })
+      .catch((e: unknown) => {
+        if (e instanceof OrchError) {
+          send(res, e.status, e.body());
+          return e.status;
+        }
+        o.log?.(`internal error: ${(e as Error).stack ?? String(e)}`);
+        send(res, 500, { error: 'Internal error', code: 'internal' });
+        return 500;
+      })
+      .then((status) => {
+        // The path only: the query holds nothing secret, but keep lines short and uniform.
+        const path = (req.url ?? '').split('?')[0]?.slice(0, 80) ?? '';
+        o.log?.(`${req.method ?? '?'} ${path} ${status} ${Date.now() - started}ms`);
+      });
+  });
+}
