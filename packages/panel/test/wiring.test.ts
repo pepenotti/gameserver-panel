@@ -115,7 +115,7 @@ describe('createPanelDeps (the one composition root)', () => {
     const later = createPanelDeps({ env: { ...deps.env, agentUrl: '', agentToken: '', secrets: {} }, db, fetch: noNetwork });
     expect(later.servers.list().map((s) => s.id)).toEqual(['default']);
     await expect(later.servers.get('default')!.agent.status()).rejects.toMatchObject({ code: 'unreachable' });
-    await expect(later.servers.remove('default', { confirm: 'zomboid', keepBackups: true, by: SYSTEM })).resolves.toEqual({ finalBackup: null });
+    await expect(later.servers.remove('default', { confirm: 'zomboid', keepBackups: true, by: SYSTEM })).resolves.toEqual({ finalBackup: null, forced: false, finalBackupError: null });
     expect(later.servers.list()).toEqual([]);
     expect(later.audit.list({ action: 'server.delete' })[0]).toMatchObject({ serverId: 'default', ok: true });
   });

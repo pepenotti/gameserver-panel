@@ -94,6 +94,16 @@ function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 's
 
 const ports = { type: 'object', maxProperties: 16, additionalProperties: { type: 'integer' } } as const;
 
+/** `DELETE /api/servers/:sid` (SRV-04). */
+interface DeleteBody {
+  /** The server's name, typed. */
+  confirm: string;
+  keepBackups?: boolean;
+  finalBackup?: boolean;
+  /** Owner only: remove a server that won't stop or whose container won't run (see `RemoveServerOptions.force`). */
+  force?: boolean;
+}
+
 /**
  * The server list (SRV-02): every server the signed-in user has a role on,
  * and nothing about the others. Any signed-in user may ask; the answer is
@@ -170,7 +180,8 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
  * resolves it and checks the permission there): rename, reorder or change
  * its memory and CPU limits (SRV-05) with `server.update`; remove (SRV-04)
  * with `server.delete`, after typing its name. Deleting its backups too,
- * or skipping the final backup, is the owner's choice alone.
+ * skipping the final backup, or forcing out a server that won't stop or
+ * run, is the owner's choice alone.
  */
 export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
   app.patch<{ Body: { name?: string; sort?: number; memLimitMb?: number; cpus?: number | null } }>(
@@ -198,7 +209,7 @@ export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.delete<{ Body: { confirm: string; keepBackups?: boolean; finalBackup?: boolean } }>(
+  app.delete<{ Body: DeleteBody }>(
     '',
     {
       config: { permission: 'server.delete' },
@@ -207,15 +218,16 @@ export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
           type: 'object',
           required: ['confirm'],
           additionalProperties: false,
-          properties: { confirm: { type: 'string', maxLength: 64 }, keepBackups: { type: 'boolean' }, finalBackup: { type: 'boolean' } },
+          properties: { confirm: { type: 'string', maxLength: 64 }, keepBackups: { type: 'boolean' }, finalBackup: { type: 'boolean' }, force: { type: 'boolean' } },
         },
       },
     },
-    async (req: FastifyRequest<{ Body: { confirm: string; keepBackups?: boolean; finalBackup?: boolean } }>) => {
-      const { confirm, keepBackups = true, finalBackup = true } = req.body;
-      if ((!keepBackups || !finalBackup) && req.auth!.user.role !== 'owner') throw new HttpError(403, 'forbidden');
-      const r = await deps.servers.remove(srvOf(req).id, { confirm, keepBackups, finalBackup, by: actor(req), ip: req.ip });
-      return { ok: true, finalBackup: r.finalBackup };
+    async (req: FastifyRequest<{ Body: DeleteBody }>) => {
+      const { confirm, keepBackups = true, finalBackup = true, force = false } = req.body;
+      // Dropping the backups, skipping the final one, or forcing a server out: the owner's call alone.
+      if ((!keepBackups || !finalBackup || force) && req.auth!.user.role !== 'owner') throw new HttpError(403, 'forbidden');
+      const r = await deps.servers.remove(srvOf(req).id, { confirm, keepBackups, finalBackup, force, by: actor(req), ip: req.ip });
+      return { ok: true, finalBackup: r.finalBackup, forced: r.forced, finalBackupError: r.finalBackupError };
     },
   );
 }

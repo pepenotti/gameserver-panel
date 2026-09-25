@@ -57,7 +57,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | Method | Path | Permission | Capability | Request |
 |---|---|---|---|---|
 | PATCH | `/api/servers/:sid` | `server.update` | — | `body { name?: string, sort?: integer, memLimitMb?: integer, cpus?: number \| null }` |
-| DELETE | `/api/servers/:sid` | `server.delete` | — | `body { confirm: string, keepBackups?: boolean, finalBackup?: boolean }` |
+| DELETE | `/api/servers/:sid` | `server.delete` | — | `body { confirm: string, keepBackups?: boolean, finalBackup?: boolean, force?: boolean }` |
 | GET | `/api/servers/:sid/status` | `server.view` | — | — |
 | GET | `/api/servers/:sid/meta` | `server.view` | — | — |
 | GET | `/api/servers/:sid/ops/current` | `server.view` | — | — |

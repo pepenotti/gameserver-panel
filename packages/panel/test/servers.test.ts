@@ -111,14 +111,35 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     // default is the stack's own: never deleted from here.
     expect((await owner.req('DELETE', '/api/servers/default', { confirm: 'zomboid' })).json()).toEqual({ error: 'server-unmanaged' });
 
+    // Forcing a server out is the owner's call alone too.
+    expect((await admin.req('DELETE', '/api/servers/pz-two', { confirm: 'Renamed', force: true })).json()).toEqual({ error: 'forbidden' });
+
     const r = await admin.req('DELETE', '/api/servers/pz-two', { confirm: 'Renamed' });
-    expect(r.json()).toEqual({ ok: true, finalBackup: expect.stringMatching(/\.tar\.zst$/) });
+    expect(r.json()).toEqual({ ok: true, finalBackup: expect.stringMatching(/\.tar\.zst$/), forced: false, finalBackupError: null });
     // Gone for everyone; its audit entries stay, for those who may read them.
     expect(((await owner.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
     expect((await admin.get('/api/servers/pz-two/meta')).json()).toEqual({ error: 'server-not-found' });
     const history = (await owner.get('/api/audit?server=pz-two')).json() as { action: string; username: string }[];
     expect(history.map((e) => e.action)).toEqual(['server.delete', 'server.update', 'server.create']);
     expect(history.find((e) => e.action === 'server.delete')).toMatchObject({ username: 'two-admin' });
+  });
+});
+
+describe('forcing a server out through the API (SRV-04)', () => {
+  it("lets the owner remove a server stuck stopping whose agent doesn't answer, and says the final backup was skipped", async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    expect((await createTwo(owner)).statusCode).toBe(200);
+    // Its game hangs while stopping, then its agent stops answering: it can be neither stopped nor backed up.
+    p.fakes('pz-two').feed.status_ = fakeStatus({ state: 'stopping' });
+    p.fakes('pz-two').agent.lock = () => Promise.reject(new Error('agent unreachable'));
+    expect((await owner.req('DELETE', '/api/servers/pz-two', { confirm: 'Second' })).json()).toEqual({ error: 'server-running' });
+    const r = await owner.req('DELETE', '/api/servers/pz-two', { confirm: 'Second', force: true });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ ok: true, finalBackup: null, forced: true, finalBackupError: expect.any(String) });
+    expect(((await owner.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
+    const [entry] = (await owner.get('/api/audit?server=pz-two')).json() as { action: string; detail: string }[];
+    expect(entry).toMatchObject({ action: 'server.delete', detail: expect.stringContaining('"forced":true') });
   });
 });
 

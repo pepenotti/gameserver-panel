@@ -49,6 +49,14 @@ export interface RemoveServerOptions {
   keepBackups: boolean;
   /** Take the final backup first (default); only the owner may skip it, for a server whose data can't be reached. */
   finalBackup?: boolean;
+  /**
+   * The owner's way out for a server that can't be stopped normally or whose
+   * container won't run: removed even while its game runs or an operation
+   * holds it, without waiting for the game to stop. The final backup is
+   * still taken when it can be; when it can't, the removal goes on without
+   * it and says why (`finalBackupError`).
+   */
+  force?: boolean;
   by: Actor;
   ip?: string | null;
 }
@@ -56,7 +64,14 @@ export interface RemoveServerOptions {
 export interface RemoveReport {
   /** The final backup's archive name; null when none was taken. */
   finalBackup: string | null;
+  /** Whether the removal was forced. */
+  forced: boolean;
+  /** Forced only: why the final backup couldn't be taken (null: it was, or none was asked for). */
+  finalBackupError: string | null;
 }
+
+/** Seconds a forced removal gives the game to stop before Docker kills it. */
+const FORCED_STOP_SEC = 10;
 
 /** What `reconcile` changed to bring containers in line with the servers table (SRV-06). */
 export interface ReconcileReport {
@@ -606,24 +621,35 @@ export class DbServerRegistry implements ServerRegistry {
     // removing it is that one's business. Once it no longer does, the row is all that's left.
     if (!managed && env.agentUrl) throw new HttpError(409, 'server-unmanaged');
     if (o.confirm !== ctx.row.name) throw new HttpError(400, 'confirm-mismatch');
-    if (ctx.ops.busy) throw new HttpError(409, 'busy', undefined, { op: ctx.ops.busy });
+    // Forced (the owner, for a server that won't stop or whose container won't run): neither holds it back.
+    const busy = ctx.ops.busy;
+    if (busy && !o.force) throw new HttpError(409, 'busy', undefined, { op: busy });
     const state = ctx.feed.status_?.state;
-    if (state === 'running' || state === 'starting' || state === 'stopping') throw new HttpError(409, 'server-running');
+    if (!o.force && (state === 'running' || state === 'starting' || state === 'stopping')) throw new HttpError(409, 'server-running');
 
     // SRV-04: a final backup first, into the server's own folder, unless nothing is to be kept
-    // (or nothing can be reached: an unmanaged row the environment no longer describes).
+    // (or nothing can be reached: an unmanaged row the environment no longer describes). Forced,
+    // it is still taken whenever it can be (hot, if the game runs); only a backup that can't be
+    // taken is skipped, and the answer and the audit log say why.
     let finalBackup: string | null = null;
+    let finalBackupError: string | null = null;
     if (managed && o.keepBackups && o.finalBackup !== false) {
       try {
+        if (busy) throw new Error(`Another operation (${busy.kind}) is still running on this server`);
         const b = await ctx.ops.run('backup', o.by.user?.username ?? null, (op) => ctx.flows.backupNow(op, 'manual'));
         finalBackup = b.name;
       } catch (e) {
         const message = (e as Error).message;
-        audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', detail: { step: 'final-backup', error: message }, ok: false });
-        throw new HttpError(409, 'final-backup-failed', message, { message });
+        if (!o.force) {
+          audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', detail: { step: 'final-backup', error: message }, ok: false });
+          throw new HttpError(409, 'final-backup-failed', message, { message });
+        }
+        finalBackupError = message;
       }
     }
 
+    // Forced: a game that won't stop isn't waited for (its volumes go with it; the backup is taken).
+    if (managed && o.force) await orchestrator.stop(id, { timeoutSec: FORCED_STOP_SEC }).catch(() => undefined);
     try {
       if (managed) await orchestrator.remove(id, { removeVolumes: true });
     } catch (e) {
@@ -651,9 +677,17 @@ export class DbServerRegistry implements ServerRegistry {
       // Only ever the server's own folder, never the backups root (which holds `default`'s).
       if (path.resolve(ctx.backups.dir) === own) rmSync(own, { recursive: true, force: true });
     }
-    audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', target: ctx.row.name, detail: { keepBackups: o.keepBackups, finalBackup } });
+    const forced = o.force === true;
+    audit.log({
+      actor: o.by,
+      ip: o.ip ?? null,
+      serverId: id,
+      action: 'server.delete',
+      target: ctx.row.name,
+      detail: { keepBackups: o.keepBackups, finalBackup, ...(forced ? { forced, finalBackupError } : {}) },
+    });
     this.changed();
-    return { finalBackup };
+    return { finalBackup, forced, finalBackupError };
   }
 
   // --------------------------------------------------------------- reconcile

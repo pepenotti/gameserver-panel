@@ -365,6 +365,46 @@ describe('removing a server (SRV-04)', () => {
     expect(p.orch.containers.has('pz-two')).toBe(true);
   });
 
+  it('lets the owner force out a server that runs or is busy, still taking the final backup when it can', async () => {
+    const opts = { confirm: 'Second', keepBackups: true, by: OWNER_ACTOR, force: true };
+    // Running: a hot final backup, then the game is not waited for.
+    const running = await populated();
+    running.p.fakes('pz-two').feed.status_ = fakeStatus({ state: 'running' });
+    running.p.orch.calls.length = 0;
+    const r = await running.p.deps.servers.remove('pz-two', opts);
+    expect(r).toEqual({ finalBackup: expect.stringMatching(/^pz-pz-two-.*\.tar\.zst$/), forced: true, finalBackupError: null });
+    expect(running.p.orch.calls).toEqual(['stop pz-two', 'remove pz-two volumes=true']);
+    expect(running.p.deps.serverRows.get('pz-two')).toBeNull();
+    const entry = running.p.deps.audit.list({ action: 'server.delete' })[0]!;
+    expect(entry).toMatchObject({ ok: true, username: 'alice' });
+    expect(JSON.parse(entry.detail!)).toEqual({ keepBackups: true, finalBackup: r.finalBackup, forced: true, finalBackupError: null });
+
+    // Held by an operation that never ends: no backup can be taken, and the answer says why.
+    const busy = await populated();
+    busy.ctx.ops.start('restore', 'alice', () => new Promise<void>(() => undefined));
+    expect(await busy.p.deps.servers.remove('pz-two', opts)).toEqual({ finalBackup: null, forced: true, finalBackupError: expect.stringContaining('restore') });
+    expect(busy.p.orch.containers.has('pz-two')).toBe(false);
+  });
+
+  it("forces out a server whose agent can't be reached, saying the final backup couldn't be taken", async () => {
+    const { p } = await populated();
+    const fake = p.fakes('pz-two');
+    fake.feed.status_ = null;
+    fake.feed.connected = false;
+    fake.agent.lock = () => Promise.reject(new Error('agent unreachable'));
+    const opts = { confirm: 'Second', keepBackups: true, by: OWNER_ACTOR };
+    // Not forced: nothing is removed without its final backup.
+    expect(await refusal(p.deps.servers.remove('pz-two', opts))).toMatchObject({ status: 409, code: 'final-backup-failed' });
+    expect(p.deps.serverRows.get('pz-two')).not.toBeNull();
+    // Forced: removed anyway; a container that is already gone (stop and remove both answer not-found) is fine too.
+    p.orch.containers.delete('pz-two');
+    expect(await p.deps.servers.remove('pz-two', { ...opts, force: true })).toEqual({ finalBackup: null, forced: true, finalBackupError: 'agent unreachable' });
+    expect(p.deps.serverRows.get('pz-two')).toBeNull();
+    const [done, refused] = p.deps.audit.list({ action: 'server.delete' });
+    expect(JSON.parse(done!.detail!)).toMatchObject({ forced: true, finalBackup: null, finalBackupError: 'agent unreachable' });
+    expect(refused).toMatchObject({ ok: false });
+  });
+
   it('keeps everything when the final backup fails, or the container cannot be removed', async () => {
     const { p } = await populated();
     const opts = { confirm: 'Second', keepBackups: true, by: OWNER_ACTOR };
