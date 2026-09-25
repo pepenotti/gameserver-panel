@@ -16,7 +16,7 @@ export default {
   issues: '{{count}} problema(s) para corregir antes de guardar',
   line: 'Línea {{line}}',
   lineCol: 'Línea {{line}}, columna {{col}}',
-  managedNote: 'Los maneja el panel y se restauran al guardar: {{keys}}',
+  managedNote: 'Los maneja el panel o el juego y se restauran al guardar: {{keys}}',
   secretNote: 'Las contraseñas se ven como ••••••••. Dejalas así para conservarlas.',
   unsavedTitle: 'Cambios sin guardar',
   unsaved: 'Este archivo tiene cambios sin guardar. ¿Descartarlos?',

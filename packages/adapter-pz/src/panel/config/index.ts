@@ -62,6 +62,23 @@ const withGroup = (list: OptionMeta[], groupOf: (key: string) => string): Option
 /** Owned by the agent (ports, RCON, UPnP) or the mod manager (mod lists, map order): never edited by hand. */
 export const MANAGED_INI = ['RCONPort', 'RCONPassword', 'DefaultPort', 'UDPPort', 'UPnP', 'Mods', 'WorkshopItems', 'Map'];
 
+/**
+ * Owned by the game: `VERSION` is the file format's version, which the game
+ * writes, not a setting. Locked in forms, and a raw save keeps what is on
+ * disk (CFG-04); presets leave it out too.
+ */
+export const MANAGED_SANDBOX = ['VERSION'];
+
+/** How the sandbox form shows `VERSION` (the game's files describe it nowhere): as what it is, behind "Advanced". */
+const SANDBOX_VERSION: Pick<OptionMeta, 'label' | 'description' | 'advanced'> = {
+  label: { en: 'File format version', es: 'Versión del formato del archivo' },
+  description: {
+    en: 'Written by the game to record which format this file uses. It is not a setting, so it can’t be changed here.',
+    es: 'La escribe el juego para saber qué formato usa este archivo. No es una opción, así que acá no se puede cambiar.',
+  },
+  advanced: true,
+};
+
 /** Shown masked in forms, raw text and history. */
 export const SECRET_INI = ['RCONPassword', 'Password', 'DiscordToken'];
 
@@ -130,7 +147,7 @@ function files(srv: ServerRef): ConfigFileDecl[] {
       rel: `${base}_SandboxVars.lua`,
       format: 'lua-data',
       schemaId: 'sandbox',
-      managedKeys: [],
+      managedKeys: MANAGED_SANDBOX,
       secretKeys: [],
       restartKeys: '*',
       dataOnly: { form: 'assign', name: 'SandboxVars' },
@@ -211,14 +228,14 @@ async function listPresets(ctx: ServerCtx): Promise<string[]> {
     .sort();
 }
 
-/** A preset's options; `VERSION` is the file format's, not a setting. */
+/** A preset's options; `VERSION` is the file format's, not a setting (see `MANAGED_SANDBOX`). */
 async function loadPreset(ctx: ServerCtx, name: string): Promise<Record<string, Scalar>> {
   if (!PRESET_NAME.test(name) || !(await listPresets(ctx)).includes(name)) throw new Error(`Unknown preset ${name}`);
   const buf = await ctx.files.read('install', `${PRESET_DIR}/${name}.lua`, { maxBytes: MAX_PRESET_BYTES });
   if (!buf) throw new Error(`Unknown preset ${name}`);
   const out: Record<string, Scalar> = {};
   for (const s of flattenScalars(parseLuaData(buf.toString('utf8')).table)) {
-    if (s.path !== 'VERSION' && s.value.type !== 'nil') out[s.path] = s.value.value;
+    if (!MANAGED_SANDBOX.includes(s.path) && s.value.type !== 'nil') out[s.path] = s.value.value;
   }
   return out;
 }
@@ -226,7 +243,10 @@ async function loadPreset(ctx: ServerCtx, name: string): Promise<Record<string, 
 export const pzPanelConfig: PanelAdapterConfig = {
   files,
   roots,
-  schemas: { ini: withGroup(PZ_OPTION_META.ini, pzIniGroupOf), sandbox: withGroup(PZ_OPTION_META.sandbox, pzSandboxGroupOf) },
+  schemas: {
+    ini: withGroup(PZ_OPTION_META.ini, pzIniGroupOf),
+    sandbox: withGroup(PZ_OPTION_META.sandbox, pzSandboxGroupOf).map((o) => (o.key === 'VERSION' ? { ...o, ...SANDBOX_VERSION } : o)),
+  },
   groups: { ini: PZ_INI_GROUPS, sandbox: PZ_SANDBOX_GROUPS },
   // The agent writes the ports and the RCON password before every start; the panel only pins UPnP off.
   managedValues: () => ({ ini: { UPnP: 'false' } }),
