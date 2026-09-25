@@ -1,4 +1,3 @@
-import { once } from 'node:events';
 import { Writable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 
@@ -78,6 +77,38 @@ export function headerFor(e: TarEntry): Buffer {
   return Buffer.concat([rawHeader('PaxHeader', pax.length, 'x', 0o644, e.mtime), paxBlocks, rawHeader(shortName, Math.min(size, MAX_USTAR_SIZE), type, e.mode, e.mtime)]);
 }
 
+/**
+ * Writes `buf`; when the stream is full, waits until it drains. Rejects when
+ * it fails or closes first (a reader that went away), rather than waiting
+ * for a drain that never comes.
+ */
+export async function writeOrFail(out: Writable, buf: Buffer): Promise<void> {
+  if (out.destroyed || out.writableEnded) throw out.errored ?? new TarError('The archive stream is closed');
+  if (out.write(buf)) return;
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      out.off('drain', onDrain);
+      out.off('error', onError);
+      out.off('close', onClose);
+    };
+    const onDrain = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = (e: Error) => {
+      cleanup();
+      reject(e);
+    };
+    const onClose = () => {
+      cleanup();
+      reject(out.errored ?? new TarError('The archive stream closed'));
+    };
+    out.on('drain', onDrain);
+    out.on('error', onError);
+    out.on('close', onClose);
+  });
+}
+
 /** Zero bytes that fill a file's data up to the next block. */
 export function padding(size: number): Buffer {
   return ZERO.subarray(0, (BLOCK - (size % BLOCK)) % BLOCK);
@@ -92,7 +123,7 @@ export class TarPacker {
   private async write(buf: Buffer): Promise<void> {
     if (buf.length === 0) return;
     this.bytes += buf.length;
-    if (!this.out.write(buf)) await once(this.out, 'drain');
+    await writeOrFail(this.out, buf);
   }
 
   async addDir(name: string, mtimeSec: number, meta?: Record<string, string>): Promise<void> {
@@ -157,7 +188,7 @@ function parsePax(buf: Buffer): Record<string, string> {
 async function feed(sink: Writable, part: Buffer, failed: () => Error | null): Promise<void> {
   const err = failed();
   if (err) throw err;
-  if (!sink.write(part)) await once(sink, 'drain');
+  await writeOrFail(sink, part);
 }
 
 /**

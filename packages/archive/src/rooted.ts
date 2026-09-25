@@ -476,6 +476,8 @@ export class RootedFiles implements ServerFiles {
             plain.add(parent);
           }
           const dest = path.join(dir, ...parts);
+          const there = await lstatOrNull(dest);
+          if (there && !(e.type === 'dir' && there.isDirectory())) throw new ServerFilesError('invalid-path', `The archive holds ${rel} twice`);
           entries++;
           if (e.type === 'dir') {
             await mkdir(dest, { recursive: true });
