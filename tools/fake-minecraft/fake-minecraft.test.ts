@@ -297,6 +297,22 @@ describe('fake-minecraft server.mjs', () => {
     client.close();
   });
 
+  it('takes packets of up to 1460 bytes and drops the connection on a longer one; say takes 256 characters', async () => {
+    const rcon = await freePort();
+    const f = start({ dir: prepared(rcon) });
+    await f.waitFor(PATTERNS.rconUp);
+    const c = await raw(rcon);
+    await c.write(frame(1, 3, PASSWORD));
+    await c.write(frame(10, 2, `say ${'x'.repeat(1442)}`)); // 1460 bytes in all
+    await c.write(frame(11, 2, `say ${'y'.repeat(256)}`));
+    expect(c.packets.slice(1)).toEqual([
+      { id: 10, type: 0, body: 'Chat message was too long (1442 > maximum 256 characters)' },
+      { id: 11, type: 0, body: '' },
+    ]);
+    await c.write(frame(12, 2, `say ${'x'.repeat(1443)}`)); // 1461 bytes
+    expect(c.closed).toBe(true);
+  });
+
   it('Paper keeps the newlines in a multi-line RCON reply; vanilla joins the lines with nothing', async () => {
     const rcon = await freePort();
     const f = start({ dir: prepared(rcon), loader: 'paper' });

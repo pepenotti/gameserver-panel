@@ -335,9 +335,13 @@ function run(line, src) {
       const names = [...online.values()].map((p) => (a === 'uuids' ? `${p.name} (${p.uuid})` : p.name));
       return [`There are ${online.size} of a max of ${props['max-players']} players online: ${names.join(', ')}`];
     }
-    case 'say':
-      log(`[Not Secure] [${source}] ${tail(0)}`);
+    case 'say': {
+      // Measured: longer messages are refused, counted in characters of the message.
+      const text = line.trim().replace(/^\/?say\s?/, '');
+      if (text.length > 256) return fail(`Chat message was too long (${text.length} > maximum 256 characters)`);
+      log(`[Not Secure] [${source}] ${text}`);
       return [''];
+    }
     case 'save-all':
       // Saves even while saving is off; only "Saved the game" is echoed to the log for RCON.
       saveWorld();
