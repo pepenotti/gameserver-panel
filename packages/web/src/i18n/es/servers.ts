@@ -40,4 +40,10 @@ export default {
   deletingBackup: 'Haciendo la copia final y después eliminando. Puede tardar unos minutos.',
   deleted: 'Se eliminó {{name}}.',
   deletedWithBackup: 'Se eliminó {{name}}. Copia final: {{file}}',
+  pendingStart: 'Se aplica al próximo inicio',
+  pendingStartHelp: 'Su contenedor recibe los límites nuevos la próxima vez que prenda el servidor.',
+  deleteStopFirstOrForce: 'El servidor está en marcha: apagalo primero, o forzá la eliminación abajo.',
+  force: 'Forzar la eliminación',
+  forceHelp: 'Para un servidor que no se apaga o cuyo contenedor no arranca: se elimina aunque esté en marcha. Igual se intenta la copia final; si no se puede, la eliminación sigue sin ella. Solo el dueño.',
+  deletedNoBackup: 'Se eliminó {{name}} sin copia final: {{reason}}',
 } satisfies Translations['servers'];

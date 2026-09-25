@@ -4,7 +4,7 @@
 // the authority: it checks all of this again. Pure: no React, so tests can
 // import it.
 import { SERVER_ID_PATTERN } from '@gsp/shared';
-import type { PortDecl } from '../api/meta';
+import type { PortDecl, PortRange } from '../api/meta';
 
 /** Ids the panel keeps for itself (`RESERVED_SERVER_IDS` in packages/panel/src/servers/registry.ts). */
 export const RESERVED_IDS: readonly string[] = ['default', 'panel'];
@@ -56,43 +56,87 @@ export interface TakenPort {
   proto: 'tcp' | 'udp';
 }
 
+/** Ranges the way the panel writes them: `30150-30199`, `2456-2499, 16261-16299`. */
+export function formatRanges(ranges: readonly PortRange[]): string {
+  return ranges.map((r) => (r.from === r.to ? String(r.from) : `${r.from}-${r.to}`)).join(', ');
+}
+
+/** Whether a port is one this install lets servers publish (no ranges: anywhere). */
+export function inRanges(port: number, ranges: readonly PortRange[] | null | undefined): boolean {
+  return !ranges?.length || ranges.some((r) => port >= r.from && port <= r.to);
+}
+
 /**
  * Ports for a new server, the way the panel picks them when none are given
- * (`planPorts` in packages/panel/src/servers/spec.ts): the adapter's
- * defaults, shifted together past the ports other servers publish. Null
+ * (`planPorts` in packages/panel/src/servers/spec.ts): near the adapter's
+ * defaults, shifted together past the ports other servers publish, while
+ * the host allows them; else as low as they fit in the host's ranges. Null
  * when nothing fits. The panel's own ports and other programs' aren't known
  * here: the API still refuses a clash.
  */
-export function suggestPorts(decls: readonly PortDecl[], taken: readonly TakenPort[]): Record<string, number> | null {
+export function suggestPorts(decls: readonly PortDecl[], taken: readonly TakenPort[], ranges?: readonly PortRange[] | null): Record<string, number> | null {
   const published = publishedPorts(decls);
   if (published.length === 0) return {};
+  const allowed = ranges?.length ? [...ranges].sort((x, y) => x.from - y.from) : null;
   const lo = Math.min(...published.map((d) => d.default));
   const span = Math.max(...published.map((d) => d.default)) - lo + 1;
-  for (let shift = 0; published.every((d) => d.default + shift <= MAX_PORT); shift += span) {
+  const place = (base: number): Record<string, number> | null => {
     const mine: TakenPort[] = [];
-    const fits = published.every((d) => {
-      const port = d.default + shift;
-      if (port < MIN_PORT || [...taken, ...mine].some((t) => t.port === port && t.proto === d.proto)) return false;
+    for (const d of published) {
+      const port = base + d.default - lo;
+      if (port < MIN_PORT || port > MAX_PORT || !inRanges(port, allowed) || [...taken, ...mine].some((t) => t.port === port && t.proto === d.proto)) return null;
       mine.push({ port, proto: d.proto });
-      return true;
-    });
-    if (fits) return Object.fromEntries(published.map((d) => [d.id, d.default + shift]));
+    }
+    return Object.fromEntries(published.map((d) => [d.id, base + d.default - lo]));
+  };
+  for (let base = lo; base + span - 1 <= MAX_PORT; base += span) {
+    if (allowed && !published.every((d) => inRanges(base + d.default - lo, allowed))) break;
+    const placed = place(base);
+    if (placed) return placed;
+  }
+  for (const r of allowed ?? []) {
+    for (let base = Math.max(r.from, MIN_PORT); base + span - 1 <= Math.min(r.to, MAX_PORT); base++) {
+      const placed = place(base);
+      if (placed) return placed;
+    }
   }
   return null;
 }
 
-export type PortProblem = { kind: 'required' } | { kind: 'invalid' } | { kind: 'twice' } | { kind: 'taken'; by: string };
+export type PortProblem = { kind: 'invalid' } | { kind: 'outside' } | { kind: 'twice' } | { kind: 'taken'; by: string };
 
-/** What's wrong with one port of the form: missing, out of range, used twice, or another server's. */
-export function portProblem(id: string, ports: Readonly<Record<string, number | null>>, decls: readonly PortDecl[], taken: readonly (TakenPort & { by: string })[]): PortProblem | null {
+/**
+ * What's wrong with one port of the form: out of range, outside what the
+ * host allows, used twice, or another server's. An empty port is fine: the
+ * panel picks one.
+ */
+export function portProblem(
+  id: string,
+  ports: Readonly<Record<string, number | null>>,
+  decls: readonly PortDecl[],
+  taken: readonly (TakenPort & { by: string })[],
+  ranges?: readonly PortRange[] | null,
+): PortProblem | null {
   const published = publishedPorts(decls);
   const d = published.find((x) => x.id === id);
   const v = ports[id];
-  if (!d || v === null || v === undefined) return { kind: 'required' };
+  if (!d || v === null || v === undefined) return null;
   if (!Number.isInteger(v) || v < MIN_PORT || v > MAX_PORT) return { kind: 'invalid' };
+  if (!inRanges(v, ranges)) return { kind: 'outside' };
   if (published.some((o) => o.id !== id && o.proto === d.proto && ports[o.id] === v)) return { kind: 'twice' };
   const other = taken.find((x) => x.port === v && x.proto === d.proto);
   return other ? { kind: 'taken', by: other.by } : null;
+}
+
+/**
+ * The most memory a game may be given on this host (its launch setting, MiB):
+ * the host's limit per server less what the container needs on top, rounded
+ * down to the setting's step. Null when the host doesn't say.
+ */
+export function maxGameMemory(maxMemMb: number | null | undefined, overheadMb: number, step?: number): number | null {
+  if (maxMemMb === null || maxMemMb === undefined) return null;
+  const room = maxMemMb - overheadMb;
+  return step ? Math.floor(room / step) * step : room;
 }
 
 /** A field of the create form. */
@@ -140,6 +184,8 @@ export function createErrorField(code: string, extra: Record<string, unknown>, d
       return byField(extra.field) ?? { field: null };
     }
     case 'orchestrator-refused':
+      // Memory above what the host gives one server (the panel's check says `memLimitMb`, the orchestrator's `memoryMb`).
+      if (typeof extra.maxMb === 'number' || extra.field === 'memLimitMb' || extra.field === 'memoryMb') return { field: 'memory' };
       return byField(extra.field) ?? { field: null };
     default:
       return { field: null };

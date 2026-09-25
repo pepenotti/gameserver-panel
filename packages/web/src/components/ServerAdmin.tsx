@@ -13,7 +13,17 @@ import { useSession } from '../api/session';
 import { useErrorText } from '../lib/format';
 import { nameProblem } from '../lib/servers';
 
-/** States in which a server can't be deleted (the API answers `server-running`). */
+/** `DELETE /api/servers/:sid`. */
+interface DeleteResult {
+  ok: boolean;
+  /** The final backup's archive name; null when none was taken. */
+  finalBackup: string | null;
+  forced?: boolean;
+  /** Forced only: why the final backup couldn't be taken. */
+  finalBackupError?: string | null;
+}
+
+/** States in which a server can't be deleted without forcing it (the API answers `server-running`). */
 const UP = new Set(['running', 'starting', 'stopping', 'installing']);
 
 export function RenameServerModal({ server, opened, onClose }: { server: ServerSummary; opened: boolean; onClose: () => void }) {
@@ -89,6 +99,7 @@ export function DeleteServerModal({ server, opened, onClose }: { server: ServerS
   const [confirm, setConfirm] = useState('');
   const [skipBackup, setSkipBackup] = useState(false);
   const [dropBackups, setDropBackups] = useState(false);
+  const [force, setForce] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   useEffect(() => {
@@ -96,6 +107,7 @@ export function DeleteServerModal({ server, opened, onClose }: { server: ServerS
       setConfirm('');
       setSkipBackup(false);
       setDropBackups(false);
+      setForce(false);
       setError(null);
     }
   }, [opened]);
@@ -106,13 +118,24 @@ export function DeleteServerModal({ server, opened, onClose }: { server: ServerS
     setError(null);
     try {
       const sapi = serverApi(server.id);
-      const r = await sapi<{ ok: boolean; finalBackup: string | null }>('DELETE', '', { confirm: confirm.trim(), ...(owner && skipBackup ? { finalBackup: false } : {}), ...(owner && dropBackups ? { keepBackups: false } : {}) });
+      const r = await sapi<DeleteResult>('DELETE', '', {
+        confirm: confirm.trim(),
+        ...(owner && skipBackup ? { finalBackup: false } : {}),
+        ...(owner && dropBackups ? { keepBackups: false } : {}),
+        ...(owner && force ? { force: true } : {}),
+      });
       qc.setQueryData<ServerSummary[]>(SERVERS_KEY, (list) => (list ?? []).filter((s) => s.id !== server.id));
       qc.removeQueries({ predicate: (q) => q.queryKey.includes(server.id) });
+      // A forced removal goes on without the final backup when it can't be taken: say so, and why.
+      const noBackup = r.forced && r.finalBackupError;
       notifications.show({
-        color: 'green',
-        autoClose: 10_000,
-        message: r.finalBackup ? t('servers.deletedWithBackup', { name: server.name, file: r.finalBackup }) : t('servers.deleted', { name: server.name }),
+        color: noBackup ? 'orange' : 'green',
+        autoClose: noBackup ? false : 10_000,
+        message: noBackup
+          ? t('servers.deletedNoBackup', { name: server.name, reason: r.finalBackupError })
+          : r.finalBackup
+            ? t('servers.deletedWithBackup', { name: server.name, file: r.finalBackup })
+            : t('servers.deleted', { name: server.name }),
       });
       onClose();
       navigate('/servers');
@@ -133,9 +156,9 @@ export function DeleteServerModal({ server, opened, onClose }: { server: ServerS
             {t('servers.unmanagedNote')}
           </Alert>
         )}
-        {up && (
+        {up && !force && (
           <Alert color="orange" variant="light" icon={<IconAlertTriangle />}>
-            {t('servers.deleteStopFirst')}
+            {owner ? t('servers.deleteStopFirstOrForce') : t('servers.deleteStopFirst')}
           </Alert>
         )}
         {owner && (
@@ -143,6 +166,7 @@ export function DeleteServerModal({ server, opened, onClose }: { server: ServerS
             {/* Deleting the backups too leaves nothing to keep a final backup in. */}
             <Checkbox label={t('servers.skipFinal')} description={t('servers.skipFinalHelp')} checked={skipBackup || dropBackups} disabled={dropBackups} onChange={(e) => setSkipBackup(e.currentTarget.checked)} />
             <Checkbox color="red" label={t('servers.dropBackups')} description={t('servers.dropBackupsHelp')} checked={dropBackups} onChange={(e) => setDropBackups(e.currentTarget.checked)} />
+            <Checkbox color="red" label={t('servers.force')} description={t('servers.forceHelp')} checked={force} onChange={(e) => setForce(e.currentTarget.checked)} />
           </Stack>
         )}
         <TextInput label={t('servers.deleteConfirm', { name: server.name })} value={confirm} onChange={(e) => setConfirm(e.currentTarget.value)} autoComplete="off" spellCheck={false} data-autofocus />

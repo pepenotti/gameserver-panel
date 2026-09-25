@@ -10,14 +10,24 @@ import { localize, type AdapterSummary, type AdaptersResponse } from '../api/met
 import { serverHref, SERVERS_KEY, useServers, withServer, type ServerSummary } from '../api/server';
 import { LaunchField, launchDefault, launchKey } from '../components/LaunchField';
 import { useErrorText } from '../lib/format';
-import { createErrorField, idProblem, MAX_PORT, MIN_PORT, nameProblem, portProblem, publishedPorts, slugify, suggestPorts, type CreateField } from '../lib/servers';
+import { createErrorField, formatRanges, idProblem, MAX_PORT, maxGameMemory, MIN_PORT, nameProblem, portProblem, publishedPorts, slugify, suggestPorts, type CreateField } from '../lib/servers';
 
 type Launch = Record<string, unknown>;
 
-/** A launch form's starting values: each setting's default from the schema, the memory one from the adapter. */
-function launchDefaults(a: AdapterSummary): Launch {
+/**
+ * A launch form's starting values: each setting's default from the schema,
+ * the memory one from the adapter, lowered to what the host gives one
+ * server (`maxGameMb`) when that is less.
+ */
+function launchDefaults(a: AdapterSummary, maxGameMb: number | null): Launch {
   const memoryKey = launchKey(a.launch.schema, 'memory');
-  return Object.fromEntries(a.launch.schema.map((o) => [o.key, o.key === memoryKey && o.default === undefined ? a.memory.defaultMb : launchDefault(o)]));
+  return Object.fromEntries(
+    a.launch.schema.map((o) => {
+      if (o.key !== memoryKey) return [o.key, launchDefault(o)];
+      const dflt = o.default === undefined ? a.memory.defaultMb : Number(o.default);
+      return [o.key, maxGameMb !== null && maxGameMb < dflt ? Math.max(maxGameMb, a.memory.minMb, o.min ?? 0) : dflt];
+    }),
+  );
 }
 
 /** Why this host can't run a game (HST-05), or null. */
@@ -60,9 +70,13 @@ export function CreateServer() {
   const adapter = adapters.data?.adapters.find((a) => a.id === adapterId) ?? null;
   const published = useMemo(() => (adapter ? publishedPorts(adapter.ports) : []), [adapter]);
   const taken = useMemo(() => list.flatMap((s) => s.ports.map((p) => ({ port: p.port, proto: p.proto, by: s.name }))), [list]);
-  const suggested = useMemo(() => (adapter ? suggestPorts(adapter.ports, taken) : null), [adapter, taken]);
+  const host = adapters.data?.host ?? null;
+  const ranges = host?.hostPorts ?? null;
+  const suggested = useMemo(() => (adapter ? suggestPorts(adapter.ports, taken, ranges) : null), [adapter, taken, ranges]);
   const memoryKey = adapter ? launchKey(adapter.launch.schema, 'memory') : undefined;
   const memoryOption = adapter?.launch.schema.find((o) => o.key === memoryKey);
+  // What the host gives one server (SRV-05): the game's memory can't take the container above it.
+  const maxGameMb = adapter ? maxGameMemory(host?.maxMemMb, adapter.memory.overheadMb, memoryOption?.step) : null;
 
   // The first game this host can run is picked for you (once the other servers' ports are known).
   useEffect(() => {
@@ -77,8 +91,9 @@ export function CreateServer() {
   useEffect(() => {
     if (!adapter) return;
     setFlavour(adapter.flavours[0]?.id ?? null);
-    setLaunch(launchDefaults(adapter));
-    setMemLimitMb(adapter.memory.defaultMb + adapter.memory.overheadMb);
+    setLaunch(launchDefaults(adapter, maxGameMb));
+    const total = adapter.memory.defaultMb + adapter.memory.overheadMb;
+    setMemLimitMb(host?.maxMemMb ? Math.min(total, host.maxMemMb) : total);
     setPorts(suggested ?? Object.fromEntries(published.map((d) => [d.id, null])));
     setEula(false);
     setApiErrors({});
@@ -101,11 +116,11 @@ export function CreateServer() {
   const nameErr = nameProblem(name, names);
   const idErr = idProblem(id, ids);
   const portErr = (pid: string): string | null => {
-    const p = portProblem(pid, ports, adapter?.ports ?? [], taken);
+    const p = portProblem(pid, ports, adapter?.ports ?? [], taken, ranges);
     if (!p) return null;
     switch (p.kind) {
-      case 'required':
-        return t('create.portRequired');
+      case 'outside':
+        return t('errors.invalid-port-ranges', { ranges: formatRanges(ranges ?? []) });
       case 'invalid':
         return t('errors.invalid-port', { min: MIN_PORT, max: MAX_PORT });
       case 'twice':
@@ -116,17 +131,21 @@ export function CreateServer() {
   };
   const gameMemory = memoryKey && typeof launch[memoryKey] === 'number' ? (launch[memoryKey] as number) : null;
   const memMin = adapter ? Math.max(memoryOption?.min ?? 0, adapter.memory.minMb) : 0;
-  const memErr = !adapter
-    ? null
-    : memoryKey
-      ? gameMemory === null || gameMemory < memMin
-        ? t('create.memoryMin', { min: memMin })
-        : memoryOption?.step && gameMemory % memoryOption.step !== 0
-          ? t('create.memoryStep', { step: memoryOption.step })
-          : null
-      : memLimitMb === null || memLimitMb < adapter.memory.minMb + adapter.memory.overheadMb
-        ? t('create.memoryMin', { min: adapter.memory.minMb + adapter.memory.overheadMb })
-        : null;
+  const hostMax = host?.maxMemMb ?? null;
+  const memErr = (() => {
+    if (!adapter) return null;
+    // The game can't fit in what the host gives one server, whatever is typed.
+    if (hostMax !== null && hostMax < adapter.memory.minMb + adapter.memory.overheadMb) return t('create.hostTooSmall', { max: hostMax, need: adapter.memory.minMb + adapter.memory.overheadMb });
+    if (memoryKey) {
+      if (gameMemory === null || gameMemory < memMin) return t('create.memoryMin', { min: memMin });
+      if (memoryOption?.step && gameMemory % memoryOption.step !== 0) return t('create.memoryStep', { step: memoryOption.step });
+      if (maxGameMb !== null && gameMemory > maxGameMb) return t('create.memoryMax', { max: maxGameMb, limit: hostMax });
+      return null;
+    }
+    if (memLimitMb === null || memLimitMb < adapter.memory.minMb + adapter.memory.overheadMb) return t('create.memoryMin', { min: adapter.memory.minMb + adapter.memory.overheadMb });
+    if (hostMax !== null && memLimitMb > hostMax) return t('create.memoryMax', { max: hostMax, limit: hostMax });
+    return null;
+  })();
   const launchMissing = adapter ? adapter.launch.schema.some((o) => o.key !== memoryKey && (o.type === 'integer' || o.type === 'decimal') && typeof launch[o.key] !== 'number') : false;
   const valid = !!adapter && unsupported(adapter) === null && !nameErr && !idErr && published.every((d) => portErr(d.id) === null) && !memErr && !launchMissing && (!adapter.eula || eula);
   // Typing clears what the API said about that field.
@@ -148,7 +167,8 @@ export function CreateServer() {
     setCreating(true);
     setGeneral(null);
     setApiErrors({});
-    const sentPorts = Object.fromEntries(published.map((d) => [d.id, ports[d.id]!]));
+    // Ports left empty are the panel's to pick, inside what the host allows.
+    const sentPorts = Object.fromEntries(published.flatMap((d) => (typeof ports[d.id] === 'number' ? [[d.id, ports[d.id]!]] : [])));
     try {
       const created = await api<ServerSummary>('POST', '/api/servers', {
         id,
@@ -166,7 +186,7 @@ export function CreateServer() {
     } catch (e) {
       if (e instanceof ApiError) {
         const { field, port } = createErrorField(e.code, e.extra, adapter.ports, sentPorts);
-        const text = port !== undefined && e.code !== 'invalid-port' ? t('errors.port-conflict', { port }) : errorText(e);
+        const text = e.code === 'port-conflict' && port !== undefined ? t('errors.port-conflict', { port }) : errorText(e);
         if (field) setApiErrors({ [field]: text });
         else setGeneral(text);
       } else setGeneral(errorText(e));
@@ -278,7 +298,7 @@ export function CreateServer() {
                 )}
               </Group>
               <Text size="xs" c="dimmed" mb="sm">
-                {t('create.portsHelp')}
+                {t('create.portsHelp')} {ranges?.length ? t('create.portsAllowed', { ranges: formatRanges(ranges) }) : ''}
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 {published.map((d) => (
@@ -294,6 +314,7 @@ export function CreateServer() {
                     max={MAX_PORT}
                     allowDecimal={false}
                     hideControls
+                    placeholder={t('create.portAuto')}
                     error={shown(`port:${d.id}`, portErr(d.id), true)}
                   />
                 ))}
@@ -306,7 +327,7 @@ export function CreateServer() {
               {t('create.memory')}
             </Text>
             <Text size="xs" c="dimmed" mb="sm">
-              {t('create.memoryHelp', { overhead })}
+              {t('create.memoryHelp', { overhead })} {hostMax !== null ? t('create.memoryHostMax', { max: hostMax }) : ''}
             </Text>
             <Stack>
               {memoryOption ? (
@@ -314,6 +335,7 @@ export function CreateServer() {
                   o={memoryOption}
                   value={launch[memoryOption.key]}
                   min={memMin}
+                  max={maxGameMb !== null ? Math.min(maxGameMb, memoryOption.max ?? maxGameMb) : undefined}
                   onChange={(v) => {
                     setLaunch({ ...launch, [memoryOption.key]: v });
                     clear('memory');
@@ -329,6 +351,7 @@ export function CreateServer() {
                     clear('memory');
                   }}
                   min={adapter.memory.minMb + overhead}
+                  max={hostMax ?? undefined}
                   step={256}
                   allowDecimal={false}
                   maw={260}

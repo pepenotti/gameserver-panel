@@ -27,7 +27,7 @@ export function launchDefault(o: LaunchOption): unknown {
  * and the create form). `versions` turns the text field into a picker of
  * known versions that still takes free text.
  */
-export function LaunchField({ o, value, onChange, versions, error, min }: { o: LaunchOption; value: unknown; onChange: (v: unknown) => void; versions?: string[]; error?: string; min?: number }) {
+export function LaunchField({ o, value, onChange, versions, error, min, max }: { o: LaunchOption; value: unknown; onChange: (v: unknown) => void; versions?: string[]; error?: string; min?: number; max?: number }) {
   const { i18n } = useTranslation();
   const label = launchLabel(o, i18n.language);
   const description = localize(o.description, i18n.language) || undefined;
@@ -44,7 +44,7 @@ export function LaunchField({ o, value, onChange, versions, error, min }: { o: L
           value={typeof value === 'number' ? value : ''}
           onChange={(v) => onChange(v === '' ? null : Number(v))}
           min={min ?? o.min}
-          max={o.max}
+          max={max ?? o.max}
           step={o.step ?? (o.type === 'integer' ? 1 : 0.1)}
           allowDecimal={o.type === 'decimal'}
           hideControls={o.step === undefined && o.min !== undefined && o.max !== undefined && o.max - o.min > 100}

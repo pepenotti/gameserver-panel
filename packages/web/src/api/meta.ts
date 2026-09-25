@@ -122,9 +122,26 @@ export interface AdapterSummary {
   launch: { schema: LaunchOption[]; secrets: { key: string; label: I18n }[] };
 }
 
+/** An inclusive range of host ports. */
+export interface PortRange {
+  from: number;
+  to: number;
+}
+
+/** The host in `GET /api/adapters` (mirrors `HostSummary` in packages/panel/src/routes/servers.ts). */
+export interface HostSummary {
+  arch: string;
+  cpus: number;
+  memBytes: number;
+  /** Where servers may publish ports; null when the host doesn't say (then anywhere from 1024 up). */
+  hostPorts: PortRange[] | null;
+  /** The most memory one server's container may have, MiB; null when the host doesn't say. */
+  maxMemMb: number | null;
+}
+
 export interface AdaptersResponse {
   /** Null when the host couldn't be asked. */
-  host: { arch: string; cpus: number; memBytes: number } | null;
+  host: HostSummary | null;
   adapters: AdapterSummary[];
 }
 

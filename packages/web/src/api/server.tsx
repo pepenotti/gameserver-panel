@@ -27,6 +27,10 @@ export interface ServerSummary {
   ports: { id: string; port: number; proto: 'tcp' | 'udp' }[];
   /** Container memory limit, MiB. */
   memLimitMb: number;
+  /** CPU limit in cores; null: none. */
+  cpus: number | null;
+  /** Its container waits to be recreated with changed limits at the game's next start. */
+  containerPending: boolean;
   /** False for the server the install's environment describes: only the stack itself removes it. */
   managed: boolean;
   /** The signed-in user's role there, and what it lets them do. */

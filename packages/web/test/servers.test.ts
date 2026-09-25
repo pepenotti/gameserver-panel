@@ -2,7 +2,7 @@
 // does, the ports it suggests, and where it shows the API's refusals.
 import { describe, expect, it } from 'vitest';
 import type { PortDecl } from '../src/api/meta';
-import { createErrorField, idProblem, nameProblem, portProblem, slugify, suggestPorts } from '../src/lib/servers';
+import { createErrorField, formatRanges, idProblem, maxGameMemory, nameProblem, portProblem, slugify, suggestPorts } from '../src/lib/servers';
 
 const port = (id: string, proto: 'tcp' | 'udp', dflt: number, publish = true): PortDecl => ({ id, proto, default: dflt, publish, sameInsideOut: true, label: { en: id, es: id } });
 /** A game with a pair of UDP ports players use and a TCP port only its agent uses. */
@@ -46,13 +46,32 @@ describe('ports', () => {
     expect(suggestPorts([port('admin', 'tcp', 21000, false)], [])).toEqual({});
   });
 
-  it('says what is wrong with a port', () => {
+  it('suggests ports inside what the host lets servers publish', () => {
+    // The defaults are allowed: near them, as without ranges.
+    expect(suggestPorts(DECLS, [{ port: 20000, proto: 'udp' }], [{ from: 19990, to: 20010 }])).toEqual({ game: 20002, direct: 20003 });
+    // They aren't: as low as the pair fits in the ranges, past what is taken.
+    const ranges = [{ from: 30350, to: 30399 }];
+    expect(suggestPorts(DECLS, [], ranges)).toEqual({ game: 30350, direct: 30351 });
+    expect(suggestPorts(DECLS, [{ port: 30351, proto: 'udp' }], ranges)).toEqual({ game: 30352, direct: 30353 });
+    expect(suggestPorts(DECLS, [], [{ from: 30350, to: 30350 }])).toBeNull();
+    expect(formatRanges([{ from: 2456, to: 2499 }, { from: 16261, to: 16261 }])).toBe('2456-2499, 16261');
+  });
+
+  it('says what is wrong with a port; an empty one is the panel’s to pick', () => {
     const taken = [{ port: 20002, proto: 'udp' as const, by: 'Other' }];
     expect(portProblem('game', { game: 20010, direct: 20011 }, DECLS, taken)).toBeNull();
-    expect(portProblem('game', { game: null, direct: 20011 }, DECLS, taken)).toEqual({ kind: 'required' });
+    expect(portProblem('game', { game: null, direct: 20011 }, DECLS, taken)).toBeNull();
     expect(portProblem('game', { game: 80, direct: 20011 }, DECLS, taken)).toEqual({ kind: 'invalid' });
+    expect(portProblem('game', { game: 20010, direct: 20011 }, DECLS, taken, [{ from: 30350, to: 30399 }])).toEqual({ kind: 'outside' });
     expect(portProblem('game', { game: 20011, direct: 20011 }, DECLS, taken)).toEqual({ kind: 'twice' });
     expect(portProblem('game', { game: 20002, direct: 20011 }, DECLS, taken)).toEqual({ kind: 'taken', by: 'Other' });
+  });
+
+  it('caps a game’s memory at what the host gives one server, less the container’s own needs', () => {
+    expect(maxGameMemory(6144, 3072, 512)).toBe(3072);
+    expect(maxGameMemory(6000, 3072, 512)).toBe(2560);
+    expect(maxGameMemory(6000, 3072)).toBe(2928);
+    expect(maxGameMemory(null, 3072, 512)).toBeNull();
   });
 
   it('puts each API refusal on the field it is about', () => {
@@ -68,7 +87,11 @@ describe('ports', () => {
     // …the orchestrator the spec's field, in the order the game publishes its ports.
     expect(createErrorField('port-conflict', { field: 'ports[1].host', message: 'taken' }, DECLS, ports)).toEqual({ field: 'port:direct', port: 20001 });
     expect(createErrorField('orchestrator-refused', { field: 'ports[0].host' }, DECLS, ports)).toEqual({ field: 'port:game', port: 20000 });
-    expect(createErrorField('orchestrator-refused', { field: 'memoryMb' }, DECLS, ports)).toEqual({ field: null });
+    // Memory above what the host gives one server, from the panel's check or the orchestrator's.
+    expect(createErrorField('orchestrator-refused', { field: 'memLimitMb', maxMb: 6144 }, DECLS, ports)).toEqual({ field: 'memory' });
+    expect(createErrorField('orchestrator-refused', { field: 'memoryMb' }, DECLS, ports)).toEqual({ field: 'memory' });
+    expect(createErrorField('orchestrator-refused', { field: 'env.GAME_X' }, DECLS, ports)).toEqual({ field: null });
+    expect(createErrorField('invalid-port', { port: 'game', min: 30350, max: 30399, ranges: '30350-30399' }, DECLS, ports)).toEqual({ field: 'port:game' });
     expect(createErrorField('orchestrator-unavailable', {}, DECLS, ports)).toEqual({ field: null });
   });
 });

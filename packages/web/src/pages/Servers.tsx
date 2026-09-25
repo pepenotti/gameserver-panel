@@ -82,6 +82,13 @@ function ServerCard({ s, live, open }: { s: ServerSummary; live: LiveServer | un
               {t(`ops.kind.${now.op.kind}`, { defaultValue: now.op.kind })}
             </Badge>
           )}
+          {s.containerPending && (
+            <Tooltip label={t('servers.pendingStartHelp')} multiline w={240}>
+              <Badge size="sm" variant="light" color="orange" tt="none">
+                {t('servers.pendingStart')}
+              </Badge>
+            </Tooltip>
+          )}
         </Group>
         <Text size="sm">{now.players === null ? t('servers.notRunning') : t('servers.players', { n: now.players })}</Text>
         <Text size="xs" c="dimmed">

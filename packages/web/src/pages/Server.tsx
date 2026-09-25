@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Alert, Badge, Button, Card, Group, NumberInput, Stack, Table, Text, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -6,7 +6,9 @@ import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useServerApi, useServerScope } from '../api/server';
+import { api } from '../api/http';
+import type { AdaptersResponse } from '../api/meta';
+import { SERVERS_KEY, useServerApi, useServerScope, withServer, type ServerSummary } from '../api/server';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
@@ -52,6 +54,106 @@ function NameCard() {
   );
 }
 
+/**
+ * The server's container limits (SRV-05): memory and CPUs, changed through
+ * `PATCH /api/servers/:sid`. A stopped server's container is recreated with
+ * them at once; a running one's at its game's next start (the list says so
+ * until then). The stack's own server has Compose's limits.
+ */
+function ContainerCard({ server, needMb }: { server: ServerSummary; needMb: number | null }) {
+  const { t } = useTranslation();
+  const errorText = useErrorText();
+  const qc = useQueryClient();
+  const sapi = useServerApi();
+  const { canHost } = useSession();
+  // What the host gives one server; only those who may create servers can ask (the API refuses more anyway).
+  const adapters = useQuery({ queryKey: ['adapters'], queryFn: () => api<AdaptersResponse>('GET', '/api/adapters'), enabled: canHost('servers.create'), staleTime: 60_000 });
+  const host = adapters.data?.host ?? null;
+  const [mem, setMem] = useState<number | null>(server.memLimitMb);
+  const [cpus, setCpus] = useState<number | null>(server.cpus);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setMem(server.memLimitMb);
+    setCpus(server.cpus);
+  }, [server.memLimitMb, server.cpus]);
+  const changed = mem !== server.memLimitMb || cpus !== server.cpus;
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const next = await sapi<ServerSummary>('PATCH', '', { ...(mem !== server.memLimitMb && mem !== null ? { memLimitMb: mem } : {}), ...(cpus !== server.cpus ? { cpus } : {}) });
+      qc.setQueryData<ServerSummary[]>(SERVERS_KEY, (list) => withServer(list, next));
+      notifications.show({ color: 'green', message: next.containerPending ? t('server.limitsNextStart') : t('server.limitsApplied') });
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card withBorder>
+      <Group justify="space-between" mb={4}>
+        <Text fw={600}>{t('server.container')}</Text>
+        {server.containerPending && (
+          <Badge color="orange" variant="light" tt="none">
+            {t('servers.pendingStart')}
+          </Badge>
+        )}
+      </Group>
+      {!server.managed ? (
+        <Text size="sm" c="dimmed">
+          {t('server.containerUnmanaged', { limit: server.memLimitMb })}
+        </Text>
+      ) : (
+        <Stack>
+          <Text size="sm" c="dimmed">
+            {t('server.containerHelp')}
+          </Text>
+          <Group align="flex-start" gap="md">
+            <NumberInput
+              label={t('server.memLimit')}
+              description={needMb !== null ? t('server.memLimitMin', { min: needMb }) : undefined}
+              value={mem ?? ''}
+              onChange={(v) => setMem(v === '' ? null : Number(v))}
+              min={needMb ?? 256}
+              max={host?.maxMemMb ?? undefined}
+              step={256}
+              allowDecimal={false}
+              w={{ base: '100%', xs: 220 }}
+            />
+            <NumberInput
+              label={t('server.cpus')}
+              description={t('server.cpusHelp')}
+              placeholder={t('server.cpusNone')}
+              value={cpus ?? ''}
+              onChange={(v) => setCpus(v === '' ? null : Number(v))}
+              min={0.25}
+              max={host?.cpus ?? undefined}
+              step={0.5}
+              decimalScale={2}
+              w={{ base: '100%', xs: 220 }}
+            />
+          </Group>
+          {host?.maxMemMb && (
+            <Text size="xs" c="dimmed">
+              {t('create.memoryHostMax', { max: host.maxMemMb })}
+            </Text>
+          )}
+          {error && <Alert color="red">{error}</Alert>}
+          <Group>
+            <Button onClick={() => void save()} loading={saving} disabled={!changed || mem === null}>
+              {t('common.save')}
+            </Button>
+          </Group>
+        </Stack>
+      )}
+    </Card>
+  );
+}
+
 export function Server() {
   const { t } = useTranslation();
   const errorText = useErrorText();
@@ -75,6 +177,8 @@ export function Server() {
     mutationFn: (l: Launch) => sapi<Launch>('PUT', '/server/launch', body(l)),
     onSuccess: (l) => {
       qc.setQueryData(['launch', sapi.sid], l);
+      // The game's memory may have moved its container's limit (and left it waiting for the next start).
+      void qc.invalidateQueries({ queryKey: SERVERS_KEY });
       setForm(l);
       notifications.show({ color: 'green', message: t('common.saved') });
     },
@@ -88,10 +192,14 @@ export function Server() {
   const memoryKey = launchKey(schema, 'memory');
   const versions = versionKey ? Array.from(new Set([...(updates.data?.branches.map((b) => b.name) ?? []), String(form?.[versionKey] ?? '')])).filter(Boolean) : undefined;
   const versionChanged = versionKey !== undefined && form !== null && launch.data !== undefined && form[versionKey] !== launch.data[versionKey];
-  // The container keeps the memory limit it was created with; the game's memory plus the adapter's overhead must fit.
+  // A managed server's container limit follows the game's memory (the panel moves it, keeping the room above it);
+  // the stack's own server keeps Compose's limit, which the game's memory plus the adapter's overhead must fit in.
   const gameMb = memoryKey && typeof form?.[memoryKey] === 'number' ? (form[memoryKey] as number) : null;
+  const savedGameMb = memoryKey && typeof launch.data?.[memoryKey] === 'number' ? (launch.data[memoryKey] as number) : null;
   const limitMb = server?.memLimitMb ?? null;
-  const tooBig = gameMb !== null && limitMb !== null && gameMb + overheadMb > limitMb;
+  const tooBig = !server?.managed && gameMb !== null && limitMb !== null && gameMb + overheadMb > limitMb;
+  // The least the container may have for the saved launch settings.
+  const needMb = savedGameMb !== null ? savedGameMb + overheadMb : null;
 
   const act = (call: () => Promise<unknown>) => call().catch((e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
   const countdown = () => ((live.players?.count ?? 0) > 0 ? 300 : 0);
@@ -120,8 +228,8 @@ export function Server() {
             )}
             {limitMb !== null && overheadMb > 0 && memoryKey && (
               <Text size="xs" c={tooBig ? 'orange' : 'dimmed'}>
-                {t('server.containerLimit', { limit: formatBytes(limitMb * 1024 * 1024), overhead: formatBytes(overheadMb * 1024 * 1024) })}
-                {tooBig ? ` ${t('server.containerTooSmall', { max: limitMb - overheadMb })}` : ''}
+                {t('server.containerLimit', { limit: formatBytes(limitMb * 1024 * 1024), overhead: formatBytes(overheadMb * 1024 * 1024) })}{' '}
+                {server?.managed ? t('server.containerFollows') : tooBig ? t('server.containerTooSmall', { max: limitMb - overheadMb }) : ''}
               </Text>
             )}
             <Group>
@@ -132,6 +240,8 @@ export function Server() {
           </Stack>
         )}
       </Card>
+
+      {server && <ContainerCard server={server} needMb={needMb} />}
 
       <Card withBorder>
         <Group justify="space-between" mb="sm">
