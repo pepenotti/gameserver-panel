@@ -24,6 +24,7 @@ describe('slot env', () => {
       // The orchestrator's game servers stay in the slot's game ports, and may run fake images.
       ORCH_HOST_PORTS: '30150-30199',
       ORCH_ALLOW_FAKE: '1',
+      SERVER_IMAGE_VARIANT: 'fake',
       ORCH_MAX_SERVERS: '4',
       ORCH_MAX_MEM_MB: '4096',
     });
@@ -74,6 +75,7 @@ describe('slot env', () => {
     const prod = parseEnvFile(fillEnv(example, '').text);
     expect(prod.ORCH_TOKEN).toMatch(/^[0-9a-f]{64}$/);
     expect(prod.ORCH_ALLOW_FAKE).toBe('0');
+    expect(prod.SERVER_IMAGE_VARIANT).toBe('');
     expect(prod.ORCH_HOST_PORTS).toMatch(/^\d+(-\d+)?(,\d+(-\d+)?)*$/);
     expect(prod).not.toHaveProperty('PZ_MEM_LIMIT');
   });

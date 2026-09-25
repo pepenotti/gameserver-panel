@@ -38,6 +38,7 @@ export function slotOverrides(slot) {
     ORCH_MAX_MEM_MB: '4096',
     ORCH_MAX_SERVERS: '4',
     ORCH_ALLOW_FAKE: '1',
+    SERVER_IMAGE_VARIANT: 'fake',
     BACKUP_DIR: './.tmp/backups',
     VITEST_MAX_WORKERS: '3',
     TEST_TIME_SCALE: '2',

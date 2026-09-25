@@ -64,6 +64,8 @@ services:
       PANEL_LISTEN: unix:/run/panel/panel.sock
       ORCH_SOCKET: /run/orch/orch.sock
       ORCH_TOKEN: ${ORCH_TOKEN:?run node scripts/init-env.mjs first}
+      # The image variant new servers ask for: empty (real games) or fake (development slots).
+      SERVER_IMAGE_VARIANT: ${SERVER_IMAGE_VARIANT:-}
       # The server this install had before the server list (`default`), until the
       # panel creates it through the orchestrator too.
       AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}

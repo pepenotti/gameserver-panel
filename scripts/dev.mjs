@@ -125,6 +125,7 @@ const procs = [
       AGENT_URL: `http://127.0.0.1:${ports.agent}`,
       ORCH_SOCKET: orch.socket,
       ORCH_TOKEN: orchToken,
+      SERVER_IMAGE_VARIANT: 'fake',
       PANEL_HOST_BIND: '127.0.0.1',
       PANEL_PORT_BIND: String(ports.panel),
       PANEL_DATA_DIR: path.join(tmp, 'panel'),
