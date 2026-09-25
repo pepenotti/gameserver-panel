@@ -146,7 +146,8 @@ Copying the install volume saves downloading ~7 GB again.
       check finds the game installed (seconds, not a download: see its
       Console). Both end up `running`.
 - [ ] Separate worlds: `docker exec $S-srv-pz-a ls /data/Saves/Multiplayer`
-      lists `pz-a` (and `pz-a_player`) only; `$S-srv-pz-b` lists `pz-b` only.
+      lists `pz-a` only (`pz-a_player` too, if the game made one); `$S-srv-pz-b`
+      lists `pz-b` only. Each has its own `/data/db/<id>.db`.
 - [ ] Separate schedules: set a daily restart at different times on each
       (**Schedules** page or `PUT /api/servers/<id>/schedules`); `GET /api/servers`
       shows two different `nextRestart` values.
@@ -214,11 +215,15 @@ docker exec $S-panel-1 node -e "fetch('http://$S-srv-pz-a:8081/v1/health').then(
       lists `pz-pz-a-<time>-manual.tar.zst`, and the file (with its `.json`
       sidecar) is in `BACKUP_DIR/pz-a/` on the host (slot: `.tmp/backups/pz-a/`).
 - [ ] pz-b's list doesn't show pz-a's backups.
-- [ ] Restore: `await api('POST', '/api/servers/pz-a/backups/<name>/restore', { parts: ['world', 'configs'], countdownSec: 0 })`.
+- [ ] Restore while running: `await api('POST', '/api/servers/pz-a/backups/<name>/restore', { parts: ['world', 'configs'], countdownSec: 0 })`.
       The game stops, the agent stages and swaps the parts, the game starts
-      again; the audit log shows the restore. Then
-      `await api('POST', '/api/servers/pz-a/backups/undo-restore')` puts the
-      replaced files back.
+      again; the audit log shows the restore. Once the restored world runs,
+      the replaced files are dropped, so `undo-restore` now answers 409
+      `nothing-to-undo` (by design: undo is for a restore that won't start).
+- [ ] Undo: stop pz-a, change a line in `Server/pz-a.ini` (e.g. through the
+      text editor), restore again, and before starting it
+      `await api('POST', '/api/servers/pz-a/backups/undo-restore')`: the
+      changed line is back. A second undo answers 409 `nothing-to-undo`.
 - [ ] The panel never mounted a game volume (step 2): everything above went
       through pz-a's agent.
 
@@ -280,15 +285,15 @@ docker ps -a --filter label=gsp.stack=$S; docker volume ls --filter label=gsp.st
 
 | Step | Result | Notes |
 |---|---|---|
-| 0 Prepare | | Docker version, OS, memory |
-| 1 Images | | |
-| 2 Stack | | |
-| 3 First server | | |
-| 4 Second server | | copy time, update check |
-| 5 Hardening | | |
-| 6 Reachability | | host.docker.internal result |
-| 7 Backups | | |
-| 8 Memory | | |
+| 0 Prepare | pass | Run on 2026-09-25 from commit 780df2d, slot 1. Docker Desktop, Engine 29.7.2 (API 1.55), linux/amd64 VM with 15.6 GiB and 12 CPUs. Another stack on the host was idle. `stack.mjs config` as described. |
+| 1 Images | pass | Five images in 2 min 23 s: steam 693 MB, steam-fake 384 MB, panel 347 MB, orchestrator 334 MB, caddy 154 MB. `uid=1000(node)`, Node v24.21.0. The Debian base brings `/usr/bin/tar` (unused by the agent); no `zstd`. |
+| 2 Stack | pass | Orchestrator `net=none ro=true user=0:0 drop=[ALL] sec=[no-new-privileges:true]`, mounts the socket and `orch-sock` only. Panel mounts `panel-data`, `panel-sock`, `orch-sock` (ro) and the backups folder; both sockets `srw-rw-rw-`; TCP 8080 `ECONNREFUSED`. Signed in through the API (password change and 2FA enrolment by script). |
+| 3 First server | pass after two fixes | Refusals as written (400 `invalid-port` with `ranges`; 409 `orchestrator-refused`, 11264 > 6144). pz-a got 30150/30151 and 5120 MiB. The game (42.20.4, build 24909836, 6.9 GB) downloaded in about 3 min. **Found:** (1) the first boot died: Docker mounts a tmpfs `noexec` unless told `exec`, so the game's SQLite driver couldn't load its native library from `/tmp`; fixed in 780df2d, and the panel's boot reconcile recreated the container with the new options. (2) That failed boot left a 0-byte `db/pz-a.db`, and every later start failed with `no such table`; removed by hand here, fixed in the PZ adapter by M2-G. Then the first boot (world generation) took about 2 min to `running`, RCON connected. |
+| 4 Second server | pass | pz-b got 30152/30153 and 6144 MiB. Copying the install volume took 39 s. pz-b's update check found the game installed: `starting` with the build within 30 s, no download. Both `running`; `Saves/Multiplayer` and `db/` hold only their own server; `nextRestart` 11:00Z and 12:30Z. |
+| 5 Hardening | pass | Every line as listed, on both servers: pz-a `mem=swap=5368709120`, pz-b `6442450944`; `tmpfs={"/tmp":"rw,exec,nosuid,nodev,size=256m"}` (after the fix above); only UDP game ports on 127.0.0.1; each network holds its server and the panel only. |
+| 6 Reachability | pass | Both directions: panel refused, orchestrator and the other server unresolvable, the other server's IP times out, no Docker socket, internet answers (HTTP 404 from the Steam API root), the panel reaches each agent (200). `host.docker.internal:30143` from a server: no connection (`000`). |
+| 7 Backups | pass | Hot backup `pz-pz-a-<time>-manual.tar.zst` (847 KB, fresh world) and its sidecar in `.tmp/backups/pz-a/`; pz-b's list empty. Restore while running: stopped, swapped, running again in about 65 s; audit `backup.restore` with the parts. Undo after that answered `nothing-to-undo` (by design, checklist reworded); restore while stopped then undo brought the changed `pz-a.ini` line back; a second undo 409. |
+| 8 Memory | pass | PATCH 5632 while running: `containerPending: true`, container untouched, game running. Restart: new container, 5905580032, pending cleared. Stopped + launch memory 2560: recreated at once at 6442450944. 7000: 409 `orchestrator-refused`, `maxMb: 6144`. |
 | 9 Docker restart | | |
 | 10 Removal | | |
 | 11 Clean up | | |
