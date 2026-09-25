@@ -92,4 +92,6 @@ export default {
   'server-running': 'Stop the server first.',
   'final-backup-failed': 'The final backup failed, so nothing was deleted.',
   'role-follows-grants': 'This account only has access to some servers: its role there is set per server.',
+  'invalid-port-ranges': 'This panel lets servers use only these ports: {{ranges}}.',
+  'memory-above-host': 'That is more memory than this panel gives one server ({{maxMb}} MiB).',
 } as const;

@@ -6,7 +6,7 @@ import type { Value } from './api';
 
 export type { Value };
 
-/** "SafetyToggleTimer" → "Safety toggle timer"; "ZombieLore.Speed" → "Speed". */
+/** A name from a key, for options the adapter gives no label: "SafetyToggleTimer" → "Safety toggle timer"; "Lore.Speed" → "Speed". */
 export function humanize(key: string): string {
   const last = key.split('.').at(-1) ?? key;
   const words = last
@@ -20,6 +20,11 @@ export function humanize(key: string): string {
 function localized(l: Partial<Record<'en' | 'es', string>> | undefined, lang: string): string | undefined {
   if (!l) return undefined;
   return (lang.startsWith('en') ? l.en : l.es) ?? l.en ?? l.es;
+}
+
+/** What a form calls an option: the adapter's label in the UI language, else a name made from its key. */
+export function optionLabel(meta: Pick<OptionMeta, 'key' | 'label'>, lang: string): string {
+  return localized(meta.label, lang) || humanize(meta.key);
 }
 
 interface RowProps {
@@ -92,7 +97,7 @@ export const OptionRow = memo(function OptionRow({ meta, value, original, onChan
         <Group gap={6}>
           <Tooltip label={meta.key} openDelay={400}>
             <Text size="sm" fw={500}>
-              {humanize(meta.key)}
+              {optionLabel(meta, i18n.language)}
             </Text>
           </Tooltip>
           {restartOnly && (

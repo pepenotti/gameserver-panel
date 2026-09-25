@@ -1,8 +1,6 @@
 export default {
   title: 'Configuration',
   tabs: {
-    ini: 'Server',
-    sandbox: 'World',
     files: 'Files',
     history: 'History',
   },
@@ -18,43 +16,18 @@ export default {
   pendingRestart: 'Restart pending for: {{reasons}}',
   rejected: 'The server rejected: {{list}}',
   managed: 'Set by the panel',
-  managedHelp: 'Ports, RCON and the mod lists are managed automatically (mods in the Mods page).',
   unknownOption: 'not a setting of this file',
   restartOnly: 'restart',
   defaultValue: 'Default: {{value}}',
   noResults: 'No options match.',
   advanced: 'Advanced',
   advancedHelp: 'Settings most servers never change. Search finds them from any section.',
-  // FALLBACK: `groups`, `sandboxGroups`, `worldHelp`, `managedHelp`, and the `tabs`/`files`
-  // names of declared files serve the form layouts in pages/config/Config.tsx, keyed by one
-  // adapter's schema and file ids, until the contract carries option groups and file labels.
-  groups: {
-    general: 'General',
-    players: 'Players',
-    pvp: 'PvP',
-    safehouses: 'Safehouses & factions',
-    chat: 'Chat & voice',
-    backups: 'Built-in backups',
-    anticheat: 'Anti-cheat',
-    other: 'Everything else',
-  },
-  sandboxGroups: {
-    general: 'General',
-    Basement: 'Basements',
-    Map: 'Map',
-    ZombieLore: 'Zombie lore',
-    ZombieConfig: 'Zombie population',
-    MultiplierConfig: 'Skill XP',
-  },
+  allSettings: 'Settings',
+  otherSettings: 'Other settings',
+  managedNote: 'Settings marked “Set by the panel” are managed by the panel itself (such as ports) and are locked here.',
+  restartAllNote: 'Changes to this file apply the next time the server starts.',
   presets: 'Apply a preset',
   presetPreview: 'Preset: what would change',
-  worldHelp: 'World (sandbox) settings are read when the server starts. Several (zombie population, loot) only affect areas nobody has visited yet, or a new world.',
-  files: {
-    ini: 'Server settings (.ini)',
-    sandbox: 'World settings',
-    spawnregions: 'Spawn regions',
-    spawnpoints: 'Spawn points',
-  },
   preview: {
     title: 'Review changes: {{file}}',
     applies: {
@@ -64,7 +37,7 @@ export default {
     more: '+{{count}} more',
     nothing: 'This would not change anything.',
     reappliedTitle: 'Kept by the panel',
-    reappliedHelp: 'The panel manages these settings itself (ports, RCON, mod lists), so your edit to them was undone:',
+    reappliedHelp: 'The panel manages these settings itself (such as ports), so your edit to them was undone:',
     removed: 'removed (the panel manages it)',
     why: {
       'set-by-panel': 'set to {{value}} by the panel',

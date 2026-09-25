@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router';
 import type { Permission } from '@gsp/shared';
 import { LiveProvider } from './api/live';
-import { ServerScope, serverHref, useCanSomewhere, useServerScope } from './api/server';
+import { ServerScope, serverHref, useCanSomewhere, useServers, useServerScope } from './api/server';
 import { useSession } from './api/session';
 import { HOST_NAV, Layout, SERVER_NAV, type NavItem } from './components/Layout';
 import { Supported } from './components/Supported';
@@ -20,18 +20,33 @@ import { Reset } from './pages/Reset';
 import { Schedules } from './pages/Schedules';
 import { Config } from './pages/config/Config';
 import { Console } from './pages/Console';
+import { CreateServer } from './pages/CreateServer';
+import { HostSettings } from './pages/HostSettings';
 import { Server } from './pages/Server';
-import { Servers } from './pages/Servers';
+import { Home, Servers } from './pages/Servers';
 import { Dashboard } from './pages/Dashboard';
 import { Profile } from './pages/Profile';
 import { Users } from './pages/Users';
 
-function Guard({ permission, children }: { permission: Permission; children: ReactNode }) {
-  const { can } = useSession();
+/**
+ * A page's permission: on a server's page, on that server; on a host page,
+ * anywhere (the audit log of some servers), or on the host itself when
+ * `hostOnly` (accounts, the host's settings, creating servers).
+ */
+function Guard({ permission, hostOnly, children }: { permission?: Permission; hostOnly?: boolean; children: ReactNode }) {
+  const { can, canHost } = useSession();
   const scope = useServerScope();
   const somewhere = useCanSomewhere();
-  // A server's page: its server; a host page: anywhere (the audit log of some servers).
-  if (scope ? can(permission) : somewhere(permission)) return children;
+  const servers = useServers();
+  if (permission === undefined || (scope ? can(permission) : hostOnly ? canHost(permission) : somewhere(permission))) return children;
+  // A role on some servers only is known once the list is in: don't send a deep link away before that.
+  if (servers.isLoading) {
+    return (
+      <Center mt="xl">
+        <Loader />
+      </Center>
+    );
+  }
   // Back to the server's dashboard, or the home page.
   return <Navigate to={scope ? serverHref(scope.sid, '/') : '/'} replace />;
 }
@@ -40,7 +55,7 @@ function Guard({ permission, children }: { permission: Permission; children: Rea
 function Page({ item, children }: { item: NavItem; children: ReactNode }) {
   const { t } = useTranslation();
   return (
-    <Guard permission={item.permission}>
+    <Guard permission={item.permission} hostOnly={item.hostOnly}>
       <Supported need={item} title={t(item.label)}>
         {children}
       </Supported>
@@ -63,8 +78,10 @@ const SERVER_PAGES: Record<string, ReactNode> = {
 
 /** The host's pages. */
 const HOST_PAGES: Record<string, ReactNode> = {
+  '/servers': <Servers />,
   '/users': <Users />,
   '/audit': <Audit />,
+  '/settings': <HostSettings />,
 };
 
 function NotFound({ what = 'errors.not-found' }: { what?: string }) {
@@ -155,8 +172,16 @@ export function App() {
           element={
             <Layout>
               <Routes>
-                <Route index element={<Servers />} />
+                <Route index element={<Home />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route
+                  path="/servers/new"
+                  element={
+                    <Guard permission="servers.create" hostOnly>
+                      <CreateServer />
+                    </Guard>
+                  }
+                />
                 {HOST_NAV.map((item) => (
                   <Route key={item.to} path={item.to} element={<Page item={item}>{HOST_PAGES[item.to]}</Page>} />
                 ))}

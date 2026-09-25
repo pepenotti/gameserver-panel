@@ -12,10 +12,15 @@ export function useErrorText(): (e: unknown) => string {
         const cap = e.extra.capability;
         return t('support.error', { feature: t(capabilityKey(cap), { defaultValue: cap }) });
       }
+      // Refusals whose details say more than the code: the host's port ranges, its memory limit per server.
+      if (e.code === 'invalid-port' && typeof e.extra.ranges === 'string') return t('errors.invalid-port-ranges', { ranges: e.extra.ranges });
+      if (e.code === 'orchestrator-refused' && typeof e.extra.maxMb === 'number') return t('errors.memory-above-host', { maxMb: e.extra.maxMb });
       const key = `errors.${e.code}`;
       if (i18n.exists(key)) {
         const ms = typeof e.extra.retryAfterMs === 'number' ? e.extra.retryAfterMs : 0;
-        return t(key, { seconds: Math.ceil(ms / 1000) });
+        // The refusal's details fill the message ({{port}}, {{minMb}}, {{max}}…).
+        const params = Object.fromEntries(Object.entries(e.extra).filter(([, v]) => typeof v === 'string' || typeof v === 'number'));
+        return t(key, { ...params, seconds: Math.ceil(ms / 1000) });
       }
       if (typeof e.extra.message === 'string') return e.extra.message;
     }

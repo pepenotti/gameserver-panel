@@ -4,11 +4,11 @@ import { IconPlus, IconX } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../api/http';
 import { useServerApi } from '../api/server';
 import { NEED_MODS, type Need } from '../api/meta';
 import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
+import { ServerDiscord } from '../components/Discord';
 import { UnsupportedNote } from '../components/Supported';
 import { formatDateTime, useErrorText } from '../lib/format';
 
@@ -27,14 +27,6 @@ interface NextRuns {
   gameCheck: string | null;
   modCheck: string | null;
 }
-const EVENTS = ['serverUp', 'serverDown', 'crash', 'playerJoin', 'playerLeave', 'backup', 'update', 'restore', 'reset', 'mods', 'security'] as const;
-interface DiscordView {
-  webhookUrl: string | null;
-  configured: boolean;
-  lang: 'en' | 'es';
-  events: Record<(typeof EVENTS)[number], boolean>;
-}
-
 /** Update checks, each shown only when the server's game has what it checks. */
 const UPDATE_CHECKS: ['gameUpdates' | 'modUpdates', Need][] = [
   ['gameUpdates', { capability: 'updateCheck' }],
@@ -69,24 +61,17 @@ export function Schedules() {
   const { t } = useTranslation();
   const errorText = useErrorText();
   const qc = useQueryClient();
-  const { can, canHost } = useSession();
+  const { can } = useSession();
   const sapi = useServerApi();
   const { supports, gameName } = useMeta();
   const editable = can('schedules.manage');
   const q = useQuery({ queryKey: ['schedules', sapi.sid], queryFn: () => sapi<{ settings: ScheduleSettings; next: NextRuns }>('GET', '/schedules') });
-  // The Discord webhook is the host's (SCH-03).
-  const discord = useQuery({ queryKey: ['notifications'], queryFn: () => api<DiscordView>('GET', '/api/notifications'), enabled: canHost('notifications.manage') });
   const [s, setS] = useState<ScheduleSettings | null>(null);
-  const [d, setD] = useState<DiscordView | null>(null);
-  const [hook, setHook] = useState('');
   const [newTime, setNewTime] = useState('');
 
   useEffect(() => {
     if (q.data) setS(q.data.settings);
   }, [q.data]);
-  useEffect(() => {
-    if (discord.data) setD(discord.data);
-  }, [discord.data]);
 
   const fail = (e: unknown) => notifications.show({ color: 'red', message: errorText(e) });
   const saveSchedules = () =>
@@ -94,13 +79,6 @@ export function Schedules() {
     void sapi<{ settings: ScheduleSettings; next: NextRuns }>('PUT', '/schedules', s).then((r) => {
       qc.setQueryData(['schedules', sapi.sid], r);
       notifications.show({ color: 'green', message: t('schedules.saved') });
-    }, fail);
-  const saveDiscord = (extra: { webhookUrl?: string | null } = {}) =>
-    d &&
-    void api<DiscordView>('PUT', '/api/notifications', { lang: d.lang, events: d.events, ...(hook.trim() ? { webhookUrl: hook.trim() } : {}), ...extra }).then((r) => {
-      qc.setQueryData(['notifications'], r);
-      setHook('');
-      notifications.show({ color: 'green', message: t('common.saved') });
     }, fail);
 
   if (!s) return null;
@@ -183,46 +161,7 @@ export function Schedules() {
         </Group>
       )}
 
-      {d && (
-        <Card withBorder>
-          <Text fw={600}>{t('discord.title')}</Text>
-          <Text size="xs" c="dimmed" mb="sm">
-            {t('discord.help')}
-          </Text>
-          <Stack>
-            <TextInput
-              label={t('discord.webhook')}
-              description={d.configured ? t('discord.webhookKeep', { url: d.webhookUrl }) : undefined}
-              placeholder="https://discord.com/api/webhooks/…"
-              value={hook}
-              onChange={(e) => setHook(e.currentTarget.value)}
-            />
-            <Group gap="xs">
-              <Text size="sm">{t('discord.lang')}:</Text>
-              <SegmentedControl size="xs" value={d.lang} onChange={(v) => setD({ ...d, lang: v as 'en' | 'es' })} data={[{ value: 'es', label: 'Español' }, { value: 'en', label: 'English' }]} />
-            </Group>
-            <Text size="sm" fw={500}>
-              {t('discord.events')}:
-            </Text>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={6}>
-              {EVENTS.map((e) => (
-                <Checkbox key={e} size="sm" label={t(`discord.names.${e}`)} checked={d.events[e]} onChange={(ev) => setD({ ...d, events: { ...d.events, [e]: ev.currentTarget.checked } })} />
-              ))}
-            </SimpleGrid>
-            <Group>
-              <Button onClick={() => saveDiscord()}>{t('common.save')}</Button>
-              <Button variant="default" disabled={!d.configured} onClick={() => void api('POST', '/api/notifications/test', {}).then(() => notifications.show({ color: 'green', message: t('discord.testOk') }), fail)}>
-                {t('discord.test')}
-              </Button>
-              {d.configured && (
-                <Button variant="subtle" color="red" onClick={() => saveDiscord({ webhookUrl: null })}>
-                  {t('discord.remove')}
-                </Button>
-              )}
-            </Group>
-          </Stack>
-        </Card>
-      )}
+      {can('notifications.manage') && <ServerDiscord />}
     </Stack>
   );
 }

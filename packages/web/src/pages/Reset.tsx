@@ -15,14 +15,6 @@ import { useErrorText } from '../lib/format';
 
 type ResetDecl = Meta['resets'][number];
 
-/**
- * A reset that deletes every backup part starts the server from scratch (a
- * factory reset): there are no world settings left for a new seed or a preset
- * to go into. Until the contract says which options each reset takes, the
- * others offer both.
- */
-const keepsSettings = (r: ResetDecl, m: Meta) => m.backupParts.some((p) => !r.removeParts.includes(p.id));
-
 export function Reset() {
   const { t } = useTranslation();
   const errorText = useErrorText();
@@ -43,8 +35,9 @@ export function Reset() {
   const serverName = meta.server.gameName;
   const busy = !!live.op && !live.op.done;
   const playersOnline = (live.players?.count ?? 0) > 0 && live.status?.state === 'running';
-  const options = scope !== undefined && keepsSettings(scope, meta);
-  const presetList = options && has('presets') ? (presets.data?.presets ?? []) : [];
+  // What the scope takes, as the adapter declares it (a new seed, a preset).
+  const seedOption = scope?.options?.newSeed === true;
+  const presetList = scope?.options?.preset === true && has('presets') ? (presets.data?.presets ?? []) : [];
   const partLabel = (id: string) => l(meta.backupParts.find((p) => p.id === id)?.label) || id;
   const summary = (r: ResetDecl) => {
     const kept = meta.backupParts.filter((p) => !r.removeParts.includes(p.id)).map((p) => l(p.label));
@@ -58,7 +51,7 @@ export function Reset() {
       scope: scope.id,
       confirm,
       countdownSec: playersOnline ? Number(countdown) : 0,
-      newSeed: options && newSeed,
+      newSeed: seedOption && newSeed,
       ...(preset && presetList.includes(preset) ? { preset } : {}),
     }).then(
       () => setConfirm(''),
@@ -97,7 +90,7 @@ export function Reset() {
           </Stack>
         </Radio.Group>
 
-        {options && <Switch mt="md" label={t('reset.newSeed')} description={t('reset.newSeedHelp')} checked={newSeed} onChange={(e) => setNewSeed(e.currentTarget.checked)} />}
+        {seedOption && <Switch mt="md" label={t('reset.newSeed')} description={t('reset.newSeedHelp')} checked={newSeed} onChange={(e) => setNewSeed(e.currentTarget.checked)} />}
         {presetList.length > 0 && (
           <Select mt="md" w={{ base: '100%', xs: 320 }} label={t('reset.preset')} value={preset} onChange={setPreset} clearable placeholder={t('reset.presetNone')} data={presetList} />
         )}

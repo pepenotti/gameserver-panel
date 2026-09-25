@@ -11,10 +11,12 @@ import common from './es/common';
 import config from './es/config';
 import consoleNs from './es/console';
 import controls from './es/controls';
+import create from './es/create';
 import dashboard from './es/dashboard';
 import discord from './es/discord';
 import errors from './es/errors';
 import files from './es/files';
+import hostSettings from './es/hostSettings';
 import mods from './es/mods';
 import nav from './es/nav';
 import ops from './es/ops';
@@ -47,6 +49,8 @@ export const es: Translations = {
   console: consoleNs,
   server,
   servers,
+  create,
+  hostSettings,
   config,
   backups,
   reset,

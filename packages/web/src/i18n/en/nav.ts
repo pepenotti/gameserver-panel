@@ -13,4 +13,8 @@ export default {
   audit: 'Activity log',
   profile: 'My account',
   logout: 'Sign out',
+  hostSettings: 'Panel settings',
+  serverSection: 'Server',
+  panelSection: 'Panel',
+  switchServer: 'Switch server',
 } as const;

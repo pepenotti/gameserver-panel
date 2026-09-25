@@ -10,10 +10,12 @@ import common from './en/common';
 import config from './en/config';
 import consoleNs from './en/console';
 import controls from './en/controls';
+import create from './en/create';
 import dashboard from './en/dashboard';
 import discord from './en/discord';
 import errors from './en/errors';
 import files from './en/files';
+import hostSettings from './en/hostSettings';
 import mods from './en/mods';
 import nav from './en/nav';
 import ops from './en/ops';
@@ -46,6 +48,8 @@ export const en = {
   console: consoleNs,
   server,
   servers,
+  create,
+  hostSettings,
   config,
   backups,
   reset,

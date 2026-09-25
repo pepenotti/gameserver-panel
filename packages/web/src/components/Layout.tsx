@@ -1,6 +1,7 @@
-import { AppShell, Burger, Group, Menu, NavLink, ScrollArea, Text, UnstyledButton } from '@mantine/core';
+import { AppShell, Box, Burger, Divider, Group, Menu, NavLink, ScrollArea, Select, Text, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
+  IconAdjustments,
   IconArchive,
   IconCalendarTime,
   IconChevronDown,
@@ -20,16 +21,16 @@ import {
 } from '@tabler/icons-react';
 import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink as RouterLink, useLocation } from 'react-router';
-import type { Permission } from '@gsp/shared';
-import { useLive } from '../api/live';
-import { NEED_MODS, NEED_RESETS, type Need } from '../api/meta';
-import { lastServer, serverHref, useCanSomewhere, useServers, useServerScope } from '../api/server';
+import { NavLink as RouterLink, useLocation, useNavigate } from 'react-router';
+import type { Permission, ServerState } from '@gsp/shared';
+import { useLive, useLiveServers } from '../api/live';
+import { localize, NEED_MODS, NEED_RESETS, type Need } from '../api/meta';
+import { lastServer, serverHref, useCanSomewhere, useServers, useServerScope, type ServerSummary } from '../api/server';
 import { useMeta } from '../api/useMeta';
 import { useSession } from '../api/session';
 import { LangSwitch } from './LangSwitch';
 import { LiveToasts } from './LiveToasts';
-import { StateBadge } from './StateBadge';
+import { StateBadge, stateColor } from './StateBadge';
 
 /** A page: hidden without its permission, and without what it needs from the game (`capability`, `when`). */
 export interface NavItem extends Need {
@@ -37,7 +38,10 @@ export interface NavItem extends Need {
   to: string;
   label: string;
   icon: Icon;
-  permission: Permission;
+  /** None: any signed-in user (the server list). */
+  permission?: Permission;
+  /** A host page whose permission must hold on the host itself (every server), not just on some server. */
+  hostOnly?: boolean;
 }
 
 /** The pages of one server (under /s/<sid>); App routes them with the same permission and needs. */
@@ -53,19 +57,86 @@ export const SERVER_NAV: NavItem[] = [
   { to: '/reset', label: 'nav.reset', icon: IconRestore, permission: 'reset.world', ...NEED_RESETS },
 ];
 
-/** The host's pages. */
+/** The host's pages: every server, accounts, the activity log and the host's own settings. */
 export const HOST_NAV: NavItem[] = [
-  { to: '/users', label: 'nav.users', icon: IconUsers, permission: 'users.manage' },
+  { to: '/servers', label: 'nav.servers', icon: IconServer2 },
+  { to: '/users', label: 'nav.users', icon: IconUsers, permission: 'users.manage', hostOnly: true },
   { to: '/audit', label: 'nav.audit', icon: IconHistory, permission: 'audit.view' },
+  { to: '/settings', label: 'nav.hostSettings', icon: IconAdjustments, permission: 'notifications.manage', hostOnly: true },
 ];
+
+/** A section title in the menu. */
+function Heading({ children }: { children: ReactNode }) {
+  return (
+    <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" pt="sm" pb={4}>
+      {children}
+    </Text>
+  );
+}
+
+/**
+ * Picks the server the menu's pages are about. Switching keeps the page
+ * (players, console…) when there is one; from a host page it opens the
+ * server's dashboard.
+ */
+function ServerSwitcher({ list, sid, onPicked }: { list: ServerSummary[]; sid: string; onPicked: () => void }) {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const scope = useServerScope();
+  const live = useLiveServers();
+  const pick = (next: string | null) => {
+    if (!next || next === scope?.sid) return;
+    // The same page on the other server; its guard sends people without the permission to its dashboard.
+    const rest = scope ? location.pathname.slice(serverHref(scope.sid, '').length) || '/' : '/';
+    navigate(serverHref(next, SERVER_NAV.some((n) => n.to !== '/' && rest.startsWith(n.to)) ? rest : '/'));
+    onPicked();
+  };
+  const now = (s: ServerSummary) => {
+    const l = live.open ? live.servers[s.id] : undefined;
+    return { state: (l?.status ? l.status.state : s.state) as ServerState | null, connected: l ? l.agentConnected : s.agentConnected };
+  };
+  return (
+    <Select
+      aria-label={t('nav.switchServer')}
+      data={list.map((s) => ({ value: s.id, label: s.name }))}
+      value={sid}
+      // Any option, the shown one too: from a host page, picking it opens that server.
+      onOptionSubmit={pick}
+      allowDeselect={false}
+      searchable={list.length > 6}
+      mx={4}
+      mb={4}
+      comboboxProps={{ withinPortal: true, width: 300, position: 'bottom-start' }}
+      renderOption={({ option }) => {
+        const s = list.find((x) => x.id === option.value)!;
+        const n = now(s);
+        const stateText = n.connected && n.state ? t(`state.${n.state}`) : t('state.agentOffline');
+        return (
+          <Group gap={8} wrap="nowrap" w="100%">
+            <Box w={8} h={8} style={{ borderRadius: '50%', flexShrink: 0, background: `var(--mantine-color-${stateColor(n.state, n.connected)}-6)` }} title={stateText} />
+            <div style={{ minWidth: 0 }}>
+              <Text size="sm" truncate>
+                {s.name}
+              </Text>
+              <Text size="xs" c="dimmed" truncate>
+                {stateText} · {localize(s.adapterName, i18n.language)} · {t(`roles.${s.role}`)}
+              </Text>
+            </div>
+          </Group>
+        );
+      }}
+    />
+  );
+}
 
 export function Layout({ children }: { children: ReactNode }) {
   const { t, i18n } = useTranslation();
   const [opened, { toggle, close }] = useDisclosure();
-  const { session, can, logout } = useSession();
+  const { session, can, canHost, logout } = useSession();
   const scope = useServerScope();
   const servers = useServers();
-  // On a host page, the server links go to the last server opened here, or the first one.
+  // On a host page, the server menu is about the last server opened here, or the first one.
   const list = servers.data ?? [];
   const sid = scope?.sid ?? list.find((s) => s.id === lastServer())?.id ?? list[0]?.id ?? null;
   const server = scope?.server ?? list.find((s) => s.id === sid) ?? null;
@@ -76,23 +147,29 @@ export function Layout({ children }: { children: ReactNode }) {
   const canOnServer = (p: Permission) => can(p) || !!server?.permissions.includes(p);
 
   useEffect(() => {
-    document.title = t('app.title');
-  }, [t, i18n.language]);
+    document.title = scope?.server ? `${scope.server.name} · ${t('app.title')}` : t('app.title');
+  }, [t, i18n.language, scope?.server]);
 
-  const serverNav = sid ? SERVER_NAV.filter((n) => canOnServer(n.permission) && meta.supports(n)) : [];
+  const serverNav = sid && server ? SERVER_NAV.filter((n) => (n.permission === undefined || canOnServer(n.permission)) && meta.supports(n)) : [];
   const somewhere = useCanSomewhere();
-  const hostNav = HOST_NAV.filter((n) => somewhere(n.permission));
+  const hostNav = HOST_NAV.filter((n) => n.permission === undefined || (n.hostOnly ? canHost(n.permission) : somewhere(n.permission)));
+  const onHostPage = !scope;
 
   return (
-    <AppShell header={{ height: 56 }} navbar={{ width: 230, breakpoint: 'sm', collapsed: { mobile: !opened } }} padding="md">
+    <AppShell header={{ height: 56 }} navbar={{ width: 240, breakpoint: 'sm', collapsed: { mobile: !opened } }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Menu" />
             <img src="/favicon.svg" alt="" width={26} height={26} />
-            <Text fw={700} visibleFrom="xs">
+            <Text fw={700} visibleFrom="md">
               {t('app.title')}
             </Text>
+            {scope?.server && (
+              <Text fw={600} size="sm" truncate visibleFrom="xs" maw={220}>
+                {scope.server.name}
+              </Text>
+            )}
             {scope && <StateBadge state={live.status?.state} agentConnected={live.agentConnected} size="sm" />}
           </Group>
           <Group gap="sm" wrap="nowrap">
@@ -110,7 +187,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 </UnstyledButton>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Label>{session ? t(`roles.${session.user.role}`) : ''}</Menu.Label>
+                <Menu.Label>{session ? (session.user.scope === 'granted' ? t('users.scopeGrantedShort') : t(`roles.${session.user.role}`)) : ''}</Menu.Label>
                 <Menu.Item component={RouterLink} to="/profile" leftSection={<IconUserCircle size={16} />} onClick={close}>
                   {t('nav.profile')}
                 </Menu.Item>
@@ -124,34 +201,41 @@ export function Layout({ children }: { children: ReactNode }) {
       </AppShell.Header>
 
       <AppShell.Navbar p="xs">
-        <ScrollArea>
-          {list.length > 1 && (
-            <NavLink component={RouterLink} to="/" label={t('nav.servers')} leftSection={<IconServer2 size={18} stroke={1.6} />} active={location.pathname === '/'} onClick={close} />
+        <AppShell.Section grow component={ScrollArea}>
+          {sid && server && (
+            <>
+              <Heading>{t('nav.serverSection')}</Heading>
+              {list.length > 1 ? (
+                <ServerSwitcher list={list} sid={sid} onPicked={close} />
+              ) : (
+                <Text size="sm" fw={600} px="sm" pb={4} truncate>
+                  {server.name}
+                </Text>
+              )}
+              {serverNav.map((n) => {
+                const href = serverHref(sid, n.to);
+                return (
+                  <NavLink
+                    key={n.to}
+                    component={RouterLink}
+                    to={href}
+                    // The router marks a link current on its sub-pages too: the dashboard (`/`) only on itself.
+                    end={n.to === '/'}
+                    label={t(n.label)}
+                    leftSection={<n.icon size={18} stroke={1.6} />}
+                    active={!onHostPage && (n.to === '/' ? location.pathname === href || location.pathname === href.slice(0, -1) : location.pathname.startsWith(href))}
+                    onClick={close}
+                  />
+                );
+              })}
+              <Divider my="xs" />
+            </>
           )}
-          {sid && list.length > 1 && server && (
-            <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" pt="sm" pb={4}>
-              {server.name}
-            </Text>
-          )}
-          {sid &&
-            serverNav.map((n) => {
-              const href = serverHref(sid, n.to);
-              return (
-                <NavLink
-                  key={n.to}
-                  component={RouterLink}
-                  to={href}
-                  label={t(n.label)}
-                  leftSection={<n.icon size={18} stroke={1.6} />}
-                  active={n.to === '/' ? location.pathname === href || location.pathname === href.slice(0, -1) : location.pathname.startsWith(href)}
-                  onClick={close}
-                />
-              );
-            })}
+          <Heading>{t('nav.panelSection')}</Heading>
           {hostNav.map((n) => (
             <NavLink key={n.to} component={RouterLink} to={n.to} label={t(n.label)} leftSection={<n.icon size={18} stroke={1.6} />} active={location.pathname.startsWith(n.to)} onClick={close} />
           ))}
-        </ScrollArea>
+        </AppShell.Section>
       </AppShell.Navbar>
 
       <AppShell.Main>

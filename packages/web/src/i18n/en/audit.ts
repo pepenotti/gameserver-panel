@@ -11,4 +11,18 @@ export default {
   loadMore: 'Load older',
   filter: 'Filter by action',
   system: 'system',
+  server: 'Server',
+  allEntries: 'Everything',
+  allMine: 'All my servers',
+  hostOnly: 'Panel only (accounts, sign-ins, settings)',
+  host: 'panel',
+  none: 'No entries.',
+  noneYetOlder: 'None among these entries; load older ones to look further.',
+  actors: {
+    user: 'person',
+    schedule: 'schedule',
+    recovery: 'recovery tool',
+    assistant: 'assistant',
+    system: 'panel',
+  },
 } as const;

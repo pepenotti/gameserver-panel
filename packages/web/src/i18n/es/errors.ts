@@ -94,4 +94,6 @@ export default {
   'server-running': 'Primero apagá el servidor.',
   'final-backup-failed': 'Falló la copia de seguridad final, así que no se borró nada.',
   'role-follows-grants': 'Esta cuenta solo tiene acceso a algunos servidores: su rol se elige en cada uno.',
+  'invalid-port-ranges': 'Este panel deja que los servidores usen solo estos puertos: {{ranges}}.',
+  'memory-above-host': 'Es más memoria de la que este panel le da a un servidor ({{maxMb}} MiB).',
 } satisfies Translations['errors'];

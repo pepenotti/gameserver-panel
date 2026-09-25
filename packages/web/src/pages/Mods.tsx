@@ -40,7 +40,8 @@ interface ModsResponse {
   items: Item[];
   enabled: Enabled[];
   issues: Issue[];
-  lines: { Mods: string; WorkshopItems: string; Map: string };
+  // The API also sends the config lines the enabled list turns into (`lines`, keyed by the game's own
+  // setting names); the page doesn't show them.
 }
 
 /** How the web shows a mod source, by its capability; a source without a view here is named but not browsable. */

@@ -1,68 +1,17 @@
 import { Alert, Badge, Button, Center, Group, Loader, Menu, Stack, Tabs, Text, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconAlertTriangle, IconChevronDown, IconGitPullRequest } from '@tabler/icons-react';
+import { IconAlertTriangle, IconChevronDown, IconGitPullRequest, IconInfoCircle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { useServerApi } from '../../api/server';
 import { formatDateTime, useErrorText } from '../../lib/format';
-import { getProposal, propose, useFileLabel, type ConfigMeta, type FileDecl, type Proposal, type ProposalPreview, type Value } from './api';
+import { getProposal, propose, useConfigMeta, useFileLabel, type ConfigMeta, type FileDecl, type Proposal, type ProposalPreview, type Value } from './api';
 import { ConfigFiles } from './ConfigFiles';
 import { ConfigHistory } from './ConfigHistory';
 import { OptionsForm } from './OptionsForm';
 import { ProposalModal } from './ProposalModal';
-
-/** How a form groups its options, which groups are rare ("Advanced", CFG-10), and a help line. */
-interface FormLayout {
-  groupOf: (key: string) => string;
-  order: string[];
-  advanced: string[];
-  groupLabel: (g: string) => string;
-  help?: string;
-}
-
-const INI_GROUPS: [string, (k: string) => boolean][] = [
-  ['general', (k) => ['PublicName', 'PublicDescription', 'ServerWelcomeMessage', 'Public', 'Open', 'Password', 'MaxPlayers', 'PauseEmpty', 'SaveWorldEveryMinutes', 'Seed', 'ResetID'].includes(k)],
-  ['pvp', (k) => /^(PVP|Safety|ShowSafety|War)/.test(k)],
-  ['safehouses', (k) => /^(PlayerSafehouse|AdminSafehouse|Safehouse|SafeHouse|MaxSafezoneSize|DisableSafehouse|Faction)/.test(k)],
-  ['chat', (k) => /^(GlobalChat|ChatStreams|ChatMessage|Voice|BadWord|GoodWord|DisableRadio)/.test(k)],
-  ['backups', (k) => k.startsWith('Backups')],
-  ['anticheat', (k) => /^(AntiCheat|DoLuaChecksum|SteamVAC|MaxPacketsPerSecond|SpeedLimit|ClientCommandFilter|ClientActionLogs|PerkLogs|ItemNumbersLimit)/.test(k)],
-  [
-    'players',
-    (k) =>
-      /^(SpawnItems|SpawnPoint|Sleep|PlayerRespawn|DropOffWhiteList|MaxAccountsPerUser|AllowNonAscii|DisplayUserName|ShowFirstAndLastName|MouseOverToSeeDisplayName|HidePlayersBehindYou|Announce|KnockedDownAllowed|AllowCoop|UsernameDisguises|HideDisguisedUserName|PlayerBumpPlayer|MapRemotePlayerVisibility|ShowCoordinates|RemovePlayerCorpses)/.test(k),
-  ],
-];
-
-/**
- * Forms by schema id; a schema without one here groups by dotted prefix.
- * FALLBACK until the adapter contract carries option groups and "advanced"
- * flags (`OptionMeta`): these layouts match one adapter's schema ids (`ini`,
- * `sandbox`) and stay dormant for every other game.
- */
-function useLayouts(): (schemaId: string) => FormLayout {
-  const { t } = useTranslation();
-  const dotted = (k: string) => (k.includes('.') ? k.split('.')[0]! : 'general');
-  const layouts: Record<string, FormLayout> = {
-    ini: {
-      groupOf: (k) => INI_GROUPS.find(([, test]) => test(k))?.[0] ?? 'other',
-      order: ['general', 'players', 'pvp', 'safehouses', 'chat', 'backups', 'anticheat', 'other'],
-      advanced: ['backups', 'anticheat', 'other'],
-      groupLabel: (g) => t(`config.groups.${g}`),
-      help: t('config.managedHelp'),
-    },
-    sandbox: {
-      groupOf: dotted,
-      order: ['general', 'ZombieLore', 'Map', 'ZombieConfig', 'MultiplierConfig', 'Basement'],
-      advanced: ['ZombieConfig', 'MultiplierConfig', 'Basement'],
-      groupLabel: (g) => t(`config.sandboxGroups.${g}`, { defaultValue: g }),
-      help: t('config.worldHelp'),
-    },
-  };
-  return (schemaId) => layouts[schemaId] ?? { groupOf: dotted, order: ['general'], advanced: [], groupLabel: (g) => (g === 'general' ? t('config.groups.general') : g) };
-}
 
 function Missing() {
   const { t } = useTranslation();
@@ -73,7 +22,6 @@ function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
   const { t } = useTranslation();
   const sapi = useServerApi();
   const errorText = useErrorText();
-  const layout = useLayouts()(file.schemaId!);
   const [presetPreview, setPresetPreview] = useState<ProposalPreview | null>(null);
   const q = useQuery({ queryKey: ['config', 'values', file.id, sapi.sid], queryFn: () => sapi<{ values: Record<string, Value>; missing: boolean }>('GET', `/config/values?id=${encodeURIComponent(file.id)}`) });
   if (q.error) return <Alert color="red">{errorText(q.error)}</Alert>;
@@ -84,18 +32,18 @@ function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
     void propose(sapi, { fileId: file.id, preset: name }).then(setPresetPreview, (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
   return (
     <Stack>
-      {layout.help && (
-        <Alert variant="light" icon={<IconAlertTriangle />}>
-          {layout.help}
+      {(file.managedKeys.length > 0 || file.restartKeys === '*') && (
+        <Alert variant="light" color="blue" icon={<IconInfoCircle />}>
+          {[file.restartKeys === '*' ? t('config.restartAllNote') : '', file.managedKeys.length > 0 ? t('config.managedNote') : ''].filter(Boolean).join(' ')}
         </Alert>
       )}
       <OptionsForm
+        // FALLBACK: `VERSION` is a file-format key one adapter's schema lists as a setting. Left out of the
+        // schema here, it shows only behind Advanced (a setting the schema doesn't describe) until the adapter
+        // marks it managed or drops it from the schema.
         metas={(meta.schemas[file.schemaId!] ?? []).filter((m) => m.key !== 'VERSION')}
         values={q.data.values}
-        groupOf={layout.groupOf}
-        groupOrder={layout.order}
-        advancedGroups={layout.advanced}
-        groupLabel={layout.groupLabel}
+        groups={meta.groups[file.schemaId!] ?? []}
         managed={new Set(file.managedKeys)}
         secret={new Set(file.secretKeys)}
         restartOnly={new Set(file.restartKeys === '*' ? [] : file.restartKeys)}
@@ -169,8 +117,9 @@ function PendingProposals() {
 export function Config() {
   const { t } = useTranslation();
   const sapi = useServerApi();
+  const fileLabel = useFileLabel();
   const [params, setParams] = useSearchParams();
-  const meta = useQuery({ queryKey: ['config', 'meta', sapi.sid], queryFn: () => sapi<ConfigMeta>('GET', '/config/meta'), staleTime: Infinity });
+  const meta = useConfigMeta();
   const pending = useQuery({ queryKey: ['config', 'pending', sapi.sid], queryFn: () => sapi<{ since: string; reasons: string[] } | null>('GET', '/config/pending'), refetchInterval: 30_000 });
   const forms = meta.data?.files.filter((f) => f.schemaId && meta.data.schemas[f.schemaId]) ?? [];
   const requested = params.get('tab');
@@ -189,7 +138,7 @@ export function Config() {
         <Tabs.List>
           {forms.map((f) => (
             <Tabs.Tab key={f.id} value={f.id}>
-              {t(`config.tabs.${f.id}`, { defaultValue: f.id })}
+              {fileLabel(f.id)}
             </Tabs.Tab>
           ))}
           <Tabs.Tab value="files">{t('config.tabs.files')}</Tabs.Tab>

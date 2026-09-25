@@ -14,4 +14,6 @@ export default {
   thisDevice: 'Este dispositivo',
   lastSeen: 'Activo por última vez {{when}}',
   signOutDevice: 'Cerrar sesión',
+  perServer: 'Tu rol depende del servidor.',
+  myServers: 'Tus servidores',
 } satisfies Translations['profile'];
