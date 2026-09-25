@@ -7,7 +7,7 @@ without a milestone is a PRD bug.
 | ID | Priority | Milestones | Proven by |
 |---|---|---|---|
 | SRV-01 | P0 | M2 | — |
-| SRV-02 | P0 | M2 | — |
+| SRV-02 | P0 | M2 | `panel/test/servers.test.ts` (`GET /api/servers`, API only; UI in M2-D) |
 | SRV-03 | P0 | M2 | — |
 | SRV-04 | P0 | M2 | — |
 | SRV-05 | P0 | M2 | — |
@@ -56,8 +56,8 @@ without a milestone is a PRD bug.
 | SCH-02 | P1 | M7 | — |
 | SCH-03 | P0 | M1 | `panel/test/schedules.test.ts` "Discord notifications" block (per-server override: M2) |
 | ACC-01 | P0 | M1 | `panel/test/auth.test.ts`, `panel/test/users.test.ts`, `panel/test/cli.test.ts` (panelctl) |
-| ACC-02 | P0 | M2 | — |
-| ACC-03 | P0 | M2 | — |
+| ACC-02 | P0 | M2 | `shared/test/permissions.test.ts`; `panel/test/servers.test.ts` (unknown/ungranted server → 404) |
+| ACC-03 | P0 | M2 | `panel/test/servers.test.ts` (audit filter by server); `panel/test/migrations.test.ts` (backfill) |
 | HST-01 | P0 | M2 | — |
 | HST-02 | P0 | M1 | `panel/test/env.test.ts` (PANEL_HOST default Caddy accepts); `caddy validate` of `docker/caddy/Caddyfile` in both TLS modes (see `docs/verification/pz-b42.md`); real stack run in M2-E |
 | HST-03 | P1 | M7 | — |
@@ -67,14 +67,14 @@ without a milestone is a PRD bug.
 | UX-01 | P0 | M8 | `web/test/i18n.test.ts`; `web/test/game-neutral.test.ts` alert-title check |
 | UX-02 | P0 | M8 | — |
 | UX-03 | P1 | M8 | — |
-| AST-01 | P0 | M2 | — |
-| AST-02 | P0 | M2 | — |
+| AST-01 | P0 | M2 | `panel/test/api-first.test.ts` (skeleton: every web call has a route; every route declares a permission) |
+| AST-02 | P0 | M2 | `panel/test/servers.test.ts` (actor types in the audit) |
 | AST-03 | P1 | M1 | `panel/test/proposals.test.ts` |
-| AST-04 | P1 | M2 | `panel/test/core-adapter.test.ts` (`GET /api/meta`) — first step; M2 completes it; `web/test/game-neutral.test.ts` capability mirror; pages driven by `/api/meta` |
+| AST-04 | P1 | M2 | `panel/test/core-adapter.test.ts` (`GET /api/servers/:sid/meta`) — first step; M2 completes it; `web/test/game-neutral.test.ts` capability mirror; pages driven by `/api/meta` |
 | AST-05 | P2 | after v1 | — |
 | AST-06 | P2 | after v1 | — |
 | NFR-01 | NFR | M8 | — |
-| NFR-02 | NFR | M2 | — |
+| NFR-02 | NFR | M2 | contract only so far: `shared/src/orchestrator-api.ts`, `shared/test/orchestrator-api.test.ts` |
 | NFR-03 | NFR | M2 | — |
 | NFR-04 | NFR | M8 | — |
 | NFR-05 | NFR | M8 | — |

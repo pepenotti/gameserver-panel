@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.6 |
+| Status | Draft 0.7 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -103,7 +103,12 @@ Each can move into scope later through [change control](#14-change-control).
 | Viewer | Wants to see what's going on | Status, players, schedules. |
 
 - Roles are **granted per server**. Only the owner, and admins granted "all
-  servers", act everywhere.
+  servers", act everywhere. Technically an account has a scope: `all` (its
+  role applies to every server) or `granted` (only the servers it has a
+  grant on, each with its own role). Creating servers and the host overview
+  need an admin (or the owner) with scope `all`.
+- A server someone has no role on doesn't exist for them: the API answers
+  "not found" rather than "forbidden".
 - 2FA is mandatory for admins and the owner.
 - People who only play need no account.
 
@@ -333,7 +338,11 @@ NFR-01's controls, carried over from zomboid-server:
   command, ports, readiness pattern, stop method, config files (raw editing)
   and backup paths.
 - **Data.** SQLite, with the server ID on every per-server table. Volumes are
-  named by server ID, and backups go to `BACKUP_DIR/<server>/`.
+  named by server ID, and backups go to `BACKUP_DIR/<server>/`. `servers`
+  keeps each server's row, including the fixed name the game uses for its
+  files (`game_name`); per-server settings live in `server_settings` and
+  per-server roles in `server_grants`. Server routes are
+  `/api/servers/<id>/…`; the web addresses a server as `/s/<id>/…`.
 - **Package layout.** `packages/adapter-api` holds the contract (types plus
   shared contract test suites). Each game lives in `packages/adapter-<game>`,
   and `packages/adapters` is the single place that lists them. The core
@@ -427,6 +436,10 @@ milestone and the tests that prove it, and is updated with every merge.
 
 None open. New questions go here, with an ID, until they're answered.
 
+| ID | Question | Answer | Lands in |
+|---|---|---|---|
+| Q9 | Who sees the host overview (CPU, memory, disk of the whole machine)? | The owner and admins with scope `all`, the same people who can create servers (integrator's call during M2.0; the owner can change it). | §5, HST-03 |
+
 ### Answered
 
 | ID | Question | Answer (0.3) | Lands in |
@@ -465,3 +478,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.4 | 2026-09-24 | Execution review: every P0 requirement now appears in a milestone (M1, M2, M3, M5, M7, M8 "Covers"); `docs/traceability.md` added; D11 (server files only through the agent); NFR-03 spells out socket listeners; M3/M5/M6 may run in parallel after M2; macOS documented but untested (M7, §12). |
 | 0.5 | 2026-09-24 | M1 contract landed: §10 names the package layout (`adapter-api`, `adapter-<game>`, `adapters`) and where fixtures and verification notes live per game. |
 | 0.6 | 2026-09-24 | M1 closed: the adapter contract carries the server context panel-side adapter code needs, declared launch secrets and secret console arguments; NFR-08 is also enforced by tests (no game names in the core or the web). |
+| 0.7 | 2026-09-24 | M2 contract step: server routes under `/api/servers/<id>` and web pages under `/s/<id>`; host vs server permissions and account scope (§5); unknown or ungranted servers answer "not found"; the orchestrator's server spec and the agent's file and archive routes (D11) are fixed; actor-typed audit; Q9 answered. |
