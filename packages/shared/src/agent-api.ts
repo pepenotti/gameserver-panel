@@ -164,6 +164,13 @@ export type ControlKind = 'rcon' | 'stdin' | 'rest' | 'none';
 export interface LaunchEnvelope {
   adapter: string;
   params: unknown;
+  /**
+   * For games with an agreement the owner must accept (the adapter's `eula`
+   * capability, D6): whether the owner has. The agent hands it to the runtime
+   * adapter (`RuntimeCtx.eulaAccepted`), which writes the game's own
+   * acceptance only when it is true. Absent for other games.
+   */
+  eulaAccepted?: boolean;
 }
 
 /** `POST /v1/install`: install, update or validate while the server is stopped. */

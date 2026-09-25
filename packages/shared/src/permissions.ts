@@ -75,6 +75,8 @@ export const SERVER_PERMISSIONS = {
   'reset.full': 'owner',
   'reset.factory': 'owner',
   'backups.upload': 'owner',
+  // Accepting a game's license (EULA) for the host: the panel never does it on the owner's behalf (D6).
+  'server.eula': 'owner',
 } as const satisfies Record<string, Role>;
 
 export type HostPermission = keyof typeof HOST_PERMISSIONS;
