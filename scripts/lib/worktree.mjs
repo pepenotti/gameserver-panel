@@ -35,7 +35,8 @@ export function slotOverrides(slot) {
     PZ_GAME_PORT: String(b.gamePorts[11]),
     PZ_UDP_PORT: String(b.gamePorts[12]),
     ORCH_HOST_PORTS: slotGamePorts(slot),
-    ORCH_MAX_MEM_MB: '4096',
+    // Room for a Project Zomboid server with a 2-3 GiB heap (its smallest is 2 GiB + 3 GiB for the rest).
+    ORCH_MAX_MEM_MB: '6144',
     ORCH_MAX_SERVERS: '4',
     ORCH_ALLOW_FAKE: '1',
     SERVER_IMAGE_VARIANT: 'fake',

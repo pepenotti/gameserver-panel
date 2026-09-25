@@ -64,7 +64,13 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);
     const adapters = (await owner.get('/api/adapters')).json() as { host: { arch: string }; adapters: { id: string; supported: boolean; eula: boolean; ports: unknown[]; launch: { secrets: unknown[] } }[] };
-    expect(adapters.host).toMatchObject({ arch: 'amd64', cpus: 8 });
+    expect(adapters.host).toMatchObject({ arch: 'amd64', cpus: 8, hostPorts: null, maxMemMb: null });
+    // What this install lets a server have, when the orchestrator says (SRV-01, SRV-05).
+    p.orch.hostPorts = [{ from: 30150, to: 30199 }];
+    p.orch.maxMemMb = 6144;
+    expect(((await owner.get('/api/adapters')).json() as { host: unknown }).host).toMatchObject({ hostPorts: [{ from: 30150, to: 30199 }], maxMemMb: 6144 });
+    p.orch.hostPorts = undefined;
+    p.orch.maxMemMb = undefined;
     expect(adapters.adapters).toEqual([expect.objectContaining({ id: 'pz', supported: true, eula: false, launch: expect.objectContaining({ secrets: [expect.objectContaining({ key: 'adminPassword' })] }) })]);
 
     const granted = await friend(p, owner, 'granted-admin', 'admin', 'admin');

@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import type { ModSource, PanelAdapter } from '@gsp/adapter-api';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
-import { ORCHESTRATOR_API_VERSION, type AgentStatus, type CpuArch, type GrantRole, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
+import { ORCHESTRATOR_API_VERSION, type AgentStatus, type CpuArch, type GrantRole, type PortRangeInfo, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { bootstrapOwner } from '../src/auth/bootstrap';
@@ -108,6 +108,10 @@ export const noNetwork = (() => Promise.reject(new Error('no network in tests'))
 export class FakeOrchestrator implements OrchestratorClient {
   arch: CpuArch = 'amd64';
   cpus = 8;
+  /** `ORCH_HOST_PORTS` as `GET /v1/host` reports it; undefined: an orchestrator that doesn't say. */
+  hostPorts: PortRangeInfo[] | undefined = undefined;
+  /** `ORCH_MAX_MEM_MB`; undefined: an orchestrator that doesn't say. */
+  maxMemMb: number | undefined = undefined;
   readonly containers = new Map<string, ServerContainer & { spec: ServerSpec; volumes: boolean }>();
   /** Volumes left behind by removals that kept them, by server id. */
   readonly keptVolumes = new Set<string>();
@@ -144,7 +148,15 @@ export class FakeOrchestrator implements OrchestratorClient {
   }
   async host() {
     this.check('host');
-    return { arch: this.arch, cpus: this.cpus, memBytes: 64 * 1024 ** 3, dockerVersion: 'fake', os: 'fake' };
+    return {
+      arch: this.arch,
+      cpus: this.cpus,
+      memBytes: 64 * 1024 ** 3,
+      dockerVersion: 'fake',
+      os: 'fake',
+      ...(this.hostPorts ? { hostPorts: this.hostPorts } : {}),
+      ...(this.maxMemMb !== undefined ? { maxMemMb: this.maxMemMb } : {}),
+    };
   }
   async list() {
     this.check('list');

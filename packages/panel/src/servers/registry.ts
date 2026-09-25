@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import type { Capability, PanelAdapter } from '@gsp/adapter-api';
 import type { AgentApi } from '../agent/client';
-import { isServerId, type CpuArch, type ServerContainer } from '@gsp/shared';
+import { isServerId, type HostInfo, type ServerContainer } from '@gsp/shared';
 import { SYSTEM, type Actor, type Audit } from '../audit';
 import { syncRoleWithGrants, type ServerGrants } from '../auth/grants';
 import type { Users } from '../auth/users';
@@ -168,6 +168,15 @@ export function orchestratorError(e: unknown): HttpError {
   }
 }
 
+/**
+ * A memory limit above what this install gives one server (`ORCH_MAX_MEM_MB`,
+ * SRV-05): refused before the orchestrator is asked, with the limit it has.
+ */
+export function memoryAboveHost(memLimitMb: number, maxMb: number): HttpError {
+  const message = `A memory limit of ${memLimitMb} MiB is above this host's limit of ${maxMb} MiB per server (ORCH_MAX_MEM_MB)`;
+  return new HttpError(409, 'orchestrator-refused', message, { field: 'memLimitMb', maxMb, message });
+}
+
 /** The TCP ports people reach the panel on (its origins) and the one it listens on: never a game's. */
 function panelPorts(env: PanelEnv): number[] {
   const out = env.origins.map((o) => {
@@ -314,23 +323,22 @@ export class DbServerRegistry implements ServerRegistry {
     const memLimitMb = input.memLimitMb ?? needMb;
     if (memLimitMb < needMb) throw new HttpError(400, 'memory-too-low', undefined, { minMb: needMb });
 
-    // What the host is, and what the orchestrator already runs (HST-05; a container without a row keeps its volumes).
-    let arch: CpuArch;
-    let cpus: number;
+    // What the host is and allows, and what the orchestrator already runs (HST-05; a container without a row keeps its volumes).
+    let host: HostInfo;
     let containers: ServerContainer[];
     try {
-      const host = await orchestrator.host();
-      arch = host.arch;
-      cpus = host.cpus;
+      host = await orchestrator.host();
       containers = await orchestrator.list();
     } catch (e) {
       throw orchestratorError(e);
     }
-    if (!adapter.meta.arch.includes(arch)) throw new HttpError(409, 'arch-unsupported', undefined, { arch, supported: adapter.meta.arch });
-    if (input.cpus !== undefined && input.cpus !== null && input.cpus > cpus) throw new HttpError(400, 'invalid-cpus', undefined, { max: cpus });
+    if (!adapter.meta.arch.includes(host.arch)) throw new HttpError(409, 'arch-unsupported', undefined, { arch: host.arch, supported: adapter.meta.arch });
+    if (input.cpus !== undefined && input.cpus !== null && input.cpus > host.cpus) throw new HttpError(400, 'invalid-cpus', undefined, { max: host.cpus });
+    if (host.maxMemMb !== undefined && memLimitMb > host.maxMemMb) throw memoryAboveHost(memLimitMb, host.maxMemMb);
     if (containers.some((c) => c.id === id)) throw new HttpError(409, 'server-exists');
 
-    const ports = planPorts(adapter, input.ports, takenPorts(rows.list(), (a) => this.adapterOrNull(a), panelPorts(this.d.env)));
+    // Free ports where this install lets servers publish (SRV-01), next to every other server's.
+    const ports = planPorts(adapter, input.ports, takenPorts(rows.list(), (a) => this.adapterOrNull(a), panelPorts(this.d.env)), host.hostPorts);
 
     const userId = input.by.user?.id ?? null;
     const draft: ServerRow = {

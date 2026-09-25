@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { permissionsOn, roleOn, SERVER_ID_PATTERN, type CpuArch, type Permission, type PortProto, type Role } from '@gsp/shared';
+import { permissionsOn, roleOn, SERVER_ID_PATTERN, type CpuArch, type Permission, type PortProto, type PortRangeInfo, type Role } from '@gsp/shared';
 import type { I18n, LaunchOption, OptionMeta, PortDecl } from '@gsp/adapter-api';
 import type { UserRow } from '../auth/users';
 import { actor, HttpError, principal, srvOf } from '../http/context';
@@ -29,6 +29,17 @@ export interface ServerSummary {
   /** The signed-in user's role there, and what it lets them do. */
   role: Role;
   permissions: Permission[];
+}
+
+/** The host in `GET /api/adapters`. */
+export interface HostSummary {
+  arch: CpuArch;
+  cpus: number;
+  memBytes: number;
+  /** Where servers may publish (`ORCH_HOST_PORTS`); new servers get free ports inside. */
+  hostPorts: PortRangeInfo[] | null;
+  /** The most memory one server may be given, MiB (`ORCH_MAX_MEM_MB`). */
+  maxMemMb: number | null;
 }
 
 /** A game servers can be created from (`GET /api/adapters`). */
@@ -89,11 +100,16 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
     return deps.servers.list().flatMap((s) => summary(s, user, deps) ?? []);
   });
 
-  /** The games a server can be created from, and whether this host runs each (HST-05). */
-  app.get('/api/adapters', { config: { permission: 'servers.create' } }, async (): Promise<{ host: { arch: CpuArch; cpus: number; memBytes: number } | null; adapters: AdapterSummary[] }> => {
+  /**
+   * The games a server can be created from, whether this host runs each
+   * (HST-05), and what this install lets a server have: the host ports it
+   * may publish (SRV-01) and the most memory (SRV-05); null when the
+   * orchestrator doesn't say.
+   */
+  app.get('/api/adapters', { config: { permission: 'servers.create' } }, async (): Promise<{ host: HostSummary | null; adapters: AdapterSummary[] }> => {
     const host = await deps.orchestrator.host().catch(() => null);
     return {
-      host: host && { arch: host.arch, cpus: host.cpus, memBytes: host.memBytes },
+      host: host && { arch: host.arch, cpus: host.cpus, memBytes: host.memBytes, hostPorts: host.hostPorts ?? null, maxMemMb: host.maxMemMb ?? null },
       adapters: deps.adapters.map((a) => ({
         id: a.meta.id,
         name: a.meta.name,

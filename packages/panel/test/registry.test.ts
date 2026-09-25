@@ -117,6 +117,89 @@ describe('creating a server (SRV-01)', () => {
     expect(p.deps.serverRows.list().map((r) => r.id)).toEqual(['default', 'pz-two']);
   });
 
+  it('picks free ports only where the orchestrator lets servers publish (a development slot)', async () => {
+    const p = await makePanel();
+    p.orch.hostPorts = [{ from: 30150, to: 30199 }];
+    // The defaults (16261/16262, default's anyway) are outside: as low as they fit inside, still a pair.
+    await create(p);
+    expect(p.deps.serverRows.get('pz-two')!.ports).toEqual({ game: 30150, udp: 30151 });
+    expect(p.orch.containers.get('pz-two')!.spec).toMatchObject({
+      env: { GAME_PORT_GAME: '30150', GAME_PORT_UDP: '30151' },
+      ports: [
+        { container: 30150, host: 30150, proto: 'udp' },
+        { container: 30151, host: 30151, proto: 'udp' },
+      ],
+    });
+    await create(p, { id: 'pz-three', name: 'Third' });
+    expect(p.deps.serverRows.get('pz-three')!.ports).toEqual({ game: 30152, udp: 30153 });
+    // One asked for, the other picked around it.
+    await create(p, { id: 'pz-four', name: 'Fourth', ports: { game: 30160 } });
+    expect(p.deps.serverRows.get('pz-four')!.ports).toEqual({ game: 30160, udp: 30154 });
+    // A port outside is refused before anything is created, saying where ports may go.
+    p.orch.calls.length = 0;
+    expect(await refusal(create(p, { id: 'pz-x', name: 'x', ports: { game: 16300 } }))).toEqual({
+      status: 400,
+      code: 'invalid-port',
+      extra: { port: 'game', min: 30150, max: 30199, ranges: '30150-30199' },
+    });
+    expect(p.orch.calls).toEqual(['host', 'list']);
+    // Full: no pair fits any more.
+    p.orch.hostPorts = [{ from: 30150, to: 30155 }];
+    expect(await refusal(create(p, { id: 'pz-x', name: 'x' }))).toMatchObject({ status: 409, code: 'no-free-port' });
+  });
+
+  it("keeps new servers near the game's defaults when the install allows them, and moves on to its other ranges", async () => {
+    const p = await makePanel();
+    // The shipped ranges: PZ's block is allowed, so ports shift past default's as before.
+    p.orch.hostPorts = [
+      { from: 2456, to: 2499 },
+      { from: 16261, to: 16265 },
+      { from: 25565, to: 25599 },
+    ];
+    await create(p);
+    await create(p, { id: 'pz-three', name: 'Third' });
+    expect(p.deps.serverRows.get('pz-two')!.ports).toEqual({ game: 16263, udp: 16264 });
+    // 16265 alone can't hold the pair: the lowest other range.
+    expect(p.deps.serverRows.get('pz-three')!.ports).toEqual({ game: 2456, udp: 2457 });
+  });
+
+  it("never gives a port that is the same inside and out the number of the agent or of another of the server's ports", async () => {
+    // A TCP game port that must be the same inside and out, next to a TCP port only the agent uses.
+    const tcpGame: PanelAdapter = {
+      ...pzPanelAdapter,
+      meta: {
+        ...pzPanelAdapter.meta,
+        id: 'tcp-game',
+        ports: [
+          { id: 'game', proto: 'tcp', default: 8080, publish: true, sameInsideOut: true, label: { en: 'Game', es: 'Juego' } },
+          { id: 'query', proto: 'tcp', default: 8082, publish: false, sameInsideOut: false, label: { en: 'Query', es: 'Consulta' } },
+        ],
+      },
+    };
+    const p = await makePanel({}, { adapters: [pzPanelAdapter, tcpGame] });
+    p.orch.hostPorts = [{ from: 8080, to: 8083 }];
+    const base = { adapter: 'tcp-game' };
+    await create(p, { ...base, id: 'tcp-one', name: 'One' });
+    await create(p, { ...base, id: 'tcp-two', name: 'Two' });
+    expect(p.deps.serverRows.get('tcp-one')!.ports).toEqual({ game: 8080 });
+    // 8081 is the agent's inside every container, 8082 the query port's.
+    expect(p.deps.serverRows.get('tcp-two')!.ports).toEqual({ game: 8083 });
+    expect(await refusal(create(p, { ...base, id: 'tcp-x', name: 'x', ports: { game: 8081 } }))).toMatchObject({ status: 409, code: 'port-conflict', extra: { port: 8081, proto: 'tcp', with: 'agent' } });
+    expect(await refusal(create(p, { ...base, id: 'tcp-x', name: 'x', ports: { game: 8082 } }))).toMatchObject({ status: 409, code: 'port-conflict', extra: { port: 8082, proto: 'tcp', with: 'self' } });
+    expect(await refusal(create(p, { ...base, id: 'tcp-x', name: 'x' }))).toMatchObject({ status: 409, code: 'no-free-port' });
+  });
+
+  it("refuses more memory than the orchestrator gives one server, saying how much it gives (SRV-05)", async () => {
+    const p = await makePanel();
+    p.orch.maxMemMb = 5120;
+    // PZ's default heap (8 GiB) plus its overhead doesn't fit.
+    expect(await refusal(create(p))).toMatchObject({ status: 409, code: 'orchestrator-refused', extra: { field: 'memLimitMb', maxMb: 5120, message: expect.stringContaining('5120 MiB') } });
+    expect(await refusal(create(p, { launch: { memoryMb: 2048 }, memLimitMb: 6000 }))).toMatchObject({ code: 'orchestrator-refused', extra: { maxMb: 5120 } });
+    expect(p.orch.calls.filter((c) => c.startsWith('apply'))).toEqual([]);
+    // The smallest heap (2 GiB) and 3 GiB for the rest is exactly the most it gives.
+    expect((await create(p, { launch: { memoryMb: 2048 } })).row.memLimitMb).toBe(5120);
+  });
+
   it('refuses ports that are taken, not the game’s, or out of range', async () => {
     const p = await makePanel({}, {});
     await create(p);

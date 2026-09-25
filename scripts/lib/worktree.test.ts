@@ -26,7 +26,7 @@ describe('slot env', () => {
       ORCH_ALLOW_FAKE: '1',
       SERVER_IMAGE_VARIANT: 'fake',
       ORCH_MAX_SERVERS: '4',
-      ORCH_MAX_MEM_MB: '4096',
+      ORCH_MAX_MEM_MB: '6144',
     });
     expect(devHost(0)).toBe('wt0.localhost');
     expect(slotOverrides(0).PANEL_HOST).toBe('wt0.localhost');

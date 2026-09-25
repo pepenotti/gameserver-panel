@@ -51,6 +51,19 @@ describe('the orchestrator API (D3, NFR-02, NFR-03)', () => {
     expect(await call('GET', '/v1/host')).toMatchObject({ status: 200, body: { arch: 'amd64', cpus: 8 } });
   });
 
+  it("tells the panel which host ports servers may publish and how much memory one may have, from its own settings (SRV-01, SRV-05)", async () => {
+    const own = socketPath('orch-host');
+    const ranges = createOrchestratorServer({ backend: stack.backend, token: TOKEN, version: 'x', policy: { ...policy, hostPorts: [[2456, 2499], [16261, 16299], [25565, 25565]], maxMemMb: 6144 } });
+    await listenOnSocket(ranges, own);
+    try {
+      const r = await request(own, 'GET', '/v1/host');
+      expect(r).toMatchObject({ status: 200, body: { arch: 'amd64', hostPorts: [{ from: 2456, to: 2499 }, { from: 16261, to: 16299 }, { from: 25565, to: 25565 }], maxMemMb: 6144 } });
+    } finally {
+      await new Promise((res) => ranges.close(res));
+    }
+    expect(await call('GET', '/v1/host')).toMatchObject({ body: { hostPorts: [{ from: 30150, to: 30199 }], maxMemMb: 4096 } });
+  });
+
   it('refuses ids that are not server ids before anything reaches Docker', async () => {
     const before = stack.fd.calls.length;
     for (const path of ['/v1/servers/..%2F..', '/v1/servers/..', '/v1/servers/%2e%2e', '/v1/servers/Pz', '/v1/servers/PZ/start', `/v1/servers/${'a'.repeat(25)}`, '/v1/servers/%70z', '/v1/servers/pz%00', '/v1/servers/', '/v1/servers/pz_2/stats']) {

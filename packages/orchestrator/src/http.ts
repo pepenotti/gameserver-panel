@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
-import { ORCHESTRATOR_API_VERSION, SERVER_ID_PATTERN, type HealthResponse } from '@gsp/shared';
+import { ORCHESTRATOR_API_VERSION, SERVER_ID_PATTERN, type HealthResponse, type HostInfo } from '@gsp/shared';
 import type { Backend } from './backend';
 import { badRequest, notFound, OrchError } from './errors';
 import type { Policy } from './policy';
@@ -90,7 +90,12 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
         const health: HealthResponse = { ok: true, version: o.version, api: ORCHESTRATOR_API_VERSION };
         return [200, health];
       }
-      return [200, path === '/v1/host' ? await o.backend.host() : await o.backend.list()];
+      if (path === '/v1/host') {
+        // What the host is, and what this install lets a server ask for (its own settings, never the caller's).
+        const host: HostInfo = { ...(await o.backend.host()), hostPorts: o.policy.hostPorts.map(([from, to]) => ({ from, to })), maxMemMb: o.policy.maxMemMb };
+        return [200, host];
+      }
+      return [200, await o.backend.list()];
     }
 
     const m = SERVER_ROUTE.exec(path);
