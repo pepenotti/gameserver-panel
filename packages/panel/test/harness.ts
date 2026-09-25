@@ -19,7 +19,7 @@ import type { AgentFeed, Deps } from '../src/http/deps';
 import type { ServerContext } from '../src/servers/context';
 import { OrchestratorCallError, type OrchestratorClient } from '../src/servers/orchestrator';
 import type { AgentTarget } from '../src/servers/registry';
-import { createPanelDeps, FACTORIES, isManaged } from '../src/wiring';
+import { createPanelDeps, isManaged } from '../src/wiring';
 
 export const ORIGIN = 'https://panel.test:8443';
 export const OWNER = { username: 'alice', password: 'Primera-clave-2026' };
@@ -260,11 +260,12 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     mods: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })],
     orchestrator: orch,
     adapters: opts.adapters,
-    // Orchestrator-run servers: fake agents, and their files (as the panel sees them once M2-C lands) on the test's disk.
+    // Fake agents for orchestrator-run servers; every server's files (its agent's, in production) on the test's
+    // disk: `default`'s where the environment says (tests write game files there), the others' in their own folder.
     factories: {
       agent: (row, target) => Object.assign(fakes(row.id), { target, made: (fakes(row.id).made ?? 0) + 1 }),
-      files: (row, target, e) => (isManaged(row) ? new LocalServerFiles({ data: fakes(row.id).dataDir, install: path.join(tmp, 'servers', row.id, 'install') }) : FACTORIES.files(row, target, e)),
-      dataDir: (row, e) => (isManaged(row) ? fakes(row.id).dataDir : FACTORIES.dataDir(row, e)),
+      files: (row, _target, e) =>
+        isManaged(row) ? new LocalServerFiles({ data: fakes(row.id).dataDir, install: path.join(tmp, 'servers', row.id, 'install') }) : new LocalServerFiles({ data: e.pzDataDir, install: e.pzInstallDir }),
     },
   });
   await bootstrapOwner(deps);

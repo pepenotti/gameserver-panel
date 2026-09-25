@@ -11,9 +11,8 @@ export interface PanelEnv {
   /** Built web UI; absent in API-only tests. */
   publicDir: string | null;
   /**
-   * The agent of the server the environment describes (`default`, whose
-   * container Compose runs rather than the orchestrator); both empty when
-   * it describes none.
+   * The agent of the server the environment describes (`default`, run
+   * outside the orchestrator); `agentUrl` empty when it describes none.
    */
   agentUrl: string;
   agentToken: string;
@@ -100,10 +99,12 @@ function bundledVersion(): string {
 }
 
 export function loadEnv(env: NodeJS.ProcessEnv = process.env): PanelEnv {
-  // AGENT_URL and AGENT_TOKEN describe the `default` server; an install may have none.
+  // AGENT_URL and AGENT_TOKEN describe the `default` server, run outside the
+  // orchestrator (the dev loop's agent, a stack from before it); an install
+  // whose servers the orchestrator runs sets no AGENT_URL.
   const agentToken = env.AGENT_TOKEN ?? '';
   if (agentToken && agentToken.length < 32) throw new Error('AGENT_TOKEN must be at least 32 characters');
-  const agentUrl = env.AGENT_URL ?? (agentToken ? 'http://pz:8081' : '');
+  const agentUrl = env.AGENT_URL ?? '';
   if (agentUrl && !agentToken) throw new Error('AGENT_TOKEN must be set with AGENT_URL');
   const orchSocket = env.ORCH_SOCKET ?? '';
   const orchToken = env.ORCH_TOKEN ?? '';

@@ -84,10 +84,14 @@ async function pump(src: AsyncIterable<Buffer>, req: http.ClientRequest): Promis
  * disk except the backups it writes itself.
  */
 export class AgentServerFiles implements ServerFiles {
-  private readonly base: string;
+  constructor(readonly target: AgentFilesTarget) {}
 
-  constructor(readonly target: AgentFilesTarget) {
-    this.base = target.baseUrl.replace(/\/+$/, '');
+  /**
+   * Read on every call: an orchestrator-run server's agent address is known
+   * only once the orchestrator answered (the panel's registry fills it in).
+   */
+  private get base(): string {
+    return this.target.baseUrl.replace(/\/+$/, '');
   }
 
   private get headers(): Record<string, string> {

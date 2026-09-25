@@ -1,10 +1,11 @@
-// The panel's agent client as the registry uses it (M2): an address that is
+// The panel's agent clients as the registry uses them (M2): an address that is
 // known only once the orchestrator told, and one event stream per client
 // however often a server's context is rebuilt around it.
 import { createServer, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { describe, expect, it } from 'vitest';
 import { AgentClient } from '../src/agent/client';
+import { AgentServerFiles } from '../src/files/agent';
 import { fakeStatus, until } from './harness';
 
 /** An agent that answers /v1/status and holds /v1/events open, counting live subscriptions. */
@@ -14,6 +15,11 @@ async function fakeAgentServer() {
     if (req.url === '/v1/status') {
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify(fakeStatus()));
+      return;
+    }
+    if (req.url === '/v1/fs/stat') {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ stat: null }));
       return;
     }
     if (req.url?.startsWith('/v1/events')) {
@@ -57,6 +63,20 @@ describe('AgentClient', () => {
       expect(client.connected).toBe(false);
     } finally {
       client.stopStream();
+      await agent.close();
+    }
+  });
+
+  it("reaches a server's files where its agent is now, not where it was when built (AgentServerFiles)", async () => {
+    const agent = await fakeAgentServer();
+    // The registry's target: empty until the orchestrator says where the container is.
+    const target = { baseUrl: '', token: 'x'.repeat(40) };
+    const files = new AgentServerFiles(target);
+    try {
+      await expect(files.stat('data', 'x')).rejects.toMatchObject({ code: 'unreachable' });
+      target.baseUrl = agent.url;
+      await expect(files.stat('data', 'x')).resolves.toBeNull();
+    } finally {
       await agent.close();
     }
   });

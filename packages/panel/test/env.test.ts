@@ -40,7 +40,9 @@ describe('loadEnv', () => {
   it('describes the default server only when told to, and the orchestrator when there is one (M2)', () => {
     // An install whose servers the orchestrator runs has no AGENT_URL/AGENT_TOKEN of its own.
     expect(loadEnv({})).toMatchObject({ agentUrl: '', agentToken: '', orchestrator: null });
-    expect(loadEnv(base)).toMatchObject({ agentUrl: 'http://pz:8081', agentToken: base.AGENT_TOKEN });
+    // AGENT_URL says where default's agent is; a token alone describes nothing (the orchestrator's stack).
+    expect(loadEnv(base)).toMatchObject({ agentUrl: '', agentToken: base.AGENT_TOKEN });
+    expect(loadEnv({ ...base, AGENT_URL: 'http://pz:8081' })).toMatchObject({ agentUrl: 'http://pz:8081', agentToken: base.AGENT_TOKEN });
     expect(loadEnv({ ...base, ORCH_SOCKET: '/run/orch/orch.sock', ORCH_TOKEN: 'o'.repeat(40) }).orchestrator).toEqual({ socket: '/run/orch/orch.sock', token: 'o'.repeat(40) });
     // Development and test slots run the fake game images.
     expect(loadEnv(base).serverImageVariant).toBeNull();

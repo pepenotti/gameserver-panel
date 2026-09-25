@@ -21,7 +21,6 @@ import { Control } from './control/control';
 import type { Db } from './db/db';
 import { secretEnvName, type PanelEnv } from './env';
 import { AgentServerFiles } from './files/agent';
-import { LocalServerFiles } from './files/local';
 import type { AgentFeed, Deps } from './http/deps';
 import { ModsService } from './mods/service';
 import { DISCORD_OVERRIDE_KEY, DiscordNotifier, type DiscordOverride } from './notifier/discord';
@@ -35,6 +34,7 @@ import { Scheduler } from './scheduler/scheduler';
 import { capabilitiesOf, ServerHandle } from './server/handle';
 import type { ServerContext } from './servers/context';
 import { NoOrchestrator, type OrchestratorClient } from './servers/orchestrator';
+import { OrchestratorHttp } from './servers/orchestrator-http';
 import { DbServerRegistry, type AgentParts, type AgentTarget } from './servers/registry';
 import { DEFAULT_SERVER_ID, ensureDefaultServer, ServersStore, type ServerRow } from './servers/store';
 import { ServerSettings, Settings } from './settings';
@@ -60,7 +60,7 @@ export interface ServerParts {
   feed: AgentFeed;
   /** Starts and stops the agent's event stream (main.ts; tests leave it out). */
   stream?: { start(): void; stop(): void };
-  /** Its files: `LocalServerFiles` for the server the environment describes, `AgentServerFiles` once M2-C lands (D11). */
+  /** Its files: `AgentServerFiles` in production (D11), `LocalServerFiles` in tests. */
   files: ServerFiles;
   /** The secrets the panel holds for it, by `LaunchSecretDecl.key`. */
   secrets: () => Readonly<Record<string, string>>;
@@ -68,8 +68,6 @@ export interface ServerParts {
   mods?: readonly ModSource[];
   /** Where its backups go. */
   backupDir: string;
-  /** Its data root on the panel's disk, for backups, restores and resets until M2-C moves them behind the agent. */
-  dataDir: string;
 }
 
 /**
@@ -101,9 +99,9 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
   const config: ConfigService = new ConfigService({ db, settings, feed, adapter, server: handle, files });
   const players = new PlayersService({ db, feed, server: handle });
   const mods = new ModsService({ db, feed, ops, settings, config, server: handle, sources: parts.mods ?? adapter.mods ?? [] });
-  const backups = new BackupService({ dir: parts.backupDir, dataDir: parts.dataDir, panelVersion: host.version, feed, server: handle, mods });
+  const backups = new BackupService({ dir: parts.backupDir, panelVersion: host.version, feed, server: handle, mods });
   const control = new Control({ agent, feed, ops, server: handle, backups });
-  const flows = new BackupFlows({ agent, feed, ops, control, backups, settings, config, server: handle, dataDir: parts.dataDir });
+  const flows = new BackupFlows({ agent, feed, ops, control, backups, settings, config, server: handle });
   const scheduler = new Scheduler({ settings, agent, feed, ops, control, flows, backups, mods, notifier, audit });
   const changes = new ConfigProposals({ db, config: () => config, serverId: row.id });
 
@@ -163,26 +161,22 @@ export interface PanelFactories {
   orchestrator(env: PanelEnv): OrchestratorClient;
   /** A server's agent: an `AgentClient` at `target` (its address may change: see `AgentTarget`). */
   agent(row: ServerRow, target: AgentTarget): AgentParts;
-  /** A server's files (D11). */
+  /** A server's files (D11: through its agent; tests: on their own disk). */
   files(row: ServerRow, target: AgentTarget, env: PanelEnv): ServerFiles;
-  /** A server's data root on the panel's disk, for backups, restores and resets until M2-C moves them behind the agent. */
-  dataDir(row: ServerRow, env: PanelEnv): string;
 }
 
 /** Whether the orchestrator runs this server (it has a spec), rather than Compose (`default`, until adopted). */
 export const isManaged = (row: ServerRow): boolean => row.spec !== null;
 
 export const FACTORIES: PanelFactories = {
-  // No orchestrator client in this build yet (M2-A brings `HttpOrchestratorClient`): creating servers answers 501.
-  orchestrator: () => new NoOrchestrator(),
+  // The orchestrator's unix socket (D3); without one, creating servers answers 501 and there is nothing to reconcile.
+  orchestrator: (env) => (env.orchestrator ? new OrchestratorHttp(env.orchestrator) : new NoOrchestrator()),
   agent: (_row, target) => {
     const client = new AgentClient(() => target.baseUrl, target.token);
     return { agent: client, feed: client, stream: { start: () => client.startStream(), stop: () => client.stopStream() } };
   },
-  // `default` keeps the panel's own mounts of its volumes; every other server's files are its agent's (M2-C implements them).
-  files: (row, target, env) => (isManaged(row) ? new AgentServerFiles(target) : new LocalServerFiles({ data: env.pzDataDir, install: env.pzInstallDir })),
-  // Nothing of an orchestrator-run server is on the panel's disk: this folder stays empty until M2-C packs through the agent.
-  dataDir: (row, env) => (isManaged(row) ? path.join(env.dataDir, 'servers', row.id) : env.pzDataDir),
+  // Every server's files, `default`'s included, through its own agent: the panel mounts no game volume (D11).
+  files: (_row, target) => new AgentServerFiles(target),
 };
 
 /**
@@ -240,11 +234,9 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
   const grants = new ServerGrants(db);
   const host: HostParts = { db, audit, bus, notifier, version: env.version };
 
+  // A `default` row whose environment no longer says where its agent is (a stack
+  // without the old game service) is still listed, unreachable, and its owner may remove it.
   ensureDefaultServer(serverRows, { env, adapter: o.adapter ?? adapterOf(DEFAULT_ADAPTER), settings: new ServerSettings(db, DEFAULT_SERVER_ID) });
-  const unmanaged = serverRows.list().find((r) => !isManaged(r));
-  if (unmanaged && (!env.agentUrl || !env.agentToken)) {
-    throw new Error(`Server "${unmanaged.id}" runs outside the orchestrator: the environment must say where its agent is (AGENT_URL, AGENT_TOKEN)`);
-  }
 
   const orchestrator = o.orchestrator ?? f.orchestrator(env);
   const servers = new DbServerRegistry({
@@ -269,13 +261,12 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
         secrets: managed ? () => serverRows.secrets(row.id) : () => env.secrets,
         mods: o.mods,
         backupDir: backupDirOf(env, row),
-        dataDir: f.dataDir(row, env),
       });
     },
   });
   for (const s of servers.list()) {
     const missing = s.handle.missingSecrets();
-    if (missing.length && !isManaged(s.row)) throw new Error(`${missing.map(secretEnvName).join(', ')} must be set (secrets the ${s.adapter.meta.id} adapter needs)`);
+    if (missing.length && !isManaged(s.row) && env.agentUrl) throw new Error(`${missing.map(secretEnvName).join(', ')} must be set (secrets the ${s.adapter.meta.id} adapter needs)`);
   }
 
   return {

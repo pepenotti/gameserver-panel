@@ -421,16 +421,19 @@ export class DbServerRegistry implements ServerRegistry {
     const { rows, orchestrator, audit, env } = this.d;
     const ctx = this.contexts.get(id);
     if (!ctx) throw new HttpError(404, 'server-not-found');
-    // Compose runs `default`'s container: removing it is the stack's business until it is adopted.
-    if (ctx.row.spec === null) throw new HttpError(409, 'server-unmanaged');
+    const managed = ctx.row.spec !== null;
+    // While the environment describes `default`, something else (Compose, the dev loop) runs it:
+    // removing it is that one's business. Once it no longer does, the row is all that's left.
+    if (!managed && env.agentUrl) throw new HttpError(409, 'server-unmanaged');
     if (o.confirm !== ctx.row.name) throw new HttpError(400, 'confirm-mismatch');
     if (ctx.ops.busy) throw new HttpError(409, 'busy', undefined, { op: ctx.ops.busy });
     const state = ctx.feed.status_?.state;
     if (state === 'running' || state === 'starting' || state === 'stopping') throw new HttpError(409, 'server-running');
 
-    // SRV-04: a final backup first, into the server's own folder, unless nothing is to be kept.
+    // SRV-04: a final backup first, into the server's own folder, unless nothing is to be kept
+    // (or nothing can be reached: an unmanaged row the environment no longer describes).
     let finalBackup: string | null = null;
-    if (o.keepBackups && o.finalBackup !== false) {
+    if (managed && o.keepBackups && o.finalBackup !== false) {
       try {
         const b = await ctx.ops.run('backup', o.by.user?.username ?? null, (op) => ctx.flows.backupNow(op, 'manual'));
         finalBackup = b.name;
@@ -442,7 +445,7 @@ export class DbServerRegistry implements ServerRegistry {
     }
 
     try {
-      await orchestrator.remove(id, { removeVolumes: true });
+      if (managed) await orchestrator.remove(id, { removeVolumes: true });
     } catch (e) {
       // Already gone is what we wanted.
       if (!(e instanceof OrchestratorCallError && e.code === 'not-found')) {

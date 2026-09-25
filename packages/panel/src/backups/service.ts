@@ -72,8 +72,6 @@ export interface BackupDeps {
   dir: string;
   /** The server's files (D11: through its agent); by default the server handle's. */
   files?: ServerFiles;
-  /** @deprecated Unused since backups go through `ServerFiles` (D11); the panel no longer reads game files itself. */
-  dataDir?: string;
   /** Recorded in each manifest. */
   panelVersion: string;
   feed: AgentFeed;

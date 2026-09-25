@@ -139,14 +139,14 @@ describe('schedules', () => {
     expect(p.deps.audit.list({ action: 'schedule.backup' })[0]).toMatchObject({ ok: true });
   });
 
-  it('saves the world first when the periodic backup runs on a live server', async () => {
+  it('takes a hot copy when the periodic backup runs on a live server, saving once, in the agent', async () => {
     const { p } = await setup();
     seedWorld(p);
     p.feed.status_ = fakeStatus({ state: 'running' });
     await p.srv.scheduler.runBackup();
     await p.srv.ops.idle();
-    // The agent's save waits for the game to finish writing.
-    expect(p.agent.calls).toEqual(['save']);
+    // The agent's pack saves the world first (the adapter's hotCopy, BAK-02); the panel neither saves nor locks.
+    expect(p.agent.calls).toEqual([]);
     expect(p.srv.backups.list()[0]!.manifest.mode).toBe('hot');
   });
 

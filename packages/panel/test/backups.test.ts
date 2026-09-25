@@ -94,19 +94,13 @@ describe('creating backups', () => {
     // The game holds its database open while we copy it.
     const live = new DatabaseSync(path.join(p.deps.env.pzDataDir, 'db', 'zomboid.db'));
     live.exec("INSERT INTO whitelist (username) VALUES ('while-running')");
-    let saved: unknown;
-    p.agent.save = async (req) => {
-      saved = req;
-      p.agent.calls.push('save');
-      return { ok: true };
-    };
     const info = await p.srv.flows.backupNow(null, 'manual');
     live.close();
     expect(info.manifest.mode).toBe('hot');
     // Both databases went through SQLite (the adapter's sqlite globs), not the plain-file fallback.
     expect(info.manifest.warnings).toBeUndefined();
-    expect(p.agent.calls).toEqual(['save']);
-    expect(saved).toEqual({ timeoutMs: 20_000 });
+    // The game's own save runs next to the data, in the agent's pack (the adapter's hotCopy): the panel doesn't save too.
+    expect(p.agent.calls).toEqual([]);
   });
 
   it('keeps the newest ten manual backups and never drops pinned ones', async () => {

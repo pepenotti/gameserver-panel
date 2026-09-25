@@ -35,12 +35,7 @@ export interface FlowDeps {
   settings: KeyValueSettings;
   config: ConfigStore;
   server: ServerHandle;
-  /** @deprecated Unused since restores stage and swap through `ServerFiles`, next to the data (D11). */
-  dataDir?: string;
 }
-
-/** How long a running server may take to save before the backup copies anyway. */
-const SAVE_TIMEOUT_MS = 20_000;
 
 /** Resolves with the status once `pred` holds, or rejects after `timeoutMs`. */
 export function waitForStatus(feed: AgentFeed, pred: (s: AgentStatus) => boolean, timeoutMs: number): Promise<AgentStatus> {
@@ -77,23 +72,17 @@ export class BackupFlows {
   }
 
   /**
-   * One backup. Running server: save first, then a hot copy. Stopped server:
-   * hold the agent lock so nobody starts it mid-copy.
+   * One backup. Running server: a hot copy, made consistent by the game's
+   * own method next to the data (the agent runs the adapter's `hotCopy`
+   * around the pack: PZ saves first; BAK-02), so the panel doesn't save
+   * too. Stopped server: hold the agent lock so nobody starts it mid-copy.
    */
   async backupNow(ctx: OpContext | null, trigger: BackupTrigger): Promise<BackupInfo> {
     const running = this.state === 'running';
     if (running && !this.d.server.has('hotBackup')) throw new HttpError(409, 'capability-unsupported', undefined, { capability: 'hotBackup' });
     let lockId: string | null = null;
     try {
-      if (running) {
-        if (this.d.server.has('save')) {
-          ctx?.step('saving');
-          // A save that doesn't finish in time still leaves the hot copy consistent per file.
-          await this.d.agent.save({ timeoutMs: SAVE_TIMEOUT_MS });
-        }
-      } else {
-        lockId = (await this.d.agent.lock(`backup (${trigger})`, 2 * 3_600_000)).id;
-      }
+      if (!running) lockId = (await this.d.agent.lock(`backup (${trigger})`, 2 * 3_600_000)).id;
       ctx?.step('archiving', { progress: 0 });
       let last = 0;
       return await this.d.backups.create({
