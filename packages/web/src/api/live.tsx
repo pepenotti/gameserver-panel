@@ -1,6 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AgentEvent, AgentStatus, JobInfo, JobResult, SeqEvent } from '@gsp/shared';
-import { useServerScope } from './server';
+import { SERVERS_KEY, useServerScope } from './server';
 
 export interface LogLine {
   seq: number;
@@ -71,6 +72,8 @@ const Ctx = createContext<Store>({ socket: 'connecting', servers: {}, hostNotice
 type ServerMsg =
   | { type: 'hello'; servers: { serverId: string; agentConnected: boolean; status: AgentStatus | null; logs: SeqEvent[]; op: Op | null }[] }
   | { type: 'gone'; serverId: string }
+  /** The servers the user sees, their names or the user's roles changed: fetch the list again. */
+  | { type: 'servers' }
   | { type: 'op'; serverId: string; op: Op }
   | { type: 'notice'; serverId: string | null; kind: string; message: string }
   | ({ type: 'event'; serverId: string } & SeqEvent)
@@ -88,6 +91,7 @@ function toLog(e: SeqEvent): LogLine | null {
 export function LiveProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   const [store, setStore] = useState<Store>({ socket: 'connecting', servers: {}, hostNotices: [] });
   const pending = useRef<Record<string, LogLine[]>>({});
+  const qc = useQueryClient();
 
   useEffect(() => {
     if (!enabled) return;
@@ -136,6 +140,11 @@ export function LiveProvider({ enabled, children }: { enabled: boolean; children
               const { [msg.serverId]: _gone, ...rest } = st.servers;
               return { ...st, servers: rest };
             });
+            void qc.invalidateQueries({ queryKey: SERVERS_KEY });
+            return;
+          case 'servers':
+            // Created, removed or renamed servers, or new roles: the list (and each page's permissions) follow.
+            void qc.invalidateQueries({ queryKey: SERVERS_KEY });
             return;
           case 'op':
             patch(msg.serverId, () => ({ op: msg.op }));
@@ -193,9 +202,15 @@ export function LiveProvider({ enabled, children }: { enabled: boolean; children
       if (raf) cancelAnimationFrame(raf);
       ws?.close();
     };
-  }, [enabled]);
+  }, [enabled, qc]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
+}
+
+/** Every visible server's live state by id (the server list, toasts), the host's notices, and whether the socket is open. */
+export function useLiveServers(): { open: boolean; servers: Readonly<Record<string, LiveServer>>; hostNotices: readonly Notice[] } {
+  const store = useContext(Ctx);
+  return { open: store.socket === 'open', servers: store.servers, hostNotices: store.hostNotices };
 }
 
 /** The page's server's live state (empty outside a server's pages), with the socket's. */

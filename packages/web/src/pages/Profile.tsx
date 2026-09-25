@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requiresTotp } from '@gsp/shared';
 import { api } from '../api/http';
+import { useServers } from '../api/server';
 import { useSession } from '../api/session';
 import type { DeviceSession } from '../api/types';
 import { LangSwitch } from '../components/LangSwitch';
@@ -19,6 +20,7 @@ export function Profile() {
   const rel = useRelative();
   const qc = useQueryClient();
   const { session, refresh } = useSession();
+  const servers = useServers();
   const [enrolOpen, enrol] = useDisclosure();
   const [disableOpen, disable] = useDisclosure();
   const [pw, setPw] = useState('');
@@ -40,10 +42,27 @@ export function Profile() {
           <Stack gap={2}>
             <Text fw={600}>{user.username}</Text>
             <Text size="sm" c="dimmed">
-              {t(`roles.${user.role}`)} — {t(`roles.${user.role}Help`)}
+              {user.scope === 'all' ? `${t(`roles.${user.role}`)} — ${t(`roles.${user.role}Help`)}` : t('profile.perServer')}
             </Text>
           </Stack>
         </Group>
+        {(servers.data?.length ?? 0) > 0 && (
+          <Stack gap={4} mt="sm">
+            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+              {t('profile.myServers')}
+            </Text>
+            {servers.data!.map((s) => (
+              <Group key={s.id} justify="space-between" wrap="nowrap">
+                <Text size="sm" truncate>
+                  {s.name}
+                </Text>
+                <Badge variant="light" tt="none">
+                  {t(`roles.${s.role}`)}
+                </Badge>
+              </Group>
+            ))}
+          </Stack>
+        )}
       </Card>
 
       <Card withBorder>

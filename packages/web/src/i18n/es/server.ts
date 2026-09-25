@@ -4,11 +4,6 @@ export default {
   title: 'Servidor del juego',
   launch: 'Configuración de inicio',
   launchHelp: 'Se aplica la próxima vez que prenda el servidor.',
-  fields: {
-    memoryMb: 'Memoria (MiB)',
-    branch: 'Versión (rama)',
-    updateOnStart: 'Actualizar en cada inicio',
-  },
   versionWarn: 'Cambiar a otra versión puede dejar el mundo inservible: las partidas no siempre pasan de una versión a otra. Hacé una copia de seguridad antes.',
   updates: 'Actualizaciones del juego',
   check: 'Buscar actualizaciones',
@@ -24,4 +19,5 @@ export default {
   killHelp: 'Solo si el servidor se colgó y el apagado normal no funciona. Se pierde lo no guardado.',
   killConfirm: '¿Forzar el apagado sin guardar?',
   containerLimit: 'Límite de memoria del contenedor: {{limit}}. El juego necesita unos {{overhead}} además de su propia configuración de memoria.',
+  containerTooSmall: 'No alcanza para esta memoria: dejala en {{max}} MiB o menos (el límite del contenedor todavía no se puede cambiar desde acá).',
 } satisfies Translations['server'];

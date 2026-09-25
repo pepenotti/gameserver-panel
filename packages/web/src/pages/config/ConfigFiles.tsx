@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { formatFor, type ParseIssue } from '@gsp/formats';
 import { ApiError } from '../../api/http';
+import { localize } from '../../api/meta';
 import { useServerApi } from '../../api/server';
 import { CodeEditor, type CodeEditorHandle } from '../../components/CodeEditor';
 import { useErrorText } from '../../lib/format';
@@ -51,7 +52,6 @@ function TreeItems({ entries, selected, onOpen }: { entries: TreeEntry[]; select
 /** The declared config files first, then each editable folder's tree (CFG-07). */
 function FileTree({ view, selected, onOpen }: { view: FilesView; selected: string | null; onOpen: (id: string) => void }) {
   const { t, i18n } = useTranslation();
-  const fileLabel = useFileLabel();
   return (
     <Paper withBorder p={4}>
       <ScrollArea.Autosize mah={{ base: '40vh', md: '70vh' }} type="auto">
@@ -59,10 +59,11 @@ function FileTree({ view, selected, onOpen }: { view: FilesView; selected: strin
           {view.files.map((f) => (
             <NavLink
               key={f.id}
-              label={fileLabel(f.id)}
+              // The adapter's name for the file, else its file name.
+              label={(f.label && localize(f.label, i18n.language)) || f.rel.split('/').at(-1)}
               active={selected === f.id}
               disabled={!f.exists}
-              description={f.reason ? t(`files.reasons.${f.reason}`) : f.rel.split('/').at(-1)}
+              description={f.reason ? t(`files.reasons.${f.reason}`) : f.label ? f.rel.split('/').at(-1) : undefined}
               leftSection={<ReasonIcon reason={f.reason} />}
               onClick={() => onOpen(f.id)}
             />

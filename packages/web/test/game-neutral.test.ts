@@ -19,8 +19,11 @@ function files(dir: string, ext: RegExp): string[] {
 
 /**
  * Project Zomboid words and numbers: its name, files, console command, map,
- * Steam app ids, branch and build. Case-insensitive (`b42` counts), except
- * `servermsg`: `ServerMsg` is a generic name (the panel's websocket messages).
+ * Steam app ids, branch and build, and what its settings forms used to be
+ * grouped by here (zombie options, safehouses, spawn files, ini keys) before
+ * the adapter declared its own groups. Case-insensitive (`b42` counts),
+ * except `servermsg`: `ServerMsg` is a generic name (the panel's websocket
+ * messages).
  */
 const PZ_ONLY: [string, RegExp][] = [
   ['Zomboid', /zomboid/i],
@@ -32,6 +35,11 @@ const PZ_ONLY: [string, RegExp][] = [
   ['checkModsNeedUpdate', /checkmodsneedupdate/i],
   ['legacy41', /legacy41/i],
   ['B42', /b42/i],
+  ['zombie', /zombi/i],
+  ['safehouse', /safehouse/i],
+  ['spawn files', /spawn(regions|points)/i],
+  ['MultiplierConfig', /multiplierconfig/i],
+  ['PublicName', /publicname/i],
 ];
 
 function hits(text: string): string[] {
@@ -45,6 +53,23 @@ describe('game-neutral web', () => {
     expect(hits("{ 'not-b42': 'x' }")).toEqual(['B42']);
     expect(hits('type ServerMsg = …; send `servermsg "hi"`')).toEqual(['servermsg']);
     expect(hits('server name zomboid')).toEqual(['Zomboid']);
+    expect(hits("{ ZombieLore: 'Población zombi' }")).toEqual(['zombie']);
+    expect(hits("['safehouses', (k) => /^(PlayerSafehouse)/]")).toEqual(['safehouse']);
+  });
+
+  it('names options, groups, files and access levels from the adapter, not from its own strings', () => {
+    // What M1 translated here until the contract carried it (M2): gone for good.
+    const config = en.config as Record<string, unknown>;
+    for (const fallback of ['groups', 'sandboxGroups', 'files', 'worldHelp', 'managedHelp']) expect(config[fallback], `config.${fallback}`).toBeUndefined();
+    expect(Object.keys(en.config.tabs).sort()).toEqual(['files', 'history']);
+    expect((en.server as Record<string, unknown>).fields).toBeUndefined();
+    expect((en.players as Record<string, unknown>).levels).toBeUndefined();
+    // No page keys a translation by an adapter's option, file or schema id.
+    const dynamic: string[] = [];
+    for (const f of files(path.join(web, 'src'), /\.tsx?$/)) {
+      for (const m of readFileSync(f, 'utf8').matchAll(/\bt\(\s*`(config\.(tabs|files|groups)|server\.fields|players\.levels)\./g)) dynamic.push(`${path.relative(web, f)}: ${m[1]}`);
+    }
+    expect(dynamic).toEqual([]);
   });
 
   it('has no Project Zomboid words or values in its code, strings or page', () => {

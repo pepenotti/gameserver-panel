@@ -52,6 +52,37 @@ export interface CommandDoc {
   permission?: Permission;
 }
 
+/** A launch setting (the contract's `LaunchOption`): an option, plus what it is for. */
+export interface LaunchOption extends OptionMeta {
+  /** `version`: pins what gets installed; `memory`: sizes the game (the container adds `memory.overheadMb`). */
+  role?: 'version' | 'memory';
+  /** Unit of a number, shown next to it (`MiB`). */
+  unit?: string;
+  /** Increment a number must be a multiple of. */
+  step?: number;
+}
+
+/** A group of a settings form (the contract's `OptionGroup`, CFG-10); options name theirs in `OptionMeta.group`. */
+export interface OptionGroup {
+  id: string;
+  label: I18n;
+  /** Shown behind "Advanced" rather than with the common settings. */
+  advanced?: boolean;
+}
+
+/** A port a game uses (the contract's `PortDecl`). */
+export interface PortDecl {
+  id: string;
+  proto: 'tcp' | 'udp';
+  default: number;
+  /** Published on the host (players connect to it); false for ports only the agent uses. */
+  publish: boolean;
+  sameInsideOut: boolean;
+  label: I18n;
+}
+
+export type BanTarget = 'username' | 'steamId' | 'ip';
+
 export interface Meta {
   adapter: {
     id: string;
@@ -62,15 +93,39 @@ export interface Meta {
   };
   server: { id?: string; name?: string; gameName: string; flavour: string | null };
   capabilities: Capability[];
-  launch: { schema: OptionMeta[] };
+  launch: { schema: LaunchOption[] };
   backupParts: { id: string; label: I18n }[];
+  /** `options`: what the scope takes (a new seed, a preset); the others are ignored. */
   resets: { id: string; label: I18n; permission: Permission; removeParts: string[]; options?: { newSeed?: boolean; preset?: boolean } }[];
   /** Lowest first. */
   accessLevels: { id: string; label: I18n }[];
   /** What a ban can name. */
-  banTargets?: ('username' | 'steamId' | 'ip')[];
+  banTargets?: BanTarget[];
   modSources: { id: string; capability: Capability; label: I18n }[];
   consoleCatalog: CommandDoc[];
+}
+
+/** A game a server can be created from (`GET /api/adapters`, mirrors `AdapterSummary` in packages/panel/src/routes/servers.ts). */
+export interface AdapterSummary {
+  id: string;
+  name: I18n;
+  runtime: string;
+  arch: string[];
+  /** Whether this host runs it natively (HST-05); null when the host couldn't be asked. */
+  supported: boolean | null;
+  flavours: { id: string; name: I18n }[];
+  ports: PortDecl[];
+  memory: { minMb: number; defaultMb: number; overheadMb: number };
+  capabilities: string[];
+  /** Its license must be accepted when creating a server. */
+  eula: boolean;
+  launch: { schema: LaunchOption[]; secrets: { key: string; label: I18n }[] };
+}
+
+export interface AdaptersResponse {
+  /** Null when the host couldn't be asked. */
+  host: { arch: string; cpus: number; memBytes: number } | null;
+  adapters: AdapterSummary[];
 }
 
 /** A capability, or any one of several. */

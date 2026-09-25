@@ -1,0 +1,408 @@
+import { Alert, Anchor, Badge, Button, Card, Center, Checkbox, Group, Loader, Modal, NumberInput, Progress, Radio, Select, SimpleGrid, Stack, Text, TextInput, Title } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { IconAlertTriangle, IconInfoCircle } from '@tabler/icons-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router';
+import { api, ApiError } from '../api/http';
+import { localize, type AdapterSummary, type AdaptersResponse } from '../api/meta';
+import { serverHref, SERVERS_KEY, useServers, withServer, type ServerSummary } from '../api/server';
+import { LaunchField, launchDefault, launchKey } from '../components/LaunchField';
+import { useErrorText } from '../lib/format';
+import { createErrorField, idProblem, MAX_PORT, MIN_PORT, nameProblem, portProblem, publishedPorts, slugify, suggestPorts, type CreateField } from '../lib/servers';
+
+type Launch = Record<string, unknown>;
+
+/** A launch form's starting values: each setting's default from the schema, the memory one from the adapter. */
+function launchDefaults(a: AdapterSummary): Launch {
+  const memoryKey = launchKey(a.launch.schema, 'memory');
+  return Object.fromEntries(a.launch.schema.map((o) => [o.key, o.key === memoryKey && o.default === undefined ? a.memory.defaultMb : launchDefault(o)]));
+}
+
+/** Why this host can't run a game (HST-05), or null. */
+function useUnsupported(host: AdaptersResponse['host']): (a: AdapterSummary) => string | null {
+  const { t } = useTranslation();
+  return (a) => (a.supported === false ? t('create.archUnsupported', { arch: a.arch.join(', '), host: host?.arch ?? '?' }) : null);
+}
+
+/**
+ * Creating a server (SRV-01): the game (games this host can't run are shown
+ * but can't be picked, HST-05), its flavour, a name and id, the ports
+ * players connect to and its memory. The panel checks everything again;
+ * what it refuses is shown on the field it is about.
+ */
+export function CreateServer() {
+  const { t, i18n } = useTranslation();
+  const errorText = useErrorText();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const servers = useServers();
+  const adapters = useQuery({ queryKey: ['adapters'], queryFn: () => api<AdaptersResponse>('GET', '/api/adapters'), staleTime: 60_000 });
+  const unsupported = useUnsupported(adapters.data?.host ?? null);
+  const l = (v: Parameters<typeof localize>[0]) => localize(v, i18n.language);
+
+  const [adapterId, setAdapterId] = useState<string | null>(null);
+  const [flavour, setFlavour] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [id, setId] = useState('');
+  const [idEdited, setIdEdited] = useState(false);
+  const [ports, setPorts] = useState<Record<string, number | null>>({});
+  const [launch, setLaunch] = useState<Launch>({});
+  const [memLimitMb, setMemLimitMb] = useState<number | null>(null);
+  const [eula, setEula] = useState(false);
+  const [tried, setTried] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [apiErrors, setApiErrors] = useState<Partial<Record<CreateField, string>>>({});
+  const [general, setGeneral] = useState<string | null>(null);
+
+  const list = useMemo(() => servers.data ?? [], [servers.data]);
+  const adapter = adapters.data?.adapters.find((a) => a.id === adapterId) ?? null;
+  const published = useMemo(() => (adapter ? publishedPorts(adapter.ports) : []), [adapter]);
+  const taken = useMemo(() => list.flatMap((s) => s.ports.map((p) => ({ port: p.port, proto: p.proto, by: s.name }))), [list]);
+  const suggested = useMemo(() => (adapter ? suggestPorts(adapter.ports, taken) : null), [adapter, taken]);
+  const memoryKey = adapter ? launchKey(adapter.launch.schema, 'memory') : undefined;
+  const memoryOption = adapter?.launch.schema.find((o) => o.key === memoryKey);
+
+  // The first game this host can run is picked for you (once the other servers' ports are known).
+  useEffect(() => {
+    if (adapterId || !adapters.data || !servers.data) return;
+    const first = adapters.data.adapters.find((a) => a.supported !== false);
+    if (first) setAdapterId(first.id);
+  }, [adapters.data, servers.data, adapterId]);
+
+  // Another game: its flavour, suggested ports, launch defaults and memory. Only when the game changes,
+  // so a refreshed server list never overwrites what was typed.
+  const pickedId = adapter?.id;
+  useEffect(() => {
+    if (!adapter) return;
+    setFlavour(adapter.flavours[0]?.id ?? null);
+    setLaunch(launchDefaults(adapter));
+    setMemLimitMb(adapter.memory.defaultMb + adapter.memory.overheadMb);
+    setPorts(suggested ?? Object.fromEntries(published.map((d) => [d.id, null])));
+    setEula(false);
+    setApiErrors({});
+    // The rest is read as it is when the game changes.
+  }, [pickedId]);
+
+  if (adapters.isLoading || servers.isLoading) {
+    return (
+      <Center mt="xl">
+        <Loader />
+      </Center>
+    );
+  }
+  if (adapters.error) return <Alert color="red">{errorText(adapters.error)}</Alert>;
+  const data = adapters.data!;
+
+  // What's wrong before sending (the API says the same, and more).
+  const names = list.map((s) => s.name);
+  const ids = list.map((s) => s.id);
+  const nameErr = nameProblem(name, names);
+  const idErr = idProblem(id, ids);
+  const portErr = (pid: string): string | null => {
+    const p = portProblem(pid, ports, adapter?.ports ?? [], taken);
+    if (!p) return null;
+    switch (p.kind) {
+      case 'required':
+        return t('create.portRequired');
+      case 'invalid':
+        return t('errors.invalid-port', { min: MIN_PORT, max: MAX_PORT });
+      case 'twice':
+        return t('create.portTwice');
+      case 'taken':
+        return t('create.portTaken', { port: ports[pid], server: p.by });
+    }
+  };
+  const gameMemory = memoryKey && typeof launch[memoryKey] === 'number' ? (launch[memoryKey] as number) : null;
+  const memMin = adapter ? Math.max(memoryOption?.min ?? 0, adapter.memory.minMb) : 0;
+  const memErr = !adapter
+    ? null
+    : memoryKey
+      ? gameMemory === null || gameMemory < memMin
+        ? t('create.memoryMin', { min: memMin })
+        : memoryOption?.step && gameMemory % memoryOption.step !== 0
+          ? t('create.memoryStep', { step: memoryOption.step })
+          : null
+      : memLimitMb === null || memLimitMb < adapter.memory.minMb + adapter.memory.overheadMb
+        ? t('create.memoryMin', { min: adapter.memory.minMb + adapter.memory.overheadMb })
+        : null;
+  const launchMissing = adapter ? adapter.launch.schema.some((o) => o.key !== memoryKey && (o.type === 'integer' || o.type === 'decimal') && typeof launch[o.key] !== 'number') : false;
+  const valid = !!adapter && unsupported(adapter) === null && !nameErr && !idErr && published.every((d) => portErr(d.id) === null) && !memErr && !launchMissing && (!adapter.eula || eula);
+  // Typing clears what the API said about that field.
+  const clear = (f: CreateField) => setApiErrors((e) => ({ ...e, [f]: undefined }));
+  const shown = (f: CreateField, local: string | null, touched: boolean) => apiErrors[f] ?? (touched || tried ? (local ?? undefined) : undefined);
+
+  const onName = (v: string) => {
+    setName(v);
+    clear('name');
+    if (!idEdited) {
+      setId(slugify(v));
+      clear('id');
+    }
+  };
+
+  const create = async () => {
+    setTried(true);
+    if (!valid || !adapter) return;
+    setCreating(true);
+    setGeneral(null);
+    setApiErrors({});
+    const sentPorts = Object.fromEntries(published.map((d) => [d.id, ports[d.id]!]));
+    try {
+      const created = await api<ServerSummary>('POST', '/api/servers', {
+        id,
+        name: name.trim(),
+        adapter: adapter.id,
+        ...(adapter.flavours.length ? { flavour } : {}),
+        launch,
+        ports: sentPorts,
+        ...(memoryKey ? {} : { memLimitMb }),
+        ...(adapter.eula ? { eulaAccepted: eula } : {}),
+      });
+      qc.setQueryData<ServerSummary[]>(SERVERS_KEY, (cur) => withServer(cur, created));
+      notifications.show({ color: 'green', message: t('create.created', { name: created.name }) });
+      navigate(serverHref(created.id, '/'));
+    } catch (e) {
+      if (e instanceof ApiError) {
+        const { field, port } = createErrorField(e.code, e.extra, adapter.ports, sentPorts);
+        const text = port !== undefined && e.code !== 'invalid-port' ? t('errors.port-conflict', { port }) : errorText(e);
+        if (field) setApiErrors({ [field]: text });
+        else setGeneral(text);
+      } else setGeneral(errorText(e));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const overhead = adapter?.memory.overheadMb ?? 0;
+
+  return (
+    <Stack maw={760}>
+      <Group justify="space-between">
+        <Title order={2}>{t('create.title')}</Title>
+        <Anchor component={Link} to="/servers" size="sm">
+          {t('common.cancel')}
+        </Anchor>
+      </Group>
+      <Text size="sm" c="dimmed">
+        {t('create.intro')}
+      </Text>
+
+      <Card withBorder>
+        <Text fw={600} mb="xs">
+          {t('create.game')}
+        </Text>
+        {data.host === null && (
+          <Alert color="yellow" variant="light" icon={<IconAlertTriangle />} mb="sm">
+            {t('create.hostUnknown')}
+          </Alert>
+        )}
+        {data.adapters.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            {t('create.noGames')}
+          </Text>
+        ) : (
+          <Radio.Group value={adapterId} onChange={setAdapterId}>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              {data.adapters.map((a) => {
+                const why = unsupported(a);
+                return (
+                  <Radio.Card key={a.id} value={a.id} disabled={why !== null} p="sm" radius="md" style={{ opacity: why ? 0.6 : 1 }}>
+                    <Group wrap="nowrap" align="flex-start">
+                      <Radio.Indicator disabled={why !== null} />
+                      <Stack gap={2}>
+                        <Text fw={600} size="sm">
+                          {l(a.name)}
+                        </Text>
+                        {why ? (
+                          <Text size="xs" c="orange">
+                            {why}
+                          </Text>
+                        ) : (
+                          <Text size="xs" c="dimmed">
+                            {t('create.gameLine', { ports: publishedPorts(a.ports).length, memory: a.memory.defaultMb })}
+                          </Text>
+                        )}
+                      </Stack>
+                    </Group>
+                  </Radio.Card>
+                );
+              })}
+            </SimpleGrid>
+          </Radio.Group>
+        )}
+        {adapter && adapter.flavours.length > 0 && (
+          <Select mt="md" w={{ base: '100%', xs: 320 }} label={t('create.flavour')} data={adapter.flavours.map((f) => ({ value: f.id, label: l(f.name) }))} value={flavour} onChange={setFlavour} allowDeselect={false} />
+        )}
+        {apiErrors.game && (
+          <Alert color="red" mt="sm">
+            {apiErrors.game}
+          </Alert>
+        )}
+      </Card>
+
+      {adapter && (
+        <>
+          <Card withBorder>
+            <Text fw={600} mb="xs">
+              {t('create.naming')}
+            </Text>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <TextInput label={t('servers.name')} description={t('create.nameHelp')} value={name} onChange={(e) => onName(e.currentTarget.value)} maxLength={64} error={shown('name', nameErr && t(`errors.${nameErr}`), name !== '')} data-autofocus />
+              <TextInput
+                label={t('create.id')}
+                description={t('create.idHelp')}
+                value={id}
+                onChange={(e) => {
+                  setId(e.currentTarget.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+                  setIdEdited(true);
+                  clear('id');
+                }}
+                maxLength={24}
+                error={shown('id', idErr && t(`errors.${idErr}`), id !== '')}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </SimpleGrid>
+          </Card>
+
+          {published.length > 0 && (
+            <Card withBorder>
+              <Group justify="space-between" mb={4}>
+                <Text fw={600}>{t('create.ports')}</Text>
+                {suggested && (
+                  <Button size="compact-xs" variant="subtle" onClick={() => setPorts(suggested)}>
+                    {t('create.suggest')}
+                  </Button>
+                )}
+              </Group>
+              <Text size="xs" c="dimmed" mb="sm">
+                {t('create.portsHelp')}
+              </Text>
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                {published.map((d) => (
+                  <NumberInput
+                    key={d.id}
+                    label={`${l(d.label)} (${d.proto.toUpperCase()})`}
+                    value={ports[d.id] ?? ''}
+                    onChange={(v) => {
+                      setPorts({ ...ports, [d.id]: v === '' ? null : Number(v) });
+                      clear(`port:${d.id}`);
+                    }}
+                    min={MIN_PORT}
+                    max={MAX_PORT}
+                    allowDecimal={false}
+                    hideControls
+                    error={shown(`port:${d.id}`, portErr(d.id), true)}
+                  />
+                ))}
+              </SimpleGrid>
+            </Card>
+          )}
+
+          <Card withBorder>
+            <Text fw={600} mb={4}>
+              {t('create.memory')}
+            </Text>
+            <Text size="xs" c="dimmed" mb="sm">
+              {t('create.memoryHelp', { overhead })}
+            </Text>
+            <Stack>
+              {memoryOption ? (
+                <LaunchField
+                  o={memoryOption}
+                  value={launch[memoryOption.key]}
+                  min={memMin}
+                  onChange={(v) => {
+                    setLaunch({ ...launch, [memoryOption.key]: v });
+                    clear('memory');
+                  }}
+                  error={shown('memory', memErr, true)}
+                />
+              ) : (
+                <NumberInput
+                  label={t('create.memLimit')}
+                  value={memLimitMb ?? ''}
+                  onChange={(v) => {
+                    setMemLimitMb(v === '' ? null : Number(v));
+                    clear('memory');
+                  }}
+                  min={adapter.memory.minMb + overhead}
+                  step={256}
+                  allowDecimal={false}
+                  maw={260}
+                  error={shown('memory', memErr, true)}
+                />
+              )}
+              {memoryOption && gameMemory !== null && (
+                <Text size="xs" c="dimmed">
+                  {t('create.containerTotal', { total: gameMemory + overhead })}
+                </Text>
+              )}
+              {adapter.launch.schema
+                .filter((o) => o.key !== memoryKey)
+                .map((o) => (
+                  <LaunchField
+                    key={o.key}
+                    o={o}
+                    value={launch[o.key]}
+                    onChange={(v) => {
+                      setLaunch({ ...launch, [o.key]: v });
+                      clear('launch');
+                    }}
+                  />
+                ))}
+              {apiErrors.launch && <Alert color="red">{apiErrors.launch}</Alert>}
+              {adapter.launch.secrets.length > 0 && (
+                <Text size="xs" c="dimmed">
+                  {t('create.secrets', { list: adapter.launch.secrets.map((s) => l(s.label)).join('; ') })}
+                </Text>
+              )}
+            </Stack>
+          </Card>
+
+          {adapter.eula && (
+            <Card withBorder>
+              {/* The license text and its link come with the game that needs them (M3); the API still refuses without it. */}
+              <Checkbox label={t('create.eula', { game: l(adapter.name) })} checked={eula} onChange={(e) => setEula(e.currentTarget.checked)} error={tried && !eula ? t('errors.eula-required') : undefined} />
+            </Card>
+          )}
+
+          {general && (
+            <Alert color="red" icon={<IconAlertTriangle />}>
+              {general}
+            </Alert>
+          )}
+          <Group justify="space-between" wrap="wrap">
+            <Text size="sm" c="dimmed">
+              {valid ? t('create.ready', { name: name.trim(), game: l(adapter.name) }) : tried ? t('create.fix') : ''}
+            </Text>
+            <Button onClick={() => void create()} loading={creating} disabled={tried && !valid}>
+              {t('create.submit')}
+            </Button>
+          </Group>
+        </>
+      )}
+
+      <Modal opened={creating} onClose={() => undefined} withCloseButton={false} centered closeOnClickOutside={false} closeOnEscape={false}>
+        <Stack>
+          <Group gap="sm" wrap="nowrap">
+            <Loader size="sm" />
+            <Text fw={600}>{t('create.creating', { name: name.trim() })}</Text>
+          </Group>
+          <Progress value={100} animated striped />
+          <Group gap={6} wrap="nowrap" align="flex-start">
+            <IconInfoCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+            <Text size="sm" c="dimmed">
+              {t('create.creatingHelp')}
+            </Text>
+          </Group>
+          <Badge variant="light" tt="none" style={{ alignSelf: 'flex-start' }}>
+            {id}
+          </Badge>
+        </Stack>
+      </Modal>
+    </Stack>
+  );
+}

@@ -13,4 +13,18 @@ export default {
   loadMore: 'Ver anteriores',
   filter: 'Filtrar por acción',
   system: 'sistema',
+  server: 'Servidor',
+  allEntries: 'Todo',
+  allMine: 'Todos mis servidores',
+  hostOnly: 'Solo el panel (cuentas, ingresos, ajustes)',
+  host: 'panel',
+  none: 'No hay entradas.',
+  noneYetOlder: 'Ninguna entre estas entradas; cargá las anteriores para buscar más.',
+  actors: {
+    user: 'persona',
+    schedule: 'programación',
+    recovery: 'herramienta de recuperación',
+    assistant: 'asistente',
+    system: 'panel',
+  },
 } satisfies Translations['audit'];

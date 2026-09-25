@@ -1,18 +1,19 @@
-import { Alert, Autocomplete, Badge, Button, Card, Group, NumberInput, Select, Stack, Switch, Table, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Button, Card, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { OptionMeta } from '@gsp/formats';
-import { useServerApi } from '../api/server';
+import { useServerApi, useServerScope } from '../api/server';
 import { useLive } from '../api/live';
-import { localize } from '../api/meta';
+import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
+import { LaunchField, launchKey } from '../components/LaunchField';
+import { DeleteServerModal, RenameServerModal } from '../components/ServerAdmin';
 import { UnsupportedNote } from '../components/Supported';
 import { formatBytes, useErrorText } from '../lib/format';
-import { humanize } from './config/options';
 
 /** The adapter's launch settings (its `launch.schema` keys). */
 type Launch = Record<string, unknown>;
@@ -27,56 +28,28 @@ interface Updates {
   updateAvailable: boolean;
 }
 
-/** "memoryMb" → "Memory (MiB)", "updateOnStart" → "Update on start": a unit suffix becomes a unit. */
-export function launchLabel(key: string): string {
-  const unit = /(Mb|MiB|Gb|GiB|Ms|Sec|Seconds|Minutes)$/.exec(key)?.[1];
-  if (!unit || unit === key) return humanize(key);
-  const units: Record<string, string> = { Mb: 'MiB', MiB: 'MiB', Gb: 'GiB', GiB: 'GiB', Ms: 'ms', Sec: 's', Seconds: 's', Minutes: 'min' };
-  return `${humanize(key.slice(0, -unit.length))} (${units[unit]})`;
-}
-
-/** One launch setting, as its schema types it. `versions` turns a text field into a picker of known versions. */
-function LaunchField({ o, value, onChange, versions }: { o: OptionMeta; value: unknown; onChange: (v: unknown) => void; versions?: string[] }) {
-  const { t, i18n } = useTranslation();
-  // FALLBACK until the contract's OptionMeta has a label: common setting names are translated here, others humanized.
-  const label = t(`server.fields.${o.key}`, { defaultValue: launchLabel(o.key) });
-  const description = localize(o.description, i18n.language) || undefined;
-  // The field stays narrow; its description may use the card's width.
-  const common = { label, description, maw: 560, styles: { input: { maxWidth: 260 } } };
-  switch (o.type) {
-    case 'boolean':
-      return <Switch label={label} description={description} checked={value === true} onChange={(e) => onChange(e.currentTarget.checked)} />;
-    case 'integer':
-    case 'decimal':
-      return (
-        <NumberInput
-          {...common}
-          value={typeof value === 'number' ? value : ''}
-          onChange={(v) => onChange(v === '' ? null : Number(v))}
-          min={o.min}
-          max={o.max}
-          allowDecimal={o.type === 'decimal'}
-          hideControls={o.min !== undefined && o.max !== undefined && o.max - o.min > 100}
-        />
-      );
-    case 'enum':
-      return (
-        <Select
-          {...common}
-          data={(o.options ?? []).map((x) => ({ value: String(x.value), label: localize(x.label, i18n.language) || String(x.value) }))}
-          value={value === null || value === undefined ? null : String(value)}
-          onChange={(v) => v !== null && onChange(Number(v))}
-          allowDeselect={false}
-        />
-      );
-    case 'string':
-      return versions ? (
-        // Free text (a pinned build), with every known version listed whatever is typed.
-        <Autocomplete {...common} data={versions} filter={({ options }) => options} value={String(value ?? '')} onChange={(v) => onChange(v.replace(/[\r\n]/g, ''))} />
-      ) : (
-        <TextInput {...common} value={String(value ?? '')} onChange={(e) => onChange(e.currentTarget.value.replace(/[\r\n]/g, ''))} />
-      );
-  }
+/** The server's name and id (SRV-02), renamed in place; the id stays (addresses, folders). */
+function NameCard() {
+  const { t } = useTranslation();
+  const server = useServerScope()?.server ?? null;
+  const [open, rename] = useDisclosure();
+  if (!server) return null;
+  return (
+    <Card withBorder>
+      <Group justify="space-between" wrap="nowrap" align="flex-start">
+        <Stack gap={2} style={{ minWidth: 0 }}>
+          <Text fw={600}>{server.name}</Text>
+          <Text size="xs" c="dimmed">
+            {t('servers.idLine', { id: server.id })}
+          </Text>
+        </Stack>
+        <Button size="xs" variant="default" onClick={rename.open}>
+          {t('servers.rename')}
+        </Button>
+      </Group>
+      <RenameServerModal server={server} opened={open} onClose={rename.close} />
+    </Card>
+  );
 }
 
 export function Server() {
@@ -85,7 +58,10 @@ export function Server() {
   const qc = useQueryClient();
   const live = useLive();
   const sapi = useServerApi();
+  const { can } = useSession();
+  const server = useServerScope()?.server ?? null;
   const { meta, has } = useMeta();
+  const [deleteOpen, del] = useDisclosure();
   const schema = meta?.launch.schema ?? [];
   const launch = useQuery({ queryKey: ['launch', sapi.sid], queryFn: () => sapi<Launch>('GET', '/server/launch') });
   const [form, setForm] = useState<Launch | null>(null);
@@ -105,14 +81,17 @@ export function Server() {
     onError: (e) => notifications.show({ color: 'red', message: errorText(e) }),
   });
   const busy = !!live.op && !live.op.done;
-  const limit = live.status?.process?.cgroupLimitBytes ?? null;
   const overheadMb = meta?.adapter.memory.overheadMb ?? 0;
 
-  // The setting that pins the version is the text field holding the version (channel) the server reports.
-  const pinned = updates.data?.branch ?? live.status?.installedInfo?.channel ?? null;
-  const versionKey = has('branches') && pinned !== null ? schema.find((o) => o.type === 'string' && launch.data?.[o.key] === pinned)?.key : undefined;
+  // The adapter names the setting that pins the version and the one that sizes the game (LaunchOption.role).
+  const versionKey = launchKey(schema, 'version');
+  const memoryKey = launchKey(schema, 'memory');
   const versions = versionKey ? Array.from(new Set([...(updates.data?.branches.map((b) => b.name) ?? []), String(form?.[versionKey] ?? '')])).filter(Boolean) : undefined;
   const versionChanged = versionKey !== undefined && form !== null && launch.data !== undefined && form[versionKey] !== launch.data[versionKey];
+  // The container keeps the memory limit it was created with; the game's memory plus the adapter's overhead must fit.
+  const gameMb = memoryKey && typeof form?.[memoryKey] === 'number' ? (form[memoryKey] as number) : null;
+  const limitMb = server?.memLimitMb ?? null;
+  const tooBig = gameMb !== null && limitMb !== null && gameMb + overheadMb > limitMb;
 
   const act = (call: () => Promise<unknown>) => call().catch((e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
   const countdown = () => ((live.players?.count ?? 0) > 0 ? 300 : 0);
@@ -120,6 +99,8 @@ export function Server() {
   return (
     <Stack maw={760}>
       <Title order={2}>{t('server.title')}</Title>
+
+      <NameCard />
 
       <Card withBorder>
         <Text fw={600}>{t('server.launch')}</Text>
@@ -130,16 +111,17 @@ export function Server() {
         {form && (
           <Stack>
             {schema.map((o) => (
-              <LaunchField key={o.key} o={o} value={form[o.key]} onChange={(v) => setForm({ ...form, [o.key]: v })} versions={o.key === versionKey ? versions : undefined} />
+              <LaunchField key={o.key} o={o} value={form[o.key]} onChange={(v) => setForm({ ...form, [o.key]: v })} versions={o.key === versionKey && o.type === 'string' ? versions : undefined} />
             ))}
             {versionChanged && (
               <Alert color="orange" variant="light" icon={<IconAlertTriangle />}>
                 {t('server.versionWarn')}
               </Alert>
             )}
-            {limit !== null && overheadMb > 0 && (
-              <Text size="xs" c="dimmed">
-                {t('server.containerLimit', { limit: formatBytes(limit), overhead: formatBytes(overheadMb * 1024 * 1024) })}
+            {limitMb !== null && overheadMb > 0 && memoryKey && (
+              <Text size="xs" c={tooBig ? 'orange' : 'dimmed'}>
+                {t('server.containerLimit', { limit: formatBytes(limitMb * 1024 * 1024), overhead: formatBytes(overheadMb * 1024 * 1024) })}
+                {tooBig ? ` ${t('server.containerTooSmall', { max: limitMb - overheadMb })}` : ''}
               </Text>
             )}
             <Group>
@@ -221,7 +203,18 @@ export function Server() {
             {t('server.kill')}
           </Button>
         </Group>
+        {can('server.delete') && server && (
+          <Group justify="space-between" mt="md">
+            <Text size="sm" c="dimmed" maw={480}>
+              {t('servers.deleteHelp')}
+            </Text>
+            <Button color="red" onClick={del.open}>
+              {t('servers.delete')}
+            </Button>
+          </Group>
+        )}
       </Card>
+      {server && <DeleteServerModal server={server} opened={deleteOpen} onClose={del.close} />}
     </Stack>
   );
 }

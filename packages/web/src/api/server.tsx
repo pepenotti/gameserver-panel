@@ -16,24 +16,42 @@ export interface ServerSummary {
   adapter: string;
   adapterName: I18n;
   flavour: string | null;
+  /** Null while its agent hasn't answered. */
   state: string | null;
   agentConnected: boolean;
+  /** Online players; null unless it runs. */
   players: number | null;
   version: string | null;
   nextRestart: string | null;
+  /** Its published host ports. */
+  ports: { id: string; port: number; proto: 'tcp' | 'udp' }[];
+  /** Container memory limit, MiB. */
+  memLimitMb: number;
+  /** False for the server the install's environment describes: only the stack itself removes it. */
+  managed: boolean;
+  /** The signed-in user's role there, and what it lets them do. */
   role: Role;
   permissions: Permission[];
 }
+
+/** The query key of `GET /api/servers` (the websocket's `servers` message refreshes it). */
+export const SERVERS_KEY = ['servers'] as const;
 
 /** The servers the signed-in user may see. */
 export function useServers() {
   const { session } = useSession();
   return useQuery({
-    queryKey: ['servers'],
+    queryKey: SERVERS_KEY,
     queryFn: () => api<ServerSummary[]>('GET', '/api/servers'),
     enabled: !!session && !session.pending,
     refetchInterval: 60_000,
   });
+}
+
+/** Puts a server's new summary (after a create or rename) into the list without waiting for a refetch. */
+export function withServer(list: ServerSummary[] | undefined, s: ServerSummary): ServerSummary[] {
+  const cur = list ?? [];
+  return cur.some((x) => x.id === s.id) ? cur.map((x) => (x.id === s.id ? s : x)) : [...cur, s];
 }
 
 /**
@@ -49,7 +67,7 @@ export function useCanSomewhere(): (p: Permission) => boolean {
 
 const LAST = 'gsp.lastServer';
 
-/** The server last opened in this browser, for links from pages that aren't about one server. */
+/** The server last opened in this browser, for the server menu on pages that aren't about one server. */
 export function lastServer(): string | null {
   try {
     return localStorage.getItem(LAST);

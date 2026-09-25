@@ -12,4 +12,6 @@ export default {
   thisDevice: 'This device',
   lastSeen: 'Last active {{when}}',
   signOutDevice: 'Sign out',
+  perServer: 'Your role depends on the server.',
+  myServers: 'Your servers',
 } as const;

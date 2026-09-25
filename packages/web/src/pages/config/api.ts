@@ -1,10 +1,13 @@
 // The config API as the web uses it: forms, the text editor and proposals
 // (CFG-01…10, AST-03). Types mirror packages/panel/src/config/store.ts and
 // packages/panel/src/proposals/service.ts.
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { DataShape, FormatId, Highlight, OptionMeta, ParseIssue } from '@gsp/formats';
 import type { DiffLine } from '@gsp/shared';
 import type { ServerApi } from '../../api/http';
+import { localize, type I18n, type OptionGroup } from '../../api/meta';
+import { useServerApi } from '../../api/server';
 
 export type Value = string | number | boolean | null;
 
@@ -22,6 +25,8 @@ export interface ReappliedKey {
 
 export interface FileDecl {
   id: string;
+  /** The adapter's name for the file; null: its file name. */
+  label: I18n | null;
   format: FormatId;
   schemaId: string | null;
   managedKeys: string[];
@@ -32,6 +37,8 @@ export interface FileDecl {
 export interface ConfigMeta {
   files: FileDecl[];
   schemas: Record<string, OptionMeta[]>;
+  /** Each schema's form groups, in order (CFG-10); options name theirs in `group`. */
+  groups: Record<string, OptionGroup[]>;
   presets: string[];
   presetFile: string | null;
 }
@@ -127,11 +134,19 @@ export const rejectProposal = (sapi: ServerApi, id: string) => sapi<Proposal>('P
 export const getProposal = (sapi: ServerApi, id: string) => sapi<ProposalView>('GET', `/config/proposals/${id}`);
 export const getContent = (sapi: ServerApi, id: string) => sapi<FileContent>('GET', `/config/files/content?id=${encodeURIComponent(id)}`);
 
-/** A file's name for people: the declared files have one; others show their path. */
+/** The page's server's config files, schemas and groups (one query per server, shared by the config pages). */
+export function useConfigMeta() {
+  const sapi = useServerApi();
+  return useQuery({ queryKey: ['config', 'meta', sapi.sid], queryFn: () => sapi<ConfigMeta>('GET', '/config/meta'), staleTime: Infinity });
+}
+
+/** A file's name for people: a declared file's is the adapter's (else its id); others show their path. */
 export function useFileLabel(): (id: string) => string {
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
+  const meta = useConfigMeta();
   return (id) => {
     if (id.startsWith('path:')) return id.slice('path:'.length).replace(/^[^/]+\//, '');
-    return t(`config.files.${id}`, { defaultValue: id });
+    const label = meta.data?.files.find((f) => f.id === id)?.label;
+    return (label && localize(label, i18n.language)) || id;
   };
 }

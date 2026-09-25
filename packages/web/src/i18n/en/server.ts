@@ -2,12 +2,6 @@ export default {
   title: 'Game server',
   launch: 'Launch settings',
   launchHelp: 'Applied the next time the server starts.',
-  // Names of common launch settings (the adapter's launch schema has keys and descriptions, no names yet).
-  fields: {
-    memoryMb: 'Memory (MiB)',
-    branch: 'Version (branch)',
-    updateOnStart: 'Update on every start',
-  },
   versionWarn: 'Switching to another version can leave the world unusable: saves often do not carry across versions. Take a backup first.',
   updates: 'Game updates',
   check: 'Check for updates',
@@ -23,4 +17,5 @@ export default {
   killHelp: 'Only if the server hangs and a normal stop does not work. Unsaved progress is lost.',
   killConfirm: 'Force-stop the server without saving?',
   containerLimit: 'Container memory limit: {{limit}}. The game needs about {{overhead}} on top of its own memory setting.',
+  containerTooSmall: 'That is not enough for this memory setting: keep it at {{max}} MiB or less (the container’s limit cannot be changed from here yet).',
 } as const;

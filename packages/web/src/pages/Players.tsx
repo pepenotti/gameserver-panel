@@ -66,11 +66,20 @@ export function Players() {
     whitelist: canRole('whitelist.manage') && has('whitelist'),
   };
   const anyAction = can.kick || can.ban || can.access || can.whitelist;
-  /** Access level names: the adapter's, else the web's own for roles it doesn't list, else the id. */
+  /** An account's level: the adapter's name for it, else the game's own word. */
   const levelLabel = (id: string) => {
     const known = levels.find((x) => x.id === id);
-    return known ? l(known.label) : t(`players.levels.${id}`, { defaultValue: id });
+    return known ? l(known.label) : id;
   };
+  /** Levels are listed lowest first: the highest stands out, unknown ones (the game's own roles) are grey. */
+  const levelColor = (id: string) => {
+    const i = levels.findIndex((x) => x.id === id);
+    return i < 0 ? 'gray' : i === levels.length - 1 && i > 0 ? 'red' : i > 0 ? 'orange' : 'blue';
+  };
+  // What a ban can name (the adapter declares it); without a declaration, a username.
+  const banTargets = meta?.banTargets?.length ? meta.banTargets : ['username'];
+  const banByAccount = banTargets.includes('steamId');
+  const banByName = banTargets.includes('username');
   const steamIds = !!q.data?.accounts?.some((a) => a.steamId);
 
   // Presence changes arrive over the websocket; refresh the lists when they do.
@@ -103,7 +112,7 @@ export function Players() {
       </Menu.Target>
       <Menu.Dropdown>
         {can.kick && onlineNow && <Menu.Item onClick={() => setDialog({ kind: 'kick', name, steamId })}>{t('players.kick')}</Menu.Item>}
-        {can.ban && <Menu.Item onClick={() => { setBySteam(!!steamId); setDialog({ kind: 'ban', name, steamId }); }}>{t('players.ban')}</Menu.Item>}
+        {can.ban && (banByName || (banByAccount && steamId)) && <Menu.Item onClick={() => { setBySteam(banByAccount && !!steamId); setDialog({ kind: 'ban', name, steamId }); }}>{t('players.ban')}</Menu.Item>}
         {can.access && <Menu.Item onClick={() => { setLevel(levels[0]?.id ?? null); setDialog({ kind: 'access', name }); }}>{t('players.access')}</Menu.Item>}
         {can.whitelist && (
           <Menu.Item
@@ -197,7 +206,7 @@ export function Players() {
                       </Group>
                     </Table.Td>
                     <Table.Td>
-                      <Badge variant="light" color={a.role === 'admin' ? 'red' : a.role === 'banned' ? 'gray' : 'blue'}>
+                      <Badge variant="light" color={levelColor(a.role)}>
                         {levelLabel(a.role)}
                       </Badge>
                     </Table.Td>
@@ -336,7 +345,8 @@ export function Players() {
           <Stack>
             {dialog.kind === 'ban' && <Text size="sm">{t('players.banHelp')}</Text>}
             <TextInput label={t('players.reason')} value={reason} onChange={(e) => setReason(e.currentTarget.value.replace(/["\r\n]/g, ''))} maxLength={200} data-autofocus />
-            {dialog.kind === 'ban' && dialog.steamId && <Checkbox label={t('players.banBySteam')} checked={bySteam} onChange={(e) => setBySteam(e.currentTarget.checked)} />}
+            {/* Both targets declared: the account is the safer ban; only one: that one, no choice. */}
+            {dialog.kind === 'ban' && dialog.steamId && banByAccount && banByName && <Checkbox label={t('players.banBySteam')} checked={bySteam} onChange={(e) => setBySteam(e.currentTarget.checked)} />}
             <Button
               color="red"
               onClick={() =>
