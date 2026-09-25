@@ -3,6 +3,8 @@
 #   node scripts/init-env.mjs              # once: creates .env with fresh secrets
 #   docker compose build steam             # the image game servers run (a build-only service)
 #   docker compose up -d --build
+# Game servers are created from the panel, not listed here: the orchestrator
+# runs each one in its own container.
 # In a development worktree, never call docker compose directly: use
 #   node scripts/worktree-env.mjs --slot N
 #   node scripts/stack.mjs build steam steam-fake    then    node scripts/stack.mjs up -d --build
@@ -66,14 +68,8 @@ services:
       ORCH_TOKEN: ${ORCH_TOKEN:?run node scripts/init-env.mjs first}
       # The image variant new servers ask for: empty (real games) or fake (development slots).
       SERVER_IMAGE_VARIANT: ${SERVER_IMAGE_VARIANT:-}
-      # The server this install had before the server list (`default`), until the
-      # panel creates it through the orchestrator too.
-      AGENT_TOKEN: ${AGENT_TOKEN:?run node scripts/init-env.mjs first}
-      PZ_SERVER_NAME: ${PZ_SERVER_NAME:-zomboid}
-      GAME_PORT_GAME: ${PZ_GAME_PORT:-16261}
-      GAME_PORT_UDP: ${PZ_UDP_PORT:-16262}
-      # The adapter's launch secrets, as GAME_SECRET_<KEY> (the key in upper snake case).
-      GAME_SECRET_ADMIN_PASSWORD: ${PZ_ADMIN_PASSWORD:?run node scripts/init-env.mjs first}
+      # Every server's own secrets (its agent token, its game's admin password)
+      # are generated when it is created and kept in the panel's database.
       # Exactly the addresses people type; anything else is refused as cross-site.
       PANEL_ORIGINS: https://${PANEL_HOST:-localhost}:${PANEL_PORT:-8443},https://${LAN_IP:-127.0.0.1}:${PANEL_PORT:-8443},https://localhost:${PANEL_PORT:-8443}
       PANEL_OWNER_USERNAME: ${PANEL_OWNER_USERNAME:-}

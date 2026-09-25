@@ -1,4 +1,4 @@
-import type { RuntimeFamily, ServerSpec } from '@gsp/shared';
+import { AGENT_CONTAINER_PORT, type RuntimeFamily, type ServerSpec } from '@gsp/shared';
 import { refused } from './errors';
 import { canonicalJson, sha256, specHash } from './hash';
 
@@ -7,7 +7,7 @@ import { canonicalJson, sha256, specHash } from './hash';
 // D3): image, user, capabilities, filesystem, mounts, network, limits, names.
 
 /** Where every server's agent listens inside its container; never published. */
-export const AGENT_PORT = 8081;
+export const AGENT_PORT = AGENT_CONTAINER_PORT;
 /** The unprivileged `node` user of the runtime images. */
 export const SERVER_USER = '1000:1000';
 /** Processes and threads per server (a JVM with many plugins stays far below). */

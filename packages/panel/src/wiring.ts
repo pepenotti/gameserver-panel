@@ -68,6 +68,8 @@ export interface ServerParts {
   mods?: readonly ModSource[];
   /** Where its backups go. */
   backupDir: string;
+  /** Before its game starts (the registry's `ServerHooks`). */
+  beforeStart?: () => Promise<void>;
 }
 
 /**
@@ -100,7 +102,7 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
   const players = new PlayersService({ db, feed, server: handle });
   const mods = new ModsService({ db, feed, ops, settings, config, server: handle, sources: parts.mods ?? adapter.mods ?? [] });
   const backups = new BackupService({ dir: parts.backupDir, panelVersion: host.version, feed, server: handle, mods });
-  const control = new Control({ agent, feed, ops, server: handle, backups });
+  const control = new Control({ agent, feed, ops, server: handle, backups, beforeStart: parts.beforeStart });
   const flows = new BackupFlows({ agent, feed, ops, control, backups, settings, config, server: handle });
   const scheduler = new Scheduler({ settings, agent, feed, ops, control, flows, backups, mods, notifier, audit });
   const changes = new ConfigProposals({ db, config: () => config, serverId: row.id });
@@ -251,7 +253,7 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     tz: process.env.TZ || 'UTC',
     adapterFor: adapterOf,
     agentFor: (row, target) => (!isManaged(row) && o.agent && o.feed ? { agent: o.agent, feed: o.feed, stream: o.stream } : f.agent(row, target)),
-    build: (row, target, agent) => {
+    build: (row, target, agent, hooks) => {
       const managed = isManaged(row);
       return createServerContext(host, row, {
         adapter: !managed && o.adapter ? o.adapter : adapterOf(row.adapter),
@@ -261,6 +263,7 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
         secrets: managed ? () => serverRows.secrets(row.id) : () => env.secrets,
         mods: o.mods,
         backupDir: backupDirOf(env, row),
+        beforeStart: managed ? hooks.beforeStart : undefined,
       });
     },
   });

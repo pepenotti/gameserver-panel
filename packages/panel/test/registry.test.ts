@@ -117,6 +117,89 @@ describe('creating a server (SRV-01)', () => {
     expect(p.deps.serverRows.list().map((r) => r.id)).toEqual(['default', 'pz-two']);
   });
 
+  it('picks free ports only where the orchestrator lets servers publish (a development slot)', async () => {
+    const p = await makePanel();
+    p.orch.hostPorts = [{ from: 30150, to: 30199 }];
+    // The defaults (16261/16262, default's anyway) are outside: as low as they fit inside, still a pair.
+    await create(p);
+    expect(p.deps.serverRows.get('pz-two')!.ports).toEqual({ game: 30150, udp: 30151 });
+    expect(p.orch.containers.get('pz-two')!.spec).toMatchObject({
+      env: { GAME_PORT_GAME: '30150', GAME_PORT_UDP: '30151' },
+      ports: [
+        { container: 30150, host: 30150, proto: 'udp' },
+        { container: 30151, host: 30151, proto: 'udp' },
+      ],
+    });
+    await create(p, { id: 'pz-three', name: 'Third' });
+    expect(p.deps.serverRows.get('pz-three')!.ports).toEqual({ game: 30152, udp: 30153 });
+    // One asked for, the other picked around it.
+    await create(p, { id: 'pz-four', name: 'Fourth', ports: { game: 30160 } });
+    expect(p.deps.serverRows.get('pz-four')!.ports).toEqual({ game: 30160, udp: 30154 });
+    // A port outside is refused before anything is created, saying where ports may go.
+    p.orch.calls.length = 0;
+    expect(await refusal(create(p, { id: 'pz-x', name: 'x', ports: { game: 16300 } }))).toEqual({
+      status: 400,
+      code: 'invalid-port',
+      extra: { port: 'game', min: 30150, max: 30199, ranges: '30150-30199' },
+    });
+    expect(p.orch.calls).toEqual(['host', 'list']);
+    // Full: no pair fits any more.
+    p.orch.hostPorts = [{ from: 30150, to: 30155 }];
+    expect(await refusal(create(p, { id: 'pz-x', name: 'x' }))).toMatchObject({ status: 409, code: 'no-free-port' });
+  });
+
+  it("keeps new servers near the game's defaults when the install allows them, and moves on to its other ranges", async () => {
+    const p = await makePanel();
+    // The shipped ranges: PZ's block is allowed, so ports shift past default's as before.
+    p.orch.hostPorts = [
+      { from: 2456, to: 2499 },
+      { from: 16261, to: 16265 },
+      { from: 25565, to: 25599 },
+    ];
+    await create(p);
+    await create(p, { id: 'pz-three', name: 'Third' });
+    expect(p.deps.serverRows.get('pz-two')!.ports).toEqual({ game: 16263, udp: 16264 });
+    // 16265 alone can't hold the pair: the lowest other range.
+    expect(p.deps.serverRows.get('pz-three')!.ports).toEqual({ game: 2456, udp: 2457 });
+  });
+
+  it("never gives a port that is the same inside and out the number of the agent or of another of the server's ports", async () => {
+    // A TCP game port that must be the same inside and out, next to a TCP port only the agent uses.
+    const tcpGame: PanelAdapter = {
+      ...pzPanelAdapter,
+      meta: {
+        ...pzPanelAdapter.meta,
+        id: 'tcp-game',
+        ports: [
+          { id: 'game', proto: 'tcp', default: 8080, publish: true, sameInsideOut: true, label: { en: 'Game', es: 'Juego' } },
+          { id: 'query', proto: 'tcp', default: 8082, publish: false, sameInsideOut: false, label: { en: 'Query', es: 'Consulta' } },
+        ],
+      },
+    };
+    const p = await makePanel({}, { adapters: [pzPanelAdapter, tcpGame] });
+    p.orch.hostPorts = [{ from: 8080, to: 8083 }];
+    const base = { adapter: 'tcp-game' };
+    await create(p, { ...base, id: 'tcp-one', name: 'One' });
+    await create(p, { ...base, id: 'tcp-two', name: 'Two' });
+    expect(p.deps.serverRows.get('tcp-one')!.ports).toEqual({ game: 8080 });
+    // 8081 is the agent's inside every container, 8082 the query port's.
+    expect(p.deps.serverRows.get('tcp-two')!.ports).toEqual({ game: 8083 });
+    expect(await refusal(create(p, { ...base, id: 'tcp-x', name: 'x', ports: { game: 8081 } }))).toMatchObject({ status: 409, code: 'port-conflict', extra: { port: 8081, proto: 'tcp', with: 'agent' } });
+    expect(await refusal(create(p, { ...base, id: 'tcp-x', name: 'x', ports: { game: 8082 } }))).toMatchObject({ status: 409, code: 'port-conflict', extra: { port: 8082, proto: 'tcp', with: 'self' } });
+    expect(await refusal(create(p, { ...base, id: 'tcp-x', name: 'x' }))).toMatchObject({ status: 409, code: 'no-free-port' });
+  });
+
+  it("refuses more memory than the orchestrator gives one server, saying how much it gives (SRV-05)", async () => {
+    const p = await makePanel();
+    p.orch.maxMemMb = 5120;
+    // PZ's default heap (8 GiB) plus its overhead doesn't fit.
+    expect(await refusal(create(p))).toMatchObject({ status: 409, code: 'orchestrator-refused', extra: { field: 'memLimitMb', maxMb: 5120, message: expect.stringContaining('5120 MiB') } });
+    expect(await refusal(create(p, { launch: { memoryMb: 2048 }, memLimitMb: 6000 }))).toMatchObject({ code: 'orchestrator-refused', extra: { maxMb: 5120 } });
+    expect(p.orch.calls.filter((c) => c.startsWith('apply'))).toEqual([]);
+    // The smallest heap (2 GiB) and 3 GiB for the rest is exactly the most it gives.
+    expect((await create(p, { launch: { memoryMb: 2048 } })).row.memLimitMb).toBe(5120);
+  });
+
   it('refuses ports that are taken, not the game’s, or out of range', async () => {
     const p = await makePanel({}, {});
     await create(p);
@@ -282,6 +365,46 @@ describe('removing a server (SRV-04)', () => {
     expect(p.orch.containers.has('pz-two')).toBe(true);
   });
 
+  it('lets the owner force out a server that runs or is busy, still taking the final backup when it can', async () => {
+    const opts = { confirm: 'Second', keepBackups: true, by: OWNER_ACTOR, force: true };
+    // Running: a hot final backup, then the game is not waited for.
+    const running = await populated();
+    running.p.fakes('pz-two').feed.status_ = fakeStatus({ state: 'running' });
+    running.p.orch.calls.length = 0;
+    const r = await running.p.deps.servers.remove('pz-two', opts);
+    expect(r).toEqual({ finalBackup: expect.stringMatching(/^pz-pz-two-.*\.tar\.zst$/), forced: true, finalBackupError: null });
+    expect(running.p.orch.calls).toEqual(['stop pz-two', 'remove pz-two volumes=true']);
+    expect(running.p.deps.serverRows.get('pz-two')).toBeNull();
+    const entry = running.p.deps.audit.list({ action: 'server.delete' })[0]!;
+    expect(entry).toMatchObject({ ok: true, username: 'alice' });
+    expect(JSON.parse(entry.detail!)).toEqual({ keepBackups: true, finalBackup: r.finalBackup, forced: true, finalBackupError: null });
+
+    // Held by an operation that never ends: no backup can be taken, and the answer says why.
+    const busy = await populated();
+    busy.ctx.ops.start('restore', 'alice', () => new Promise<void>(() => undefined));
+    expect(await busy.p.deps.servers.remove('pz-two', opts)).toEqual({ finalBackup: null, forced: true, finalBackupError: expect.stringContaining('restore') });
+    expect(busy.p.orch.containers.has('pz-two')).toBe(false);
+  });
+
+  it("forces out a server whose agent can't be reached, saying the final backup couldn't be taken", async () => {
+    const { p } = await populated();
+    const fake = p.fakes('pz-two');
+    fake.feed.status_ = null;
+    fake.feed.connected = false;
+    fake.agent.lock = () => Promise.reject(new Error('agent unreachable'));
+    const opts = { confirm: 'Second', keepBackups: true, by: OWNER_ACTOR };
+    // Not forced: nothing is removed without its final backup.
+    expect(await refusal(p.deps.servers.remove('pz-two', opts))).toMatchObject({ status: 409, code: 'final-backup-failed' });
+    expect(p.deps.serverRows.get('pz-two')).not.toBeNull();
+    // Forced: removed anyway; a container that is already gone (stop and remove both answer not-found) is fine too.
+    p.orch.containers.delete('pz-two');
+    expect(await p.deps.servers.remove('pz-two', { ...opts, force: true })).toEqual({ finalBackup: null, forced: true, finalBackupError: 'agent unreachable' });
+    expect(p.deps.serverRows.get('pz-two')).toBeNull();
+    const [done, refused] = p.deps.audit.list({ action: 'server.delete' });
+    expect(JSON.parse(done!.detail!)).toMatchObject({ forced: true, finalBackup: null, finalBackupError: 'agent unreachable' });
+    expect(refused).toMatchObject({ ok: false });
+  });
+
   it('keeps everything when the final backup fails, or the container cannot be removed', async () => {
     const { p } = await populated();
     const opts = { confirm: 'Second', keepBackups: true, by: OWNER_ACTOR };
@@ -298,6 +421,135 @@ describe('removing a server (SRV-04)', () => {
     await p.deps.servers.remove('pz-two', { ...opts, finalBackup: false });
     expect(p.deps.serverRows.get('pz-two')).toBeNull();
     expect(p.deps.audit.list({ action: 'server.delete' }).map((e) => e.ok)).toEqual([true, false, false]);
+  });
+});
+
+describe('changing memory and CPU limits (SRV-05)', () => {
+  const detail = (p: TestPanel, action: string) => JSON.parse(p.deps.audit.list({ action })[0]!.detail!) as Record<string, unknown>;
+
+  it("recreates a stopped server's container with its new limits at once", async () => {
+    const p = await makePanel();
+    await create(p, { launch: { memoryMb: 2048 } });
+    expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(5120);
+    p.orch.calls.length = 0;
+    const ctx = await p.deps.servers.update('pz-two', { memLimitMb: 6144, cpus: 2 }, OWNER_ACTOR);
+    expect(ctx.row).toMatchObject({ memLimitMb: 6144, cpus: 2 });
+    expect(p.orch.calls).toEqual(['host', 'apply pz-two', 'start pz-two']);
+    expect(p.orch.containers.get('pz-two')).toMatchObject({ state: 'running', spec: expect.objectContaining({ memoryMb: 6144, cpus: 2 }) });
+    expect(p.deps.serverRows.get('pz-two')!.spec).toMatchObject({ memoryMb: 6144, cpus: 2 });
+    expect(p.deps.servers.containerPending('pz-two')).toBe(false);
+    expect(detail(p, 'server.update')).toEqual({ before: { name: 'Second', sort: 1, memLimitMb: 5120, cpus: null }, after: { memLimitMb: 6144, cpus: 2 }, container: 'recreated' });
+    // No CPU limit any more.
+    await p.deps.servers.update('pz-two', { cpus: null }, OWNER_ACTOR);
+    expect(p.orch.containers.get('pz-two')!.spec).not.toHaveProperty('cpus');
+    // The same limits again change nothing.
+    p.orch.calls.length = 0;
+    await p.deps.servers.update('pz-two', { memLimitMb: 6144 }, OWNER_ACTOR);
+    expect(p.orch.calls).toEqual(['host']);
+  });
+
+  it('refuses limits the game or the host cannot take, and changes nothing when the orchestrator fails', async () => {
+    const p = await makePanel();
+    const ctx = await create(p, { launch: { memoryMb: 2048 } });
+    p.orch.maxMemMb = 6144;
+    p.orch.calls.length = 0;
+    const update = (patch: Parameters<typeof p.deps.servers.update>[1], id = 'pz-two') => p.deps.servers.update(id, patch, OWNER_ACTOR);
+    expect(await refusal(update({ memLimitMb: 4096 }))).toMatchObject({ status: 400, code: 'memory-too-low', extra: { minMb: 5120 } });
+    expect(await refusal(update({ memLimitMb: 7000 }))).toMatchObject({ status: 409, code: 'orchestrator-refused', extra: { field: 'memLimitMb', maxMb: 6144 } });
+    expect(await refusal(update({ cpus: 64 }))).toMatchObject({ status: 400, code: 'invalid-cpus', extra: { max: 8 } });
+    // The stack's own server: its container's limits are Compose's.
+    expect(await refusal(update({ memLimitMb: 12000 }, 'default'))).toMatchObject({ status: 409, code: 'server-unmanaged' });
+    let release!: () => void;
+    ctx.ops.start('backup', 'alice', () => new Promise<void>((r) => (release = r)));
+    expect(await refusal(update({ memLimitMb: 6144 }))).toMatchObject({ status: 409, code: 'busy' });
+    release();
+    await ctx.ops.idle();
+    expect(p.orch.calls.filter((c) => !c.startsWith('host'))).toEqual([]);
+    p.orch.failNext.set('apply', new OrchestratorCallError(503, 'unavailable', 'Docker is not reachable'));
+    expect(await refusal(update({ memLimitMb: 6144 }))).toMatchObject({ status: 503, code: 'orchestrator-unavailable' });
+    expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(5120);
+    expect(p.orch.containers.get('pz-two')!.spec.memoryMb).toBe(5120);
+  });
+
+  it('waits for the next start while the game runs, then recreates the container before the game starts', async () => {
+    const p = await makePanel();
+    await create(p, { launch: { memoryMb: 2048 } });
+    const fake = p.fakes('pz-two');
+    fake.feed.status_ = fakeStatus({ state: 'running' });
+    p.orch.calls.length = 0;
+    await p.deps.servers.update('pz-two', { memLimitMb: 6144 }, OWNER_ACTOR);
+    // Nobody's game is stopped for a limit: the row has it, the container not yet.
+    expect(p.orch.calls).toEqual(['host']);
+    expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(6144);
+    expect(p.orch.containers.get('pz-two')!.spec.memoryMb).toBe(5120);
+    expect(p.deps.servers.containerPending('pz-two')).toBe(true);
+    expect(detail(p, 'server.update')).toMatchObject({ container: 'at-next-start' });
+
+    // A panel restart meanwhile keeps the container it has (and joins the new panel to its network).
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    again.fakes('pz-two').feed.status_ = fakeStatus({ state: 'running' });
+    expect(await again.deps.servers.reconcile()).toEqual({ applied: [], started: [], orphans: [], failed: [] });
+    expect(p.orch.containers.get('pz-two')!.spec.memoryMb).toBe(5120);
+    expect(again.deps.servers.containerPending('pz-two')).toBe(true);
+
+    // Start pressed while it still runs: the agent says so, and the change keeps waiting.
+    const ctx = p.deps.servers.get('pz-two')!;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(p.orch.containers.get('pz-two')!.spec.memoryMb).toBe(5120);
+
+    // Stopped, then started: the container is recreated (and its agent answers) before the game starts.
+    fake.feed.status_ = fakeStatus({ state: 'stopped' });
+    const atStart: number[] = [];
+    fake.agent.start = async () => {
+      atStart.push(p.orch.containers.get('pz-two')!.spec.memoryMb);
+      return fakeStatus({ state: 'starting' });
+    };
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(ctx.ops.last()).toMatchObject({ ok: true });
+    expect(atStart).toEqual([6144]);
+    expect(p.orch.containers.get('pz-two')!.state).toBe('running');
+    expect(p.deps.servers.containerPending('pz-two')).toBe(false);
+    expect(p.deps.audit.list({ action: 'server.reconcile' })[0]).toMatchObject({ serverId: 'pz-two', actorType: 'system', detail: expect.stringContaining('changed settings') });
+  });
+
+  it("starts a game with nothing waiting at once, even while another server's removal holds the registry", async () => {
+    const p = await makePanel();
+    await create(p, { launch: { memoryMb: 2048 } });
+    await create(p, { id: 'pz-three', name: 'Third', launch: { memoryMb: 2048 } });
+    // pz-three's final backup never gets its agent's lock: its removal hangs.
+    p.fakes('pz-three').agent.lock = () => new Promise(() => undefined);
+    void p.deps.servers.remove('pz-three', { confirm: 'Third', keepBackups: true, by: OWNER_ACTOR }).catch(() => undefined);
+    const ctx = p.deps.servers.get('pz-two')!;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(ctx.ops.last()).toMatchObject({ kind: 'start', ok: true });
+    expect(p.fakes('pz-two').agent.calls).toContain('start');
+  });
+
+  it("moves the container's limit with the game's memory, keeping its room above it, within the host's limit", async () => {
+    const p = await makePanel();
+    p.orch.maxMemMb = 7168;
+    // 2 GiB of heap needs 5120 MiB; this one has 880 MiB more.
+    await create(p, { launch: { memoryMb: 2048 }, memLimitMb: 6000 });
+    const ctx = p.deps.servers.get('pz-two')!;
+    const launch = (memoryMb: number) => ({ ...(ctx.handle.launchSettings() as Record<string, unknown>), memoryMb });
+    await p.deps.servers.followLaunch('pz-two', launch(3072), OWNER_ACTOR);
+    expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(6144 + 880);
+    expect(p.orch.containers.get('pz-two')!.spec.memoryMb).toBe(7024);
+    // More heap: the room shrinks to what the host gives one server.
+    await p.deps.servers.followLaunch('pz-two', launch(4096), OWNER_ACTOR);
+    expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(7168);
+    // More than the host gives: refused, nothing changes.
+    expect(await refusal(p.deps.servers.followLaunch('pz-two', launch(4608), OWNER_ACTOR))).toMatchObject({ status: 409, code: 'orchestrator-refused', extra: { maxMb: 7168 } });
+    expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(7168);
+    // The same memory, or the stack's own server: nothing to do.
+    p.orch.calls.length = 0;
+    await p.deps.servers.followLaunch('pz-two', ctx.handle.launchSettings() as Record<string, unknown>, OWNER_ACTOR);
+    await p.deps.servers.followLaunch('default', { ...(p.srv.handle.launchSettings() as Record<string, unknown>), memoryMb: 16384 }, OWNER_ACTOR);
+    expect(p.orch.calls).toEqual([]);
+    expect(p.deps.serverRows.get('default')!.memLimitMb).toBe(8192 + 3072);
   });
 });
 

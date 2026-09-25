@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import type { Capability, PanelAdapter } from '@gsp/adapter-api';
 import type { AgentApi } from '../agent/client';
-import { isServerId, type CpuArch, type ServerContainer } from '@gsp/shared';
+import { isServerId, type HostInfo, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { SYSTEM, type Actor, type Audit } from '../audit';
 import { syncRoleWithGrants, type ServerGrants } from '../auth/grants';
 import type { Users } from '../auth/users';
@@ -49,6 +49,14 @@ export interface RemoveServerOptions {
   keepBackups: boolean;
   /** Take the final backup first (default); only the owner may skip it, for a server whose data can't be reached. */
   finalBackup?: boolean;
+  /**
+   * The owner's way out for a server that can't be stopped normally or whose
+   * container won't run: removed even while its game runs or an operation
+   * holds it, without waiting for the game to stop. The final backup is
+   * still taken when it can be; when it can't, the removal goes on without
+   * it and says why (`finalBackupError`).
+   */
+  force?: boolean;
   by: Actor;
   ip?: string | null;
 }
@@ -56,7 +64,14 @@ export interface RemoveServerOptions {
 export interface RemoveReport {
   /** The final backup's archive name; null when none was taken. */
   finalBackup: string | null;
+  /** Whether the removal was forced. */
+  forced: boolean;
+  /** Forced only: why the final backup couldn't be taken (null: it was, or none was asked for). */
+  finalBackupError: string | null;
 }
+
+/** Seconds a forced removal gives the game to stop before Docker kills it. */
+const FORCED_STOP_SEC = 10;
 
 /** What `reconcile` changed to bring containers in line with the servers table (SRV-06). */
 export interface ReconcileReport {
@@ -83,8 +98,22 @@ export interface ServerRegistry {
   get(id: string): ServerContext | null;
   /** SRV-01: validate, write the row, ask the orchestrator for the container, build the context. */
   create(input: CreateServerInput): Promise<ServerContext>;
-  /** Rename or reorder; the server's context is rebuilt around its new row. */
+  /**
+   * Rename, reorder, or new memory and CPU limits (SRV-05); the server's
+   * context is rebuilt around its new row. New limits recreate its container
+   * at once when its game isn't running, else at the game's next start.
+   */
   update(id: string, patch: ServerPatch, by: Actor, ip?: string | null): Promise<ServerContext>;
+  /**
+   * SRV-05: the game's launch settings are about to become `launch`. When
+   * that changes the memory the game takes, the container's limit moves with
+   * it (keeping the room it had above the game's), as `update` does.
+   */
+  followLaunch(id: string, launch: Record<string, unknown>, by: Actor, ip?: string | null): Promise<void>;
+  /** Before a server's game starts: a container whose settings changed is recreated first, and its agent waited for. */
+  prepareStart(id: string): Promise<void>;
+  /** Whether a server's container waits to be recreated from its changed settings at its game's next start. */
+  containerPending(id: string): boolean;
   /** SRV-04: final backup, container and volumes removed, then the row and everything keyed to it. */
   remove(id: string, o: RemoveServerOptions): Promise<RemoveReport>;
   reconcile(): Promise<ReconcileReport>;
@@ -127,8 +156,25 @@ export interface RegistryDeps {
   adapterFor(id: string): PanelAdapter;
   /** A server's agent client, where its agent answers (made once per server). */
   agentFor(row: ServerRow, target: AgentTarget): AgentParts;
-  /** One server's context, from its row, where its agent answers, and its agent client (wiring.ts). */
-  build(row: ServerRow, target: AgentTarget, agent: AgentParts): ServerContext;
+  /** One server's context, from its row, where its agent answers, its agent client, and the registry's hooks (wiring.ts). */
+  build(row: ServerRow, target: AgentTarget, agent: AgentParts, hooks: ServerHooks): ServerContext;
+}
+
+/** What a server's context calls back into the registry for. */
+export interface ServerHooks {
+  /** Before its game starts (`Control.startAgent`): a container waiting for changed settings is recreated first (SRV-05). */
+  beforeStart(): Promise<void>;
+}
+
+/** Game states in which recreating the container would stop someone's game (or an install). */
+const GAME_ACTIVE: ReadonlySet<string> = new Set(['installing', 'starting', 'running', 'stopping']);
+
+/** How long a recreated container's agent gets to answer before the game is started (a real boot takes a few seconds). */
+const AGENT_BACK_MS = 120_000;
+
+/** Whether a spec is the one stored (`servers.spec`, without the agent token). */
+function sameSpec(spec: ServerSpec, stored: ServerSpec | null): boolean {
+  return JSON.stringify(redactSpec(spec)) === JSON.stringify(stored);
 }
 
 /**
@@ -168,6 +214,15 @@ export function orchestratorError(e: unknown): HttpError {
   }
 }
 
+/**
+ * A memory limit above what this install gives one server (`ORCH_MAX_MEM_MB`,
+ * SRV-05): refused before the orchestrator is asked, with the limit it has.
+ */
+export function memoryAboveHost(memLimitMb: number, maxMb: number): HttpError {
+  const message = `A memory limit of ${memLimitMb} MiB is above this host's limit of ${maxMb} MiB per server (ORCH_MAX_MEM_MB)`;
+  return new HttpError(409, 'orchestrator-refused', message, { field: 'memLimitMb', maxMb, message });
+}
+
 /** The TCP ports people reach the panel on (its origins) and the one it listens on: never a game's. */
 function panelPorts(env: PanelEnv): number[] {
   const out = env.origins.map((o) => {
@@ -183,6 +238,11 @@ function gameMemoryMb(adapter: PanelAdapter, launch: Record<string, unknown>): n
   const key = adapter.launch.schema.find((o) => o.role === 'memory')?.key;
   const v = key === undefined ? undefined : launch[key];
   return typeof v === 'number' ? v : adapter.meta.memory.defaultMb;
+}
+
+/** The smallest container memory limit for these launch settings (SRV-05): the game's memory, at least the adapter's minimum, plus its overhead. */
+export function memoryNeedMb(adapter: PanelAdapter, launch: Record<string, unknown>): number {
+  return Math.max(adapter.meta.memory.minMb, gameMemoryMb(adapter, launch)) + adapter.meta.memory.overheadMb;
 }
 
 /**
@@ -241,7 +301,90 @@ export class DbServerRegistry implements ServerRegistry {
       agent = this.d.agentFor(row, target);
       this.agents.set(row.id, agent);
     }
-    return this.d.build(row, target, agent);
+    return this.d.build(row, target, agent, { beforeStart: () => this.prepareStart(row.id) });
+  }
+
+  /** The spec a row asks for, with its agent token (from its secrets). */
+  private specOf(row: ServerRow): ServerSpec {
+    const token = this.d.rows.secrets(row.id)[AGENT_TOKEN_SECRET];
+    if (!token) throw new Error('no agent token stored');
+    return buildSpec(row, this.d.adapterFor(row.adapter), { agentToken: token, tz: this.d.tz, variant: this.d.env.serverImageVariant });
+  }
+
+  private async host(): Promise<HostInfo> {
+    try {
+      return await this.d.orchestrator.host();
+    } catch (e) {
+      throw orchestratorError(e);
+    }
+  }
+
+  /** Whether a server's game is up or on its way, as its agent says; an agent that doesn't answer runs nothing. */
+  private async gameActive(id: string): Promise<boolean> {
+    const status = await this.agents
+      .get(id)
+      ?.agent.status()
+      .catch(() => null);
+    return !!status && GAME_ACTIVE.has(status.state);
+  }
+
+  /**
+   * The row's container, created or recreated from it (volumes kept) and
+   * running; the spec is stored once both worked. Failures are the API's.
+   */
+  private async applySpec(row: ServerRow): Promise<ServerContainer> {
+    const spec = this.specOf(row);
+    try {
+      let c = await this.d.orchestrator.apply(spec);
+      if (c.state !== 'running') c = await this.d.orchestrator.start(row.id);
+      this.agentUrls.set(row.id, c.agentUrl);
+      this.d.rows.setSpec(row.id, redactSpec(spec));
+      return c;
+    } catch (e) {
+      throw orchestratorError(e);
+    }
+  }
+
+  /** After its container was recreated: until the server's agent answers again. */
+  private async agentBack(id: string): Promise<void> {
+    const agent = this.agents.get(id)?.agent;
+    if (!agent) return;
+    const end = Date.now() + AGENT_BACK_MS;
+    for (;;) {
+      try {
+        await agent.status();
+        return;
+      } catch {
+        if (Date.now() > end) throw new Error(`The server's agent did not answer within ${AGENT_BACK_MS / 1000} s of its container being recreated`);
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+
+  containerPending(id: string): boolean {
+    const row = this.d.rows.get(id);
+    if (!row?.spec) return false;
+    try {
+      return !sameSpec(this.specOf(row), row.spec);
+    } catch {
+      return false;
+    }
+  }
+
+  prepareStart(id: string): Promise<void> {
+    // Nothing waits (the usual case): no queueing behind another server's creation or removal.
+    if (!this.containerPending(id)) return Promise.resolve();
+    return this.exclusive(async () => {
+      const row = this.d.rows.get(id);
+      if (!row?.spec || sameSpec(this.specOf(row), row.spec)) return false;
+      // Pressed while it runs: the agent says so; the change keeps waiting.
+      if (await this.gameActive(id)) return false;
+      await this.applySpec(row);
+      this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: 'container recreated with its changed settings before the game started' });
+      return true;
+    }).then(async (applied) => {
+      if (applied) await this.agentBack(id);
+    });
   }
 
   private activate(ctx: ServerContext): void {
@@ -310,27 +453,26 @@ export class DbServerRegistry implements ServerRegistry {
     } catch (e) {
       throw new HttpError(400, 'invalid-options', (e as Error).message, { message: (e as Error).message });
     }
-    const needMb = Math.max(adapter.meta.memory.minMb, gameMemoryMb(adapter, launch)) + adapter.meta.memory.overheadMb;
+    const needMb = memoryNeedMb(adapter, launch);
     const memLimitMb = input.memLimitMb ?? needMb;
     if (memLimitMb < needMb) throw new HttpError(400, 'memory-too-low', undefined, { minMb: needMb });
 
-    // What the host is, and what the orchestrator already runs (HST-05; a container without a row keeps its volumes).
-    let arch: CpuArch;
-    let cpus: number;
+    // What the host is and allows, and what the orchestrator already runs (HST-05; a container without a row keeps its volumes).
+    let host: HostInfo;
     let containers: ServerContainer[];
     try {
-      const host = await orchestrator.host();
-      arch = host.arch;
-      cpus = host.cpus;
+      host = await orchestrator.host();
       containers = await orchestrator.list();
     } catch (e) {
       throw orchestratorError(e);
     }
-    if (!adapter.meta.arch.includes(arch)) throw new HttpError(409, 'arch-unsupported', undefined, { arch, supported: adapter.meta.arch });
-    if (input.cpus !== undefined && input.cpus !== null && input.cpus > cpus) throw new HttpError(400, 'invalid-cpus', undefined, { max: cpus });
+    if (!adapter.meta.arch.includes(host.arch)) throw new HttpError(409, 'arch-unsupported', undefined, { arch: host.arch, supported: adapter.meta.arch });
+    if (input.cpus !== undefined && input.cpus !== null && input.cpus > host.cpus) throw new HttpError(400, 'invalid-cpus', undefined, { max: host.cpus });
+    if (host.maxMemMb !== undefined && memLimitMb > host.maxMemMb) throw memoryAboveHost(memLimitMb, host.maxMemMb);
     if (containers.some((c) => c.id === id)) throw new HttpError(409, 'server-exists');
 
-    const ports = planPorts(adapter, input.ports, takenPorts(rows.list(), (a) => this.adapterOrNull(a), panelPorts(this.d.env)));
+    // Free ports where this install lets servers publish (SRV-01), next to every other server's.
+    const ports = planPorts(adapter, input.ports, takenPorts(rows.list(), (a) => this.adapterOrNull(a), panelPorts(this.d.env)), host.hostPorts);
 
     const userId = input.by.user?.id ?? null;
     const draft: ServerRow = {
@@ -388,26 +530,81 @@ export class DbServerRegistry implements ServerRegistry {
   // ------------------------------------------------------------------ update
 
   update(id: string, patch: ServerPatch, by: Actor, ip: string | null = null): Promise<ServerContext> {
-    return this.exclusive(async () => {
-      const old = this.contexts.get(id);
-      if (!old) throw new HttpError(404, 'server-not-found');
-      const next: ServerPatch = {};
-      if (patch.name !== undefined) {
-        next.name = cleanName(patch.name);
-        if (this.d.rows.list().some((r) => r.id !== id && r.name.toLowerCase() === next.name!.toLowerCase())) throw new HttpError(409, 'server-name-taken');
+    return this.exclusive(() => this.doUpdate(id, patch, by, ip));
+  }
+
+  /**
+   * New limits are checked against the game's launch settings (`launch`:
+   * the ones about to be stored, else the current ones) and against what
+   * the host gives one server. When the game isn't running, the container
+   * is recreated with them first (if that fails, nothing changed); while it
+   * runs, they wait for its next start: a limit never stops someone's game.
+   */
+  private async doUpdate(id: string, patch: ServerPatch, by: Actor, ip: string | null, launch?: Record<string, unknown>): Promise<ServerContext> {
+    const old = this.contexts.get(id);
+    if (!old) throw new HttpError(404, 'server-not-found');
+    const current = this.d.rows.get(id)!;
+    const next: ServerPatch = {};
+    if (patch.name !== undefined) {
+      next.name = cleanName(patch.name);
+      if (this.d.rows.list().some((r) => r.id !== id && r.name.toLowerCase() === next.name!.toLowerCase())) throw new HttpError(409, 'server-name-taken');
+    }
+    if (patch.sort !== undefined) next.sort = patch.sort;
+    const limits = patch.memLimitMb !== undefined || patch.cpus !== undefined;
+    if (limits) {
+      // The container of the server the environment describes is the stack's, not the orchestrator's.
+      if (current.spec === null) throw new HttpError(409, 'server-unmanaged');
+      if (patch.memLimitMb !== undefined) {
+        const need = memoryNeedMb(old.adapter, launch ?? (old.handle.launchSettings() as Record<string, unknown>));
+        if (patch.memLimitMb < need) throw new HttpError(400, 'memory-too-low', undefined, { minMb: need });
+        next.memLimitMb = patch.memLimitMb;
       }
-      if (patch.sort !== undefined) next.sort = patch.sort;
-      // The context is rebuilt around the new row: not while an operation of the old one runs.
-      if (old.ops.busy) throw new HttpError(409, 'busy', undefined, { op: old.ops.busy });
-      const row = this.d.rows.update(id, next)!;
-      const wasRunning = this.running.has(old);
-      this.retire(old);
-      const ctx = this.build(row);
-      this.contexts.set(id, ctx);
-      if (wasRunning) this.activate(ctx);
-      this.d.audit.log({ actor: by, ip, serverId: id, action: 'server.update', target: row.name, detail: { before: { name: old.row.name, sort: old.row.sort }, after: next } });
-      this.changed();
-      return ctx;
+      if (patch.cpus !== undefined) next.cpus = patch.cpus;
+      const host = await this.host();
+      if (next.memLimitMb !== undefined && host.maxMemMb !== undefined && next.memLimitMb > host.maxMemMb) throw memoryAboveHost(next.memLimitMb, host.maxMemMb);
+      if (typeof next.cpus === 'number' && next.cpus > host.cpus) throw new HttpError(400, 'invalid-cpus', undefined, { max: host.cpus });
+    }
+    // The context is rebuilt around the new row: not while an operation of the old one runs.
+    if (old.ops.busy) throw new HttpError(409, 'busy', undefined, { op: old.ops.busy });
+
+    const draft: ServerRow = { ...current, ...next };
+    let container: 'recreated' | 'at-next-start' | null = null;
+    if (limits && (draft.memLimitMb !== current.memLimitMb || draft.cpus !== current.cpus)) {
+      container = 'at-next-start';
+      if (!(await this.gameActive(id))) {
+        await this.applySpec(draft);
+        container = 'recreated';
+      }
+    }
+    const row = this.d.rows.update(id, next)!;
+    const wasRunning = this.running.has(old);
+    this.retire(old);
+    const ctx = this.build(row);
+    this.contexts.set(id, ctx);
+    if (wasRunning) this.activate(ctx);
+    const before: Record<string, unknown> = { name: current.name, sort: current.sort };
+    if (limits) Object.assign(before, { memLimitMb: current.memLimitMb, cpus: current.cpus });
+    this.d.audit.log({ actor: by, ip, serverId: id, action: 'server.update', target: row.name, detail: { before, after: next, ...(container ? { container } : {}) } });
+    this.changed();
+    return ctx;
+  }
+
+  followLaunch(id: string, launch: Record<string, unknown>, by: Actor, ip: string | null = null): Promise<void> {
+    return this.exclusive(async () => {
+      const ctx = this.contexts.get(id);
+      if (!ctx) throw new HttpError(404, 'server-not-found');
+      const row = this.d.rows.get(id)!;
+      // The stack's own container (`default`): its limit is Compose's.
+      if (row.spec === null) return;
+      const before = memoryNeedMb(ctx.adapter, ctx.handle.launchSettings() as Record<string, unknown>);
+      const after = memoryNeedMb(ctx.adapter, launch);
+      if (after === before) return;
+      const host = await this.host();
+      if (host.maxMemMb !== undefined && after > host.maxMemMb) throw memoryAboveHost(after, host.maxMemMb);
+      // The room it had above the game's memory stays, as far as the host allows.
+      let limit = after + Math.max(0, row.memLimitMb - before);
+      if (host.maxMemMb !== undefined) limit = Math.min(limit, host.maxMemMb);
+      if (limit !== row.memLimitMb) await this.doUpdate(id, { memLimitMb: limit }, by, ip, launch);
     });
   }
 
@@ -426,24 +623,35 @@ export class DbServerRegistry implements ServerRegistry {
     // removing it is that one's business. Once it no longer does, the row is all that's left.
     if (!managed && env.agentUrl) throw new HttpError(409, 'server-unmanaged');
     if (o.confirm !== ctx.row.name) throw new HttpError(400, 'confirm-mismatch');
-    if (ctx.ops.busy) throw new HttpError(409, 'busy', undefined, { op: ctx.ops.busy });
+    // Forced (the owner, for a server that won't stop or whose container won't run): neither holds it back.
+    const busy = ctx.ops.busy;
+    if (busy && !o.force) throw new HttpError(409, 'busy', undefined, { op: busy });
     const state = ctx.feed.status_?.state;
-    if (state === 'running' || state === 'starting' || state === 'stopping') throw new HttpError(409, 'server-running');
+    if (!o.force && (state === 'running' || state === 'starting' || state === 'stopping')) throw new HttpError(409, 'server-running');
 
     // SRV-04: a final backup first, into the server's own folder, unless nothing is to be kept
-    // (or nothing can be reached: an unmanaged row the environment no longer describes).
+    // (or nothing can be reached: an unmanaged row the environment no longer describes). Forced,
+    // it is still taken whenever it can be (hot, if the game runs); only a backup that can't be
+    // taken is skipped, and the answer and the audit log say why.
     let finalBackup: string | null = null;
+    let finalBackupError: string | null = null;
     if (managed && o.keepBackups && o.finalBackup !== false) {
       try {
+        if (busy) throw new Error(`Another operation (${busy.kind}) is still running on this server`);
         const b = await ctx.ops.run('backup', o.by.user?.username ?? null, (op) => ctx.flows.backupNow(op, 'manual'));
         finalBackup = b.name;
       } catch (e) {
         const message = (e as Error).message;
-        audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', detail: { step: 'final-backup', error: message }, ok: false });
-        throw new HttpError(409, 'final-backup-failed', message, { message });
+        if (!o.force) {
+          audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', detail: { step: 'final-backup', error: message }, ok: false });
+          throw new HttpError(409, 'final-backup-failed', message, { message });
+        }
+        finalBackupError = message;
       }
     }
 
+    // Forced: a game that won't stop isn't waited for (its volumes go with it; the backup is taken).
+    if (managed && o.force) await orchestrator.stop(id, { timeoutSec: FORCED_STOP_SEC }).catch(() => undefined);
     try {
       if (managed) await orchestrator.remove(id, { removeVolumes: true });
     } catch (e) {
@@ -471,9 +679,17 @@ export class DbServerRegistry implements ServerRegistry {
       // Only ever the server's own folder, never the backups root (which holds `default`'s).
       if (path.resolve(ctx.backups.dir) === own) rmSync(own, { recursive: true, force: true });
     }
-    audit.log({ actor: o.by, ip: o.ip ?? null, serverId: id, action: 'server.delete', target: ctx.row.name, detail: { keepBackups: o.keepBackups, finalBackup } });
+    const forced = o.force === true;
+    audit.log({
+      actor: o.by,
+      ip: o.ip ?? null,
+      serverId: id,
+      action: 'server.delete',
+      target: ctx.row.name,
+      detail: { keepBackups: o.keepBackups, finalBackup, ...(forced ? { forced, finalBackupError } : {}) },
+    });
     this.changed();
-    return { finalBackup };
+    return { finalBackup, forced, finalBackupError };
   }
 
   // --------------------------------------------------------------- reconcile
@@ -497,16 +713,17 @@ export class DbServerRegistry implements ServerRegistry {
     }
     for (const row of managed) {
       try {
-        const adapter = this.d.adapterFor(row.adapter);
-        const token = rows.secrets(row.id)[AGENT_TOKEN_SECRET];
-        if (!token) throw new Error('no agent token stored');
-        // Rebuilt from the row, so a changed time zone or a newer panel's derivation reaches the container.
-        const spec = buildSpec(row, adapter, { agentToken: token, tz: this.d.tz, variant: this.d.env.serverImageVariant });
+        // Rebuilt from the row, so new limits, a changed time zone or a newer panel's derivation reach the container…
+        const wanted = this.specOf(row);
         const before = containers.find((c) => c.id === row.id);
+        if (before) this.agentUrls.set(row.id, before.agentUrl);
+        // …except while its game runs (SRV-05): the change waits for the next start, and the container
+        // it has is applied again as it was (which joins a new panel container to its network).
+        const waits = before?.state === 'running' && !sameSpec(wanted, row.spec) && (await this.gameActive(row.id));
+        const spec = waits ? { ...row.spec!, env: { ...row.spec!.env, AGENT_TOKEN: wanted.env.AGENT_TOKEN } } : wanted;
         let c = await orchestrator.apply(spec);
         if (!before || before.specHash !== c.specHash) report.applied.push(row.id);
-        const stored = redactSpec(spec);
-        if (JSON.stringify(stored) !== JSON.stringify(row.spec)) rows.setSpec(row.id, stored);
+        if (!waits && !sameSpec(spec, row.spec)) rows.setSpec(row.id, redactSpec(spec));
         if (c.state !== 'running') {
           c = await orchestrator.start(row.id);
           report.started.push(row.id);

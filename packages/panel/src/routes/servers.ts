@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { permissionsOn, roleOn, SERVER_ID_PATTERN, type CpuArch, type Permission, type PortProto, type Role } from '@gsp/shared';
+import { permissionsOn, roleOn, SERVER_ID_PATTERN, type CpuArch, type Permission, type PortProto, type PortRangeInfo, type Role } from '@gsp/shared';
 import type { I18n, LaunchOption, OptionMeta, PortDecl } from '@gsp/adapter-api';
 import type { UserRow } from '../auth/users';
 import { actor, HttpError, principal, srvOf } from '../http/context';
@@ -24,11 +24,26 @@ export interface ServerSummary {
   ports: { id: string; port: number; proto: PortProto }[];
   /** Container memory limit, MiB. */
   memLimitMb: number;
+  /** CPU limit in cores; null: none. */
+  cpus: number | null;
+  /** Its container waits to be recreated with changed settings (new limits) at the game's next start. */
+  containerPending: boolean;
   /** Whether the orchestrator runs it; false: the server the install's environment describes (`default`), which only the stack itself can remove. */
   managed: boolean;
   /** The signed-in user's role there, and what it lets them do. */
   role: Role;
   permissions: Permission[];
+}
+
+/** The host in `GET /api/adapters`. */
+export interface HostSummary {
+  arch: CpuArch;
+  cpus: number;
+  memBytes: number;
+  /** Where servers may publish (`ORCH_HOST_PORTS`); new servers get free ports inside. */
+  hostPorts: PortRangeInfo[] | null;
+  /** The most memory one server may be given, MiB (`ORCH_MAX_MEM_MB`). */
+  maxMemMb: number | null;
 }
 
 /** A game servers can be created from (`GET /api/adapters`). */
@@ -50,7 +65,7 @@ export interface AdapterSummary {
   launch: { schema: (LaunchOption | OptionMeta)[]; secrets: { key: string; label: I18n }[] };
 }
 
-function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants'>): ServerSummary | null {
+function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 'servers'>): ServerSummary | null {
   const who = principal(user);
   const grants = deps.grants.forUser(user.id);
   const role = roleOn(who, grants, s.id);
@@ -69,6 +84,8 @@ function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants'>): S
     nextRestart: s.scheduler.nextRuns().restart,
     ports: s.adapter.meta.ports.filter((p) => s.row.ports[p.id] !== undefined).map((p) => ({ id: p.id, port: s.row.ports[p.id]!, proto: p.proto })),
     memLimitMb: s.row.memLimitMb,
+    cpus: s.row.cpus,
+    containerPending: deps.servers.containerPending(s.id),
     managed: s.row.spec !== null,
     role,
     permissions: permissionsOn(who, grants, s.id),
@@ -76,6 +93,16 @@ function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants'>): S
 }
 
 const ports = { type: 'object', maxProperties: 16, additionalProperties: { type: 'integer' } } as const;
+
+/** `DELETE /api/servers/:sid` (SRV-04). */
+interface DeleteBody {
+  /** The server's name, typed. */
+  confirm: string;
+  keepBackups?: boolean;
+  finalBackup?: boolean;
+  /** Owner only: remove a server that won't stop or whose container won't run (see `RemoveServerOptions.force`). */
+  force?: boolean;
+}
 
 /**
  * The server list (SRV-02): every server the signed-in user has a role on,
@@ -89,11 +116,16 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
     return deps.servers.list().flatMap((s) => summary(s, user, deps) ?? []);
   });
 
-  /** The games a server can be created from, and whether this host runs each (HST-05). */
-  app.get('/api/adapters', { config: { permission: 'servers.create' } }, async (): Promise<{ host: { arch: CpuArch; cpus: number; memBytes: number } | null; adapters: AdapterSummary[] }> => {
+  /**
+   * The games a server can be created from, whether this host runs each
+   * (HST-05), and what this install lets a server have: the host ports it
+   * may publish (SRV-01) and the most memory (SRV-05); null when the
+   * orchestrator doesn't say.
+   */
+  app.get('/api/adapters', { config: { permission: 'servers.create' } }, async (): Promise<{ host: HostSummary | null; adapters: AdapterSummary[] }> => {
     const host = await deps.orchestrator.host().catch(() => null);
     return {
-      host: host && { arch: host.arch, cpus: host.cpus, memBytes: host.memBytes },
+      host: host && { arch: host.arch, cpus: host.cpus, memBytes: host.memBytes, hostPorts: host.hostPorts ?? null, maxMemMb: host.maxMemMb ?? null },
       adapters: deps.adapters.map((a) => ({
         id: a.meta.id,
         name: a.meta.name,
@@ -145,13 +177,14 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
 
 /**
  * Changing and removing one server (under `/api/servers/:sid`, so the guard
- * resolves it and checks the permission there): rename or reorder with
- * `server.update`; remove (SRV-04) with `server.delete`, after typing its
- * name. Deleting its backups too, or skipping the final backup, is the
- * owner's choice alone.
+ * resolves it and checks the permission there): rename, reorder or change
+ * its memory and CPU limits (SRV-05) with `server.update`; remove (SRV-04)
+ * with `server.delete`, after typing its name. Deleting its backups too,
+ * skipping the final backup, or forcing out a server that won't stop or
+ * run, is the owner's choice alone.
  */
 export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
-  app.patch<{ Body: { name?: string; sort?: number } }>(
+  app.patch<{ Body: { name?: string; sort?: number; memLimitMb?: number; cpus?: number | null } }>(
     '',
     {
       config: { permission: 'server.update' },
@@ -160,7 +193,13 @@ export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
           type: 'object',
           additionalProperties: false,
           minProperties: 1,
-          properties: { name: { type: 'string', minLength: 1, maxLength: 64 }, sort: { type: 'integer', minimum: 0, maximum: 1_000_000 } },
+          properties: {
+            name: { type: 'string', minLength: 1, maxLength: 64 },
+            sort: { type: 'integer', minimum: 0, maximum: 1_000_000 },
+            // SRV-05: its container is recreated with them now if the game is stopped, else at its next start.
+            memLimitMb: { type: 'integer', minimum: 256, maximum: 1_048_576 },
+            cpus: { type: 'number', exclusiveMinimum: 0, maximum: 256, nullable: true },
+          },
         },
       },
     },
@@ -170,7 +209,7 @@ export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.delete<{ Body: { confirm: string; keepBackups?: boolean; finalBackup?: boolean } }>(
+  app.delete<{ Body: DeleteBody }>(
     '',
     {
       config: { permission: 'server.delete' },
@@ -179,15 +218,16 @@ export function serverAdminRoutes(app: FastifyInstance, deps: Deps): void {
           type: 'object',
           required: ['confirm'],
           additionalProperties: false,
-          properties: { confirm: { type: 'string', maxLength: 64 }, keepBackups: { type: 'boolean' }, finalBackup: { type: 'boolean' } },
+          properties: { confirm: { type: 'string', maxLength: 64 }, keepBackups: { type: 'boolean' }, finalBackup: { type: 'boolean' }, force: { type: 'boolean' } },
         },
       },
     },
-    async (req: FastifyRequest<{ Body: { confirm: string; keepBackups?: boolean; finalBackup?: boolean } }>) => {
-      const { confirm, keepBackups = true, finalBackup = true } = req.body;
-      if ((!keepBackups || !finalBackup) && req.auth!.user.role !== 'owner') throw new HttpError(403, 'forbidden');
-      const r = await deps.servers.remove(srvOf(req).id, { confirm, keepBackups, finalBackup, by: actor(req), ip: req.ip });
-      return { ok: true, finalBackup: r.finalBackup };
+    async (req: FastifyRequest<{ Body: DeleteBody }>) => {
+      const { confirm, keepBackups = true, finalBackup = true, force = false } = req.body;
+      // Dropping the backups, skipping the final one, or forcing a server out: the owner's call alone.
+      if ((!keepBackups || !finalBackup || force) && req.auth!.user.role !== 'owner') throw new HttpError(403, 'forbidden');
+      const r = await deps.servers.remove(srvOf(req).id, { confirm, keepBackups, finalBackup, force, by: actor(req), ip: req.ip });
+      return { ok: true, finalBackup: r.finalBackup, forced: r.forced, finalBackupError: r.finalBackupError };
     },
   );
 }

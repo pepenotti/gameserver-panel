@@ -64,7 +64,13 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);
     const adapters = (await owner.get('/api/adapters')).json() as { host: { arch: string }; adapters: { id: string; supported: boolean; eula: boolean; ports: unknown[]; launch: { secrets: unknown[] } }[] };
-    expect(adapters.host).toMatchObject({ arch: 'amd64', cpus: 8 });
+    expect(adapters.host).toMatchObject({ arch: 'amd64', cpus: 8, hostPorts: null, maxMemMb: null });
+    // What this install lets a server have, when the orchestrator says (SRV-01, SRV-05).
+    p.orch.hostPorts = [{ from: 30150, to: 30199 }];
+    p.orch.maxMemMb = 6144;
+    expect(((await owner.get('/api/adapters')).json() as { host: unknown }).host).toMatchObject({ hostPorts: [{ from: 30150, to: 30199 }], maxMemMb: 6144 });
+    p.orch.hostPorts = undefined;
+    p.orch.maxMemMb = undefined;
     expect(adapters.adapters).toEqual([expect.objectContaining({ id: 'pz', supported: true, eula: false, launch: expect.objectContaining({ secrets: [expect.objectContaining({ key: 'adminPassword' })] }) })]);
 
     const granted = await friend(p, owner, 'granted-admin', 'admin', 'admin');
@@ -105,14 +111,68 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     // default is the stack's own: never deleted from here.
     expect((await owner.req('DELETE', '/api/servers/default', { confirm: 'zomboid' })).json()).toEqual({ error: 'server-unmanaged' });
 
+    // Forcing a server out is the owner's call alone too.
+    expect((await admin.req('DELETE', '/api/servers/pz-two', { confirm: 'Renamed', force: true })).json()).toEqual({ error: 'forbidden' });
+
     const r = await admin.req('DELETE', '/api/servers/pz-two', { confirm: 'Renamed' });
-    expect(r.json()).toEqual({ ok: true, finalBackup: expect.stringMatching(/\.tar\.zst$/) });
+    expect(r.json()).toEqual({ ok: true, finalBackup: expect.stringMatching(/\.tar\.zst$/), forced: false, finalBackupError: null });
     // Gone for everyone; its audit entries stay, for those who may read them.
     expect(((await owner.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
     expect((await admin.get('/api/servers/pz-two/meta')).json()).toEqual({ error: 'server-not-found' });
     const history = (await owner.get('/api/audit?server=pz-two')).json() as { action: string; username: string }[];
     expect(history.map((e) => e.action)).toEqual(['server.delete', 'server.update', 'server.create']);
     expect(history.find((e) => e.action === 'server.delete')).toMatchObject({ username: 'two-admin' });
+  });
+});
+
+describe('forcing a server out through the API (SRV-04)', () => {
+  it("lets the owner remove a server stuck stopping whose agent doesn't answer, and says the final backup was skipped", async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    expect((await createTwo(owner)).statusCode).toBe(200);
+    // Its game hangs while stopping, then its agent stops answering: it can be neither stopped nor backed up.
+    p.fakes('pz-two').feed.status_ = fakeStatus({ state: 'stopping' });
+    p.fakes('pz-two').agent.lock = () => Promise.reject(new Error('agent unreachable'));
+    expect((await owner.req('DELETE', '/api/servers/pz-two', { confirm: 'Second' })).json()).toEqual({ error: 'server-running' });
+    const r = await owner.req('DELETE', '/api/servers/pz-two', { confirm: 'Second', force: true });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ ok: true, finalBackup: null, forced: true, finalBackupError: expect.any(String) });
+    expect(((await owner.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
+    const [entry] = (await owner.get('/api/audit?server=pz-two')).json() as { action: string; detail: string }[];
+    expect(entry).toMatchObject({ action: 'server.delete', detail: expect.stringContaining('"forced":true') });
+  });
+});
+
+describe('memory and CPU limits through the API (SRV-05)', () => {
+  it("changes a server's limits with server.update, and moves them with the game's memory", async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    p.orch.maxMemMb = 8192;
+    expect((await createTwo(owner, { launch: { memoryMb: 2048 } })).json()).toMatchObject({ memLimitMb: 5120, cpus: null, containerPending: false });
+    const admin = await friend(p, owner, 'two-admin', 'admin', { 'pz-two': 'admin' });
+    const op = await friend(p, owner, 'two-op', 'operator', { 'pz-two': 'operator' });
+
+    expect((await op.req('PATCH', '/api/servers/pz-two', { memLimitMb: 6144 })).json()).toEqual({ error: 'forbidden' });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 6144, cpus: 1.5 })).json()).toMatchObject({ id: 'pz-two', memLimitMb: 6144, cpus: 1.5, containerPending: false });
+    expect(p.orch.containers.get('pz-two')!.spec).toMatchObject({ memoryMb: 6144, cpus: 1.5 });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 9000 })).json()).toMatchObject({ error: 'orchestrator-refused', field: 'memLimitMb', maxMb: 8192 });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 100 })).json()).toMatchObject({ error: 'validation' });
+
+    // While the game runs, the new limit waits for its next start, and the list says so.
+    p.fakes('pz-two').feed.status_ = fakeStatus({ state: 'running' });
+    expect((await admin.req('PATCH', '/api/servers/pz-two', { memLimitMb: 7168 })).json()).toMatchObject({ memLimitMb: 7168, containerPending: true });
+    expect(((await owner.get('/api/servers')).json() as { id: string; containerPending: boolean }[]).find((s) => s.id === 'pz-two')).toMatchObject({ containerPending: true });
+    p.fakes('pz-two').feed.status_ = fakeStatus();
+
+    // More memory for the game: its container's limit follows, keeping the room it had (7168 - 5120).
+    const launch = (await admin.get('/api/servers/pz-two/server/launch')).json() as Record<string, unknown>;
+    expect((await admin.req('PUT', '/api/servers/pz-two/server/launch', { ...launch, memoryMb: 3072 })).statusCode).toBe(200);
+    expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(8192);
+    expect(p.orch.containers.get('pz-two')!.spec.memoryMb).toBe(8192);
+    // Beyond what the host gives one server: refused, and the launch settings stay as they were.
+    const refused = await admin.req('PUT', '/api/servers/pz-two/server/launch', { ...launch, memoryMb: 6144 });
+    expect(refused.json()).toMatchObject({ error: 'orchestrator-refused', maxMb: 8192 });
+    expect(((await admin.get('/api/servers/pz-two/server/launch')).json() as { memoryMb: number }).memoryMb).toBe(3072);
   });
 });
 

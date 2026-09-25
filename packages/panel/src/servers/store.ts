@@ -39,10 +39,18 @@ export interface ServerRow {
 
 export type NewServer = Omit<ServerRow, 'createdAt' | 'spec' | 'eulaAcceptedAt' | 'eulaAcceptedBy' | 'sort'> & Partial<Pick<ServerRow, 'spec' | 'sort' | 'eulaAcceptedAt' | 'eulaAcceptedBy'>>;
 
-/** What can change about a server after it was created without recreating its container. */
+/**
+ * What can change about a server after it was created. Its name and order
+ * are the panel's alone; its limits (SRV-05) are its container's, which the
+ * registry recreates to match.
+ */
 export interface ServerPatch {
   name?: string;
   sort?: number;
+  /** Container memory limit, MiB. */
+  memLimitMb?: number;
+  /** CPU limit in cores; null: none. */
+  cpus?: number | null;
 }
 
 /**
@@ -144,6 +152,8 @@ export class ServersStore {
   update(id: string, patch: ServerPatch): ServerRow | null {
     if (patch.name !== undefined) this.db.prepare('UPDATE servers SET name = ? WHERE id = ?').run(patch.name, id);
     if (patch.sort !== undefined) this.db.prepare('UPDATE servers SET sort = ? WHERE id = ?').run(patch.sort, id);
+    if (patch.memLimitMb !== undefined) this.db.prepare('UPDATE servers SET mem_limit_mb = ? WHERE id = ?').run(patch.memLimitMb, id);
+    if (patch.cpus !== undefined) this.db.prepare('UPDATE servers SET cpus = ? WHERE id = ?').run(patch.cpus, id);
     return this.get(id);
   }
 

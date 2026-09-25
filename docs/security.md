@@ -1,33 +1,107 @@
 # Security
 
-The panel faces the internet on port 8443. Behind it are the controls for the
-game server, its configuration, and backups that hold player password hashes.
-This page describes how that is protected and what to do when something goes
-wrong.
+The panel faces the internet on port 8443. Behind it are the controls for
+every game server, their configuration, and backups that hold player
+password hashes. Each game server runs mods and plugins, which are other
+people's code. This page describes how all of that is kept apart and what to
+do when something goes wrong.
 
 ## What is exposed
 
-| Port | What | Reachable from |
+| Where | What | Reachable from |
 |---|---|---|
-| UDP 16261–16262 | The game | Internet (router forward) |
+| Each server's game ports (inside `ORCH_HOST_PORTS`, e.g. UDP 16261–16262) | The game | Internet (router forward) |
 | TCP 8443 | Caddy → panel | Internet (router forward) |
-| TCP 8080 | Panel API | Only the `edge` network (Caddy) |
-| TCP 8081 | Agent API (token) | Only the `backend` network (panel) |
-| TCP 27015 | RCON | Only inside the `pz` container |
+| `panel.sock` in the `panel-sock` volume | Panel API | Caddy only: the only other container that mounts it |
+| `orch.sock` in the `orch-sock` volume (token) | Orchestrator API | The panel only: the only other container that mounts it |
+| TCP 8081 on a server's own network (that server's token) | That server's agent | The panel, which the orchestrator joins to each server's network |
+| RCON and other game-internal ports | The game's console | Only inside that server's container |
 
-Caddy can't reach the agent or RCON. The panel is the only thing on both
-networks.
+The panel and the orchestrator have no TCP port at all; the orchestrator has
+no network at all. Nothing but the game ports and 8443 is published.
 
-Every container drops all Linux capabilities, runs with `no-new-privileges`
-as a non-root user, and has a memory cap and log rotation. The panel and Caddy
-also have read-only root filesystems.
+## The containers
 
-**Mods** are Lua that runs inside the game. The game runs in its own container
-(`pz`), away from the panel's database, users and secrets. The agent starts the
-game without `AGENT_TOKEN` in its environment. It's the same Unix user,
-though, so a mod able to escape PZ's Lua sandbox could still reach the agent,
-and through it control the game server. It could not reach panel accounts.
-Only add mods you trust.
+The stack (`compose.yaml`) runs three services, each with every Linux
+capability dropped, `no-new-privileges`, a read-only root filesystem, a
+memory cap and log rotation:
+
+- **caddy**: TLS, and the only way in to the panel (it keeps the one
+  capability its binary needs to bind a port).
+- **panel**: user `node`. It mounts its database volume, its socket volume,
+  the orchestrator's socket volume read-only and the backups folder. **No game
+  files** (D11).
+- **orchestrator**: the only container with the Docker socket (D3, NFR-02).
+  Root without any capability, because the socket belongs to root; no network
+  (`network_mode: none`), so the socket volume the panel also mounts is the
+  only way to reach it, with `ORCH_TOKEN` on every request.
+
+Every **game server** is a container the orchestrator creates from the
+panel's spec. The spec says only which game family and variant, the
+environment the agent needs, the ports, and the memory and CPU limits; the
+orchestrator checks every key and value against its allowlist
+(`packages/orchestrator/src/spec.ts`) and refuses anything else: extra keys
+(privileged, mounts, capabilities, devices, networks, images, users, labels),
+host ports outside `ORCH_HOST_PORTS` or below 1024, the agent's port,
+environment keys outside `AGENT_TOKEN`, `GAME_ADAPTER`, `GAME_FLAVOUR`, `TZ`,
+`GAME_*` and `GSP_*`, more memory than `ORCH_MAX_MEM_MB`, more servers than
+`ORCH_MAX_SERVERS`, and the fake images unless `ORCH_ALLOW_FAKE=1`.
+Everything that makes the container safe it derives itself, never from the
+panel:
+
+- the image from its allowlist, `gsp/<family>[-fake]:<its own tag>`;
+- user `1000:1000`, all capabilities dropped, `no-new-privileges`, never
+  privileged, a private IPC namespace, at most 4096 processes;
+- a read-only root filesystem, with only `/tmp` writable (a 256 MB tmpfs);
+- the memory limit with no extra swap, and the CPU limit when one is set;
+- only the server's own named volumes (`<stack>-srv-<id>-data`, `-install`,
+  and `-steam` for steamcmd's home): no bind mount, no Docker socket;
+- its own bridge network `<stack>-net-<id>`, which only it and the panel join;
+- restart `unless-stopped`, a 240 s stop timeout, json-file logs of 10 MB × 3;
+- its names and labels (`gsp.stack`, `gsp.server`). The orchestrator only
+  ever touches containers, volumes and networks that carry its own stack's
+  labels and names; anything else with such a name is refused, not reused.
+
+## Isolation between servers (NFR-03)
+
+- **Networks.** Each server has its own network. Docker keeps bridge networks
+  apart, so one server's container can't resolve or reach another's. The
+  panel is on every server's network, but it listens only on its unix socket,
+  so a game container finds no port open on it. The orchestrator has no
+  network. A game container can still reach the internet, and the host's
+  published ports like any internet client (other servers' game ports, the
+  panel's HTTPS address).
+- **A token per server.** The panel generates each server's agent token when
+  it creates the server and keeps it in its database (`servers.secrets`),
+  never in `.env`. The agent refuses every call without it (except its
+  health check), and starts the game without it in its environment. One
+  server's token opens that server's agent only.
+- **Files only through the agent (D11).** The panel mounts no game volume.
+  It lists, reads, writes, backs up and restores a server's files through
+  that server's agent, which keeps every path inside the server's roots,
+  refuses links, `..`, absolute paths and oversized reads and writes, and
+  keeps the install read-only. A running backup is made consistent next to the
+  data (Project Zomboid: `save`, then SQLite snapshots). The panel treats what
+  an agent sends as untrusted: listings and reads are size-capped, every
+  archive entry is checked, and config files are parsed as data.
+
+### What a compromised game container can and can't reach
+
+A mod that escapes its game's sandbox runs as the container's user. It
+**can** reach: that server's files (its world, configs and install), that
+server's agent (the game runs as the same Unix user, so it can read the
+agent's token from the process list and start, stop or reconfigure its own
+game), the internet, and the host's published ports. It can fill its own
+volumes (named volumes have no size quota) and use the CPU unless the server
+has a CPU limit.
+
+It **can't** reach: the panel's API or database (no TCP port, and the socket
+is in a volume it doesn't mount), the orchestrator (no network, socket not
+mounted), Docker, another server's agent, files or network, the host's files,
+or more privileges (no capabilities, `no-new-privileges`, non-root, read-only
+root). Panel accounts, other servers' tokens and `.env` stay out of reach.
+Only add mods you trust anyway: the world and the player accounts of that
+server are in its hands.
 
 ## Signing in
 
@@ -76,21 +150,24 @@ Only add mods you trust.
 
 | Secret | Lives in | Notes |
 |---|---|---|
-| `AGENT_TOKEN` | `.env`; `pz` and `panel` environment | Panel ↔ agent. Not passed to the game |
-| `PZ_ADMIN_PASSWORD` | `.env`; panel (as `GAME_SECRET_ADMIN_PASSWORD`); the game's command line | Re-applied to the in-game `admin` account on every start. Redacted from logs |
-| RCON password | Agent state in the `pz-data` volume; the server ini | Random, generated by the agent. Masked in the panel |
-| Discord webhook | Panel database | Shown masked after saving |
+| `ORCH_TOKEN` | `.env`; `panel` and `orchestrator` environment | Panel ↔ orchestrator |
+| Each server's agent token | Panel database (`servers.secrets`); that server's container environment | Panel ↔ that server's agent. Generated per server; not passed to the game |
+| Each server's game admin password (Project Zomboid) | Panel database (`servers.secrets`); the game's command line | Generated per server, re-applied to the in-game `admin` account on every start. Redacted from logs |
+| RCON password | Agent state in the server's data volume; the server ini | Random, generated by the agent. Masked in the panel |
+| Discord webhooks | Panel database | The host's and each server's own. Shown masked after saving |
 | `DUCKDNS_TOKEN` (optional) | `.env`; `caddy` and `duckdns` environment | Controls the DuckDNS name. If leaked, regenerate it on duckdns.org |
 | Panel users | Panel database (`panel-data` volume) | Password hashes, TOTP secrets, session hashes |
-| Player accounts | `db/<server>.db` (the game's) | bcrypt hashes, bans, whitelist |
+| Player accounts | Each server's data volume (Project Zomboid: `db/<server>.db`) | bcrypt hashes, bans, whitelist |
 
 `.env` is never committed. On Linux, `init-env.mjs` writes it readable only by
 its owner.
 
 ## Backups
 
-- **World backups** include `db/<server>.db`, with player password hashes, and
-  the ini, with the server password. Downloading is admin-only and audited.
+- **World backups** go to `BACKUP_DIR/<server>/`, packed by that server's
+  agent. A Project Zomboid backup includes `db/<server>.db`, with player
+  password hashes, and the ini, with the server password. Downloading is
+  admin-only and audited.
   Uploading is owner-only and capped at 20 GB. Every entry in an uploaded
   archive is checked before anything is written: only plain files and
   folders, only under `data/`, no `..`, no absolute paths, no links.
@@ -142,7 +219,7 @@ decides whether IP-based features (IP bans) are shown.
 | A friend's account may be stolen | **Users** → disable it; then reset its password and 2FA. `panelctl reset-2fa` also signs it out everywhere |
 | You lost your 2FA phone | Use a recovery code. No codes left: `docker compose exec panel node /app/panelctl.mjs reset-2fa owner` |
 | Forgot the owner password | `docker compose exec panel node /app/panelctl.mjs reset-password owner` |
-| `AGENT_TOKEN` may have leaked | Delete its line from `.env`, run `node scripts/init-env.mjs`, then `docker compose up -d`. The game restarts |
-| Game admin password may have leaked | Same with `PZ_ADMIN_PASSWORD`. The new one applies on the next start |
+| `ORCH_TOKEN` may have leaked | Delete its line from `.env`, run `node scripts/init-env.mjs`, then `docker compose up -d`. The panel and the orchestrator restart; the game servers keep running |
+| A server's agent token or game admin password may have leaked | The panel can't rotate them yet. Take a backup, remove the server (its container goes with its token), create it again and restore the backup |
 | Discord webhook leaked | Delete it in Discord, create a new one, paste it in **Schedules** |
 | Sign-in spike alert on Discord | Check **Activity log**. The breaker already slowed the attempts. Make sure every admin has 2FA |

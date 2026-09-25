@@ -2,7 +2,7 @@ import type { CommandDoc } from '@gsp/adapter-api';
 import { RconProtocolError, type OptionMeta } from '@gsp/formats';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { COUNTDOWNS, type GameLang } from '../control/control';
-import { by, HttpError, srvOf } from '../http/context';
+import { actor, by, HttpError, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 
 const countdownBody = {
@@ -152,6 +152,8 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
         throw new HttpError(400, 'validation', (e as Error).message);
       }
       const before = handle.launchSettings();
+      // SRV-05: more (or less) memory for the game moves its container's limit too, before anything is stored.
+      await deps.servers.followLaunch(srvOf(req).id, req.body, actor(req), req.ip);
       handle.setLaunchSettings(req.body);
       audit.log({ ...by(req), action: 'server.launch-settings', detail: { before, after: req.body } });
       return handle.launchSettings();

@@ -87,7 +87,8 @@ const procs = [
       ORCH_SOCKET: orch.socket,
       ORCH_TOKEN: orchToken,
       ORCH_HOST_PORTS: orch.hostPorts,
-      ORCH_MAX_MEM_MB: '8192',
+      // The fake games use little memory: room for a server with the game's default memory (PZ: 8 GiB + 3 GiB).
+      ORCH_MAX_MEM_MB: '16384',
       ORCH_MAX_SERVERS: '3',
       ORCH_ALLOW_FAKE: '1',
       FAKE_ORCH_STATE_DIR: path.join(tmp, 'orch'),
