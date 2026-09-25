@@ -2,7 +2,7 @@
 // orchestrator: creating a server (SRV-01, HST-05), renaming it, removing it
 // after a final backup (SRV-04), and bringing containers back in line with
 // the table (SRV-06).
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { PanelAdapter } from '@gsp/adapter-api';
@@ -404,6 +404,32 @@ describe('removing a server (SRV-04)', () => {
     const [done, refused] = p.deps.audit.list({ action: 'server.delete' });
     expect(JSON.parse(done!.detail!)).toMatchObject({ forced: true, finalBackup: null, finalBackupError: 'agent unreachable' });
     expect(refused).toMatchObject({ ok: false });
+  });
+
+  it('marks the final backup as the final one, not a manual one (SRV-04, BAK-01)', async () => {
+    const { p } = await populated();
+    const r = await p.deps.servers.remove('pz-two', { confirm: 'Second', keepBackups: true, by: OWNER_ACTOR });
+    expect(r.finalBackup).toMatch(/^pz-pz-two-\d{8}T\d{6}Z-final\.tar\.zst$/);
+    const sidecar = JSON.parse(readFileSync(path.join(p.deps.env.backupDir, 'pz-two', `${r.finalBackup}.json`), 'utf8')) as { manifest: { trigger: string } };
+    expect(sidecar.manifest.trigger).toBe('final');
+  });
+
+  it("says when the server's agent can't be reached, instead of calling it running, and lets only force go on (SRV-04)", async () => {
+    const { p } = await populated();
+    const fake = p.fakes('pz-two');
+    // The last thing the panel heard: it was running. Now its agent doesn't answer.
+    fake.feed.status_ = fakeStatus({ state: 'running' });
+    fake.feed.connected = false;
+    fake.agent.status = () => Promise.reject(new Error('agent unreachable'));
+    fake.agent.lock = () => Promise.reject(new Error('agent unreachable'));
+    const opts = { confirm: 'Second', keepBackups: true, by: OWNER_ACTOR };
+    expect(await refusal(p.deps.servers.remove('pz-two', opts))).toMatchObject({ status: 409, code: 'server-unreachable', extra: { force: true } });
+    expect(await refusal(p.deps.servers.remove('pz-two', { ...opts, finalBackup: false }))).toMatchObject({ status: 409, code: 'server-unreachable' });
+    expect(p.orch.containers.has('pz-two')).toBe(true);
+    expect(p.deps.serverRows.get('pz-two')).not.toBeNull();
+    // Forced, it goes on (here the test's files are still at hand, so even the final backup is taken).
+    expect(await p.deps.servers.remove('pz-two', { ...opts, force: true })).toMatchObject({ forced: true });
+    expect(p.deps.serverRows.get('pz-two')).toBeNull();
   });
 
   it('keeps everything when the final backup fails, or the container cannot be removed', async () => {

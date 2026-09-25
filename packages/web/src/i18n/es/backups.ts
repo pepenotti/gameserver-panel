@@ -16,6 +16,7 @@ export default {
     'pre-restore': 'Antes de restaurar',
     'pre-update': 'Antes de actualizar',
     upload: 'Subida',
+    final: 'Final (antes de eliminar)',
   },
   hot: 'hecha con el servidor prendido',
   hotHelp: 'Se guardó antes, pero había jugadores conectados; la copia más segura es la que se hace con el servidor apagado (por ejemplo, la programada).',

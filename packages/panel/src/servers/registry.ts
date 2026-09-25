@@ -57,8 +57,9 @@ export interface RemoveServerOptions {
   /** Take the final backup first (default); only the owner may skip it, for a server whose data can't be reached. */
   finalBackup?: boolean;
   /**
-   * The owner's way out for a server that can't be stopped normally or whose
-   * container won't run: removed even while its game runs or an operation
+   * The owner's way out for a server that can't be stopped normally, whose
+   * container won't run or whose agent can't be reached (without it, 409
+   * `server-unreachable`): removed even while its game runs or an operation
    * holds it, without waiting for the game to stop. The final backup is
    * still taken when it can be; when it can't, the removal goes on without
    * it and says why (`finalBackupError`).
@@ -665,7 +666,14 @@ export class DbServerRegistry implements ServerRegistry {
     // Forced (the owner, for a server that won't stop or whose container won't run): neither holds it back.
     const busy = ctx.ops.busy;
     if (busy && !o.force) throw new HttpError(409, 'busy', undefined, { op: busy });
-    const state = ctx.feed.status_?.state;
+    let state = ctx.feed.status_?.state;
+    if (managed && !o.force) {
+      // What its game is doing now, from its agent. An agent that can't be reached can't say (nor
+      // take the final backup): only the owner's forced removal goes on without it.
+      const live = await ctx.agent.status().catch(() => null);
+      if (!live) throw new HttpError(409, 'server-unreachable', "The server's agent can't be reached; the owner can force the removal", { force: true });
+      state = live.state;
+    }
     if (!o.force && (state === 'running' || state === 'starting' || state === 'stopping')) throw new HttpError(409, 'server-running');
 
     // SRV-04: a final backup first, into the server's own folder, unless nothing is to be kept
@@ -677,7 +685,7 @@ export class DbServerRegistry implements ServerRegistry {
     if (managed && o.keepBackups && o.finalBackup !== false) {
       try {
         if (busy) throw new Error(`Another operation (${busy.kind}) is still running on this server`);
-        const b = await ctx.ops.run('backup', o.by.user?.username ?? null, (op) => ctx.flows.backupNow(op, 'manual'));
+        const b = await ctx.ops.run('backup', o.by.user?.username ?? null, (op) => ctx.flows.backupNow(op, 'final'));
         finalBackup = b.name;
       } catch (e) {
         const message = (e as Error).message;

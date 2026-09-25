@@ -14,6 +14,7 @@ export default {
     'pre-restore': 'Before restore',
     'pre-update': 'Before update',
     upload: 'Uploaded',
+    final: 'Final (before removal)',
   },
   hot: 'taken while running',
   hotHelp: 'Saved first, but players were online; a backup taken while the server is stopped (for example the scheduled one) is the safest.',

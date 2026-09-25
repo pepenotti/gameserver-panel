@@ -94,6 +94,7 @@ export default {
   'orchestrator-error': 'El equipo no pudo hacerlo. Revisá los registros del panel.',
   'server-unmanaged': 'Este servidor es parte de la instalación y no se puede borrar desde acá.',
   'server-running': 'Primero apagá el servidor.',
+  'server-unreachable': 'El agente del servidor no responde, así que el panel no puede saber si el juego está corriendo ni hacer la copia final. El dueño puede forzar la eliminación.',
   'final-backup-failed': 'Falló la copia de seguridad final, así que no se borró nada.',
   'role-follows-grants': 'Esta cuenta solo tiene acceso a algunos servidores: su rol se elige en cada uno.',
   'invalid-port-ranges': 'Este panel deja que los servidores usen solo estos puertos: {{ranges}}.',

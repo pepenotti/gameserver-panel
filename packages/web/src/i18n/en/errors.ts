@@ -92,6 +92,7 @@ export default {
   'orchestrator-error': 'The host could not do that. Check the panel logs.',
   'server-unmanaged': 'This server is part of the stack itself and cannot be deleted from here.',
   'server-running': 'Stop the server first.',
+  'server-unreachable': 'The server’s agent does not answer, so the panel cannot tell whether its game is running or take the final backup. The owner can force the removal.',
   'final-backup-failed': 'The final backup failed, so nothing was deleted.',
   'role-follows-grants': 'This account only has access to some servers: its role there is set per server.',
   'invalid-port-ranges': 'This panel lets servers use only these ports: {{ranges}}.',

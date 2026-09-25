@@ -41,6 +41,8 @@ export default {
   pendingStart: 'Applies at next start',
   pendingStartHelp: 'Its container gets its new limits the next time the server starts.',
   deleteStopFirstOrForce: 'The server is running: stop it first, or force the removal below.',
+  deleteUnreachable: 'The server’s agent does not answer: only the owner can remove it now, by forcing the removal.',
+  deleteUnreachableOrForce: 'The server’s agent does not answer, so the panel cannot tell whether its game runs or take the final backup: force the removal below.',
   force: 'Force the removal',
   forceHelp: 'For a server that won’t stop or whose container won’t run: it is removed even while running. A final backup is still tried; if it can’t be taken, the removal goes on without it. Owner only.',
   deletedNoBackup: '{{name}} was deleted without a final backup: {{reason}}',
