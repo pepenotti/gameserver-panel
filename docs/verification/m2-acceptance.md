@@ -146,7 +146,8 @@ Copying the install volume saves downloading ~7 GB again.
       check finds the game installed (seconds, not a download: see its
       Console). Both end up `running`.
 - [ ] Separate worlds: `docker exec $S-srv-pz-a ls /data/Saves/Multiplayer`
-      lists `pz-a` (and `pz-a_player`) only; `$S-srv-pz-b` lists `pz-b` only.
+      lists `pz-a` only (`pz-a_player` too, if the game made one); `$S-srv-pz-b`
+      lists `pz-b` only. Each has its own `/data/db/<id>.db`.
 - [ ] Separate schedules: set a daily restart at different times on each
       (**Schedules** page or `PUT /api/servers/<id>/schedules`); `GET /api/servers`
       shows two different `nextRestart` values.
@@ -214,11 +215,15 @@ docker exec $S-panel-1 node -e "fetch('http://$S-srv-pz-a:8081/v1/health').then(
       lists `pz-pz-a-<time>-manual.tar.zst`, and the file (with its `.json`
       sidecar) is in `BACKUP_DIR/pz-a/` on the host (slot: `.tmp/backups/pz-a/`).
 - [ ] pz-b's list doesn't show pz-a's backups.
-- [ ] Restore: `await api('POST', '/api/servers/pz-a/backups/<name>/restore', { parts: ['world', 'configs'], countdownSec: 0 })`.
+- [ ] Restore while running: `await api('POST', '/api/servers/pz-a/backups/<name>/restore', { parts: ['world', 'configs'], countdownSec: 0 })`.
       The game stops, the agent stages and swaps the parts, the game starts
-      again; the audit log shows the restore. Then
-      `await api('POST', '/api/servers/pz-a/backups/undo-restore')` puts the
-      replaced files back.
+      again; the audit log shows the restore. Once the restored world runs,
+      the replaced files are dropped, so `undo-restore` now answers 409
+      `nothing-to-undo` (by design: undo is for a restore that won't start).
+- [ ] Undo: stop pz-a, change a line in `Server/pz-a.ini` (e.g. through the
+      text editor), restore again, and before starting it
+      `await api('POST', '/api/servers/pz-a/backups/undo-restore')`: the
+      changed line is back. A second undo answers 409 `nothing-to-undo`.
 - [ ] The panel never mounted a game volume (step 2): everything above went
       through pz-a's agent.
 
@@ -243,7 +248,10 @@ docker exec $S-panel-1 node -e "fetch('http://$S-srv-pz-a:8081/v1/health').then(
 - [ ] After it: `node scripts/stack.mjs ps` shows the stack up;
       `docker ps --filter label=gsp.stack=$S` shows both servers; within a few
       minutes both games are `running` again (each agent's saved desired
-      state), and the panel shows them with their agents connected.
+      state), and the panel shows them with their agents connected. Docker
+      restarts containers in no particular order, so the panel may boot before
+      the orchestrator's socket exists: its first reconcile then fails
+      (audited) and its retry 15 s later succeeds.
 - [ ] Both server networks still hold the panel (`docker network inspect`).
 - [ ] A new panel container: `node scripts/stack.mjs up -d --force-recreate panel`.
       Once it booted, it is on both servers' networks again (its boot
@@ -258,7 +266,9 @@ docker exec $S-panel-1 node -e "fetch('http://$S-srv-pz-a:8081/v1/health').then(
       `docker ps -a`, `docker volume ls` and `docker network ls` filtered by
       `label=gsp.server=pz-a` are empty.
 - [ ] Forced removal (owner only) of a server that can't be stopped or reached:
-      `docker stop $S-srv-pz-b` (its agent is gone), then
+      `docker stop $S-srv-pz-b` (its agent is gone). Without `force` the
+      delete is refused (409), since the panel can't confirm the game stopped;
+      then
       `await api('DELETE', '/api/servers/pz-b', { confirm: 'Zomboid B', force: true })`
       → 200 with `forced: true`, `finalBackup: null` and `finalBackupError`
       saying why; the audit log's `server.delete` entry says the same.
@@ -272,23 +282,31 @@ docker image rm gsp/orchestrator:$T gsp/panel:$T gsp/caddy:$T gsp/steam:$T gsp/s
 docker ps -a --filter label=gsp.stack=$S; docker volume ls --filter label=gsp.stack=$S; docker network ls --filter label=gsp.stack=$S
 ```
 
-- [ ] The three listings are empty. (`clean` removes only untagged images:
-      ours carry the `$T` tag, hence the explicit `docker image rm`.)
+- [ ] The three listings are empty, and `docker image ls 'gsp/*'` shows no `$T`
+      image. (`clean` removes the stack's own service images; the build-only
+      `steam` and `steam-fake` images need the explicit `docker image rm`, which
+      reports the others as already gone.)
 - [ ] `.tmp/backups/` deleted if its archives aren't needed.
 
 ## Results
 
 | Step | Result | Notes |
 |---|---|---|
-| 0 Prepare | | Docker version, OS, memory |
-| 1 Images | | |
-| 2 Stack | | |
-| 3 First server | | |
-| 4 Second server | | copy time, update check |
-| 5 Hardening | | |
-| 6 Reachability | | host.docker.internal result |
-| 7 Backups | | |
-| 8 Memory | | |
-| 9 Docker restart | | |
-| 10 Removal | | |
-| 11 Clean up | | |
+| 0 Prepare | pass | Run on 2026-09-25 from commit 780df2d, slot 1. Docker Desktop, Engine 29.7.2 (API 1.55), linux/amd64 VM with 15.6 GiB and 12 CPUs. Another stack on the host was idle. `stack.mjs config` as described. |
+| 1 Images | pass | Five images in 2 min 23 s: steam 693 MB, steam-fake 384 MB, panel 347 MB, orchestrator 334 MB, caddy 154 MB. `uid=1000(node)`, Node v24.21.0. The Debian base brings `/usr/bin/tar` (unused by the agent); no `zstd`. |
+| 2 Stack | pass | Orchestrator `net=none ro=true user=0:0 drop=[ALL] sec=[no-new-privileges:true]`, mounts the socket and `orch-sock` only. Panel mounts `panel-data`, `panel-sock`, `orch-sock` (ro) and the backups folder; both sockets `srw-rw-rw-`; TCP 8080 `ECONNREFUSED`. Signed in through the API (password change and 2FA enrolment by script). |
+| 3 First server | pass after two fixes | Refusals as written (400 `invalid-port` with `ranges`; 409 `orchestrator-refused`, 11264 > 6144). pz-a got 30150/30151 and 5120 MiB. The game (42.20.4, build 24909836, 6.9 GB) downloaded in about 3 min. **Found:** (1) the first boot died: Docker mounts a tmpfs `noexec` unless told `exec`, so the game's SQLite driver couldn't load its native library from `/tmp`; fixed in 780df2d, and the panel's boot reconcile recreated the container with the new options. (2) That failed boot left a 0-byte `db/pz-a.db`, and every later start failed with `no such table`; removed by hand here, fixed in the PZ adapter by M2-G. Then the first boot (world generation) took about 2 min to `running`, RCON connected. |
+| 4 Second server | pass | pz-b got 30152/30153 and 6144 MiB. Copying the install volume took 39 s. pz-b's update check found the game installed: `starting` with the build within 30 s, no download. Both `running`; `Saves/Multiplayer` and `db/` hold only their own server; `nextRestart` 11:00Z and 12:30Z. |
+| 5 Hardening | pass | Every line as listed, on both servers: pz-a `mem=swap=5368709120`, pz-b `6442450944`; `tmpfs={"/tmp":"rw,exec,nosuid,nodev,size=256m"}` (after the fix above); only UDP game ports on 127.0.0.1; each network holds its server and the panel only. |
+| 6 Reachability | pass | Both directions: panel refused, orchestrator and the other server unresolvable, the other server's IP times out, no Docker socket, internet answers (HTTP 404 from the Steam API root), the panel reaches each agent (200). `host.docker.internal:30143` from a server: no connection (`000`). |
+| 7 Backups | pass | Hot backup `pz-pz-a-<time>-manual.tar.zst` (847 KB, fresh world) and its sidecar in `.tmp/backups/pz-a/`; pz-b's list empty. Restore while running: stopped, swapped, running again in about 65 s; audit `backup.restore` with the parts. Undo after that answered `nothing-to-undo` (by design, checklist reworded); restore while stopped then undo brought the changed `pz-a.ini` line back; a second undo 409. |
+| 8 Memory | pass | PATCH 5632 while running: `containerPending: true`, container untouched, game running. Restart: new container, 5905580032, pending cleared. Stopped + launch memory 2560: recreated at once at 6442450944. 7000: 409 `orchestrator-refused`, `maxMb: 6144`. |
+| 9 Docker restart | pass | Panel recreated first (`--force-recreate panel`): back on both networks, games kept running. Then, with the owner's go-ahead, Docker Desktop restarted: every container back within a minute (this stack and the host's other stacks), both games `running` again about 90 s after the engine, agents connected, networks still hold the panel. The panel booted before the orchestrator's socket existed: its first reconcile failed (audited `server.reconcile` ok=false, ENOENT) and the 15 s retry succeeded silently (no-op PUTs in the orchestrator log). Overnight before this step the schedules ran on their own server only: hot backups at 06:00 and 12:00, pz-a's restart at 11:00 and pz-b's at 12:30, each with its cold backup. |
+| 10 Removal | pass | pz-a: 409 `server-running`, then after stopping 200 with its final backup (848 KB, named with the `manual` trigger); no container, volume or network left. pz-b with its container stopped: without `force` 409 `server-running`; with `force` 200, `forced: true`, `finalBackup: null`, `finalBackupError: "Game server agent unreachable: fetch failed"`, the same in the audit entry; nothing left. |
+| 11 Clean up | pass | `stack.mjs clean` removed the stack and its three service images; `docker image rm` the two runtime images. No container, volume, network or `:s1` image left; the host's other stacks untouched. `.tmp/backups/` (9 MB) deleted. |
+
+Follow-ups found by this run: a reconcile retry that succeeds should say so
+in the audit log (it only records the failure); the final backup of a removal
+could carry its own trigger name instead of `manual`; a delete refused
+because the agent can't be reached could say that instead of
+`server-running`.
