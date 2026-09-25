@@ -128,7 +128,8 @@ export async function startFakeDownloads({ port = 0, host = '127.0.0.1', fail = 
       if (!m[2]) return send(200, { version, builds: builds.map((b) => b.id) });
       if (!m[3]) {
         const ch = url.searchParams.get('channel');
-        if (ch !== null && !['ALPHA', 'BETA', 'STABLE', 'RECOMMENDED'].includes(ch)) return send(400, { status: 400, error: 'Bad Request', path: p });
+        // The channels seen on the real API; anything else (e.g. lower case) is a 400 there.
+        if (ch !== null && !['ALPHA', 'BETA', 'STABLE'].includes(ch)) return send(400, { status: 400, error: 'Bad Request', path: p });
         return send(200, ch ? builds.filter((b) => b.channel === ch) : builds);
       }
       const b = m[3] === 'latest' ? builds[0] : builds.find((x) => String(x.id) === m[3]);
