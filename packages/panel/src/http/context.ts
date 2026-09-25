@@ -19,8 +19,13 @@ export interface AuthContext {
 
 declare module 'fastify' {
   interface FastifyContextConfig {
-    /** `public`: no session. Otherwise a session is required. */
-    auth?: 'public';
+    /**
+     * `public`: no session. `session`: any signed-in user, no permission
+     * (the route is about the session itself, or filters its answer to what
+     * the user may see). Otherwise the route declares a `permission`; every
+     * /api/ route does one of the three (AST-01, checked by a test).
+     */
+    auth?: 'public' | 'session';
     permission?: Permission;
     /** What the server's game must support; otherwise 409 `capability-unsupported` (after the permission check). */
     capability?: Capability;
@@ -102,7 +107,10 @@ export function installGuards(app: FastifyInstance, deps: Deps): void {
     }
   });
 
-  app.addHook('preHandler', async (req: FastifyRequest) => {
+  // Before the body, query and params are validated: who may ask comes
+  // first, so nobody learns anything from a 400 about a server they can't
+  // see (only a body that isn't JSON at all is refused earlier, by the parser).
+  app.addHook('preValidation', async (req: FastifyRequest) => {
     // The static web app (and its SPA fallback) is public; everything private lives under /api/.
     if (!req.url.startsWith('/api/')) return;
     const cfg = req.routeOptions.config;

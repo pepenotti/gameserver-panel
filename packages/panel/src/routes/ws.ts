@@ -47,7 +47,7 @@ export type WsMessage =
 
 export function wsRoutes(app: FastifyInstance, deps: Deps): void {
   // Any signed-in user: what flows is filtered per server and topic (ACC-02).
-  app.get('/api/ws', { websocket: true }, (socket: WebSocket, req) => {
+  app.get('/api/ws', { websocket: true, config: { auth: 'session' } }, (socket: WebSocket, req) => {
     let user: UserRow = req.auth!.user;
     const sessionHash = req.auth!.session.id_hash;
 

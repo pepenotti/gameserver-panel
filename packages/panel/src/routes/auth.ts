@@ -23,7 +23,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
   const { users, sessions, audit, breaker } = deps;
   const ua = (req: FastifyRequest) => (typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null);
 
-  app.get('/api/session', { config: { allowPending: ['mfa', 'password', 'enrol'] } }, async (req) => sessionView(req.auth!));
+  app.get('/api/session', { config: { auth: 'session', allowPending: ['mfa', 'password', 'enrol'] } }, async (req) => sessionView(req.auth!));
 
   app.post<{ Body: { username: string; password: string } }>(
     '/api/auth/login',
@@ -74,7 +74,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
   app.post<{ Body: { code: string } }>(
     '/api/auth/mfa',
     {
-      config: { allowPending: ['mfa'] },
+      config: { auth: 'session', allowPending: ['mfa'] },
       schema: { body: { type: 'object', required: ['code'], additionalProperties: false, properties: { code: { type: 'string', minLength: 6, maxLength: 20 } } } },
     },
     async (req, reply) => {
@@ -100,7 +100,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.post('/api/auth/logout', { config: { allowPending: ['mfa', 'password', 'enrol'] } }, async (req, reply) => {
+  app.post('/api/auth/logout', { config: { auth: 'session', allowPending: ['mfa', 'password', 'enrol'] } }, async (req, reply) => {
     sessions.revoke(req.auth!.session.id_hash);
     clearSessionCookie(reply, deps);
     audit.log({ actor: actor(req), action: 'auth.logout', ip: req.ip });
@@ -110,7 +110,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
   app.post<{ Body: { current: string; next: string } }>(
     '/api/auth/password',
     {
-      config: { allowPending: ['password', 'enrol'] },
+      config: { auth: 'session', allowPending: ['password', 'enrol'] },
       schema: {
         body: {
           type: 'object',
@@ -136,7 +136,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.post('/api/auth/totp/setup', { config: { allowPending: ['enrol'] } }, async (req) => {
+  app.post('/api/auth/totp/setup', { config: { auth: 'session', allowPending: ['enrol'] } }, async (req) => {
     const a = req.auth!;
     const secret = users.beginTotp(a.user.id);
     return { secret, uri: otpauthUri(secret, a.user.username) };
@@ -145,7 +145,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
   app.post<{ Body: { code: string } }>(
     '/api/auth/totp/enable',
     {
-      config: { allowPending: ['enrol'] },
+      config: { auth: 'session', allowPending: ['enrol'] },
       schema: { body: { type: 'object', required: ['code'], additionalProperties: false, properties: { code: { type: 'string', pattern: '^\\d{6}$' } } } },
     },
     async (req) => {
@@ -159,7 +159,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps): void {
 
   app.post<{ Body: { password: string } }>(
     '/api/auth/totp/disable',
-    { schema: { body: { type: 'object', required: ['password'], additionalProperties: false, properties: { password: { type: 'string', maxLength: 200 } } } } },
+    { config: { auth: 'session' }, schema: { body: { type: 'object', required: ['password'], additionalProperties: false, properties: { password: { type: 'string', maxLength: 200 } } } } },
     async (req) => {
       const a = req.auth!;
       if (requiresTotp(a.user.role)) throw new HttpError(400, 'totp-required-for-role');

@@ -29,7 +29,7 @@ export interface ServerSummary {
  * filtered, never refused.
  */
 export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
-  app.get('/api/servers', async (req): Promise<ServerSummary[]> => {
+  app.get('/api/servers', { config: { auth: 'session' } }, async (req): Promise<ServerSummary[]> => {
     const user = req.auth!.user;
     const who = principal(user);
     const grants = deps.grants.forUser(user.id);

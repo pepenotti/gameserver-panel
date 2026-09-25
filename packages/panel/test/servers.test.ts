@@ -66,11 +66,15 @@ describe('routes of one server (ACC-02)', () => {
       ['POST', '/api/servers/default/server/start', {}],
       ['GET', '/api/servers/default/config/meta'],
       ['POST', '/api/servers/default/reset', { scope: 'world', confirm: 'zomboid' }],
+      // Access is checked before the body: a bad one doesn't tell the server exists either.
+      ['POST', '/api/servers/default/reset', { bogus: true }],
+      ['GET', '/api/servers/default/backups/not-a-backup/download'],
     ] as [string, string, unknown?][]) {
-      // Valid bodies: a bad one is refused (400) before anyone looks at the server.
       const r = await outsider.req(method as 'GET' | 'POST', url, body);
       expect(r.json(), `${method} ${url}`).toEqual({ error: 'server-not-found' });
     }
+    // Signed out comes first, whatever the body.
+    expect((await new Client(p.app).req('POST', '/api/servers/default/reset', { bogus: true })).statusCode).toBe(401);
     expect(p.agent.calls).toEqual([]);
   });
 

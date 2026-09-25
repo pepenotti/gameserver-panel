@@ -1,11 +1,13 @@
 // API first (AST-01): everything the UI does goes through the documented,
-// permission-checked HTTP API. This skeleton proves two things, and M2 grows
-// it:
+// permission-checked HTTP API. This proves:
 //   - every call the web makes (`api(…)` for host routes, a `ServerApi` —
 //     `sapi(…)`, `serverApi(sid)(…)`, `sapi.url(…)` — for a server's) names a
 //     route the panel has;
-//   - every /api/ route declares a permission, is `public`, or is on the
-//     short, explicit list of routes that only need a session.
+//   - every /api/ route declares exactly one of: a permission, `public`, or
+//     `session` (any signed-in user; the route is about the session, or
+//     filters its answer) — in the route itself, not on a list here;
+//   - every route is documented (docs/api.md, generated from this same table;
+//     api-docs.test.ts fails when it is stale).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -14,24 +16,6 @@ import type { RouteInfo } from '../src/app';
 import { makePanel } from './harness';
 
 const web = path.resolve(import.meta.dirname, '..', '..', 'web', 'src');
-
-/** Routes any signed-in user may call without a permission: about the session itself, or answering only with what the user may see. */
-const SESSION_ONLY = [
-  'GET /api/session',
-  'POST /api/auth/mfa',
-  'POST /api/auth/logout',
-  'POST /api/auth/password',
-  'POST /api/auth/totp/setup',
-  'POST /api/auth/totp/enable',
-  'POST /api/auth/totp/disable',
-  'PUT /api/me',
-  'GET /api/me/sessions',
-  'DELETE /api/me/sessions/:id',
-  // Filtered to the servers the user has a role on.
-  'GET /api/servers',
-  // Filtered per server and topic.
-  'GET /api/ws',
-];
 
 /**
  * Calls the scan can't read from the code (not `api`/`ServerApi` calls with
@@ -148,18 +132,20 @@ describe('API first (AST-01)', () => {
     expect(raw).toEqual([]);
   });
 
-  it('guards every /api/ route: a permission, public, or a session-only route on the list', async () => {
+  it('guards every /api/ route with exactly one of: a permission, public, session', async () => {
     const routes = (await routeTable()).filter((r) => r.url.startsWith('/api/'));
     expect(routes.length).toBeGreaterThan(60);
-    const unguarded = routes.filter((r) => !r.config.permission && r.config.auth !== 'public' && !SESSION_ONLY.includes(`${r.method} ${r.url}`)).map((r) => `${r.method} ${r.url}`);
-    expect(unguarded).toEqual([]);
-    // Every route of a server is resolved and checked on that server.
-    const perServer = routes.filter((r) => r.url.startsWith('/api/servers/:sid/'));
+    const guards = (r: RouteInfo) => [r.config.permission, r.config.auth].filter((x) => x !== undefined).length;
+    expect(routes.filter((r) => guards(r) !== 1).map((r) => `${r.method} ${r.url}`)).toEqual([]);
+    // Every route of a server is resolved and checked on that server, with a permission there.
+    const perServer = routes.filter((r) => r.url === '/api/servers/:sid' || r.url.startsWith('/api/servers/:sid/'));
     expect(perServer.length).toBeGreaterThan(40);
     expect(perServer.filter((r) => !r.config.serverScoped || !r.config.permission).map((r) => `${r.method} ${r.url}`)).toEqual([]);
-    // No stale entries.
-    const known = new Set(routes.map((r) => `${r.method} ${r.url}`));
-    expect(SESSION_ONLY.filter((x) => !known.has(x))).toEqual([]);
+    // Nothing else is scoped to a server, and only two routes are open to anyone.
+    expect(routes.filter((r) => r.config.serverScoped && !perServer.includes(r))).toEqual([]);
     expect(routes.filter((r) => r.config.auth === 'public').map((r) => `${r.method} ${r.url}`)).toEqual(['GET /api/health', 'POST /api/auth/login']);
+    // Session-only routes are about the session and the account itself, or filter their answer per server.
+    const session = routes.filter((r) => r.config.auth === 'session').map((r) => r.url);
+    expect(session.filter((u) => !/^\/api\/(session|auth\/|me(\/|$)|servers$|ws$)/.test(u))).toEqual([]);
   });
 });

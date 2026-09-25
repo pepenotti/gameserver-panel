@@ -3,6 +3,7 @@ import { buildApp } from './app';
 import { bootstrapOwner } from './auth/bootstrap';
 import { openDb } from './db/db';
 import { loadEnv } from './env';
+import { listenOn } from './listen';
 import { createPanelDeps } from './wiring';
 
 const env = loadEnv();
@@ -17,7 +18,7 @@ await bootstrapOwner(deps);
 setInterval(() => deps.sessions.purgeExpired(), 3_600_000).unref();
 
 const app = await buildApp(deps, { logger: true });
-await app.listen({ host: env.host, port: env.port });
+await listenOn(app, env.listen);
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {

@@ -104,12 +104,12 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'pz-panel-'));
   const env: PanelEnv = {
     version: 'test',
-    host: '127.0.0.1',
-    port: 0,
+    listen: { kind: 'tcp', host: '127.0.0.1', port: 0 },
     dataDir: ':memory:',
     publicDir: null,
     agentUrl: 'http://agent.invalid',
     agentToken: 'x'.repeat(40),
+    orchestrator: null,
     pzDataDir: path.join(tmp, 'data'),
     pzInstallDir: path.join(tmp, 'install'),
     backupDir: path.join(tmp, 'backups'),

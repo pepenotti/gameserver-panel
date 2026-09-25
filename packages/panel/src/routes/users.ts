@@ -12,7 +12,7 @@ export function meRoutes(app: FastifyInstance, deps: Deps): void {
   app.put<{ Body: { lang: Lang } }>(
     '/api/me',
     {
-      config: { allowPending: ['mfa', 'password', 'enrol'] },
+      config: { auth: 'session', allowPending: ['mfa', 'password', 'enrol'] },
       schema: { body: { type: 'object', required: ['lang'], additionalProperties: false, properties: { lang: { enum: ['en', 'es'] } } } },
     },
     async (req) => {
@@ -21,7 +21,7 @@ export function meRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.get('/api/me/sessions', async (req) => {
+  app.get('/api/me/sessions', { config: { auth: 'session' } }, async (req) => {
     const current = req.auth!.session.id_hash;
     return sessions.listForUser(req.auth!.user.id).map((s) => ({
       id: s.id_hash.slice(0, 16),
@@ -33,7 +33,7 @@ export function meRoutes(app: FastifyInstance, deps: Deps): void {
     }));
   });
 
-  app.delete<{ Params: { id: string } }>('/api/me/sessions/:id', async (req) => {
+  app.delete<{ Params: { id: string } }>('/api/me/sessions/:id', { config: { auth: 'session' } }, async (req) => {
     const target = sessions.listForUser(req.auth!.user.id).find((s) => s.id_hash.startsWith(req.params.id) && req.params.id.length === 16);
     if (!target) throw new HttpError(404, 'not-found');
     sessions.revoke(target.id_hash);
