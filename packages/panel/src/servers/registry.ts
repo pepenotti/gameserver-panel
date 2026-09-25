@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import type { Capability, PanelAdapter } from '@gsp/adapter-api';
+import type { AgentApi } from '../agent/client';
 import { isServerId, type CpuArch, type ServerContainer } from '@gsp/shared';
 import { SYSTEM, type Actor, type Audit } from '../audit';
 import { syncRoleWithGrants, type ServerGrants } from '../auth/grants';
@@ -9,6 +10,7 @@ import type { Users } from '../auth/users';
 import type { Db } from '../db/db';
 import type { PanelEnv } from '../env';
 import { HttpError } from '../http/context';
+import type { AgentFeed } from '../http/deps';
 import type { PanelBus } from '../ops/bus';
 import { launchBodyProblem } from '../routes/server';
 import { capabilitiesOf } from '../server/handle';
@@ -103,6 +105,13 @@ export interface AgentTarget {
   readonly token: string;
 }
 
+/** A server's agent API, its live mirror, and its event stream. */
+export interface AgentParts {
+  agent: AgentApi;
+  feed: AgentFeed;
+  stream?: { start(): void; stop(): void };
+}
+
 export interface RegistryDeps {
   env: PanelEnv;
   db: Db;
@@ -116,8 +125,10 @@ export interface RegistryDeps {
   tz: string;
   /** A game adapter's panel half by id; throws for an unknown one. */
   adapterFor(id: string): PanelAdapter;
-  /** One server's context, from its row and where its agent answers (wiring.ts). */
-  build(row: ServerRow, agent: AgentTarget): ServerContext;
+  /** A server's agent client, where its agent answers (made once per server). */
+  agentFor(row: ServerRow, target: AgentTarget): AgentParts;
+  /** One server's context, from its row, where its agent answers, and its agent client (wiring.ts). */
+  build(row: ServerRow, target: AgentTarget, agent: AgentParts): ServerContext;
 }
 
 /**
@@ -185,6 +196,7 @@ export class DbServerRegistry implements ServerRegistry {
   private readonly contexts = new Map<string, ServerContext>();
   /** Where each orchestrator-run server's agent answers, from its container. */
   private readonly agentUrls = new Map<string, string>();
+  private readonly agents = new Map<string, AgentParts>();
   private readonly running = new Set<ServerContext>();
   private order: string[] = [];
   private live = false;
@@ -217,8 +229,19 @@ export class DbServerRegistry implements ServerRegistry {
     };
   }
 
+  /**
+   * A server's context. Its agent client is made once and kept across
+   * rebuilds (a rename), so the live status, the log backlog and the event
+   * stream carry over; it goes with the server.
+   */
   private build(row: ServerRow): ServerContext {
-    return this.d.build(row, this.target(row));
+    const target = this.target(row);
+    let agent = this.agents.get(row.id);
+    if (!agent) {
+      agent = this.d.agentFor(row, target);
+      this.agents.set(row.id, agent);
+    }
+    return this.d.build(row, target, agent);
   }
 
   private activate(ctx: ServerContext): void {
@@ -432,6 +455,7 @@ export class DbServerRegistry implements ServerRegistry {
     this.retire(ctx);
     this.contexts.delete(id);
     this.agentUrls.delete(id);
+    this.agents.delete(id);
     const holders = this.d.grants.forServer(id).map((g) => g.userId);
     rows.purge(id);
     // Accounts that lose a grant may lose their highest role with it.

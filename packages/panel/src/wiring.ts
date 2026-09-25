@@ -35,7 +35,7 @@ import { Scheduler } from './scheduler/scheduler';
 import { capabilitiesOf, ServerHandle } from './server/handle';
 import type { ServerContext } from './servers/context';
 import { NoOrchestrator, type OrchestratorClient } from './servers/orchestrator';
-import { DbServerRegistry, type AgentTarget } from './servers/registry';
+import { DbServerRegistry, type AgentParts, type AgentTarget } from './servers/registry';
 import { DEFAULT_SERVER_ID, ensureDefaultServer, ServersStore, type ServerRow } from './servers/store';
 import { ServerSettings, Settings } from './settings';
 
@@ -153,13 +153,6 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
   return ctx;
 }
 
-/** A server's agent API, its live mirror, and its event stream. */
-export interface AgentParts {
-  agent: AgentApi;
-  feed: AgentFeed;
-  stream?: { start(): void; stop(): void };
-}
-
 /**
  * What the panel is built from that differs between builds and tests, each
  * swappable on its own (`PanelDepsOptions.factories`). Production:
@@ -265,12 +258,12 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     grants,
     tz: process.env.TZ || 'UTC',
     adapterFor: adapterOf,
-    build: (row, target) => {
+    agentFor: (row, target) => (!isManaged(row) && o.agent && o.feed ? { agent: o.agent, feed: o.feed, stream: o.stream } : f.agent(row, target)),
+    build: (row, target, agent) => {
       const managed = isManaged(row);
-      const own = !managed && o.agent && o.feed ? { agent: o.agent, feed: o.feed, stream: o.stream } : f.agent(row, target);
       return createServerContext(host, row, {
         adapter: !managed && o.adapter ? o.adapter : adapterOf(row.adapter),
-        ...own,
+        ...agent,
         files: f.files(row, target, env),
         // `default`'s secrets are in the environment; every other server's in its row.
         secrets: managed ? () => serverRows.secrets(row.id) : () => env.secrets,

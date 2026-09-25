@@ -64,6 +64,8 @@ export class AgentClient implements AgentApi {
   private readonly listeners = new Set<Listener>();
   private abort: AbortController | null = null;
   private stopped = false;
+  /** Which `startStream` the running subscription belongs to. */
+  private generation = 0;
   private connectedFlag = false;
 
   /**
@@ -190,20 +192,27 @@ export class AgentClient implements AgentApi {
     }
   }
 
-  /** Keep an SSE subscription open forever, resuming from the last seq. */
+  /**
+   * Keep an SSE subscription open forever, resuming from the last seq.
+   * Stopping and starting again (a server's context rebuilt around the same
+   * client) leaves exactly one subscription: each start supersedes the last.
+   */
   startStream(): void {
     this.stopped = false;
-    void this.streamLoop();
+    void this.streamLoop(++this.generation);
   }
 
   stopStream(): void {
     this.stopped = true;
+    this.generation++;
+    this.connectedFlag = false;
     this.abort?.abort();
   }
 
-  private async streamLoop(): Promise<void> {
+  private async streamLoop(gen: number): Promise<void> {
     let delay = 1000;
-    while (!this.stopped) {
+    const current = () => !this.stopped && gen === this.generation;
+    while (current()) {
       try {
         const s = await this.status();
         if (s.bootId !== this.bootId) {
@@ -239,8 +248,9 @@ export class AgentClient implements AgentApi {
       } catch {
         // fall through to reconnect
       }
+      // Stopped, or another start took over: that one owns the flags now.
+      if (!current()) return;
       this.connectedFlag = false;
-      if (this.stopped) return;
       await new Promise((r) => setTimeout(r, delay));
       delay = Math.min(delay * 2, 15_000);
     }

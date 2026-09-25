@@ -195,6 +195,8 @@ export interface FakeServer {
   dataDir: string;
   /** Where the registry says its agent answers, and its token. */
   target?: AgentTarget;
+  /** How many times the panel asked for its agent client (once per server: rebuilt contexts reuse it). */
+  made?: number;
 }
 
 export interface TestPanel {
@@ -260,7 +262,7 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     adapters: opts.adapters,
     // Orchestrator-run servers: fake agents, and their files (as the panel sees them once M2-C lands) on the test's disk.
     factories: {
-      agent: (row, target) => Object.assign(fakes(row.id), { target }),
+      agent: (row, target) => Object.assign(fakes(row.id), { target, made: (fakes(row.id).made ?? 0) + 1 }),
       files: (row, target, e) => (isManaged(row) ? new LocalServerFiles({ data: fakes(row.id).dataDir, install: path.join(tmp, 'servers', row.id, 'install') }) : FACTORIES.files(row, target, e)),
       dataDir: (row, e) => (isManaged(row) ? fakes(row.id).dataDir : FACTORIES.dataDir(row, e)),
     },

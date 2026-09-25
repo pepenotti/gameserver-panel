@@ -191,6 +191,10 @@ describe('renaming a server', () => {
     expect(after.row.name).toBe('Renamed');
     expect(p.deps.servers.get('pz-two')).toBe(after);
     expect(after.handle.ref).toEqual(before.handle.ref);
+    // The same agent client: its live status, log backlog and stream carry over.
+    expect(after.agent).toBe(before.agent);
+    expect(after.feed).toBe(before.feed);
+    expect(p.fakes('pz-two').made).toBe(1);
     expect(await refusal(p.deps.servers.update('pz-two', { name: 'zomboid' }, OWNER_ACTOR))).toMatchObject({ status: 409, code: 'server-name-taken' });
     expect(await refusal(p.deps.servers.update('nope', { name: 'x' }, OWNER_ACTOR))).toMatchObject({ status: 404, code: 'server-not-found' });
     // default can be renamed too: its name is the panel's, not the game's.
