@@ -51,6 +51,14 @@ const CHANNEL_LABEL: Record<ControlKind, string> = { rcon: 'RCON', rest: 'The RE
 /** Roots before any launch is stored and without `GAME_*_DIR` (the image sets both). */
 const FALLBACK_ROOTS: FileRoots = { data: '/data', install: '/opt/game' };
 
+/** How much of a fatal line alerts and the crash-loop failure show. */
+const FATAL_SHOWN = 300;
+
+/** The watchdog's reason for giving up (SRV-07), with the last fatal line of the run it gave up on when there was one. */
+function crashLoopFailure(message: string, lastFatal: string | undefined): string {
+  return lastFatal ? `${message}. Last error: ${lastFatal}` : message;
+}
+
 /** The environment adapters and the game see: the agent's, minus its token (mods run inside the game). */
 function agentEnv(): Record<string, string | undefined> {
   const { AGENT_TOKEN: _token, ...env } = process.env;
@@ -87,6 +95,10 @@ export class Agent {
   private lock: { id: string; holder: string; expiresAt: number } | null = null;
   private job: JobInfo | null = null;
   private crashes: number[] = [];
+  /** Each run's last fatal line, as shown (redacted, one line, capped): why a crash loop happened (SRV-07). */
+  private readonly lastFatal = new WeakMap<GameRun, string>();
+  /** The run the watchdog gave up on, and its count message: output read after that exit can still name the reason. */
+  private gaveUp: { run: GameRun; message: string } | null = null;
   private expectExit = false;
   private readyTimer: NodeJS.Timeout | null = null;
   private pollTimer: NodeJS.Timeout | null = null;
@@ -380,6 +392,7 @@ export class Agent {
       }
       this.store.update({ desired: 'running' });
       this.failure = null;
+      this.gaveUp = null;
       await this.doStart();
     });
   }
@@ -478,7 +491,23 @@ export class Agent {
       this.expectExit = true;
       run.proc.signal('SIGKILL');
     }
-    if (sig.fatal) this.alert('fatal', line.slice(0, 300));
+    if (sig.fatal) {
+      this.alert('fatal', line.slice(0, FATAL_SHOWN));
+      this.noteFatal(run, line);
+    }
+  }
+
+  /** Remembers a run's last fatal line (already redacted) for the crash-loop failure (SRV-07). */
+  private noteFatal(run: GameRun, line: string): void {
+    const shown = line.replace(/\s+/g, ' ').trim().slice(0, FATAL_SHOWN);
+    if (!shown) return;
+    this.lastFatal.set(run, shown);
+    // A game's last output can be read after its exit was: the watchdog's failure then names it now.
+    const g = this.gaveUp;
+    if (g?.run === run && this.state === 'failed' && this.failure?.startsWith(g.message)) {
+      this.failure = crashLoopFailure(g.message, shown);
+      this.emitState();
+    }
   }
 
   private markReady(run: GameRun): void {
@@ -513,7 +542,10 @@ export class Agent {
     const now = Date.now();
     this.crashes = [...this.crashes.filter((t) => now - t < this.cfg.crashLoop.windowMs), now];
     if (this.crashes.length >= this.cfg.crashLoop.count) {
-      this.failure = `Crashed ${this.crashes.length} times in ${Math.round(this.cfg.crashLoop.windowMs / 60_000)} minutes; not restarting`;
+      // Why, when the game said so: the last fatal line of this run (a line read after the exit is added then).
+      const message = `Crashed ${this.crashes.length} times in ${Math.round(this.cfg.crashLoop.windowMs / 60_000)} minutes; not restarting`;
+      this.gaveUp = { run, message };
+      this.failure = crashLoopFailure(message, this.lastFatal.get(run));
       this.alert('crash-loop', this.failure);
       this.store.update({ desired: 'stopped' });
       this.setState('failed');

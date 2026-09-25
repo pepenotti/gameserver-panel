@@ -1,6 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { RuntimeAdapter, RuntimeCtx } from '@gsp/adapter-api';
+import type { PzLaunch } from '@gsp/adapter-pz/shared';
 import { parseIni, iniToRecord } from '@gsp/formats';
 import { AgentError } from '../src/agent';
 import { envelope, launch, makeHarness, type Harness } from './helpers';
@@ -213,9 +215,75 @@ describe('the watchdog', () => {
     h = await makeHarness();
     await h.agent.start(launch, undefined);
     const s = await h.waitFor((x) => x.state === 'failed', 15_000);
-    expect(s.failure).toMatch(/Crashed 3 times/);
+    // Nothing fatal was printed: the count alone.
+    expect(s.failure).toBe('Crashed 3 times in 1 minutes; not restarting');
     expect(s.desired).toBe('stopped');
     expect(h.events.some((e) => e.event.type === 'alert' && e.event.kind === 'crash-loop')).toBe(true);
+  });
+
+  /**
+   * The game, replaced by one that prints `line` on stderr and exits with 1
+   * at once. With `late`, a child it leaves behind on the same output prints
+   * the line only once the file `<data>/print-now` exists, so the agent reads
+   * it after that exit (a game's last output can come after its exit event).
+   */
+  const dying =
+    (line: (ctx: RuntimeCtx, p: PzLaunch) => string, o: { late?: boolean } = {}) =>
+    (a: RuntimeAdapter): RuntimeAdapter => ({
+      ...a,
+      command: (ctx, p) => {
+        const write = `process.stderr.write(${JSON.stringify(`${line(ctx, p as PzLaunch)}\n`)})`;
+        const go = JSON.stringify(path.join(ctx.roots.data, 'print-now'));
+        // Gives up after 10 s so nothing outlives a failed test for long.
+        const child = `const t = setInterval(() => { if (require('node:fs').existsSync(${go})) { clearInterval(t); ${write}; } }, 20); setTimeout(() => process.exit(0), 10000).unref();`;
+        const script = o.late
+          ? // Detached (and hidden), or Windows ends it with its parent.
+            `require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(child)}], { stdio: ['ignore', 'inherit', 'inherit'], detached: true, windowsHide: true }); process.exit(1);`
+          : `${write}; process.exitCode = 1;`;
+        return { ...a.command(ctx, p), argv: [process.execPath, '-e', script] };
+      },
+    });
+
+  it('says why when it gives up: the last fatal line of that run, redacted (SRV-07)', async () => {
+    const secrets: string[] = [];
+    const filler = '0123456789'.repeat(40);
+    h = await makeHarness(
+      {},
+      {
+        adapter: dying((ctx, p) => {
+          secrets.push(p.adminPassword, ctx.state.controlSecret);
+          return `Exception in thread "main"   java.lang.IllegalStateException: no such table: whitelist (as ${p.adminPassword}, ${ctx.state.controlSecret}) ${filler}`;
+        }),
+      },
+    );
+    await h.agent.start(launch, undefined);
+    const s = await h.waitFor((x) => x.state === 'failed' && /Last error/.test(x.failure ?? ''), 15_000);
+    // One line, whitespace collapsed, capped like the fatal alert.
+    const reason = `Exception in thread "main" java.lang.IllegalStateException: no such table: whitelist (as <redacted>, <redacted>) ${filler}`;
+    expect(s.failure).toBe(`Crashed 3 times in 1 minutes; not restarting. Last error: ${reason.slice(0, 300)}`);
+    expect(s.desired).toBe('stopped');
+    // Never a secret: not in the status, the alerts or the log.
+    expect(secrets).toContain(launch.adminPassword);
+    const everything = JSON.stringify([h.agent.status(), h.events]);
+    for (const secret of new Set(secrets)) expect(everything).not.toContain(secret);
+  });
+
+  it('names the fatal line even when it is read after the exit, and only for its own run (SRV-07)', async () => {
+    let starts = 0;
+    h = await makeHarness({}, { adapter: dying(() => `Exception in thread "main" java.lang.Error: run ${++starts}`, { late: true }) });
+    await h.agent.start(launch, undefined);
+    // Given up before any of the three runs printed anything: the count alone, so far.
+    const before = await h.waitFor((x) => x.state === 'failed', 15_000);
+    expect(before.failure).toBe('Crashed 3 times in 1 minutes; not restarting');
+    // Now all three runs print theirs, in whatever order: only the run it gave up on names the reason.
+    writeFileSync(path.join(h.cfg.dataDir!, 'print-now'), '');
+    const s = await h.waitFor((x) => /Last error/.test(x.failure ?? ''));
+    expect(s.failure).toBe('Crashed 3 times in 1 minutes; not restarting. Last error: Exception in thread "main" java.lang.Error: run 3');
+    expect(s.state).toBe('failed');
+    // Status listeners hear of it, and every run's line reached the log.
+    expect(h.events.some((e) => e.event.type === 'state' && e.event.status.failure === s.failure)).toBe(true);
+    for (const n of [1, 2, 3]) await h.waitEvent((e) => e.event.type === 'log' && e.event.line.endsWith(`java.lang.Error: run ${n}`));
+    expect(h.agent.status().failure).toBe(s.failure);
   });
 
   it('does not restart while a maintenance lock is held', async () => {
