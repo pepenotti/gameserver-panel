@@ -514,6 +514,20 @@ describe('changing memory and CPU limits (SRV-05)', () => {
     expect(p.deps.audit.list({ action: 'server.reconcile' })[0]).toMatchObject({ serverId: 'pz-two', actorType: 'system', detail: expect.stringContaining('changed settings') });
   });
 
+  it("starts a game with nothing waiting at once, even while another server's removal holds the registry", async () => {
+    const p = await makePanel();
+    await create(p, { launch: { memoryMb: 2048 } });
+    await create(p, { id: 'pz-three', name: 'Third', launch: { memoryMb: 2048 } });
+    // pz-three's final backup never gets its agent's lock: its removal hangs.
+    p.fakes('pz-three').agent.lock = () => new Promise(() => undefined);
+    void p.deps.servers.remove('pz-three', { confirm: 'Third', keepBackups: true, by: OWNER_ACTOR }).catch(() => undefined);
+    const ctx = p.deps.servers.get('pz-two')!;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(ctx.ops.last()).toMatchObject({ kind: 'start', ok: true });
+    expect(p.fakes('pz-two').agent.calls).toContain('start');
+  });
+
   it("moves the container's limit with the game's memory, keeping its room above it, within the host's limit", async () => {
     const p = await makePanel();
     p.orch.maxMemMb = 7168;

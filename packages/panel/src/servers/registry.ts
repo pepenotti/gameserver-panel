@@ -372,6 +372,8 @@ export class DbServerRegistry implements ServerRegistry {
   }
 
   prepareStart(id: string): Promise<void> {
+    // Nothing waits (the usual case): no queueing behind another server's creation or removal.
+    if (!this.containerPending(id)) return Promise.resolve();
     return this.exclusive(async () => {
       const row = this.d.rows.get(id);
       if (!row?.spec || sameSpec(this.specOf(row), row.spec)) return false;
