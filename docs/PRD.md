@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.9 |
+| Status | Draft 0.10 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -156,9 +156,9 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | SRV-02 | P0 | List servers with their state, players, version and next scheduled restart. Each server has its own pages. |
 | SRV-03 | P0 | Start, stop, restart and kill. Stop and restart use countdown warnings wherever the game can message players. |
 | SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. The owner may force the removal of a server that can't be stopped or won't run: the final backup is still taken when possible, and the result says when it wasn't and why. |
-| SRV-05 | P0 | Memory and CPU limits per server. A host view warns when the limits add up to more than the host has. |
+| SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. A host view warns when the limits add up to more than the host has. |
 | SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart. |
-| SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server. |
+| SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server, and says why: the last fatal line the game printed (redacted). |
 | SRV-08 | P1 | Connection info per server (address, port, protocol, whether a password is set), plus the router forwards it needs. |
 | SRV-09 | P2 | Clone a server: settings only, or settings plus world. |
 
@@ -182,7 +182,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | CFG-01 | P0 | Settings forms from each adapter's schema: types, ranges, choices, EN/ES descriptions, search. |
 | CFG-02 | P0 | Raw editor per file, validated by format. Files the game executes (Lua) must parse as plain data. |
 | CFG-03 | P0 | History per file, with diff and one-click revert. |
-| CFG-04 | P0 | Settings the panel manages itself (ports, RCON, paths) are locked. |
+| CFG-04 | P0 | Settings the panel manages itself (ports, RCON, paths), and keys the game writes itself (e.g. a file's format version), are locked. |
 | CFG-05 | P0 | Each setting says when it applies (live, or after a restart), and the UI shows a pending-restart badge. |
 | CFG-06 | P1 | Presets per game (e.g. Project Zomboid sandbox presets, Minecraft difficulty and game mode). |
 | CFG-07 | P0 | **Text editor for every config file.** Admins can browse the configuration folders each adapter declares (game settings, plugin and mod configs) and edit any text file there in the browser. It has syntax highlighting for the format (properties, ini, YAML, TOML, JSON/JSON5, Lua, plain text), validation where a parser exists, a diff preview before saving, and history with revert (CFG-03). |
@@ -243,7 +243,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 |---|---|---|
 | ACC-01 | P0 | Accounts, 2FA, sessions and the host recovery tool, as in zomboid-server. |
 | ACC-02 | P0 | Global roles plus per-server grants, enforced on every route and websocket topic. Tests prove nobody reaches a server they have no grant for. |
-| ACC-03 | P0 | Audit log with the server on every entry, filterable by server. |
+| ACC-03 | P0 | Audit log with the server on every entry, filterable by server or by the host's own entries (sign-ins, accounts, host settings), which only admins on every server see. |
 
 ### 8.10 Host and access — HST
 
@@ -484,3 +484,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.7 | 2026-09-24 | M2 contract step: server routes under `/api/servers/<id>` and web pages under `/s/<id>`; host vs server permissions and account scope (§5); unknown or ungranted servers answer "not found"; the orchestrator's server spec and the agent's file and archive routes (D11) are fixed; actor-typed audit; Q9 answered. |
 | 0.8 | 2026-09-24 | M2 wave: the orchestrator service (only Docker holder, derived hardening, refusal-tested), server files and backups through each server's agent (D11), servers created, renamed and removed through the API with per-server roles, per-server schedules and Discord override (SCH-03 wording), `PANEL_LISTEN` unix socket behind the proxy, generated `docs/api.md`. |
 | 0.9 | 2026-09-25 | M2 follow-ups: the orchestrator reports the host ports and memory it allows, new servers get free ports inside those ranges, memory and CPU limit changes apply at once (stopped) or at the next start (running), owner-only forced removal (SRV-04 wording), compose cleaned of the pre-orchestrator server settings. |
+| 0.10 | 2026-09-25 | M2 closed: the multi-server web (list, create, delete, per-server roles, server switcher); the acceptance run on real Docker passed with two Project Zomboid servers side by side (`docs/verification/m2-acceptance.md`) and found two bugs, both fixed (a noexec `/tmp` in game containers, an empty world database left by a failed first boot); host-only audit entries (ACC-03), limits visible to a server's admin (SRV-05), the crash watchdog names the last fatal line (SRV-07), game-written keys are locked (CFG-04). |

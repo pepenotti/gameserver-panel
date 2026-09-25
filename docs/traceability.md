@@ -6,13 +6,13 @@ without a milestone is a PRD bug.
 
 | ID | Priority | Milestones | Proven by |
 |---|---|---|---|
-| SRV-01 | P0 | M2 | `panel/test/registry.test.ts` "creating a server" (spec, secrets, ports, every refusal, rollback); `panel/test/servers.test.ts` create API; ports inside the orchestrator's ranges: `registry.test.ts` (slot ranges, other ranges, clashes inside the container), `orchestrator/test/http.test.ts` (host reports ports and memory), `servers.test.ts` (adapters host); web create form: `web/test/servers.test.ts`, `web/src/pages/CreateServer.tsx` (ports inside `hostPorts`, memory capped at `maxMemMb`, refusals on their field) |
+| SRV-01 | P0 | M2 | `panel/test/registry.test.ts` "creating a server" (spec, secrets, ports, every refusal, rollback); `panel/test/servers.test.ts` create API; ports inside the orchestrator's ranges: `registry.test.ts` (slot ranges, other ranges, clashes inside the container), `orchestrator/test/http.test.ts` (host reports ports and memory), `servers.test.ts` (adapters host); web create form: `web/test/servers.test.ts`, `web/src/pages/CreateServer.tsx` (ports inside `hostPorts`, memory capped at `maxMemMb`, refusals on their field); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 3 |
 | SRV-02 | P0 | M2 | `panel/test/servers.test.ts` "the server list" (state, players, version, next restart, role, ports); web: `web/test/servers.test.ts`, `web/src/pages/Servers.tsx` (live via the websocket `servers`/`gone` messages) |
-| SRV-03 | P0 | M2 | `panel/test/server.test.ts` (start, stop, restart, kill, countdown warnings and cancel), per server under `/api/servers/:sid`; `panel/test/cross-server.test.ts` (only that server's users) |
-| SRV-04 | P0 | M2 | `panel/test/registry.test.ts` "removing a server" (typed name, stopped, final backup, container + volumes, rows purged, audit kept); `panel/test/servers.test.ts` delete API; forced removal: `registry.test.ts` (busy, running, unreachable agent), `servers.test.ts` (owner-only force); web: delete dialog with typed name and the owner's force (`web/src/components/ServerAdmin.tsx`) |
-| SRV-05 | P0 | M2 | `orchestrator/test/docker-backend.test.ts` (memory and CPU limits, `ORCH_MAX_MEM_MB`); capacity warning in M7; `registry.test.ts` "changing memory and CPU limits (SRV-05)" and create-time memory refusal; `servers.test.ts` limits through the API; web: container-limits card and "applies at next start" badge (`web/src/pages/Server.tsx`) |
-| SRV-06 | P0 | M2 | `panel/test/registry.test.ts` "reconcile" (re-apply, recreate, start, retry); orchestrator derives restart `unless-stopped` (`docker-backend.test.ts`); real restart check in M2-E; `registry.test.ts` reconcile keeps a running game's container while a change waits |
-| SRV-07 | P0 | M2 | `panel/test/schedules.test.ts` per-server block (a crash alert names its server); `panel/test/cross-server.test.ts` (alerts reach only that server's users) |
+| SRV-03 | P0 | M2 | `panel/test/server.test.ts` (start, stop, restart, kill, countdown warnings and cancel), per server under `/api/servers/:sid`; `panel/test/cross-server.test.ts` (only that server's users); `adapter-pz/test/runtime.test.ts` "removes the empty game database a failed first boot left, and nothing else (SRV-03)", "never creates or changes the game database when reading it (SRV-03)" |
+| SRV-04 | P0 | M2 | `panel/test/registry.test.ts` "removing a server" (typed name, stopped, final backup, container + volumes, rows purged, audit kept); `panel/test/servers.test.ts` delete API; forced removal: `registry.test.ts` (busy, running, unreachable agent), `servers.test.ts` (owner-only force); web: delete dialog with typed name and the owner's force (`web/src/components/ServerAdmin.tsx`); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 10 (final backup, forced removal of an unreachable server) |
+| SRV-05 | P0 | M2 | `orchestrator/test/docker-backend.test.ts` (memory and CPU limits, `ORCH_MAX_MEM_MB`); capacity warning in M7; `registry.test.ts` "changing memory and CPU limits (SRV-05)" and create-time memory refusal; `servers.test.ts` limits through the API; web: container-limits card and "applies at next start" badge (`web/src/pages/Server.tsx`); `servers.test.ts` "tells an admin of one server the most the host gives a server… (SRV-05)" (`GET /api/servers/:sid/limits`); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 8 |
+| SRV-06 | P0 | M2 | `panel/test/registry.test.ts` "reconcile" (re-apply, recreate, start, retry); orchestrator derives restart `unless-stopped` (`docker-backend.test.ts`); `registry.test.ts` reconcile keeps a running game's container while a change waits; retry audited: `registry.test.ts` "says in the audit log when a retry finds a failed server in line again (SRV-06)"; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 9 (Docker restart, panel recreated) |
+| SRV-07 | P0 | M2 | `panel/test/schedules.test.ts` per-server block (a crash alert names its server); `panel/test/cross-server.test.ts` (alerts reach only that server's users); `agent/test/agent.test.ts` "says why when it gives up…", "names the fatal line even when it is read after the exit… (SRV-07)"; `adapter-pz/test/runtime.test.ts` "marks the exception PZ logs when its boot dies as fatal… (SRV-07)" |
 | SRV-08 | P1 | M7 | — |
 | SRV-09 | P2 | after v1 | — |
 | UPD-01 | P0 | M1, M3, M5 | `agent.test.ts` install progress and "install before start"; `agent/test/http.test.ts` "installs and lists versions" |
@@ -26,7 +26,7 @@ without a milestone is a PRD bug.
 | CFG-01 | P0 | M1 | `panel/test/config.test.ts` (validation, masking); `adapter-pz/test/panel-config-contract.test.ts` |
 | CFG-02 | P0 | M1 | `formats/test/registry.test.ts`, `formats/test/lua-data.test.ts`; `config.test.ts` "rejects raw Lua"; config suite data-only check |
 | CFG-03 | P0 | M1 | `config.test.ts` "history (CFG-03)" |
-| CFG-04 | P0 | M1 | `config.test.ts` "puts managed keys back"; config suite managed values |
+| CFG-04 | P0 | M1 | `config.test.ts` "puts managed keys back"; config suite managed values; `adapter-pz/test/panel-config-contract.test.ts` "locks the sandbox file's VERSION… (CFG-04, CFG-01)" |
 | CFG-05 | P0 | M1 | `config.test.ts` "applies live"; `panel-config-contract.test.ts` afterWrite |
 | CFG-06 | P1 | M1 | `config.test.ts` "applies a game preset"; config suite presets; `panel/test/reset.test.ts` preset test |
 | CFG-07 | P0 | M1 | `panel/test/files.test.ts` "text editor API"; `registry.test.ts` formatFor |
@@ -46,20 +46,20 @@ without a milestone is a PRD bug.
 | MOD-04 | P1 | M4 | — |
 | MOD-05 | P2 | after v1 | — |
 | MOD-06 | P1 | M5 | — |
-| BAK-01 | P0 | M1 | `panel/test/backups.test.ts`; `panel/test/core-adapter.test.ts` (symlinks skipped); `panel/test/server.test.ts` (pre-update backup); `panel/test/agent-e2e.test.ts` (hot backup through the agent); `archive/test/tar.test.ts` |
+| BAK-01 | P0 | M1 | `panel/test/backups.test.ts`; `panel/test/core-adapter.test.ts` (symlinks skipped); `panel/test/server.test.ts` (pre-update backup); `panel/test/agent-e2e.test.ts` (hot backup through the agent); `archive/test/tar.test.ts`; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7 |
 | BAK-02 | P0 | M3 | PZ: `archive/test/rooted.test.ts` (hot packs), `agent/test/files.test.ts`, `panel/test/server-files.test.ts` "hot packs through the agent"; a hot backup saves once (`schedules.test.ts`, `backups.test.ts`) |
-| BAK-03 | P0 | M1 | `panel/test/backups.test.ts` restoring block (parts + undo, running server, damaged archive, staging-only writes); `panel/test/server-files.test.ts` (restore round trip, hostile archives); `agent-e2e.test.ts` (restore + undo) |
+| BAK-03 | P0 | M1 | `panel/test/backups.test.ts` restoring block (parts + undo, running server, damaged archive, staging-only writes); `panel/test/server-files.test.ts` (restore round trip, hostile archives); `agent-e2e.test.ts` (restore + undo); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7 (restore running and stopped, undo) |
 | BAK-04 | P0 | M1 | `panel/test/reset.test.ts`; `adapter-pz/test/panel-core.test.ts` (backup parts, resets) |
 | BAK-05 | P1 | M1 | `panel/test/backups.test.ts` "lets admins download and the owner upload; not operators"; `backups.test.ts` "restores another server's backup under this server's names" |
 | BAK-06 | P1 | M1 | `panel/test/schedules.test.ts` "copies the panel database nightly" |
-| SCH-01 | P0 | M1 | `panel/test/schedules.test.ts` schedules block (daily restart, periodic cold/hot backups, update policy, skip when stopped); `panel/test/wiring.test.ts`; `schedules.test.ts` "keeps each server's schedules and timers apart", "runs a scheduled job on its own server only" |
+| SCH-01 | P0 | M1 | `panel/test/schedules.test.ts` schedules block (daily restart, periodic cold/hot backups, update policy, skip when stopped); `panel/test/wiring.test.ts`; `schedules.test.ts` "keeps each server's schedules and timers apart", "runs a scheduled job on its own server only"; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 9 notes (scheduled backups and restarts ran on their own server only) |
 | SCH-02 | P1 | M7 | — |
 | SCH-03 | P0 | M1 | `panel/test/schedules.test.ts` "Discord notifications" block (per-server override: M2); `schedules.test.ts` per-server webhook override, server named in every message; web: panel webhook in `web/src/pages/HostSettings.tsx`, per-server override on Schedules |
 | ACC-01 | P0 | M1 | `panel/test/auth.test.ts`, `panel/test/users.test.ts`, `panel/test/cli.test.ts` (panelctl) |
 | ACC-02 | P0 | M2 | `shared/test/permissions.test.ts`; `panel/test/cross-server.test.ts` (generated from the route table, both directions, websocket); `panel/test/servers.test.ts` grants/scope API; `panel/test/api-first.test.ts`; web: account scope and per-server roles (`web/src/pages/Users.tsx`) |
-| ACC-03 | P0 | M2 | `panel/test/servers.test.ts` (audit by server); `panel/test/migrations.test.ts` (backfill); web: activity log filtered by server, actor badges (`web/src/pages/Audit.tsx`) |
-| HST-01 | P0 | M2 | `orchestrator/test/*` (spec, Docker backend, HTTP); `scripts/lib/stack-guard.test.ts`; compose rendered by `stack.mjs config`; real stack in M2-E; `scripts/lib/worktree.test.ts` (fresh `.env` has no pre-orchestrator settings); checklist `docs/verification/m2-acceptance.md` |
-| HST-02 | P0 | M1 | `panel/test/env.test.ts` (PANEL_HOST default Caddy accepts); `caddy validate` of `docker/caddy/Caddyfile` in both TLS modes (see `docs/verification/pz-b42.md`); real stack run in M2-E |
+| ACC-03 | P0 | M2 | `panel/test/servers.test.ts` (audit by server); `panel/test/migrations.test.ts` (backfill); web: activity log filtered by server, actor badges (`web/src/pages/Audit.tsx`); `servers.test.ts` "lists the host's own entries alone with server=- (ACC-03)…" |
+| HST-01 | P0 | M2 | `orchestrator/test/*` (spec, Docker backend, HTTP); `scripts/lib/stack-guard.test.ts`; compose rendered by `stack.mjs config`; `scripts/lib/worktree.test.ts` (fresh `.env` has no pre-orchestrator settings); real run: `docs/verification/m2-acceptance.md` (2026-09-25) steps 0–2, 11 |
+| HST-02 | P0 | M1 | `panel/test/env.test.ts` (PANEL_HOST default Caddy accepts); `caddy validate` of `docker/caddy/Caddyfile` in both TLS modes (see `docs/verification/pz-b42.md`); real stack (Caddy with internal TLS in front of the panel socket): `docs/verification/m2-acceptance.md` (2026-09-25) step 2 |
 | HST-03 | P1 | M7 | — |
 | HST-04 | P2 | after v1 | — |
 | HST-05 | P0 | M7 | `panel/test/registry.test.ts` "refuses a game the host cannot run natively"; `GET /api/adapters` `supported` |
@@ -74,8 +74,8 @@ without a milestone is a PRD bug.
 | AST-05 | P2 | after v1 | — |
 | AST-06 | P2 | after v1 | — |
 | NFR-01 | NFR | M8 | — |
-| NFR-02 | NFR | M2 | `orchestrator/test/spec.test.ts` (every refusal), `orchestrator/test/docker-backend.test.ts` (derived hardening field by field, other stacks untouched), `orchestrator/test/http.test.ts` (token on every route); real `docker inspect` in M2-E; real check: `docs/verification/m2-acceptance.md` steps 5–6 |
-| NFR-03 | NFR | M2 | `orchestrator/test/docker-backend.test.ts` (own network per server, only named volumes); `panel/test/listen.test.ts` (unix socket, 0666, X-Forwarded-For from the proxy only); files through the agent: `agent/test/files.test.ts`, `panel/test/server-files.test.ts`; reachability checked for real in M2-E; real check: `docs/verification/m2-acceptance.md` steps 5–6 |
+| NFR-02 | NFR | M2 | `orchestrator/test/spec.test.ts` (every refusal), `orchestrator/test/docker-backend.test.ts` (derived hardening field by field, other stacks untouched), `orchestrator/test/http.test.ts` (token on every route); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 5 (both servers, field by field) |
+| NFR-03 | NFR | M2 | `orchestrator/test/docker-backend.test.ts` (own network per server, only named volumes); `panel/test/listen.test.ts` (unix socket, 0666, X-Forwarded-For from the proxy only); files through the agent: `agent/test/files.test.ts`, `panel/test/server-files.test.ts`; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 6 (both directions) |
 | NFR-04 | NFR | M8 | — |
 | NFR-05 | NFR | M8 | — |
 | NFR-06 | NFR | M8 | — |
