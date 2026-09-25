@@ -36,6 +36,17 @@ export interface ServerSummary {
   /** The signed-in user's role there, and what it lets them do. */
   role: Role;
   permissions: Permission[];
+  /** The game's license the owner must accept (D6), and its acceptance; null for games without one. */
+  eula: EulaSummary | null;
+}
+
+/** A game's license on a server (mirrors `EulaSummary` in packages/panel/src/routes/servers.ts). */
+export interface EulaSummary {
+  name: I18n;
+  url: string;
+  /** Null while it waits for the owner: the server can't start. */
+  acceptedAt: string | null;
+  acceptedBy: string | null;
 }
 
 /** The query key of `GET /api/servers` (the websocket's `servers` message refreshes it). */

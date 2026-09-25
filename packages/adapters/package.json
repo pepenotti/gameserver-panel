@@ -11,6 +11,10 @@
   "scripts": { "typecheck": "tsc -p tsconfig.json" },
   "dependencies": {
     "@gsp/adapter-api": "*",
-    "@gsp/adapter-pz": "*"
+    "@gsp/adapter-manifest": "*",
+    "@gsp/adapter-minecraft": "*",
+    "@gsp/adapter-pz": "*",
+    "@gsp/adapter-terraria": "*",
+    "@gsp/adapter-valheim": "*"
   }
 }

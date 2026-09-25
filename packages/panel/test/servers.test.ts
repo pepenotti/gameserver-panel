@@ -3,6 +3,7 @@
 // their API (ACC-02), the audit log by server and by actor (ACC-03,
 // AST-02), and the websocket's per-server messages.
 import { describe, expect, it } from 'vitest';
+import { panelAdapterEntries } from '@gsp/adapters/panel';
 import { runCli } from '../src/cli/commands';
 import { OrchestratorCallError } from '../src/servers/orchestrator';
 import { Client, fakeStatus, friend, listenWs, makePanel, ownerReady, until, type TestPanel } from './harness';
@@ -91,6 +92,19 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     expect(((await granted.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
     expect((await createTwo(owner)).json()).toEqual({ error: 'server-exists' });
     expect(p.deps.audit.list({ action: 'server.create' })[0]).toMatchObject({ serverId: 'pz-two', username: 'all-admin', ok: true, ip: expect.any(String) });
+  });
+
+  it('offers no adapter skeleton: they are registered, but neither listed nor creatable (D4, D5)', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    const skeletons = panelAdapterEntries.filter((e) => !e.enabled).map((e) => e.adapter.meta.id);
+    expect(skeletons).toEqual(['minecraft', 'terraria', 'valheim', 'manifest']);
+    const listed = ((await owner.get('/api/adapters')).json() as { adapters: { id: string }[] }).adapters.map((a) => a.id);
+    expect(listed).toEqual(['pz']);
+    p.orch.calls.length = 0;
+    for (const adapter of skeletons) expect((await createTwo(owner, { id: `x-${adapter}`, name: adapter, adapter })).json(), adapter).toEqual({ error: 'unknown-adapter' });
+    expect(p.orch.calls).toEqual([]);
+    expect(((await owner.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
   });
 
   it('renames with server.update, and removes after typing the name; only the owner drops the backups', async () => {

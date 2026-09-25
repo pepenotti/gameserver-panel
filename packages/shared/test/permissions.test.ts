@@ -53,6 +53,12 @@ describe('permissions', () => {
     }
   });
 
+  it('lets only the owner accept a game license, on any server (D6)', () => {
+    expect(isServerPermission('server.eula')).toBe(true);
+    for (const r of ['viewer', 'operator', 'admin'] as const) expect(can(r, 'server.eula'), r).toBe(false);
+    expect(can('owner', 'server.eula')).toBe(true);
+  });
+
   it('matches the approved matrix at the role boundaries', () => {
     expect(can('viewer', 'server.view')).toBe(true);
     expect(can('viewer', 'log.view')).toBe(false);

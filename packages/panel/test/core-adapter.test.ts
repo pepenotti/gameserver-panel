@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { zstdDecompressSync } from 'node:zlib';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import type { Capability } from '@gsp/adapter-api';
 import { globToRegExp, unpack } from '@gsp/archive';
 import { Client, makePanel, ownerReady, type TestPanel } from './harness';
@@ -121,6 +121,8 @@ describe('backups never follow links', () => {
     writeFileSync(path.join(world, 'map_t.bin'), 'world');
     // Something outside the data folder a mod might try to make the panel copy.
     const outside = mkdtempSync(path.join(os.tmpdir(), 'gsp-outside-'));
+    // Removed when done; the links to it inside the server's folder go with that folder (rmSync never follows a link).
+    onTestFinished(() => rmSync(outside, { recursive: true, force: true }));
     writeFileSync(path.join(outside, 'secret.txt'), 'not for backups');
     // A junction needs no privileges on Windows; elsewhere it is a plain symlink.
     symlinkSync(outside, path.join(world, 'linked-dir'), 'junction');

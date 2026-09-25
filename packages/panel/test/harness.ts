@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
@@ -228,8 +228,24 @@ export interface TestPanel {
   fakes(id: string): FakeServer;
 }
 
+/**
+ * The folders `makePanel` made, removed when the test file is done, or when
+ * a script that builds a panel with this harness (scripts/gen-api-docs.ts)
+ * exits. rmSync never follows a link: links tests make to folders outside
+ * go, what they point at stays (those tests remove it themselves).
+ */
+const made: string[] = [];
+function removeMade(): void {
+  for (const d of made.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+}
+if (process.env.VITEST) {
+  const { afterAll } = await import('vitest');
+  afterAll(removeMade);
+} else process.once('exit', removeMade);
+
 export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: ModSource[]; fetch?: typeof fetch; db?: Db; orch?: FakeOrchestrator; adapters?: readonly PanelAdapter[] } = {}): Promise<TestPanel> {
-  const tmp = mkdtempSync(path.join(os.tmpdir(), 'pz-panel-'));
+  const tmp = mkdtempSync(path.join(os.tmpdir(), 'gsp-panel-'));
+  made.push(tmp);
   const env: PanelEnv = {
     version: 'test',
     listen: { kind: 'tcp', host: '127.0.0.1', port: 0 },

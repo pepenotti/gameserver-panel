@@ -1,8 +1,8 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import type { EditableRoot } from '@gsp/adapter-api';
 import type { EditableFolder, TreeEntry } from '../src/config/store';
 import { decodeText, editableFolderOf, globToRegExp, MAX_TEXT_BYTES, nameReason, textProblem } from '../src/files/policy';
@@ -180,6 +180,8 @@ describe('text editor API (CFG-07, CFG-08)', () => {
   it('refuses a folder link that leads out of the server folder', async () => {
     const { c, data } = await editor();
     const outside = mkdtempSync(path.join(os.tmpdir(), 'gsp-outside-'));
+    // Removed when done; the link to it goes with the server's folder (rmSync never follows a link).
+    onTestFinished(() => rmSync(outside, { recursive: true, force: true }));
     writeFileSync(path.join(outside, 'secret.ini'), 'Token=abc\n');
     symlinkSync(outside, path.join(data, 'Lua', 'linked'), 'junction');
     const id = 'path:data/Lua/linked/secret.ini';

@@ -43,6 +43,17 @@ export function metaTests(meta: AdapterMeta): void {
     }
   });
 
+  it('meta: an EULA names its agreement, and only an EULA does (D6)', () => {
+    const caps = [...meta.capabilities, ...meta.flavours.flatMap((f) => f.capabilities ?? [])];
+    if (!caps.includes('eula')) {
+      expect(meta.eula, 'an agreement without the eula capability').toBeUndefined();
+      return;
+    }
+    expect(meta.eula, 'the agreement the eula capability means').toBeDefined();
+    expectI18n(meta.eula!.name, 'agreement name');
+    expect(new URL(meta.eula!.url).protocol).toBe('https:');
+  });
+
   it('meta: memory and stop budget are sane', () => {
     expect(meta.memory.minMb).toBeGreaterThan(0);
     expect(meta.memory.defaultMb).toBeGreaterThanOrEqual(meta.memory.minMb);

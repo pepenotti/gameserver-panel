@@ -1,14 +1,21 @@
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { Writable } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { INTERNAL_DIR, RootedFiles, type HotCopy } from '../src/rooted';
 import { unpack, type TarEntry } from '../src/tar';
 
+/** Every folder the tests made, removed at the end (rmSync never follows a link). */
+const made: string[] = [];
+afterAll(() => {
+  for (const d of made.splice(0)) rmSync(d, { recursive: true, force: true });
+});
+
 function tmpRoots() {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'gsp-archive-'));
+  made.push(tmp);
   const data = path.join(tmp, 'data');
   mkdirSync(path.join(data, 'world'), { recursive: true });
   return { tmp, data, install: path.join(tmp, 'install') };

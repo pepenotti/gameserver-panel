@@ -138,6 +138,40 @@ services:
       target: fake
     image: gsp/steam-fake:${IMAGE_TAG:-local}
 
+  # Build-only, like steam: the java family (Minecraft Java), and its fake-games variant (ORCH_ALLOW_FAKE=1).
+  java:
+    profiles: [images]
+    build:
+      context: .
+      dockerfile: docker/java/Dockerfile
+      target: runtime
+    image: gsp/java:${IMAGE_TAG:-local}
+
+  java-fake:
+    profiles: [images]
+    build:
+      context: .
+      dockerfile: docker/java/Dockerfile
+      target: fake
+    image: gsp/java-fake:${IMAGE_TAG:-local}
+
+  # Build-only, like steam: the native family (self-contained server binaries), and its fake-games variant.
+  native:
+    profiles: [images]
+    build:
+      context: .
+      dockerfile: docker/native/Dockerfile
+      target: runtime
+    image: gsp/native:${IMAGE_TAG:-local}
+
+  native-fake:
+    profiles: [images]
+    build:
+      context: .
+      dockerfile: docker/native/Dockerfile
+      target: fake
+    image: gsp/native-fake:${IMAGE_TAG:-local}
+
   # With PANEL_TLS=duckdns: keeps <DUCKDNS_SUBDOMAIN>.duckdns.org pointing at
   # this network's public IP (an empty ip= makes DuckDNS use the caller's).
   # Enabled by COMPOSE_PROFILES=duckdns in .env. Never prints the token.

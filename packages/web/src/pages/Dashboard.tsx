@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { AgentStatus } from '@gsp/shared';
 import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
+import { EulaNotice } from '../components/Eula';
 import { OpBanner } from '../components/OpBanner';
 import { ServerControls } from '../components/ServerControls';
 import { StateBadge } from '../components/StateBadge';
@@ -66,6 +67,7 @@ export function Dashboard() {
       </Group>
 
       <OpBanner />
+      <EulaNotice />
       <ServerControls />
 
       {!connected && (

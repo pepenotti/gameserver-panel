@@ -11,9 +11,11 @@ import type { ServerHandle } from '../server/handle';
 
 /** A backup part id, from the adapter's `backups.parts`. */
 export type BackupPart = string;
-export type BackupTrigger = 'manual' | 'scheduled' | 'pre-reset' | 'pre-restore' | 'pre-update' | 'upload';
-const TRIGGERS: BackupTrigger[] = ['manual', 'scheduled', 'pre-reset', 'pre-restore', 'pre-update', 'upload'];
-const PROTECTED: BackupTrigger[] = ['pre-reset', 'pre-restore', 'pre-update'];
+/** Why a backup was taken; `final`: the one a server's removal takes first (SRV-04). */
+export type BackupTrigger = 'manual' | 'scheduled' | 'pre-reset' | 'pre-restore' | 'pre-update' | 'upload' | 'final';
+const TRIGGERS: BackupTrigger[] = ['manual', 'scheduled', 'pre-reset', 'pre-restore', 'pre-update', 'upload', 'final'];
+/** Kept at least 14 days (a final backup only meets retention again if the removal failed). */
+const PROTECTED: BackupTrigger[] = ['pre-reset', 'pre-restore', 'pre-update', 'final'];
 const KEEP = { scheduled: 14, manual: 10, upload: 10 } as const;
 const PROTECT_DAYS = 14;
 /** Inside an archive, the server's files live under `data/`, next to `manifest.json`. */

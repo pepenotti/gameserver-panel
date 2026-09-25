@@ -112,6 +112,8 @@ export function DeleteServerModal({ server, opened, onClose }: { server: ServerS
     }
   }, [opened]);
   const up = server.state !== null && UP.has(server.state);
+  // Its agent doesn't answer: only a forced removal goes on (the API answers `server-unreachable`).
+  const unreachable = server.managed && !server.agentConnected;
 
   const remove = async () => {
     setDeleting(true);
@@ -156,10 +158,17 @@ export function DeleteServerModal({ server, opened, onClose }: { server: ServerS
             {t('servers.unmanagedNote')}
           </Alert>
         )}
-        {up && !force && (
+        {unreachable && !force ? (
           <Alert color="orange" variant="light" icon={<IconAlertTriangle />}>
-            {owner ? t('servers.deleteStopFirstOrForce') : t('servers.deleteStopFirst')}
+            {owner ? t('servers.deleteUnreachableOrForce') : t('servers.deleteUnreachable')}
           </Alert>
+        ) : (
+          up &&
+          !force && (
+            <Alert color="orange" variant="light" icon={<IconAlertTriangle />}>
+              {owner ? t('servers.deleteStopFirstOrForce') : t('servers.deleteStopFirst')}
+            </Alert>
+          )
         )}
         {owner && (
           <Stack gap="xs">

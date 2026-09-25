@@ -413,6 +413,39 @@ describe('saves and actions', () => {
   });
 });
 
+describe("the owner's EULA acceptance (D6)", () => {
+  it('hands the envelope’s eulaAccepted to the adapter as it is, keeps it across restarts, and is false without it', async () => {
+    const seen: { step: string; eula: boolean | undefined }[] = [];
+    h = await makeHarness({}, {
+      adapter: (a) => ({
+        ...a,
+        installed: (ctx) => (seen.push({ step: 'installed', eula: ctx.eulaAccepted }), a.installed(ctx)),
+        prepare: async (ctx, p) => {
+          seen.push({ step: 'prepare', eula: ctx.eulaAccepted });
+          await a.prepare(ctx, p);
+        },
+      }),
+    });
+    h.agent.setLaunch(envelope());
+    expect(seen.at(-1)).toEqual({ step: 'installed', eula: false });
+    expect(h.store.get().launch).not.toHaveProperty('eulaAccepted');
+    expect(() => h.agent.setLaunch({ ...envelope(), eulaAccepted: 'yes' })).toThrow(/eulaAccepted/);
+
+    h.agent.setLaunch({ ...envelope(), eulaAccepted: true });
+    expect(seen.at(-1)).toEqual({ step: 'installed', eula: true });
+    expect(h.store.get().launch).toEqual({ adapter: 'pz', params: launch, eulaAccepted: true });
+    // A restarted agent still knows (its container restarts with the stored launch).
+    const again = h.reopen();
+    await again.agent.init();
+    expect(seen.at(-1)).toEqual({ step: 'installed', eula: true });
+    await again.agent.shutdown();
+
+    await h.agent.start({ ...envelope(), eulaAccepted: false }, undefined);
+    await h.waitFor((x) => x.state === 'running');
+    expect(seen.filter((s) => s.step === 'prepare')).toEqual([{ step: 'prepare', eula: false }]);
+  });
+});
+
 describe('persistence', () => {
   it('resumes a running server after the agent restarts', async () => {
     h = await makeHarness();

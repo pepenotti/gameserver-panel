@@ -89,6 +89,14 @@ export interface Flavour {
   capabilities?: Capability[];
 }
 
+/** A license the owner must accept before a game may run (D6): what the `eula` capability means. */
+export interface Agreement {
+  /** What it is called (the game maker's end-user license). */
+  name: I18n;
+  /** Where people read it before accepting (https). */
+  url: string;
+}
+
 export interface AdapterMeta {
   /** Stable id (`pz`); stored with every server. */
   id: string;
@@ -101,6 +109,8 @@ export interface AdapterMeta {
   capabilities: Capability[];
   /** Time a clean stop may take before the agent escalates to signals (NFR-04). */
   stopBudgetMs: number;
+  /** The agreement behind the `eula` capability (the adapter's or a flavour's); required with it (D6). */
+  eula?: Agreement;
 }
 
 // ============================================================== server files
@@ -174,6 +184,13 @@ export interface RuntimeCtx {
   tools: RuntimeTools;
   /** The agent's environment without its token, for adapter-specific knobs. */
   env: Readonly<Record<string, string | undefined>>;
+  /**
+   * The owner accepted the game's agreement (`AdapterMeta.eula`, D6), as the
+   * panel's launch said (`LaunchEnvelope.eulaAccepted`). A runtime adapter
+   * writes the game's own acceptance only when this is true; absent or false
+   * otherwise, and for games without an agreement.
+   */
+  eulaAccepted?: boolean;
   /** A line in the server's agent log (redacted by the agent). */
   log(line: string): void;
 }

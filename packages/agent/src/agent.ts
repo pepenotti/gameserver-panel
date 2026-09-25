@@ -113,6 +113,8 @@ export class Agent {
   private readonly portMap: Record<string, number>;
   /** The stored launch, as the adapter parsed it; null until the panel sets one. */
   private params: unknown = null;
+  /** The stored launch said the owner accepted the game's agreement (`RuntimeCtx.eulaAccepted`, D6). */
+  private eulaAccepted = false;
   private redact: (line: string) => string;
   private shuttingDown = false;
   private readonly bootId = randomUUID();
@@ -145,7 +147,9 @@ export class Agent {
       return null;
     }
     try {
-      return this.adapter.parseLaunch(l.params);
+      const p = this.adapter.parseLaunch(l.params);
+      this.eulaAccepted = l.eulaAccepted === true;
+      return p;
     } catch (e) {
       this.log(`The stored launch parameters are no longer valid (${(e as Error).message}); waiting for new ones.`);
       return null;
@@ -178,6 +182,7 @@ export class Agent {
       state: this.runtimeState(),
       tools: { steamcmd: this.cfg.steamcmd, launcher: this.cfg.launcher ?? undefined, home: this.cfg.home },
       env: agentEnv(),
+      eulaAccepted: this.eulaAccepted,
       log: (line) => this.log(line),
     };
   }
@@ -358,9 +363,21 @@ export class Agent {
     }
   }
 
-  private applyLaunch(p: unknown): void {
+  /**
+   * Whether the owner accepted the game's agreement, as a launch envelope
+   * says (`LaunchEnvelope.eulaAccepted`, D6); undefined when it doesn't say
+   * (games without one). Passed through to the adapter, never interpreted.
+   */
+  private eulaOf(input: unknown): boolean | undefined {
+    if (!isObject(input) || !('params' in input) || input.eulaAccepted === undefined) return undefined;
+    if (typeof input.eulaAccepted !== 'boolean') throw new AgentError('bad-request', 'eulaAccepted must be true or false');
+    return input.eulaAccepted;
+  }
+
+  private applyLaunch(p: unknown, eulaAccepted: boolean | undefined): void {
     this.params = p;
-    this.store.update({ launch: { adapter: this.adapter.meta.id, params: p } });
+    this.eulaAccepted = eulaAccepted === true;
+    this.store.update({ launch: { adapter: this.adapter.meta.id, params: p, ...(eulaAccepted === undefined ? {} : { eulaAccepted }) } });
     this.channelKind = this.channelOf(p);
     this.redact = this.makeRedactor();
     this.readInstalled(); // the roots may have moved
@@ -368,7 +385,8 @@ export class Agent {
   }
 
   setLaunch(input: unknown): void {
-    this.applyLaunch(this.parseLaunchInput(input));
+    const eula = this.eulaOf(input);
+    this.applyLaunch(this.parseLaunchInput(input), eula);
   }
 
   /** The stored launch, or 409 `no-launch`. */
@@ -380,9 +398,10 @@ export class Agent {
   // ------------------------------------------------------------------- start
 
   start(launch: unknown, lockId: string | undefined): Promise<void> {
+    const eula = launch === undefined ? undefined : this.eulaOf(launch);
     const p = launch === undefined ? undefined : this.parseLaunchInput(launch);
     this.checkLock(lockId);
-    if (p !== undefined) this.applyLaunch(p);
+    if (p !== undefined) this.applyLaunch(p, eula);
     return this.control.run(async () => {
       if (this.run || this.state === 'installing') return; // already up or coming up
       if (this.params === null) throw new AgentError('bad-request', 'No launch parameters yet');

@@ -10,6 +10,7 @@ import { SERVERS_KEY, useServerApi, useServerScope, withServer, type ServerSumma
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
+import { EulaNotice } from '../components/Eula';
 import { LaunchField, launchKey } from '../components/LaunchField';
 import { DeleteServerModal, RenameServerModal } from '../components/ServerAdmin';
 import { UnsupportedNote } from '../components/Supported';
@@ -214,6 +215,8 @@ export function Server() {
       <Title order={2}>{t('server.title')}</Title>
 
       <NameCard />
+
+      <EulaNotice showAccepted />
 
       <Card withBorder>
         <Text fw={600}>{t('server.launch')}</Text>

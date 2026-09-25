@@ -37,6 +37,13 @@ export interface CreateServerInput {
   cpus?: number | null;
   /** The owner accepted the game's EULA (D6), for adapters with the `eula` capability. */
   eulaAccepted?: boolean;
+  /**
+   * Whether `by` may accept a game's EULA (`server.eula`: the owner); default
+   * true. One who may must accept it to create the server; one who may not
+   * creates it with the EULA pending, and it can't start until the owner
+   * accepts (`acceptEula`).
+   */
+  mayAcceptEula?: boolean;
   by: Actor;
   /** Where the request came from, for the audit log. */
   ip?: string | null;
@@ -50,8 +57,9 @@ export interface RemoveServerOptions {
   /** Take the final backup first (default); only the owner may skip it, for a server whose data can't be reached. */
   finalBackup?: boolean;
   /**
-   * The owner's way out for a server that can't be stopped normally or whose
-   * container won't run: removed even while its game runs or an operation
+   * The owner's way out for a server that can't be stopped normally, whose
+   * container won't run or whose agent can't be reached (without it, 409
+   * `server-unreachable`): removed even while its game runs or an operation
    * holds it, without waiting for the game to stop. The final backup is
    * still taken when it can be; when it can't, the removal goes on without
    * it and says why (`finalBackupError`).
@@ -114,6 +122,13 @@ export interface ServerRegistry {
   prepareStart(id: string): Promise<void>;
   /** Whether a server's container waits to be recreated from its changed settings at its game's next start. */
   containerPending(id: string): boolean;
+  /**
+   * D6: the owner accepts the game's agreement (the route checks
+   * `server.eula`); recorded with who and when, and audited. The server may
+   * start from then on. 409 `eula-not-needed` for a game without one; a
+   * second acceptance changes nothing.
+   */
+  acceptEula(id: string, by: Actor, ip?: string | null): ServerContext;
   /** SRV-04: final backup, container and volumes removed, then the row and everything keyed to it. */
   remove(id: string, o: RemoveServerOptions): Promise<RemoveReport>;
   reconcile(): Promise<ReconcileReport>;
@@ -436,7 +451,11 @@ export class DbServerRegistry implements ServerRegistry {
     // An adapter with flavours needs one of them; one without takes none.
     if (flavours.length ? !flavours.some((f) => f.id === flavour) : flavour !== null) throw new HttpError(400, 'unknown-flavour', undefined, { flavours: flavours.map((f) => f.id) });
     const caps: Set<Capability> = capabilitiesOf(adapter, flavour);
-    if (caps.has('eula') && input.eulaAccepted !== true) throw new HttpError(400, 'eula-required');
+    // D6: only the owner accepts a game's EULA. The owner accepts it here; anyone else leaves it to them.
+    const mayAccept = input.mayAcceptEula !== false;
+    if (caps.has('eula') && mayAccept && input.eulaAccepted !== true) throw new HttpError(400, 'eula-required');
+    if (caps.has('eula') && !mayAccept && input.eulaAccepted === true) throw new HttpError(403, 'eula-owner-only');
+    const eulaAccepted = caps.has('eula') && mayAccept;
 
     // Secrets: the agent's token and every secret the adapter declares, generated here and kept only in `servers.secrets`.
     const secrets: Record<string, string> = { [AGENT_TOKEN_SECRET]: randomBytes(32).toString('base64url') };
@@ -486,8 +505,8 @@ export class DbServerRegistry implements ServerRegistry {
       memLimitMb,
       cpus: input.cpus ?? null,
       spec: null,
-      eulaAcceptedAt: caps.has('eula') ? new Date().toISOString() : null,
-      eulaAcceptedBy: caps.has('eula') ? userId : null,
+      eulaAcceptedAt: eulaAccepted ? new Date().toISOString() : null,
+      eulaAcceptedBy: eulaAccepted ? userId : null,
       createdAt: '',
       createdBy: userId,
       sort: Math.max(0, ...rows.list().map((r) => r.sort)) + 1,
@@ -515,6 +534,27 @@ export class DbServerRegistry implements ServerRegistry {
     this.contexts.set(id, ctx);
     this.activate(ctx);
     audit.log({ actor: input.by, ip: input.ip ?? null, serverId: id, action: 'server.create', target: name, detail: { adapter: adapter.meta.id, flavour, ports, memLimitMb, cpus: row.cpus } });
+    if (eulaAccepted) this.auditEula(input.by, input.ip ?? null, row);
+    this.changed();
+    return ctx;
+  }
+
+  // -------------------------------------------------------------------- EULA
+
+  private auditEula(by: Actor, ip: string | null, row: ServerRow): void {
+    const agreement = this.d.adapterFor(row.adapter).meta.eula;
+    this.d.audit.log({ actor: by, ip, serverId: row.id, action: 'server.eula', target: row.name, detail: { agreement: agreement?.url ?? null } });
+  }
+
+  acceptEula(id: string, by: Actor, ip: string | null = null): ServerContext {
+    const ctx = this.contexts.get(id);
+    if (!ctx) throw new HttpError(404, 'server-not-found');
+    if (!ctx.handle.has('eula')) throw new HttpError(409, 'eula-not-needed');
+    // Accepted once is accepted: the first acceptance (who, when) stays on record.
+    if (!ctx.handle.eulaPending()) return ctx;
+    const row = this.d.rows.get(id)!;
+    this.d.rows.setEula(id, new Date().toISOString(), by.user?.id ?? null);
+    this.auditEula(by, ip, row);
     this.changed();
     return ctx;
   }
@@ -626,7 +666,14 @@ export class DbServerRegistry implements ServerRegistry {
     // Forced (the owner, for a server that won't stop or whose container won't run): neither holds it back.
     const busy = ctx.ops.busy;
     if (busy && !o.force) throw new HttpError(409, 'busy', undefined, { op: busy });
-    const state = ctx.feed.status_?.state;
+    let state = ctx.feed.status_?.state;
+    if (managed && !o.force) {
+      // What its game is doing now, from its agent. An agent that can't be reached can't say (nor
+      // take the final backup): only the owner's forced removal goes on without it.
+      const live = await ctx.agent.status().catch(() => null);
+      if (!live) throw new HttpError(409, 'server-unreachable', "The server's agent can't be reached; the owner can force the removal", { force: true });
+      state = live.state;
+    }
     if (!o.force && (state === 'running' || state === 'starting' || state === 'stopping')) throw new HttpError(409, 'server-running');
 
     // SRV-04: a final backup first, into the server's own folder, unless nothing is to be kept
@@ -638,7 +685,7 @@ export class DbServerRegistry implements ServerRegistry {
     if (managed && o.keepBackups && o.finalBackup !== false) {
       try {
         if (busy) throw new Error(`Another operation (${busy.kind}) is still running on this server`);
-        const b = await ctx.ops.run('backup', o.by.user?.username ?? null, (op) => ctx.flows.backupNow(op, 'manual'));
+        const b = await ctx.ops.run('backup', o.by.user?.username ?? null, (op) => ctx.flows.backupNow(op, 'final'));
         finalBackup = b.name;
       } catch (e) {
         const message = (e as Error).message;

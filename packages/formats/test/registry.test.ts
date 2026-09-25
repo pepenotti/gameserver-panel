@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { setIniValues } from '../src/ini';
 import { getPath, parseLuaData } from '../src/lua-data';
-import { CONFIG_FORMATS, formatFor, formatIdForName, iniFormat, jsonFormat, luaDataFormat, textFormat, type ConfigFormat } from '../src/registry';
+import { CONFIG_FORMATS, FORMAT_HIGHLIGHT, formatFor, formatIdForName, iniFormat, jsonFormat, luaDataFormat, textFormat, type ConfigFormat, type FormatId } from '../src/registry';
 import { fixture } from './fixtures';
 
 const en = fixture('config/server.en.ini');
@@ -13,9 +13,14 @@ function issues(f: ConfigFormat, text: string) {
 }
 
 describe('format registry', () => {
-  it('holds the formats implemented so far', () => {
-    expect(Object.keys(CONFIG_FORMATS).sort()).toEqual(['ini', 'json', 'lua-data', 'text']);
-    for (const [id, f] of Object.entries(CONFIG_FORMATS)) expect(f!.id).toBe(id);
+  it('holds every format id, each with its highlighting (CFG-02, CFG-07)', () => {
+    expect(Object.keys(CONFIG_FORMATS).sort()).toEqual(['ini', 'json', 'json5', 'lines', 'lua-data', 'properties', 'text', 'toml', 'yaml']);
+    for (const [id, f] of Object.entries(CONFIG_FORMATS)) {
+      expect(f.id).toBe(id);
+      expect(f.highlight).toBe(FORMAT_HIGHLIGHT[id as FormatId]);
+      // Every format says whether its edits keep comments (CFG-09); all of these do.
+      expect(f.preservesComments, id).toBe(true);
+    }
   });
 
   it('picks a format for a declaration or a file name', () => {
@@ -26,20 +31,30 @@ describe('format registry', () => {
     expect(formatFor('notes.txt')).toBe(textFormat);
     expect(formatFor('README')).toBe(textFormat);
     expect(formatIdForName('ops.yml')).toBe('yaml');
-  });
-
-  it('keeps formats that are not implemented yet editable as text, with their highlighting', () => {
-    for (const [name, highlight] of [
+    for (const [name, id] of [
       ['server.properties', 'properties'],
-      ['paper.yml', 'yaml'],
-      ['config.toml', 'toml'],
+      ['plugins/x/config.yml', 'yaml'],
+      ['config/mod.toml', 'toml'],
+      ['config/mod.json5', 'json5'],
     ] as const) {
-      const f = formatFor(name);
-      expect(f.id).toBe('text');
-      expect(f.highlight).toBe(highlight);
-      expect(f.parse('anything: at all')).toEqual({ ok: true, doc: 'anything: at all' });
+      expect(formatIdForName(name), name).toBe(id);
+      expect(formatFor(name)).toBe(CONFIG_FORMATS[id]);
     }
     expect(formatFor({ format: 'yaml' })).toBe(formatFor('x.yaml'));
+    // Only a declaration makes a file a line list.
+    expect(formatFor({ format: 'lines' }).id).toBe('lines');
+  });
+
+  it('edits names that suggest no format as text, highlighted when the name suggests one (CFG-07)', () => {
+    for (const name of ['server.cfg', 'bukkit.conf']) {
+      const f = formatFor(name);
+      expect(formatIdForName(name)).toBe('text');
+      expect(f.id).toBe('text');
+      expect(f.highlight).toBe('properties');
+      // Anything goes: these files are all kinds of things.
+      expect(f.parse('exec x.cfg\n[Section]\nkey: \\u12')).toEqual({ ok: true, doc: 'exec x.cfg\n[Section]\nkey: \\u12' });
+    }
+    expect(formatFor('server.cfg')).toBe(formatFor('other.conf'));
   });
 });
 
