@@ -251,8 +251,15 @@ it (tar reports it) should copy that file again.
   telemetry; this is the game's)?
 - The management server (JSON-RPC over WebSocket; method names in
   `vanilla/api/json-rpc-api-methods.json`: players, allowlist, bans, operators, save, stop,
-  settings, and join/leave/save notifications) could replace log parsing for players later.
-  Not probed: its authentication and TLS behaviour are unverified.
+  settings, and join/leave/save notifications) could later replace log parsing for players and
+  the settings the game rewrites. A first look (vanilla, `management-server-enabled=true`,
+  `-host=0.0.0.0`, `-port=25585`, `-tls-enabled=false`): it logs
+  `Json-RPC Management connection listening on 0.0.0.0:25585` before the ready line; a WebSocket
+  without credentials is refused at the handshake; with `Authorization: Bearer <management-server-secret>`
+  it answered `minecraft:players` (`[]`), `minecraft:server/status`
+  (`{"started":true,"version":{"name":"26.3","protocol":777}}`) and `minecraft:allowlist` (a list
+  of `{id, name}`); each connection is logged (`RPC Connection #n: Management connection opened for /<ip>:<port>`).
+  TLS, notifications and Paper/Fabric were not tried.
 - Paper version picker: offer only versions with a STABLE build by default, or show ALPHA/BETA
   with a warning?
 - The panel's own `whitelist on|off` makes the game rewrite `server.properties` from memory:
