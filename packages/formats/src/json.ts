@@ -3,7 +3,10 @@
  * and their plugins keep (CFG-07, CFG-09). `JSON.parse` would do for reading,
  * but the text editor needs the line and column of a mistake, and form edits
  * must replace one value without reformatting the rest of the file.
+ * JSON5 files get the same positions (and so the same edits) through
+ * `parseJson5`, after the `json5` package has checked them.
  */
+import JSON5 from 'json5';
 
 export class JsonSyntaxError extends Error {
   constructor(
@@ -59,12 +62,25 @@ export function lineColAt(src: string, offset: number): { line: number; col: num
 }
 
 const NUMBER = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
+/** JSON5 numbers: a sign, hex, Infinity and NaN, and a point at either end. */
+const NUMBER5 = /[+-]?(?:Infinity|NaN|0[xX][0-9a-fA-F]+|(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)/y;
+/** A JSON5 key without quotes (an ECMAScript identifier name, escapes included). */
+const IDENTIFIER = /(?:[$_\p{ID_Start}]|\\u[0-9a-fA-F]{4})(?:[$‌‍\p{ID_Continue}]|\\u[0-9a-fA-F]{4})*/uy;
 const ESCAPES: Record<string, string> = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
 
+/**
+ * Reads JSON, or with `json5` the JSON5 superset (comments, unquoted keys,
+ * single quotes, trailing commas, more number forms): for JSON5 it only
+ * finds where things are, and leaves decoding each token to the `json5`
+ * package, which has already checked the whole text.
+ */
 class Parser {
   private i = 0;
 
-  constructor(private readonly src: string) {
+  constructor(
+    private readonly src: string,
+    private readonly json5 = false,
+  ) {
     // A byte-order mark is not JSON, but editors add one; it is kept in the text.
     if (src.charCodeAt(0) === 0xfeff) this.i = 1;
   }
@@ -78,8 +94,22 @@ class Parser {
     for (;;) {
       const c = this.src[this.i];
       if (c === ' ' || c === '\t' || c === '\n' || c === '\r') this.i++;
-      else return;
+      else if (!this.json5 || c === undefined) return;
+      else if (/\s/.test(c)) this.i++;
+      else if (this.src.startsWith('//', this.i)) {
+        const nl = this.src.indexOf('\n', this.i);
+        this.i = nl < 0 ? this.src.length : nl + 1;
+      } else if (this.src.startsWith('/*', this.i)) {
+        const end = this.src.indexOf('*/', this.i + 2);
+        if (end < 0) this.fail('Unclosed comment');
+        this.i = end + 2;
+      } else return;
     }
+  }
+
+  /** A JSON5 token's value, decoded by the `json5` package. */
+  private decode5(start: number): unknown {
+    return JSON5.parse(this.src.slice(start, this.i));
   }
 
   parseDocument(): JsonNode {
@@ -95,10 +125,19 @@ class Parser {
     const c = this.src[this.i];
     if (c === '{') return this.object();
     if (c === '[') return this.array();
-    if (c === '"') {
+    if (c === '"' || (this.json5 && c === "'")) {
       const start = this.i;
       const value = this.string();
       return { type: 'string', value, start, end: this.i };
+    }
+    if (this.json5) {
+      NUMBER5.lastIndex = this.i;
+      const m = NUMBER5.exec(this.src);
+      if (m) {
+        const start = this.i;
+        this.i += m[0].length;
+        return { type: 'number', value: this.decode5(start) as number, raw: m[0], start, end: this.i };
+      }
     }
     if (c === '-' || (c !== undefined && c >= '0' && c <= '9')) {
       NUMBER.lastIndex = this.i;
@@ -125,6 +164,14 @@ class Parser {
 
   private string(): string {
     const start = this.i;
+    if (this.json5) {
+      const q = this.src[this.i];
+      this.i++;
+      while (this.i < this.src.length && this.src[this.i] !== q) this.i += this.src[this.i] === '\\' ? 2 : 1;
+      if (this.i >= this.src.length) this.fail('Unclosed string', start);
+      this.i++;
+      return this.decode5(start) as string;
+    }
     this.i++;
     let out = '';
     for (;;) {
@@ -164,9 +211,23 @@ class Parser {
     }
     for (;;) {
       this.ws();
-      if (this.src[this.i] !== '"') this.fail(this.src[this.i] === '}' ? 'Trailing comma before "}"' : 'Expected a property name in double quotes');
+      if (this.json5 && this.src[this.i] === '}') {
+        // A trailing comma.
+        this.i++;
+        return { type: 'object', members, start, end: this.i };
+      }
       const keyStart = this.i;
-      const key = this.string();
+      let key: string;
+      if (this.json5 && this.src[this.i] !== '"' && this.src[this.i] !== "'") {
+        IDENTIFIER.lastIndex = this.i;
+        const m = IDENTIFIER.exec(this.src);
+        if (!m) this.fail('Expected a property name');
+        this.i += m![0].length;
+        key = m![0].includes('\\') ? Object.keys(JSON5.parse(`{${m![0]}:0}`) as object)[0]! : m![0];
+      } else {
+        if (this.src[this.i] !== '"' && !(this.json5 && this.src[this.i] === "'")) this.fail(this.src[this.i] === '}' ? 'Trailing comma before "}"' : 'Expected a property name in double quotes');
+        key = this.string();
+      }
       this.ws();
       if (this.src[this.i] !== ':') this.fail('Expected ":" after the property name');
       this.i++;
@@ -197,7 +258,11 @@ class Parser {
     }
     for (;;) {
       this.ws();
-      if (this.src[this.i] === ']') this.fail('Trailing comma before "]"');
+      if (this.src[this.i] === ']') {
+        if (!this.json5) this.fail('Trailing comma before "]"');
+        this.i++;
+        return { type: 'array', items, start, end: this.i };
+      }
       items.push(this.value());
       this.ws();
       const c = this.src[this.i];
@@ -218,6 +283,32 @@ export function parseJson(src: string): JsonDoc {
   return { root: new Parser(src).parseDocument(), src };
 }
 
+/** A JSON5 syntax error from the `json5` package, as a `JsonSyntaxError`. */
+function json5Error(src: string, e: unknown): JsonSyntaxError {
+  const err = e as { lineNumber?: number; columnNumber?: number; message?: string };
+  if (!(e instanceof SyntaxError) || typeof err.lineNumber !== 'number') throw e;
+  const line = err.lineNumber;
+  const col = err.columnNumber ?? 1;
+  let offset = 0;
+  for (let l = 1; l < line; l++) offset = src.indexOf('\n', offset) + 1;
+  const reason = (err.message ?? 'Invalid JSON5').replace(/^JSON5: /, '').replace(/ at \d+:\d+$/, '');
+  return new JsonSyntaxError(reason.charAt(0).toUpperCase() + reason.slice(1), offset + col - 1, line, col);
+}
+
+/**
+ * JSON5 (comments, unquoted keys, single quotes, trailing commas…): checked
+ * by the `json5` package, with the same positions `parseJson` gives, so
+ * edits can keep comments and layout.
+ */
+export function parseJson5(src: string): JsonDoc {
+  try {
+    JSON5.parse(src);
+  } catch (e) {
+    throw json5Error(src, e);
+  }
+  return { root: new Parser(src, true).parseDocument(), src };
+}
+
 /** The member at a dotted path (last one wins, like `JSON.parse`), with the object holding it. */
 export function getJsonMember(root: JsonNode, path: string): { member: JsonMember; parent: JsonNode & { type: 'object' } } | undefined {
   let cur: JsonNode = root;
@@ -232,7 +323,7 @@ export function getJsonMember(root: JsonNode, path: string): { member: JsonMembe
   return undefined;
 }
 
-/** Every scalar inside nested objects as `a.b` → value. Arrays, nulls and keys containing "." are left to the text editor. */
+/** Every scalar inside nested objects as `a.b` → value. Arrays, nulls, JSON5's Infinity and NaN, and keys containing "." are left to the text editor. */
 export function flattenJson(root: JsonNode, prefix = ''): Record<string, JsonScalar> {
   const out: Record<string, JsonScalar> = {};
   if (root.type !== 'object') return out;
@@ -241,7 +332,8 @@ export function flattenJson(root: JsonNode, prefix = ''): Record<string, JsonSca
     const path = prefix ? `${prefix}.${m.key}` : m.key;
     const v = m.value;
     if (v.type === 'object') Object.assign(out, flattenJson(v, path));
-    else if (v.type === 'string' || v.type === 'number' || v.type === 'boolean') out[path] = v.value;
+    // JSON5's Infinity and NaN are no value a form can show.
+    else if (v.type === 'string' || (v.type === 'number' && Number.isFinite(v.value)) || v.type === 'boolean') out[path] = v.value;
   }
   return out;
 }
@@ -310,9 +402,18 @@ function removeMember(src: string, obj: JsonNode & { type: 'object' }, member: J
  * object (creating objects on the way), and `null` removes a member.
  */
 export function editJson(src: string, changes: Record<string, JsonScalar | null>): string {
+  return editWith(parseJson, src, changes);
+}
+
+/** `editJson` for JSON5: comments, and the way keys and strings are quoted, stay as they were. */
+export function editJson5(src: string, changes: Record<string, JsonScalar | null>): string {
+  return editWith(parseJson5, src, changes);
+}
+
+function editWith(parse: (src: string) => JsonDoc, src: string, changes: Record<string, JsonScalar | null>): string {
   let out = src;
   for (const [path, next] of Object.entries(changes)) {
-    const doc = parseJson(out);
+    const doc = parse(out);
     const hit = getJsonMember(doc.root, path);
     if (next === null) {
       if (hit) out = removeMember(out, hit.parent, hit.member);

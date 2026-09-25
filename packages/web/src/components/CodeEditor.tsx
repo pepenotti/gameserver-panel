@@ -1,6 +1,6 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { StreamLanguage, type StreamParser } from '@codemirror/language';
-import { json } from '@codemirror/legacy-modes/mode/javascript';
+import { javascript, json } from '@codemirror/legacy-modes/mode/javascript';
 import { lua } from '@codemirror/legacy-modes/mode/lua';
 import { properties } from '@codemirror/legacy-modes/mode/properties';
 import { toml } from '@codemirror/legacy-modes/mode/toml';
@@ -28,7 +28,8 @@ interface Props {
   ref?: Ref<CodeEditorHandle>;
 }
 
-const MODES: Record<Exclude<Highlight, 'plain'>, StreamParser<unknown>> = { properties, lua, yaml, toml, json };
+// JSON5 has comments, bare keys and single quotes: the JavaScript mode reads those; plain JSON's would not.
+const MODES: Record<Exclude<Highlight, 'plain'>, StreamParser<unknown>> = { properties, lua, yaml, toml, json, json5: javascript };
 
 const setIssues = StateEffect.define<ParseIssue[]>();
 const NO_ISSUES: ParseIssue[] = [];

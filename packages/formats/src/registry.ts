@@ -1,21 +1,25 @@
 /**
  * The format registry (PRD §10, CFG-07…09): one entry per config file format,
  * used by both the settings forms and the text editor so they can't drift
- * apart. Formats without an implementation yet (`properties`, `yaml`, …) are
- * still editable as plain text with their highlighting (`formatFor`).
+ * apart. Files whose name suggests no format are plain text; some of those
+ * still get a highlighting (`formatFor`).
  */
 
 import { buildIni, iniToRecord, parseIni, serializeIni, setIniValues, type IniDoc } from './ini';
-import { buildJson, editJson, flattenJson, getJsonMember, JsonSyntaxError, lineColAt, parseJson, type JsonDoc } from './json';
+import { buildJson, editJson, editJson5, flattenJson, getJsonMember, JsonSyntaxError, lineColAt, parseJson, parseJson5, type JsonDoc } from './json';
+import { buildLines, editLines, parseLines, type LinesDoc } from './lines';
 import { editLuaData, flattenScalars, getPath, LuaDataError, parseLuaData, type LuaDataFile } from './lua-data';
+import { buildProperties, editProperties, parseProperties, propertiesToRecord, PropertiesSyntaxError, type PropertiesDoc } from './properties';
+import { buildToml, editToml, flattenToml, locateToml, parseTomlDoc, type TomlDoc } from './toml';
+import { buildYaml, editYaml, flattenYaml, locateYaml, parseYamlDoc, type YamlDoc } from './yaml';
 
 /** A single setting value as forms and formats exchange it. */
 export type Scalar = string | number | boolean;
 
 export type FormatId = 'ini' | 'properties' | 'lua-data' | 'json' | 'json5' | 'yaml' | 'toml' | 'lines' | 'text';
 
-/** Editor highlighting mode for a format. */
-export type Highlight = 'properties' | 'lua' | 'yaml' | 'toml' | 'json' | 'plain';
+/** Editor highlighting mode for a format (`json5`: the JavaScript mode, which knows comments and bare keys). */
+export type Highlight = 'properties' | 'lua' | 'yaml' | 'toml' | 'json' | 'json5' | 'plain';
 
 export interface ParseIssue {
   /** 1-based. */
@@ -160,6 +164,98 @@ export const jsonFormat: ConfigFormat<JsonDoc> = {
   },
 };
 
+/** JSON5 (comments, bare keys, single quotes, trailing commas): checked by the `json5` package; edits keep comments and layout as for JSON. */
+export const json5Format: ConfigFormat<JsonDoc> = {
+  id: 'json5',
+  highlight: 'json5',
+  preservesComments: true,
+  parse(text) {
+    try {
+      return { ok: true, doc: parseJson5(text) };
+    } catch (e) {
+      if (e instanceof JsonSyntaxError) return { ok: false, issues: [{ line: e.line, col: e.col, message: e.reason }] };
+      throw e;
+    }
+  },
+  flatten: (doc) => flattenJson(doc.root),
+  edit: (text, changes) => editJson5(text, changes),
+  create: (values) => buildJson(values),
+  locate(doc, key) {
+    const hit = getJsonMember(doc.root, key);
+    return hit ? lineColAt(doc.src, hit.member.value.start) : null;
+  },
+};
+
+/** Java properties (`server.properties`): values are text; edits rewrite only the changed values, escaped as Java writes them. */
+export const propertiesFormat: ConfigFormat<PropertiesDoc> = {
+  id: 'properties',
+  highlight: 'properties',
+  preservesComments: true,
+  parse(text) {
+    try {
+      return { ok: true, doc: parseProperties(text) };
+    } catch (e) {
+      if (e instanceof PropertiesSyntaxError) return { ok: false, issues: [{ line: e.line, col: e.col, message: e.reason }] };
+      throw e;
+    }
+  },
+  flatten: (doc) => propertiesToRecord(doc),
+  edit(text, changes) {
+    return editProperties(text, Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v === null ? null : asText(v)])));
+  },
+  create: (values) => buildProperties(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, asText(v)]))),
+  locate(doc, key) {
+    const e = doc.entries.findLast((x) => x.key === key);
+    return e ? { line: e.line + 1, col: e.valueCol } : null;
+  },
+};
+
+/** YAML through the `yaml` package's Document API: comments always survive; see `editYaml` for when the layout may not. */
+export const yamlFormat: ConfigFormat<YamlDoc> = {
+  id: 'yaml',
+  highlight: 'yaml',
+  preservesComments: true,
+  parse: (text) => parseYamlDoc(text),
+  flatten: (doc) => flattenYaml(doc),
+  edit: (text, changes) => editYaml(text, changes),
+  create: (values) => buildYaml(values),
+  locate: (doc, key) => locateYaml(doc, key),
+};
+
+/** TOML checked by `smol-toml`; edits are surgical (see `editToml`), and refused inside inline tables and lists. */
+export const tomlFormat: ConfigFormat<TomlDoc> = {
+  id: 'toml',
+  highlight: 'toml',
+  preservesComments: true,
+  parse: (text) => parseTomlDoc(text),
+  flatten: (doc) => flattenToml(doc),
+  edit: (text, changes) => editToml(text, changes),
+  create: (values) => buildToml(values),
+  locate: (doc, key) => locateToml(doc, key),
+};
+
+/** One entry per line, `#` comments: a set whose entries are keys with the value `true` (`null` or `false` removes one). */
+export const linesFormat: ConfigFormat<LinesDoc> = {
+  id: 'lines',
+  highlight: 'plain',
+  preservesComments: true,
+  parse: (text) => ({ ok: true, doc: parseLines(text) }),
+  flatten: (doc) => Object.fromEntries(doc.entries.map((e) => [e.value, true])),
+  edit(text, changes) {
+    const set: Record<string, boolean | null> = {};
+    for (const [k, v] of Object.entries(changes)) {
+      if (v !== null && typeof v !== 'boolean') throw new Error(`A list entry is added with true and removed with null (${k})`);
+      set[k] = v;
+    }
+    return editLines(text, set);
+  },
+  create: (values) => buildLines(Object.keys(values).filter((k) => values[k] === true)),
+  locate(doc, key) {
+    const e = doc.entries.find((x) => x.value === key);
+    return e ? { line: e.line + 1 } : null;
+  },
+};
+
 /** Plain text: editable as a whole, no keys. */
 export const textFormat: ConfigFormat<string> = {
   id: 'text',
@@ -174,21 +270,26 @@ export const textFormat: ConfigFormat<string> = {
   },
 };
 
-/** Formats by id. Only the ones implemented so far are present. */
-export const CONFIG_FORMATS: { readonly [K in FormatId]?: ConfigFormat } = {
+/** Formats by id: every `FormatId`. */
+export const CONFIG_FORMATS: { readonly [K in FormatId]: ConfigFormat } = {
   ini: iniFormat,
+  properties: propertiesFormat,
   'lua-data': luaDataFormat,
   json: jsonFormat,
+  json5: json5Format,
+  yaml: yamlFormat,
+  toml: tomlFormat,
+  lines: linesFormat,
   text: textFormat,
 };
 
-/** Highlighting for every format id, implemented or not. */
+/** Highlighting for every format id. */
 export const FORMAT_HIGHLIGHT: Readonly<Record<FormatId, Highlight>> = {
   ini: 'properties',
   properties: 'properties',
   'lua-data': 'lua',
   json: 'json',
-  json5: 'json',
+  json5: 'json5',
   yaml: 'yaml',
   toml: 'toml',
   lines: 'plain',
@@ -201,35 +302,51 @@ const EXTENSION_FORMATS: Readonly<Record<string, FormatId>> = {
   json5: 'json5',
   lua: 'lua-data',
   properties: 'properties',
-  cfg: 'properties',
-  conf: 'properties',
   yml: 'yaml',
   yaml: 'yaml',
   toml: 'toml',
 };
 
+/**
+ * Names that suggest a highlighting but no format: `.cfg` and `.conf` files
+ * are all kinds of things (key=value, console commands, sections), so they
+ * are edited as text, only coloured like properties.
+ */
+const EXTENSION_HIGHLIGHT: Readonly<Record<string, Highlight>> = {
+  cfg: 'properties',
+  conf: 'properties',
+};
+
+const extensionOf = (name: string) => /\.([A-Za-z0-9]+)$/.exec(name)?.[1]?.toLowerCase();
+
 /** The format a file name suggests (`.ini`, `.json`, `.yml`, …); plain text otherwise. */
 export function formatIdForName(name: string): FormatId {
-  const ext = /\.([A-Za-z0-9]+)$/.exec(name)?.[1]?.toLowerCase();
+  const ext = extensionOf(name);
   return (ext && EXTENSION_FORMATS[ext]) || 'text';
 }
 
 const plainCache = new Map<Highlight, ConfigFormat>();
 
-/**
- * The format of a declared file (`ConfigFileDecl.format`) or of a file name.
- * A format not implemented yet is plain text with that format's highlighting,
- * so the file is still editable (principle 2: never a ceiling).
- */
-export function formatFor(x: { format: FormatId } | string): ConfigFormat {
-  const id = typeof x === 'string' ? formatIdForName(x) : x.format;
-  const f = CONFIG_FORMATS[id];
-  if (f) return f;
-  const highlight = FORMAT_HIGHLIGHT[id];
+/** Plain text, highlighted as `highlight`. */
+function plainText(highlight: Highlight): ConfigFormat {
+  if (highlight === 'plain') return textFormat as ConfigFormat;
   let plain = plainCache.get(highlight);
   if (!plain) {
     plain = { ...(textFormat as ConfigFormat), highlight };
     plainCache.set(highlight, plain);
   }
   return plain;
+}
+
+/**
+ * The format of a declared file (`ConfigFileDecl.format`) or of a file name.
+ * A name that suggests no format is plain text (principle 2: never a
+ * ceiling), with a highlighting when its extension suggests one.
+ */
+export function formatFor(x: { format: FormatId } | string): ConfigFormat {
+  if (typeof x !== 'string') return CONFIG_FORMATS[x.format];
+  const id = formatIdForName(x);
+  if (id !== 'text') return CONFIG_FORMATS[id];
+  const ext = extensionOf(x);
+  return plainText((ext && EXTENSION_HIGHLIGHT[ext]) || 'plain');
 }
