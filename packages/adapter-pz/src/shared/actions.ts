@@ -3,13 +3,8 @@
  * on: the runtime adapter implements them, the panel adapter calls them.
  */
 
-/** Download workshop items with steamcmd, as a `workshop` job. Replies with a `JobResult`. */
-export const WORKSHOP_DOWNLOAD = 'workshop-download';
-
-export interface WorkshopDownloadInput {
-  /** 1-100 workshop ids. */
-  ids: string[];
-}
+/** Download workshop items with steamcmd, as a `workshop` job (the shared Workshop source's action). */
+export { WORKSHOP_DOWNLOAD, type WorkshopDownloadInput } from '@gsp/source-workshop';
 
 /**
  * Player accounts from the game's own database (`db/<serverName>.db`), read

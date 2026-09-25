@@ -24,7 +24,8 @@ import type {
 } from '@gsp/adapter-api';
 import { buildIni, isFatal, parseAppManifest, setIniValues } from '@gsp/formats';
 import type { PzLaunch } from '../shared/launch';
-import { ACCOUNTS, BANS, WORKSHOP_DOWNLOAD, type ServerDbInput, type WorkshopDownloadInput } from '../shared/actions';
+import { workshopDownloadAction } from '@gsp/source-workshop/runtime';
+import { ACCOUNTS, BANS, WORKSHOP_DOWNLOAD, type ServerDbInput } from '../shared/actions';
 import { parseLogLine, parsePlayers, PZ_PATTERNS } from '../shared/log';
 import { PZ_META } from '../shared/meta';
 
@@ -48,7 +49,6 @@ const NAME = /^[A-Za-z0-9_-]{1,32}$/;
 const ADMIN_USER = /^[A-Za-z0-9_]{1,32}$/;
 const ADMIN_PASSWORD = /^[\x21-\x7e]{8,64}$/;
 const BRANCH = /^[A-Za-z0-9._-]{1,64}$/;
-const WORKSHOP_ID = /^\d{5,20}$/;
 
 function asObject(x: unknown): Record<string, unknown> {
   return typeof x === 'object' && x !== null && !Array.isArray(x) ? (x as Record<string, unknown>) : {};
@@ -216,21 +216,8 @@ export function readBans(ctx: InstallCtx, serverName: string): BanList {
 }
 
 const actions: Record<string, RuntimeAction> = {
-  [WORKSHOP_DOWNLOAD]: {
-    job: 'workshop',
-    parse(x): WorkshopDownloadInput {
-      const ids = asObject(x).ids;
-      if (!Array.isArray(ids) || ids.length < 1 || ids.length > 100 || !ids.every((id) => typeof id === 'string')) throw new Error('Give 1-100 workshop ids');
-      for (const id of ids as string[]) if (!WORKSHOP_ID.test(id)) throw new Error(`Invalid workshop id ${id}`);
-      return { ids: ids as string[] };
-    },
-    async run(ctx, _ctl, input): Promise<JobResult> {
-      const { ids } = input as WorkshopDownloadInput;
-      const driver = steam(ctx);
-      ctx.progress(null, `Downloading ${ids.length} workshop item(s)`);
-      return driver.workshopDownload({ workshopAppId: PZ_WORKSHOP_APP_ID, ids });
-    },
-  },
+  // The shared Workshop source's download, for the game's items (MOD-01).
+  [WORKSHOP_DOWNLOAD]: workshopDownloadAction(PZ_WORKSHOP_APP_ID),
   [ACCOUNTS]: {
     parse: parseServerDb,
     run: async (ctx, _ctl, input) => readAccounts(ctx, (input as ServerDbInput).serverName),

@@ -129,16 +129,5 @@ export function formatWorkshopItems(ids: string[]): string {
   return ids.join(';');
 }
 
-/** Workshop id from an id or a steamcommunity URL (`…/filedetails/?id=123`). */
-export function parseWorkshopRef(input: string): string | null {
-  const s = input.trim();
-  if (/^\d{5,20}$/.test(s)) return s;
-  try {
-    const url = new URL(s);
-    if (!/(^|\.)steamcommunity\.com$/.test(url.hostname)) return null;
-    const id = url.searchParams.get('id');
-    return id && /^\d{5,20}$/.test(id) ? id : null;
-  } catch {
-    return null;
-  }
-}
+/** Workshop id from an id or a steamcommunity URL (`…/filedetails/?id=123`): the shared Workshop source's. */
+export { parseWorkshopRef } from '@gsp/source-workshop';

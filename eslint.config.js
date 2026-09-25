@@ -5,17 +5,21 @@ import tseslint from 'typescript-eslint';
 // NFR-08: the core never imports a game adapter. Only the composition roots
 // (the agent's and the panel's entry points) pick adapters, through
 // @gsp/adapters; everything else sees the contract in @gsp/adapter-api.
+// Every adapter-<game> package (adapter-pz, adapter-minecraft,
+// adapter-terraria, adapter-valheim, adapter-manifest) is covered by the
+// pattern, and so are the mod sources adapters share (source-<name>, e.g.
+// source-workshop): they are game code too.
 const CORE = 'packages/{shared,formats,adapter-api,archive,agent,orchestrator,panel,web}/src/**/*.{ts,tsx}';
 const COMPOSITION_ROOTS = ['packages/agent/src/main.ts', 'packages/panel/src/main.ts', 'packages/panel/src/wiring.ts'];
 const GAME_ADAPTER_IMPORTS = {
   patterns: [
     {
-      regex: '^@gsp/(adapters|adapter-(?!api(/|$))[^/]+)(/.*)?$',
-      message: 'The core must not import a game adapter (NFR-08): use the contract in @gsp/adapter-api; only the entry points wire adapters in.',
+      regex: '^@gsp/(adapters|adapter-(?!api(/|$))[^/]+|source-[^/]+)(/.*)?$',
+      message: 'The core must not import a game adapter or a mod source (NFR-08): use the contract in @gsp/adapter-api; only the entry points wire adapters in.',
     },
     {
-      regex: '^(\\.\\./)+(adapters|adapter-(?!api(/|$))[^/]+)(/.*)?$',
-      message: 'The core must not import a game adapter (NFR-08), not even by relative path.',
+      regex: '^(\\.\\./)+(adapters|adapter-(?!api(/|$))[^/]+|source-[^/]+)(/.*)?$',
+      message: 'The core must not import a game adapter or a mod source (NFR-08), not even by relative path.',
     },
   ],
 };

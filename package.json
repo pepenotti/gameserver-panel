@@ -8,6 +8,7 @@
     "packages/formats",
     "packages/adapter-api",
     "packages/archive",
+    "packages/source-workshop",
     "packages/adapter-pz",
     "packages/adapters",
     "packages/agent",

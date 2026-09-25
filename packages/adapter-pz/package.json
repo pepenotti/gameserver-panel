@@ -14,6 +14,7 @@
   "dependencies": {
     "@gsp/adapter-api": "*",
     "@gsp/formats": "*",
-    "@gsp/shared": "*"
+    "@gsp/shared": "*",
+    "@gsp/source-workshop": "*"
   }
 }
