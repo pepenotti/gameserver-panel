@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import dgram from 'node:dgram';
 import { mkdtempSync, rmSync } from 'node:fs';
 import http from 'node:http';
 import net from 'node:net';
@@ -20,6 +21,22 @@ const socketPath = (name: string) => {
   const tag = `${name}-${process.pid}-${randomBytes(4).toString('hex')}`;
   return process.platform === 'win32' ? `\\\\.\\pipe\\gsp-test-${tag}` : path.join(os.tmpdir(), `gsp-${tag}.sock`);
 };
+
+/**
+ * A free UDP port, picked by binding UDP: a free TCP port may sit in a range
+ * the OS reserves for UDP only (Windows does this), so the game port can't
+ * come from `freePorts`.
+ */
+function freeUdpPort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const s = dgram.createSocket('udp4');
+    s.once('error', reject);
+    s.bind(0, '127.0.0.1', () => {
+      const { port } = s.address();
+      s.close(() => resolve(port));
+    });
+  });
+}
 
 function freePorts(n: number): Promise<number[]> {
   return Promise.all(
@@ -47,8 +64,8 @@ const socket = socketPath('panel-orch');
 
 beforeAll(async () => {
   dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-panel-orch-'));
-  const ports = await freePorts(6);
-  game = ports[5]!;
+  const ports = await freePorts(5);
+  game = await freeUdpPort();
   backend = new FakeBackend({ stateDir: dir, policy, agentPorts: ports.slice(0, 2), controlPorts: ports.slice(2, 5), env: { FAKE_PZ_BOOT_MS: '200' } });
   server = createOrchestratorServer({ backend, token: TOKEN, version: 'fake', policy });
   await listenOnSocket(server, socket);

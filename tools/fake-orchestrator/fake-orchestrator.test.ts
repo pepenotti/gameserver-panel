@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import dgram from 'node:dgram';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import type http from 'node:http';
 import net from 'node:net';
@@ -25,6 +26,28 @@ function freePorts(n: number): Promise<number[]> {
           s.once('error', reject);
           s.listen(0, '127.0.0.1', () => {
             const port = (s.address() as net.AddressInfo).port;
+            s.close(() => resolve(port));
+          });
+        }),
+    ),
+  );
+}
+
+/**
+ * Free UDP ports, picked by binding UDP: a free TCP port may sit in a range
+ * the OS reserves for UDP only (Windows does this), so game ports can't come
+ * from `freePorts`.
+ */
+function freeUdpPorts(n: number): Promise<number[]> {
+  return Promise.all(
+    Array.from(
+      { length: n },
+      () =>
+        new Promise<number>((resolve, reject) => {
+          const s = dgram.createSocket('udp4');
+          s.once('error', reject);
+          s.bind(0, '127.0.0.1', () => {
+            const { port } = s.address();
             s.close(() => resolve(port));
           });
         }),
@@ -114,7 +137,7 @@ const launch = { adapter: 'pz', params: { serverName: 'devsrv', adminUsername: '
 describe('the fake orchestrator (dev loop, M2)', () => {
   it('runs each server as a local agent with its fake game, and brings it back like unless-stopped (SRV-06)', { timeout: 180_000 * SCALE }, async () => {
     const r = await rig();
-    const [game] = await freePorts(1);
+    const [game] = await freeUdpPorts(1);
     const put = await request(r.socket, 'PUT', '/v1/servers/pz', { body: spec('pz', game!) });
     expect(put).toMatchObject({ status: 200, body: { id: 'pz', state: 'created', image: 'gsp/steam:dev', agentUrl: `http://127.0.0.1:${r.agentPorts[0]}` } });
     const url = (put.body as ServerContainer).agentUrl;
@@ -147,7 +170,8 @@ describe('the fake orchestrator (dev loop, M2)', () => {
 
   it('refuses what the real orchestrator refuses, and ports that are taken', async () => {
     const r = await rig();
-    const [a, b, taken] = await freePorts(3);
+    const [a, b] = await freeUdpPorts(2);
+    const [taken] = await freePorts(1);
     expect(await request(r.socket, 'PUT', '/v1/servers/pz', { body: { ...spec('pz', a!), env: { ...spec('pz', a!).env, LD_PRELOAD: 'x' } } })).toMatchObject({ status: 403, body: { code: 'refused', field: 'env.LD_PRELOAD' } });
     expect(await request(r.socket, 'PUT', '/v1/servers/pz', { body: { ...spec('pz', a!), variant: 'fake' } })).toMatchObject({ status: 403, body: { field: 'variant' } });
     expect(await request(r.socket, 'PUT', '/v1/servers/pz', { body: spec('pz', a!) })).toMatchObject({ status: 200 });
