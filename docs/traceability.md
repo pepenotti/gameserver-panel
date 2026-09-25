@@ -9,7 +9,7 @@ without a milestone is a PRD bug.
 | SRV-01 | P0 | M2 | `panel/test/registry.test.ts` "creating a server" (spec, secrets, ports, every refusal, rollback); `panel/test/servers.test.ts` create API; ports inside the orchestrator's ranges: `registry.test.ts` (slot ranges, other ranges, clashes inside the container), `orchestrator/test/http.test.ts` (host reports ports and memory), `servers.test.ts` (adapters host); web create form: `web/test/servers.test.ts`, `web/src/pages/CreateServer.tsx` (ports inside `hostPorts`, memory capped at `maxMemMb`, refusals on their field); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 3 |
 | SRV-02 | P0 | M2 | `panel/test/servers.test.ts` "the server list" (state, players, version, next restart, role, ports); web: `web/test/servers.test.ts`, `web/src/pages/Servers.tsx` (live via the websocket `servers`/`gone` messages) |
 | SRV-03 | P0 | M2 | `panel/test/server.test.ts` (start, stop, restart, kill, countdown warnings and cancel), per server under `/api/servers/:sid`; `panel/test/cross-server.test.ts` (only that server's users); `adapter-pz/test/runtime.test.ts` "removes the empty game database a failed first boot left, and nothing else (SRV-03)", "never creates or changes the game database when reading it (SRV-03)" |
-| SRV-04 | P0 | M2 | `panel/test/registry.test.ts` "removing a server" (typed name, stopped, final backup, container + volumes, rows purged, audit kept); `panel/test/servers.test.ts` delete API; forced removal: `registry.test.ts` (busy, running, unreachable agent), `servers.test.ts` (owner-only force); web: delete dialog with typed name and the owner's force (`web/src/components/ServerAdmin.tsx`); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 10 (final backup, forced removal of an unreachable server) |
+| SRV-04 | P0 | M2 | `panel/test/registry.test.ts` "removing a server" (typed name, stopped, final backup, container + volumes, rows purged, audit kept); `panel/test/servers.test.ts` delete API; forced removal: `registry.test.ts` (busy, running, unreachable agent), `servers.test.ts` (owner-only force); web: delete dialog with typed name and the owner's force (`web/src/components/ServerAdmin.tsx`); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 10 (final backup, forced removal of an unreachable server); `registry.test.ts` "marks the final backup as the final one… (SRV-04, BAK-01)", "says when the server's agent can't be reached… (SRV-04)" |
 | SRV-05 | P0 | M2 | `orchestrator/test/docker-backend.test.ts` (memory and CPU limits, `ORCH_MAX_MEM_MB`); capacity warning in M7; `registry.test.ts` "changing memory and CPU limits (SRV-05)" and create-time memory refusal; `servers.test.ts` limits through the API; web: container-limits card and "applies at next start" badge (`web/src/pages/Server.tsx`); `servers.test.ts` "tells an admin of one server the most the host gives a server… (SRV-05)" (`GET /api/servers/:sid/limits`); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 8 |
 | SRV-06 | P0 | M2 | `panel/test/registry.test.ts` "reconcile" (re-apply, recreate, start, retry); orchestrator derives restart `unless-stopped` (`docker-backend.test.ts`); `registry.test.ts` reconcile keeps a running game's container while a change waits; retry audited: `registry.test.ts` "says in the audit log when a retry finds a failed server in line again (SRV-06)"; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 9 (Docker restart, panel recreated) |
 | SRV-07 | P0 | M2 | `panel/test/schedules.test.ts` per-server block (a crash alert names its server); `panel/test/cross-server.test.ts` (alerts reach only that server's users); `agent/test/agent.test.ts` "says why when it gives up…", "names the fatal line even when it is read after the exit… (SRV-07)"; `adapter-pz/test/runtime.test.ts` "marks the exception PZ logs when its boot dies as fatal… (SRV-07)" |
@@ -24,14 +24,14 @@ without a milestone is a PRD bug.
 | UPD-07 | P1 | M4 | — |
 | UPD-08 | P2 | after v1 | — |
 | CFG-01 | P0 | M1 | `panel/test/config.test.ts` (validation, masking); `adapter-pz/test/panel-config-contract.test.ts` |
-| CFG-02 | P0 | M1 | `formats/test/registry.test.ts`, `formats/test/lua-data.test.ts`; `config.test.ts` "rejects raw Lua"; config suite data-only check |
+| CFG-02 | P0 | M1 | `formats/test/registry.test.ts`, `formats/test/lua-data.test.ts`; `config.test.ts` "rejects raw Lua"; config suite data-only check; `formats/test/{properties,yaml,toml,json5,lines}.test.ts` (M3.0) |
 | CFG-03 | P0 | M1 | `config.test.ts` "history (CFG-03)" |
 | CFG-04 | P0 | M1 | `config.test.ts` "puts managed keys back"; config suite managed values; `adapter-pz/test/panel-config-contract.test.ts` "locks the sandbox file's VERSION… (CFG-04, CFG-01)" |
 | CFG-05 | P0 | M1 | `config.test.ts` "applies live"; `panel-config-contract.test.ts` afterWrite |
 | CFG-06 | P1 | M1 | `config.test.ts` "applies a game preset"; config suite presets; `panel/test/reset.test.ts` preset test |
-| CFG-07 | P0 | M1 | `panel/test/files.test.ts` "text editor API"; `registry.test.ts` formatFor |
+| CFG-07 | P0 | M1 | `panel/test/files.test.ts` "text editor API"; `registry.test.ts` formatFor; `formats/test/registry.test.ts` (every format id with its highlighting) |
 | CFG-08 | P0 | M1 | `panel/test/files.test.ts` (LocalServerFiles, editor policy, editor API refusals); `panel/test/server-files.test.ts` (both ServerFiles implementations), `agent/test/files.test.ts`, `archive/test/rooted.test.ts` |
-| CFG-09 | P0 | M1 | `registry.test.ts` comment preservation; `config.test.ts` comments kept |
+| CFG-09 | P0 | M1 | `registry.test.ts` comment preservation; `config.test.ts` comments kept; comments and unknown keys kept by every format: `formats/test/{properties,yaml,toml,json5,lines}.test.ts` |
 | CFG-10 | P1 | M1 | manual UI check (Advanced section, search); `web/src/pages/config/OptionsForm.tsx` |
 | CON-01 | P0 | M1 | `agent.test.ts` "never leaks the admin or RCON password"; `agent/test/http.test.ts` event stream; `panel/test/agent-e2e.test.ts` (no secret in any log line) |
 | CON-02 | P0 | M5 | — |
@@ -42,11 +42,11 @@ without a milestone is a PRD bug.
 | PLY-03 | P0 | M1 | `panel/test/players.test.ts`; `adapter-pz/test/panel-core.test.ts` (players); panel core suite (moderation arguments) |
 | MOD-01 | P0 | M1 | `panel/test/mods.test.ts`; `adapter-pz/test/panel-core.test.ts` (Steam Workshop source) |
 | MOD-02 | P0 | M4 | — |
-| MOD-03 | P1 | M5 | — |
+| MOD-03 | P1 | M5 | `source-workshop/test/workshop.test.ts` (the Workshop source by app id, shared with Project Zomboid; tModLoader use in M5) |
 | MOD-04 | P1 | M4 | — |
 | MOD-05 | P2 | after v1 | — |
 | MOD-06 | P1 | M5 | — |
-| BAK-01 | P0 | M1 | `panel/test/backups.test.ts`; `panel/test/core-adapter.test.ts` (symlinks skipped); `panel/test/server.test.ts` (pre-update backup); `panel/test/agent-e2e.test.ts` (hot backup through the agent); `archive/test/tar.test.ts`; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7 |
+| BAK-01 | P0 | M1 | `panel/test/backups.test.ts`; `panel/test/core-adapter.test.ts` (symlinks skipped); `panel/test/server.test.ts` (pre-update backup); `panel/test/agent-e2e.test.ts` (hot backup through the agent); `archive/test/tar.test.ts`; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7; final backup trigger: `registry.test.ts` (SRV-04, BAK-01) |
 | BAK-02 | P0 | M3 | PZ: `archive/test/rooted.test.ts` (hot packs), `agent/test/files.test.ts`, `panel/test/server-files.test.ts` "hot packs through the agent"; a hot backup saves once (`schedules.test.ts`, `backups.test.ts`) |
 | BAK-03 | P0 | M1 | `panel/test/backups.test.ts` restoring block (parts + undo, running server, damaged archive, staging-only writes); `panel/test/server-files.test.ts` (restore round trip, hostile archives); `agent-e2e.test.ts` (restore + undo); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7 (restore running and stopped, undo) |
 | BAK-04 | P0 | M1 | `panel/test/reset.test.ts`; `adapter-pz/test/panel-core.test.ts` (backup parts, resets) |
@@ -58,7 +58,7 @@ without a milestone is a PRD bug.
 | ACC-01 | P0 | M1 | `panel/test/auth.test.ts`, `panel/test/users.test.ts`, `panel/test/cli.test.ts` (panelctl) |
 | ACC-02 | P0 | M2 | `shared/test/permissions.test.ts`; `panel/test/cross-server.test.ts` (generated from the route table, both directions, websocket); `panel/test/servers.test.ts` grants/scope API; `panel/test/api-first.test.ts`; web: account scope and per-server roles (`web/src/pages/Users.tsx`) |
 | ACC-03 | P0 | M2 | `panel/test/servers.test.ts` (audit by server); `panel/test/migrations.test.ts` (backfill); web: activity log filtered by server, actor badges (`web/src/pages/Audit.tsx`); `servers.test.ts` "lists the host's own entries alone with server=- (ACC-03)…" |
-| HST-01 | P0 | M2 | `orchestrator/test/*` (spec, Docker backend, HTTP); `scripts/lib/stack-guard.test.ts`; compose rendered by `stack.mjs config`; `scripts/lib/worktree.test.ts` (fresh `.env` has no pre-orchestrator settings); real run: `docs/verification/m2-acceptance.md` (2026-09-25) steps 0–2, 11 |
+| HST-01 | P0 | M2 | `orchestrator/test/*` (spec, Docker backend, HTTP); `scripts/lib/stack-guard.test.ts`; compose rendered by `stack.mjs config`; `scripts/lib/worktree.test.ts` (fresh `.env` has no pre-orchestrator settings); real run: `docs/verification/m2-acceptance.md` (2026-09-25) steps 0–2, 11; `java`/`native` runtime images built and checked in a slot (M3.0 hand-off) |
 | HST-02 | P0 | M1 | `panel/test/env.test.ts` (PANEL_HOST default Caddy accepts); `caddy validate` of `docker/caddy/Caddyfile` in both TLS modes (see `docs/verification/pz-b42.md`); real stack (Caddy with internal TLS in front of the panel socket): `docs/verification/m2-acceptance.md` (2026-09-25) step 2 |
 | HST-03 | P1 | M7 | — |
 | HST-04 | P2 | after v1 | — |
@@ -79,6 +79,14 @@ without a milestone is a PRD bug.
 | NFR-04 | NFR | M8 | — |
 | NFR-05 | NFR | M8 | — |
 | NFR-06 | NFR | M8 | — |
-| NFR-07 | NFR | M0 | `scripts/verify.sh` gates; `scripts/lib/*.test.ts`, `scripts/dev.test.ts`; per-slot isolation (`worktree-env.mjs`, `stack.mjs`); runtime, panel-core and panel-config contract suites (`adapter-api/src/testing/*`) run against the PZ adapter |
-| NFR-08 | NFR | M1 | `no-restricted-imports` rule in `eslint.config.js` (lint step of `verify.sh`); done when `LEGACY_GAME_IMPORTERS` is empty; `scripts/core-agnostic.test.ts` (no adapter imports outside `agent/src/main.ts` and `panel/src/wiring.ts`, no game tokens in core `src/**`); `web/test/game-neutral.test.ts`; `web/test/game-neutral.test.ts` also refuses the removed M1 fallback strings |
-| NFR-09 | NFR | M0 | `scripts/check-private.mjs` and the `privacy` step in `verify.sh`; `scripts/lib/privacy.test.ts`; `.githooks/commit-msg` |
+| NFR-07 | NFR | M0 | `scripts/verify.sh` gates; `scripts/lib/*.test.ts`, `scripts/dev.test.ts`; per-slot isolation (`worktree-env.mjs`, `stack.mjs`); runtime, panel-core and panel-config contract suites (`adapter-api/src/testing/*`) run against the PZ adapter; tests remove their temp folders (M3.0) |
+| NFR-08 | NFR | M1 | `no-restricted-imports` rule in `eslint.config.js` (lint step of `verify.sh`); done when `LEGACY_GAME_IMPORTERS` is empty; `scripts/core-agnostic.test.ts` (no adapter imports outside `agent/src/main.ts` and `panel/src/wiring.ts`, no game tokens in core `src/**`); `web/test/game-neutral.test.ts`; `web/test/game-neutral.test.ts` also refuses the removed M1 fallback strings; `scripts/core-agnostic.test.ts` also refuses `@gsp/source-*` imports in the core |
+| NFR-09 | NFR | M0 | `scripts/check-private.mjs` and the `privacy` step in `verify.sh`; `scripts/lib/privacy.test.ts`; `.githooks/commit-msg`; `scripts/scrub-fixture.test.ts` (scrubber for captured fixtures) |
+
+## Decisions
+
+| Decision | Proven by |
+|---|---|
+| D4 | `adapters/test/adapters.test.ts`; each `adapter-*/test/contract.test.ts` (skeletons pass the contract suites) |
+| D5 | `panel/test/servers.test.ts` "offers no adapter skeleton…" (unmeasured games are registered, not offered) |
+| D6 | `panel/test/eula.test.ts`; `agent/test/agent.test.ts` "the owner's EULA acceptance (D6)"; `shared/test/permissions.test.ts`; contract suite `adapter-api/src/testing/meta.ts` (an EULA names its agreement) |

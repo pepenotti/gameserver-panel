@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.10 |
+| Status | Draft 0.11 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -110,6 +110,7 @@ Each can move into scope later through [change control](#14-change-control).
 - A server someone has no role on doesn't exist for them: the API answers
   "not found" rather than "forbidden".
 - 2FA is mandatory for admins and the owner.
+- Accepting a game's EULA is the owner's alone (D6).
 - People who only play need no account.
 
 ## 6. Concepts
@@ -136,7 +137,10 @@ Each can move into scope later through [change control](#14-change-control).
 | Other Steam games | — | steamcmd | per manifest | raw files | — | per manifest |
 
 - **Minecraft EULA:** Minecraft needs the owner to accept Mojang's EULA. The
-  panel asks explicitly and never accepts it on the owner's behalf.
+  panel asks explicitly and never accepts it on the owner's behalf: only the
+  owner accepts it, when creating the server or later on its page, with the
+  agreement's link in front of them. Until then the server can't start, and
+  its game is told the EULA was accepted only after that.
 - **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts. Servers
   installed with steamcmd need x86-64. Each adapter declares what it runs
   on, confirmed in its milestone (HST-05).
@@ -155,7 +159,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | SRV-01 | P0 | Create a server from an adapter: name, game, flavour and version, ports, memory limit. Port conflicts with other servers and with the host are refused. |
 | SRV-02 | P0 | List servers with their state, players, version and next scheduled restart. Each server has its own pages. |
 | SRV-03 | P0 | Start, stop, restart and kill. Stop and restart use countdown warnings wherever the game can message players. |
-| SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. The owner may force the removal of a server that can't be stopped or won't run: the final backup is still taken when possible, and the result says when it wasn't and why. |
+| SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. The owner may force the removal of a server that can't be stopped, won't run or whose agent can't be reached: the final backup is still taken when possible, and the result says when it wasn't and why. |
 | SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. A host view warns when the limits add up to more than the host has. |
 | SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart. |
 | SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server, and says why: the last fatal line the game printed (redacted). |
@@ -222,7 +226,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 
 | ID | P | Requirement |
 |---|---|---|
-| BAK-01 | P0 | Per-server backups (manual, scheduled, and before updates, restores and resets), each with a manifest, a checksum and retention per server. |
+| BAK-01 | P0 | Per-server backups (manual, scheduled, before updates, restores and resets, and a final one before a server is removed), each with a manifest, a checksum and retention per server. |
 | BAK-02 | P0 | Consistent backups while running, using each game's own method. Project Zomboid: `save`, then SQLite snapshots. Minecraft: `save-off`, `save-all flush`, then `save-on` after the copy. Otherwise save, then copy, or a stopped-server backup. |
 | BAK-03 | P0 | Restore with a choice of parts, a staging folder, atomic swap and undo. |
 | BAK-04 | P0 | Reset scopes from each adapter (world only; world and players; factory). A backup is always taken first. |
@@ -291,7 +295,7 @@ on their own; only AST-05 is the assistant itself.
 | NFR-06 | Footprint | Panel under 512 MB of RAM; agent overhead under 64 MB per server; the UI stays responsive with 10 servers. |
 | NFR-07 | Testability | Each adapter has fixtures captured from a real server and a fake server for integration tests, and passes the shared adapter contract suite. `scripts/verify.sh` gates every commit. |
 | NFR-08 | Maintainability | Adapters live in their own packages. The core never imports game-specific code or names a game; a lint rule and a test enforce it. |
-| NFR-09 | Privacy | No telemetry. Secrets live only in `.env` and the database. The repository names no real host, person, IP or hostname. No server data leaves the host unless the owner turns on an optional integration that needs it (Discord, a future assistant), and even then secrets are masked. |
+| NFR-09 | Privacy | No telemetry. Secrets live only in `.env` and the database. The repository names no real host, person, IP or hostname. No server data leaves the host unless the owner turns on an optional integration that needs it (Discord, a future assistant), and even then secrets are masked. Output captured from a real server passes through `scripts/scrub-fixture.mjs` (and a person's reading) before it becomes a fixture. |
 
 NFR-01's controls, carried over from zomboid-server:
 - scrypt password hashes;
@@ -348,7 +352,11 @@ NFR-01's controls, carried over from zomboid-server:
   and a test fails when it goes stale.
 - **Package layout.** `packages/adapter-api` holds the contract (types plus
   shared contract test suites). Each game lives in `packages/adapter-<game>`,
-  and `packages/adapters` is the single place that lists them. The core
+  and `packages/adapters` is the single place that lists them, each enabled
+  or not: an adapter whose game hasn't been measured yet (D5) is registered
+  but not offered. Mod sources several games share live in
+  `packages/source-<name>` (`source-workshop`: the Steam Workshop, for
+  Project Zomboid and tModLoader). The core
   (`shared`, `formats`, `agent`, `panel`, `web`) never imports a game
   adapter; a lint rule enforces it (NFR-08). Captured output lives in
   `fixtures/<game>/<build>/` and measured facts in
@@ -356,7 +364,10 @@ NFR-01's controls, carried over from zomboid-server:
 - **Config files.** Each adapter declares its editable folders and each
   file's format. A format registry (parse, validate, serialise, highlight)
   serves both the forms and the text editor, so they can't drift apart
-  (CFG-07…09).
+  (CFG-07…09). It covers ini, Java properties, Lua data, JSON, JSON5, YAML,
+  TOML and line lists; edits keep comments and unknown keys, and an edit a
+  format can't make in place (a value inside a TOML inline table) is left to
+  the text editor rather than done by rewriting the file.
 - **Assistant readiness.** The API is the only way to act (AST-01). Changes
   can be proposals awaiting approval (AST-03). Adapters describe themselves in
   machine-readable form (AST-04). A future assistant plugs in as one more API
@@ -485,3 +496,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.8 | 2026-09-24 | M2 wave: the orchestrator service (only Docker holder, derived hardening, refusal-tested), server files and backups through each server's agent (D11), servers created, renamed and removed through the API with per-server roles, per-server schedules and Discord override (SCH-03 wording), `PANEL_LISTEN` unix socket behind the proxy, generated `docs/api.md`. |
 | 0.9 | 2026-09-25 | M2 follow-ups: the orchestrator reports the host ports and memory it allows, new servers get free ports inside those ranges, memory and CPU limit changes apply at once (stopped) or at the next start (running), owner-only forced removal (SRV-04 wording), compose cleaned of the pre-orchestrator server settings. |
 | 0.10 | 2026-09-25 | M2 closed: the multi-server web (list, create, delete, per-server roles, server switcher); the acceptance run on real Docker passed with two Project Zomboid servers side by side (`docs/verification/m2-acceptance.md`) and found two bugs, both fixed (a noexec `/tmp` in game containers, an empty world database left by a failed first boot); host-only audit entries (ACC-03), limits visible to a server's admin (SRV-05), the crash watchdog names the last fatal line (SRV-07), game-written keys are locked (CFG-04). |
+| 0.11 | 2026-09-25 | M3 contract step: formats for properties, YAML, TOML, JSON5 and line lists (CFG-02/07/09); skeleton adapters for Minecraft, Terraria, Valheim and manifests, registered but not offered until measured (D4, D5); `java` and `native` runtime images; the Steam Workshop source shared by app id (MOD-03); the owner-only EULA flow (D6, §5, §7); the fixture scrubber (NFR-09); the removal's final backup has its own trigger and an unreachable agent needs a forced removal (SRV-04, BAK-01). |
