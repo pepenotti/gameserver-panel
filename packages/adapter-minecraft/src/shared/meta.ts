@@ -1,40 +1,41 @@
 import type { AdapterMeta } from '@gsp/adapter-api';
 
 /**
- * Minecraft: Java Edition, shared by the runtime and panel halves.
+ * Minecraft: Java Edition, shared by the runtime and panel halves. Every
+ * value is measured on real 26.3 servers (D5, docs/verification/minecraft-26.3.md).
  *
- * A skeleton (M3 contract step): what the PRD settles is filled in (the
- * runtime family, the architectures, the loaders picked per server, the
- * EULA); everything about how the game behaves comes from the M3
- * fact-finding captures (D5, `fixtures/minecraft/`), and every value below
- * marked TODO is a placeholder nothing relies on. The adapter is registered
- * but not offered (`packages/adapters`) until then.
+ * The capabilities are what the runtime half implements (M3 phase 2); the
+ * panel's (broadcast, kick, ban, whitelist, operator levels, settings forms,
+ * update checks) join them with the panel half. The agent runs this adapter;
+ * the panel doesn't offer it yet (`packages/adapters`).
  */
 export const MINECRAFT_META: AdapterMeta = {
   id: 'minecraft',
   name: { en: 'Minecraft: Java Edition', es: 'Minecraft: Java Edition' },
-  // PRD §10: a JRE matched to the Minecraft version (docker/java).
+  // PRD §10: Temurin 25, 21 and 17, picked per server from its version (docker/java).
   runtime: 'java',
-  // PRD §7: x86-64 and ARM64 hosts; confirmed in M3 (HST-05).
+  // PRD §7: the server jars are Java with ARM64 natives; ARM64 is confirmed in M7 (HST-05).
   arch: ['amd64', 'arm64'],
   // PRD §7, D6, UPD-06: the loader is picked per server. Forge and NeoForge come in M4 (UPD-07).
-  // TODO(M3 fact-finding): each flavour's own capabilities, once measured.
   flavours: [
     { id: 'vanilla', name: { en: 'Vanilla', es: 'Vanilla' } },
     { id: 'paper', name: { en: 'Paper', es: 'Paper' } },
     { id: 'fabric', name: { en: 'Fabric', es: 'Fabric' } },
   ],
-  // TODO(M3 fact-finding): the game port (PRD §7 expects TCP 25565) and RCON's, as the captures show them.
-  ports: [],
-  // TODO(M3 fact-finding): placeholders until the server's memory use is measured.
-  memory: { minMb: 1024, defaultMb: 2048, overheadMb: 512 },
-  // D6: the owner accepts the EULA explicitly. The other capabilities come with the M3 adapter.
-  capabilities: ['eula'],
-  // TODO(M3 fact-finding): placeholder until a clean stop of a big world is timed.
-  stopBudgetMs: 60_000,
+  ports: [
+    // A client joined through a different published port: the game port inside need not match.
+    { id: 'game', proto: 'tcp', default: 25565, publish: true, sameInsideOut: false, label: { en: 'Game port', es: 'Puerto del juego' } },
+    { id: 'rcon', proto: 'tcp', default: 25575, publish: false, sameInsideOut: false, label: { en: 'RCON (agent only)', es: 'RCON (solo el agente)' } },
+  ],
+  // 1 GiB heaps booted every version tried; above a 2 GiB heap an idle server used 341–404 MiB
+  // more (players, view distance and plugins add native memory).
+  memory: { minMb: 1024, defaultMb: 2048, overheadMb: 1024 },
+  capabilities: ['rcon', 'stdinConsole', 'save', 'hotBackup', 'players', 'playerHistory', 'versionPin', 'loaders', 'eula'],
+  // A stop took 1.2–4 s on a small world; Paper allows its chunk system up to 60 s per dimension.
+  stopBudgetMs: 120_000,
   eula: {
     name: { en: 'Minecraft End User License Agreement (EULA)', es: 'Contrato de licencia de usuario final (EULA) de Minecraft' },
-    // TODO(M3 fact-finding): confirm against the link the server's own EULA file gives.
+    // The link the game's own eula.txt gives.
     url: 'https://aka.ms/MinecraftEULA',
   },
 };
