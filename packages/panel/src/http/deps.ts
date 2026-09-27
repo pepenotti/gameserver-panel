@@ -10,6 +10,7 @@ import type { PanelEnv } from '../env';
 import type { DiscordNotifier } from '../notifier/discord';
 import type { PanelBus } from '../ops/bus';
 import type { HostJobs } from '../scheduler/host-jobs';
+import type { LaunchChoicesService } from '../servers/choices';
 import type { OrchestratorClient } from '../servers/orchestrator';
 import type { ServerRegistry } from '../servers/registry';
 import type { ServersStore } from '../servers/store';
@@ -53,4 +54,6 @@ export interface Deps {
   adapters: readonly PanelAdapter[];
   /** The host's own jobs (the panel database's nightly copy). */
   hostJobs: HostJobs;
+  /** What a game's version may be set to, from its download services (UPD-02). */
+  choices: LaunchChoicesService;
 }

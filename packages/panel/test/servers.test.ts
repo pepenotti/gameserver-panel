@@ -73,7 +73,10 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     expect(((await owner.get('/api/adapters')).json() as { host: unknown }).host).toMatchObject({ hostPorts: [{ from: 30150, to: 30199 }], maxMemMb: 6144 });
     p.orch.hostPorts = undefined;
     p.orch.maxMemMb = undefined;
-    expect(adapters.adapters).toEqual([expect.objectContaining({ id: 'pz', supported: true, eula: false, launch: expect.objectContaining({ secrets: [expect.objectContaining({ key: 'adminPassword' })] }) })]);
+    expect(adapters.adapters).toEqual([
+      expect.objectContaining({ id: 'pz', supported: true, eula: false, launch: expect.objectContaining({ secrets: [expect.objectContaining({ key: 'adminPassword' })], choices: false }) }),
+      expect.objectContaining({ id: 'minecraft', supported: true, eula: true, launch: expect.objectContaining({ secrets: [], choices: true }) }),
+    ]);
 
     const granted = await friend(p, owner, 'granted-admin', 'admin', 'admin');
     const everywhere = await friend(p, owner, 'all-admin', 'admin');
@@ -98,9 +101,9 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);
     const skeletons = panelAdapterEntries.filter((e) => !e.enabled).map((e) => e.adapter.meta.id);
-    expect(skeletons).toEqual(['minecraft', 'terraria', 'valheim', 'manifest']);
+    expect(skeletons).toEqual(['terraria', 'valheim', 'manifest']);
     const listed = ((await owner.get('/api/adapters')).json() as { adapters: { id: string }[] }).adapters.map((a) => a.id);
-    expect(listed).toEqual(['pz']);
+    expect(listed).toEqual(['pz', 'minecraft']);
     p.orch.calls.length = 0;
     for (const adapter of skeletons) expect((await createTwo(owner, { id: `x-${adapter}`, name: adapter, adapter })).json(), adapter).toEqual({ error: 'unknown-adapter' });
     expect(p.orch.calls).toEqual([]);

@@ -243,7 +243,10 @@ if (process.env.VITEST) {
   afterAll(removeMade);
 } else process.once('exit', removeMade);
 
-export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: ModSource[]; fetch?: typeof fetch; db?: Db; orch?: FakeOrchestrator; adapters?: readonly PanelAdapter[] } = {}): Promise<TestPanel> {
+export async function makePanel(
+  envOver: Partial<PanelEnv> = {},
+  opts: { mods?: ModSource[]; fetch?: typeof fetch; db?: Db; orch?: FakeOrchestrator; adapters?: readonly PanelAdapter[]; downloads?: { fetch?: typeof fetch; env?: Record<string, string | undefined> } } = {},
+): Promise<TestPanel> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'gsp-panel-'));
   made.push(tmp);
   const env: PanelEnv = {
@@ -289,6 +292,8 @@ export async function makePanel(envOver: Partial<PanelEnv> = {}, opts: { mods?: 
     agent,
     feed,
     fetch: opts.fetch ?? noNetwork,
+    // The games' download services only when a test brings its fakes.
+    downloads: opts.downloads ?? { fetch: noNetwork, env: {} },
     mods: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })],
     orchestrator: orch,
     adapters: opts.adapters,

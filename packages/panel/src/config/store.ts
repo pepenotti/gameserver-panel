@@ -62,6 +62,8 @@ export interface DeclaredFile {
   managedKeys: string[];
   secretKeys: string[];
   restartKeys: string[] | '*';
+  /** The running game writes it back from memory: changed only while the game is stopped (409 `config-stopped-only`). */
+  stoppedOnly: boolean;
 }
 
 export interface TreeEntry {
@@ -106,7 +108,7 @@ export interface FileContent {
 }
 
 export interface ConfigMeta {
-  files: Pick<DeclaredFile, 'id' | 'label' | 'format' | 'schemaId' | 'managedKeys' | 'secretKeys' | 'restartKeys'>[];
+  files: Pick<DeclaredFile, 'id' | 'label' | 'format' | 'schemaId' | 'managedKeys' | 'secretKeys' | 'restartKeys' | 'stoppedOnly'>[];
   schemas: Record<string, OptionMeta[]>;
   /** Each schema's form groups, in order (CFG-10); options name theirs in `group`. */
   groups: Record<string, OptionGroup[]>;

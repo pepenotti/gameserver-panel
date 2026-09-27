@@ -32,6 +32,7 @@ import { ConfigProposals } from './proposals/service';
 import { HostJobs } from './scheduler/host-jobs';
 import { Scheduler } from './scheduler/scheduler';
 import { capabilitiesOf, ServerHandle, type EulaAcceptance } from './server/handle';
+import { LaunchChoicesService } from './servers/choices';
 import type { ServerContext } from './servers/context';
 import { NoOrchestrator, type OrchestratorClient } from './servers/orchestrator';
 import { OrchestratorHttp } from './servers/orchestrator-http';
@@ -209,6 +210,8 @@ export interface PanelDepsOptions {
   mods?: readonly ModSource[];
   /** How the Discord notifier reaches Discord (tests: not at all). */
   fetch?: typeof fetch;
+  /** How launch choices reach the games' download services, and the environment naming them (tests: the fake ones, or nothing). */
+  downloads?: { fetch?: typeof fetch; env?: Readonly<Record<string, string | undefined>> };
   /** The orchestrator (default: `factories.orchestrator(env)`). */
   orchestrator?: OrchestratorClient;
   /** Any of `FACTORIES` replaced (tests: fake agents and local files for orchestrator-run servers). */
@@ -299,5 +302,6 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     orchestrator,
     adapters,
     hostJobs: new HostJobs({ audit, backupPanelDb: () => backupPanelDb(db, env.backupDir) }),
+    choices: new LaunchChoicesService({ version: env.version, fetch: o.downloads?.fetch, env: o.downloads?.env }),
   };
 }

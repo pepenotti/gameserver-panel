@@ -16,7 +16,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 - Errors are `{"error": "<code>", …}`; the web translates the codes (`packages/web/src/i18n/*/errors.ts`).
 - Request shapes: `?` marks optional properties.
 
-## Host (29 routes)
+## Host (30 routes)
 
 | Method | Path | Access | Request |
 |---|---|---|---|
@@ -47,10 +47,11 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | POST | `/api/notifications/test` | `notifications.manage` | — |
 | GET | `/api/servers` | session | — |
 | GET | `/api/adapters` | `servers.create` | — |
+| GET | `/api/adapters/:id/choices` | `servers.create` | `params { id: string }`<br>`query { flavour?: string, version?: string }` |
 | POST | `/api/servers` | `servers.create` | `body { id: string, name: string, adapter: string, flavour?: string \| null, launch?: object, ports?: { [key]: integer }, memLimitMb?: integer, cpus?: number \| null, eulaAccepted?: boolean }` |
 | GET | `/api/ws` | session | — |
 
-## One server: `/api/servers/:sid` (61 routes)
+## One server: `/api/servers/:sid` (63 routes)
 
 `:sid` is the server's id. The permission is checked on that server; the capability is what its game must support.
 
@@ -73,6 +74,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | POST | `/api/servers/:sid/server/command` | `console.raw` | — | `body { command: string }` |
 | GET | `/api/servers/:sid/server/launch` | `server.view` | — | — |
 | PUT | `/api/servers/:sid/server/launch` | `server.update` | — | `body object` |
+| GET | `/api/servers/:sid/server/launch/choices` | `server.update` | `versionPin` | `query { version?: string }` |
 | GET | `/api/servers/:sid/server/updates` | `server.update` | `updateCheck` | — |
 | POST | `/api/servers/:sid/server/update` | `server.update` | — | `body { countdownSec?: 0 \| 60 \| 300 \| 900, validate?: boolean }` |
 | GET | `/api/servers/:sid/config/meta` | `config.edit` | — | — |
@@ -100,11 +102,12 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | GET | `/api/servers/:sid/players` | `players.view` | `players` | — |
 | GET | `/api/servers/:sid/players/history` | `accounts.view` | `playerHistory` | `query { limit?: integer }` |
 | POST | `/api/servers/:sid/players/kick` | `players.moderate` | `kick` | `body { username: string, reason?: string }` |
-| POST | `/api/servers/:sid/players/ban` | `players.moderate` | `ban` | `body { username?: string, steamId?: string, reason?: string }` |
-| POST | `/api/servers/:sid/players/unban` | `players.moderate` | `ban` | `body { username?: string, steamId?: string, reason?: string }` |
+| POST | `/api/servers/:sid/players/ban` | `players.moderate` | `ban` | `body { username?: string, steamId?: string, ip?: string, reason?: string }` |
+| POST | `/api/servers/:sid/players/unban` | `players.moderate` | `ban` | `body { username?: string, steamId?: string, ip?: string, reason?: string }` |
 | POST | `/api/servers/:sid/players/access` | `players.accessLevel` | `accessLevels` | `body { username: string, level: string }` |
-| POST | `/api/servers/:sid/players/whitelist` | `whitelist.manage` | `whitelist` | `body { username: string, password: string }` |
+| POST | `/api/servers/:sid/players/whitelist` | `whitelist.manage` | `whitelist` | `body { username: string, password?: string }` |
 | DELETE | `/api/servers/:sid/players/whitelist/:username` | `whitelist.manage` | `whitelist` | `params { username: string }` |
+| POST | `/api/servers/:sid/players/whitelist/enabled` | `whitelist.manage` | `whitelist` | `body { enabled: boolean }` |
 | GET | `/api/servers/:sid/mods` | `mods.manage` | — | — |
 | POST | `/api/servers/:sid/mods` | `mods.manage` | — | `body { refs: string[] }` |
 | PUT | `/api/servers/:sid/mods/enabled` | `mods.manage` | — | `body { enabled: object[] }` |
