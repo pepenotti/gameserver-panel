@@ -171,7 +171,7 @@ export async function minecraftChoices(q: LaunchChoicesQuery, ctx: ChoicesCtx): 
     const channel: LaunchChoice[] = PAPER_CHANNELS.map((c) => {
       const empty = picked !== undefined && channelRank(picked.channel) < channelRank(c);
       const warning = empty ? 'paper-channel-empty' : c === 'STABLE' ? null : 'paper-unstable-channel';
-      return { value: c, label: CHANNEL_LABELS[c], channel: c, ...(warning ? { warning } : {}) };
+      return { value: c, label: CHANNEL_LABELS[c], ...(warning ? { warning } : {}) };
     });
     return { version, channel };
   }
