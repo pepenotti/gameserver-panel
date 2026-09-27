@@ -8,10 +8,15 @@ import { terrariaRuntimeAdapter } from '@gsp/adapter-terraria/runtime';
 import { valheimRuntimeAdapter } from '@gsp/adapter-valheim/runtime';
 import { enabledOf, type AdapterEntry } from './entry';
 
-/** Every runtime adapter, and whether an agent runs it (the skeletons don't yet: see `panelAdapterEntries`). */
+/**
+ * Every runtime adapter, and whether an agent runs it (the skeletons don't
+ * yet: see `panelAdapterEntries`). Minecraft's runtime half is measured and
+ * built (M3): agents run it, while the panel offers it only once its panel
+ * half exists.
+ */
 export const runtimeAdapterEntries: readonly AdapterEntry<RuntimeAdapter>[] = [
   { adapter: pzRuntimeAdapter, enabled: true },
-  { adapter: minecraftRuntimeAdapter, enabled: false },
+  { adapter: minecraftRuntimeAdapter, enabled: true },
   { adapter: terrariaRuntimeAdapter, enabled: false },
   { adapter: valheimRuntimeAdapter, enabled: false },
   { adapter: manifestRuntimeAdapter, enabled: false },
