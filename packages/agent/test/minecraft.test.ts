@@ -9,7 +9,7 @@ import { startFakeDownloads, type FakeDownloads } from '../../../tools/fake-mine
 import { freePort, makeHarness, tools, type Harness } from './helpers';
 
 const fakeJava = [process.execPath, path.join(tools, '..', 'fake-minecraft', 'server.mjs')];
-const KEYS = ['MC_MOJANG_META_URL', 'MC_PAPER_API_URL', 'MC_FABRIC_META_URL', 'FAKE_MC_PLAYERS', 'FAKE_MC_SCENARIO', 'FAKE_MC_CRASH_MS', 'FAKE_MC_BOOT_MS'];
+const KEYS = ['GAME_MC_MOJANG_URL', 'GAME_MC_PAPER_URL', 'GAME_MC_FABRIC_URL', 'FAKE_MC_PLAYERS', 'FAKE_MC_SCENARIO', 'FAKE_MC_CRASH_MS', 'FAKE_MC_BOOT_MS'];
 
 let downloads: FakeDownloads;
 let h: Harness | undefined;
@@ -25,7 +25,7 @@ afterEach(async () => {
 
 /** The agent's environment is the process's: download URLs and the fake's knobs go there. */
 function env(extra: Record<string, string> = {}): void {
-  Object.assign(process.env, { MC_MOJANG_META_URL: downloads.url, MC_PAPER_API_URL: downloads.url, MC_FABRIC_META_URL: downloads.url, FAKE_MC_BOOT_MS: '100', ...extra });
+  Object.assign(process.env, { GAME_MC_MOJANG_URL: downloads.url, GAME_MC_PAPER_URL: downloads.url, GAME_MC_FABRIC_URL: downloads.url, FAKE_MC_BOOT_MS: '100', ...extra });
 }
 
 async function harness(): Promise<Harness> {

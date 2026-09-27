@@ -47,6 +47,19 @@ describe('launch params (UPD-02, UPD-06)', () => {
     expect([...ids].sort(compareVersions)).toEqual(['1.9.4', '1.16.5', '1.21.9', '1.21.11', '26.1', '26.1.2', '26.3']);
   });
 
+  it("reads a Paper version's newest build as whether it has a STABLE one, as measured on every version from 1.16.5 up (Q13)", () => {
+    const m = JSON.parse(fixture('paper', 'api', 'channel-matrix.json')) as { versions: { version: string; newestChannel: string; latestIsNewest: boolean; channelsOnlyMoveForward: boolean; counts: Record<string, number> }[] };
+    expect(m.versions.at(-1)!.version).toBe('1.16.5');
+    for (const v of m.versions) {
+      // `/builds/latest` is the newest build of any channel, and a version's builds only move ALPHA → BETA → STABLE…
+      expect([v.latestIsNewest, v.channelsOnlyMoveForward], v.version).toEqual([true, true]);
+      // …so it has a STABLE build exactly when its newest is one: what versions() warns about.
+      expect((v.counts.STABLE ?? 0) > 0, v.version).toBe(v.newestChannel === 'STABLE');
+    }
+    // Some versions never got a STABLE build: they stay offered, with the warning.
+    expect(m.versions.filter((v) => v.newestChannel !== 'STABLE').map((v) => v.version)).toEqual(expect.arrayContaining(['26.3', '1.21.9', '1.18']));
+  });
+
   it('takes Paper builds of the pinned channel or a more stable one (UPD-05)', () => {
     expect(PAPER_CHANNELS).toEqual(['STABLE', 'BETA', 'ALPHA']);
     expect(channelAllows('STABLE', 'STABLE')).toBe(true);

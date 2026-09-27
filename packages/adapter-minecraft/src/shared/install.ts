@@ -69,11 +69,11 @@ export interface MinecraftVersionInfo extends VersionInfo {
  */
 export const DOWNLOAD_SOURCES = {
   /** Mojang's version manifest and files (`/mc/game/version_manifest_v2.json`). */
-  mojang: { env: 'MC_MOJANG_META_URL', url: 'https://piston-meta.mojang.com' },
+  mojang: { env: 'GAME_MC_MOJANG_URL', url: 'https://piston-meta.mojang.com' },
   /** PaperMC's Fill v3 API (`/v3/projects/paper`). */
-  paper: { env: 'MC_PAPER_API_URL', url: 'https://fill.papermc.io' },
+  paper: { env: 'GAME_MC_PAPER_URL', url: 'https://fill.papermc.io' },
   /** Fabric's meta API (`/v2/versions`); the installer jar comes from the URL it gives. */
-  fabric: { env: 'MC_FABRIC_META_URL', url: 'https://meta.fabricmc.net' },
+  fabric: { env: 'GAME_MC_FABRIC_URL', url: 'https://meta.fabricmc.net' },
 } as const;
 
 /** `server.properties` keys the agent writes before every start (CFG-04): the game rewrites the file, so they are applied again each time. */

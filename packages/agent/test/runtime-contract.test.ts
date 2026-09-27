@@ -21,7 +21,7 @@ const envs: Record<string, string>[] = [];
 let downloads: FakeDownloads;
 beforeAll(async () => {
   downloads = await startFakeDownloads({ fail: '' });
-  for (const env of envs) for (const k of ['MC_MOJANG_META_URL', 'MC_PAPER_API_URL', 'MC_FABRIC_META_URL']) env[k] = downloads.url;
+  for (const env of envs) for (const k of ['GAME_MC_MOJANG_URL', 'GAME_MC_PAPER_URL', 'GAME_MC_FABRIC_URL']) env[k] = downloads.url;
 });
 afterAll(() => downloads.close());
 

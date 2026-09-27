@@ -75,4 +75,4 @@ export function testCtx(o: { env?: Record<string, string>; eulaAccepted?: boolea
 }
 
 /** The download URLs of a fake download server, as the agent's environment carries them. */
-export const downloadEnv = (url: string): Record<string, string> => ({ MC_MOJANG_META_URL: url, MC_PAPER_API_URL: url, MC_FABRIC_META_URL: url });
+export const downloadEnv = (url: string): Record<string, string> => ({ GAME_MC_MOJANG_URL: url, GAME_MC_PAPER_URL: url, GAME_MC_FABRIC_URL: url });
