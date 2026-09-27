@@ -281,20 +281,32 @@ describe('fake-minecraft server.mjs', () => {
     c.close();
   });
 
-  it('drops the connection when two packets arrive in one write, as the real server does — so a client may not pipeline its sentinel', async () => {
+  it("drops the connection when two packets arrive in one write, as the real server does; the agent's client sends one packet per write and works (CON-01)", async () => {
     const rcon = await freePort();
-    const f = start({ dir: prepared(rcon) });
+    const f = start({ dir: prepared(rcon), env: { FAKE_MC_PLAYERS: 'gspffAlice' } });
     await f.waitFor(PATTERNS.rconUp);
     const c = await raw(rcon);
     await c.write(frame(1, 3, PASSWORD));
     await c.write(frame(10, 2, 'list'), frame(11, 0, ''));
     expect(c.closed).toBe(true);
     expect(c.packets).toEqual([{ id: 1, type: 2, body: '' }]);
-    // The agent's client today sends a command and its sentinel in one write (fixtures/pz/b42/rcon):
-    // against Minecraft that never gets an answer (docs/verification/minecraft-26.3.md, RCON).
-    const client = new RconClient('127.0.0.1', rcon, () => PASSWORD, 1500 * SCALE);
-    await expect(client.command('list')).rejects.toThrow();
-    client.close();
+    // The client writes the sentinel only once the reply has begun (docs/verification/minecraft-26.3.md, RCON).
+    const client = new RconClient('127.0.0.1', rcon, () => PASSWORD, { timeoutMs: 1500 * SCALE });
+    try {
+      await expect(client.command('list')).resolves.toBe('There are 1 of a max of 20 players online: gspffAlice');
+      // A reply in two packets, then a command answered with an empty body, on the same connection.
+      const help = await client.command('help');
+      expect(help.length).toBeGreaterThan(4096);
+      await expect(client.command('say hello')).resolves.toBe('');
+      await expect(client.command('save-all flush')).resolves.toBe('Saving the game (this may take a moment!)Saved the game');
+      expect(client.connected).toBe(true);
+      // Longer than the server takes: refused before anything is written, and the connection carries on.
+      await expect(client.command(`say ${'x'.repeat(1443)}`)).rejects.toThrow(/too long for RCON: 1461 bytes/);
+      await expect(client.command(`say ${'x'.repeat(250)}`)).resolves.toBe('');
+      expect(client.connected).toBe(true);
+    } finally {
+      client.close();
+    }
   });
 
   it('takes packets of up to 1460 bytes and drops the connection on a longer one; say takes 256 characters', async () => {
