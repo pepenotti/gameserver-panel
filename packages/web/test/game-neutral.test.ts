@@ -4,7 +4,9 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CAPABILITIES, capabilityKey, hasCapability, MOD_CAPABILITIES, NEED_MODS, NEED_RESETS, supports, type Meta } from '../src/api/meta';
+// @ts-expect-error -- plain JS without type declarations (its JSDoc types it); the core's own check (scripts/core-agnostic.test.ts) uses it too.
+import { findGameTokens } from '../../../scripts/lib/core-agnostic.mjs';
+import { CAPABILITIES, capabilityKey, forFlavour, hasCapability, impliedBy, MOD_CAPABILITIES, NEED_MODS, NEED_RESETS, preferredChoice, supports, type LaunchOption, type Meta } from '../src/api/meta';
 import { en } from '../src/i18n/en';
 
 const web = path.resolve(import.meta.dirname, '..');
@@ -82,6 +84,30 @@ describe('game-neutral web', () => {
     expect(found).toEqual([]);
   });
 
+  it('has no Minecraft words or values either: loaders, channels, files, commands and links come from its adapter (M3)', () => {
+    // `Paper` alone is also a layout component here, so PaperMC's own names stand for it.
+    const MC_ONLY: [string, RegExp][] = [
+      ['Minecraft', /minecraft/i],
+      ['Mojang', /mojang/i],
+      ['PaperMC', /papermc|paperclip/i],
+      ['Fabric', /\bfabric/i],
+      ['bStats', /bstats/i],
+      ['server.properties', /server\.properties/],
+      ['its lists', /(whitelist|ops|banned-players|banned-ips|usercache)\.json/],
+      ['a console command', /\b(save-all|save-off|save-on|deop|pardon-ip|ban-ip)\b/],
+      ['a build channel', /\b(STABLE|BETA|ALPHA)\b/],
+      ['its EULA link', /aka\.ms/],
+    ];
+    const found: string[] = [];
+    for (const f of [...files(path.join(web, 'src'), /\.(tsx?|css|json)$/), path.join(web, 'index.html')]) {
+      const text = readFileSync(f, 'utf8');
+      for (const [i, line] of text.split('\n').entries()) for (const [token, re] of MC_ONLY) if (re.test(line)) found.push(`${path.relative(web, f)}:${i + 1}: ${token}`);
+      // Every game's tokens the core is held to (scripts/lib/core-agnostic.mjs).
+      for (const h of findGameTokens(text)) found.push(`${path.relative(web, f)}:${h.line}: ${h.token}`);
+    }
+    expect(found).toEqual([]);
+  });
+
   it('names the product, not a game', () => {
     expect(en.app.title).toBe('Game Server Panel');
     expect(readFileSync(path.join(web, 'index.html'), 'utf8')).toContain('<title>Game Server Panel</title>');
@@ -128,6 +154,39 @@ describe('capabilities', () => {
     expect(supports(modded, NEED_MODS)).toBe(true);
     expect(MOD_CAPABILITIES).toEqual(['mods:workshop', 'mods:modrinth', 'mods:tshock']);
     expect(supports(meta({ resets: [{ id: 'w', label: { en: 'W', es: 'W' }, permission: 'reset.world', removeParts: [] }] }), NEED_RESETS)).toBe(true);
+  });
+});
+
+describe('launch choices from an adapter (UPD-02, Q13)', () => {
+  const schema: LaunchOption[] = [
+    { key: 'version', type: 'string', role: 'version', description: {} },
+    { key: 'channel', type: 'enum', flavours: ['b'], default: 'SAFE', options: [{ value: 'SAFE', label: {} }, { value: 'EARLY', label: {} }], description: {} },
+  ];
+  const versions = [
+    { value: '3', warning: 'early-only', implies: { channel: 'EARLY' } },
+    { value: '2' },
+    { value: '1' },
+  ];
+
+  it('shows a flavour its own settings only', () => {
+    expect(forFlavour(schema[0]!, 'a')).toBe(true);
+    expect(forFlavour(schema[1]!, 'a')).toBe(false);
+    expect(forFlavour(schema[1]!, 'b')).toBe(true);
+    expect(forFlavour(schema[1]!, null)).toBe(false);
+  });
+
+  it('starts on the newest version that needs no warning, else the newest', () => {
+    expect(preferredChoice(versions)?.value).toBe('2');
+    expect(preferredChoice([versions[0]!])?.value).toBe('3');
+    expect(preferredChoice([])).toBeUndefined();
+    expect(preferredChoice(undefined)).toBeUndefined();
+  });
+
+  it('brings along what a pick implies, and puts back what another pick needed', () => {
+    expect(impliedBy(versions[0]!, versions, schema)).toEqual({ channel: 'EARLY' });
+    expect(impliedBy(versions[1]!, versions, schema)).toEqual({ channel: 'SAFE' });
+    // A list whose picks imply nothing changes nothing.
+    expect(impliedBy({ value: 'x' }, [{ value: 'x' }], schema)).toEqual({});
   });
 });
 

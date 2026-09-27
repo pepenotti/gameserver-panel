@@ -7,6 +7,7 @@ export default {
   check: 'Check for updates',
   installed: 'Installed',
   latest: 'Latest available',
+  pinnedChannel: 'Channel of the version',
   upToDate: 'Up to date',
   updateAvailable: 'Update available',
   updateNow: 'Update now',

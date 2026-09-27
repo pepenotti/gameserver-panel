@@ -9,6 +9,7 @@ export default {
   check: 'Buscar actualizaciones',
   installed: 'Instalada',
   latest: 'Última disponible',
+  pinnedChannel: 'Canal de la versión',
   upToDate: 'Al día',
   updateAvailable: 'Hay una actualización',
   updateNow: 'Actualizar ahora',

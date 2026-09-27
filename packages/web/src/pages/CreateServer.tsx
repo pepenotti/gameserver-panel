@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { api, ApiError } from '../api/http';
-import { localize, type AdapterSummary, type AdaptersResponse } from '../api/meta';
+import { forFlavour, impliedBy, localize, preferredChoice, type AdapterSummary, type AdaptersResponse, type LaunchChoices } from '../api/meta';
 import { serverHref, SERVERS_KEY, useServers, withServer, type ServerSummary } from '../api/server';
 import { useSession } from '../api/session';
 import { AgreementLink } from '../components/Eula';
@@ -69,6 +69,8 @@ export function CreateServer() {
   const [creating, setCreating] = useState(false);
   const [apiErrors, setApiErrors] = useState<Partial<Record<CreateField, string>>>({});
   const [general, setGeneral] = useState<string | null>(null);
+  /** The game and flavour whose versions were last picked for you (`adapter/flavour`). */
+  const [picked, setPicked] = useState<string | null>(null);
 
   const list = useMemo(() => servers.data ?? [], [servers.data]);
   const adapter = adapters.data?.adapters.find((a) => a.id === adapterId) ?? null;
@@ -81,6 +83,25 @@ export function CreateServer() {
   const memoryOption = adapter?.launch.schema.find((o) => o.key === memoryKey);
   // What the host gives one server (SRV-05): the game's memory can't take the container above it.
   const maxGameMb = adapter ? maxGameMemory(host?.maxMemMb, adapter.memory.overheadMb, memoryOption?.step) : null;
+
+  // What the version (and what depends on it) may be, from the game's download services (UPD-02): asked
+  // again as the flavour and version change; the list stays up meanwhile.
+  const versionKey = adapter ? launchKey(adapter.launch.schema, 'version') : undefined;
+  const versionValue = versionKey && typeof launch[versionKey] === 'string' ? (launch[versionKey] as string) : '';
+  const flavourReady = !!adapter && (adapter.flavours.length === 0 ? flavour === null : adapter.flavours.some((f) => f.id === flavour));
+  const choices = useQuery({
+    queryKey: ['choices', adapter?.id ?? null, flavour, versionValue],
+    queryFn: () => {
+      const q = new URLSearchParams();
+      if (flavour) q.set('flavour', flavour);
+      if (versionValue) q.set('version', versionValue);
+      return api<LaunchChoices>('GET', `/api/adapters/${encodeURIComponent(adapter!.id)}/choices?${q.toString()}`);
+    },
+    enabled: !!adapter?.launch.choices && flavourReady,
+    staleTime: 5 * 60_000,
+    retry: false,
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === (adapter?.id ?? null) && prevQuery?.queryKey[2] === flavour ? prev : undefined),
+  });
 
   // The first game this host can run is picked for you (once the other servers' ports are known).
   useEffect(() => {
@@ -101,8 +122,21 @@ export function CreateServer() {
     setPorts(suggested ?? Object.fromEntries(published.map((d) => [d.id, null])));
     setEula(false);
     setApiErrors({});
+    // Its versions are picked for you again once they are listed.
+    setPicked(null);
     // The rest is read as it is when the game changes.
   }, [pickedId]);
+
+  // A game or flavour listed for the first time: its newest version that needs no warning (Q13), and what it implies.
+  useEffect(() => {
+    if (!adapter || !versionKey || !choices.data || choices.isPlaceholderData) return;
+    const key = `${adapter.id}/${flavour ?? ''}`;
+    if (picked === key) return;
+    setPicked(key);
+    const versions = choices.data[versionKey];
+    const pick = preferredChoice(versions);
+    if (pick && versions) setLaunch((cur) => ({ ...cur, [versionKey]: pick.value, ...impliedBy(pick, versions, adapter.launch.schema) }));
+  }, [adapter, versionKey, choices.data, choices.isPlaceholderData, flavour, picked]);
 
   if (adapters.isLoading || servers.isLoading) {
     return (
@@ -367,19 +401,31 @@ export function CreateServer() {
                   {t('create.containerTotal', { total: gameMemory + overhead })}
                 </Text>
               )}
+              {choices.error && (
+                <Alert color="yellow" variant="light" icon={<IconAlertTriangle />}>
+                  {t('create.choicesUnavailable', { error: errorText(choices.error) })}
+                </Alert>
+              )}
               {adapter.launch.schema
-                .filter((o) => o.key !== memoryKey)
-                .map((o) => (
-                  <LaunchField
-                    key={o.key}
-                    o={o}
-                    value={launch[o.key]}
-                    onChange={(v) => {
-                      setLaunch({ ...launch, [o.key]: v });
-                      clear('launch');
-                    }}
-                  />
-                ))}
+                // Settings of other flavours (a loader's own) are kept at their defaults, out of sight.
+                .filter((o) => o.key !== memoryKey && forFlavour(o, flavour))
+                .map((o) => {
+                  const list = choices.data?.[o.key];
+                  return (
+                    <LaunchField
+                      key={o.key}
+                      o={o}
+                      value={launch[o.key]}
+                      choices={list}
+                      warnings={adapter.launch.warnings}
+                      onChange={(v) => {
+                        setLaunch({ ...launch, [o.key]: v });
+                        clear('launch');
+                      }}
+                      onChoice={(c) => list && setLaunch((cur) => ({ ...cur, [o.key]: c.value, ...impliedBy(c, list, adapter.launch.schema) }))}
+                    />
+                  );
+                })}
               {apiErrors.launch && <Alert color="red">{apiErrors.launch}</Alert>}
               {adapter.launch.secrets.length > 0 && (
                 <Text size="xs" c="dimmed">

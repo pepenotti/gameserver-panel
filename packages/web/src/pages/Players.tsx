@@ -1,13 +1,13 @@
-import { ActionIcon, Alert, Badge, Button, Card, Checkbox, CopyButton, Group, Menu, Modal, Select, Stack, Table, Text, TextInput, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Card, Checkbox, CopyButton, Group, Menu, Modal, SegmentedControl, Select, Stack, Switch, Table, Text, TextInput, Title, Tooltip } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconDots, IconUserPlus } from '@tabler/icons-react';
+import { IconBan, IconDots, IconUserPlus } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
-import type { Need } from '../api/meta';
+import type { BanTarget, Need } from '../api/meta';
 import { useSession } from '../api/session';
 import { useMeta } from '../api/useMeta';
 import { UnsupportedNote } from '../components/Supported';
@@ -21,10 +21,20 @@ interface Account {
   steamId: string | null;
 }
 
+/** `GET /api/servers/:sid/players` (mirrors packages/panel/src/routes/players.ts). */
 interface PlayersResponse {
   online: { username: string; since: string }[];
   accounts: Account[] | null;
-  bans: { steamIds: { steamId: string; reason: string | null }[]; ips: { ip: string; username: string | null; reason: string | null }[] } | null;
+  bans: {
+    steamIds: { steamId: string; reason: string | null }[];
+    ips: { ip: string; username: string | null; reason: string | null }[];
+    /** Bans by player name (games that ban names, not Steam accounts). */
+    usernames?: { username: string; id: string | null; reason: string | null }[];
+  } | null;
+  /** The game's whitelist as it stands, where it can be listed. */
+  whitelist: { enabled: boolean | null; usernames: string[] } | null;
+  /** Who holds a level above the lowest, where the game lists them. */
+  levelHolders: { username: string; level: string }[] | null;
   ipBansTrustworthy: boolean;
 }
 
@@ -38,7 +48,7 @@ interface Session {
 /** Moderation the page offers when the game has it; the note under the page names what it lacks. */
 const MODERATION: Need[] = [{ capability: 'kick' }, { capability: 'ban' }, { capability: 'whitelist' }, { capability: 'accessLevels' }, { capability: 'playerHistory' }];
 
-type Dialog = { kind: 'kick' | 'ban'; name: string; steamId: string | null } | { kind: 'access'; name: string } | { kind: 'whitelist' } | null;
+type Dialog = { kind: 'kick' | 'ban'; name: string; steamId: string | null } | { kind: 'banAny' } | { kind: 'access'; name: string } | { kind: 'whitelist' } | null;
 
 export function Players() {
   const { t, i18n } = useTranslation();
@@ -57,6 +67,8 @@ export function Players() {
   const levels = meta?.accessLevels ?? [];
   const [level, setLevel] = useState<string | null>(null);
   const [wl, setWl] = useState({ username: '', password: '' });
+  const [banBy, setBanBy] = useState<BanTarget>('username');
+  const [banWho, setBanWho] = useState('');
   const running = live.status?.state === 'running';
   // What this user may do and this game supports.
   const can = {
@@ -66,6 +78,8 @@ export function Players() {
     whitelist: canRole('whitelist.manage') && has('whitelist'),
   };
   const anyAction = can.kick || can.ban || can.access || can.whitelist;
+  /** Whitelist entries are accounts with a password (the game's own way), or just names; the adapter says. */
+  const withPassword = meta?.whitelist?.password !== false;
   /** An account's level: the adapter's name for it, else the game's own word. */
   const levelLabel = (id: string) => {
     const known = levels.find((x) => x.id === id);
@@ -77,10 +91,12 @@ export function Players() {
     return i < 0 ? 'gray' : i === levels.length - 1 && i > 0 ? 'red' : i > 0 ? 'orange' : 'blue';
   };
   // What a ban can name (the adapter declares it); without a declaration, a username.
-  const banTargets = meta?.banTargets?.length ? meta.banTargets : ['username'];
+  const banTargets: BanTarget[] = meta?.banTargets?.length ? meta.banTargets : ['username'];
   const banByAccount = banTargets.includes('steamId');
   const banByName = banTargets.includes('username');
+  const banByIp = banTargets.includes('ip');
   const steamIds = !!q.data?.accounts?.some((a) => a.steamId);
+  const targetLabel: Record<BanTarget, string> = { username: t('players.byName'), steamId: t('players.steamId'), ip: t('players.byIp') };
 
   // Presence changes arrive over the websocket; refresh the lists when they do.
   useEffect(() => {
@@ -103,6 +119,15 @@ export function Players() {
   const since = new Map(q.data?.online.map((o) => [o.username, o.since]));
   const accountOf = (name: string) => q.data?.accounts?.find((a) => a.username === name);
 
+  const removeFromWhitelist = (name: string) =>
+    modals.openConfirmModal({
+      title: withPassword ? t('players.whitelistRemove') : t('players.whitelistRemoveName'),
+      children: <Text size="sm">{withPassword ? t('players.removeConfirm', { name }) : t('players.removeNameConfirm', { name })}</Text>,
+      labels: { confirm: withPassword ? t('players.whitelistRemove') : t('players.whitelistRemoveName'), cancel: t('common.cancel') },
+      confirmProps: { color: 'red' },
+      onConfirm: () => void act(() => sapi('DELETE', `/players/whitelist/${encodeURIComponent(name)}`)),
+    });
+
   const playerMenu = (name: string, steamId: string | null, onlineNow: boolean) => (
     <Menu position="bottom-end" withinPortal>
       <Menu.Target>
@@ -112,37 +137,73 @@ export function Players() {
       </Menu.Target>
       <Menu.Dropdown>
         {can.kick && onlineNow && <Menu.Item onClick={() => setDialog({ kind: 'kick', name, steamId })}>{t('players.kick')}</Menu.Item>}
-        {can.ban && (banByName || (banByAccount && steamId)) && <Menu.Item onClick={() => { setBySteam(banByAccount && !!steamId); setDialog({ kind: 'ban', name, steamId }); }}>{t('players.ban')}</Menu.Item>}
-        {can.access && <Menu.Item onClick={() => { setLevel(levels[0]?.id ?? null); setDialog({ kind: 'access', name }); }}>{t('players.access')}</Menu.Item>}
-        {can.whitelist && (
+        {can.ban && (banByName || (banByAccount && steamId)) && (
           <Menu.Item
-            color="red"
-            onClick={() =>
-              modals.openConfirmModal({
-                title: t('players.whitelistRemove'),
-                children: <Text size="sm">{t('players.removeConfirm', { name })}</Text>,
-                labels: { confirm: t('players.whitelistRemove'), cancel: t('common.cancel') },
-                confirmProps: { color: 'red' },
-                onConfirm: () => void act(() => sapi('DELETE', `/players/whitelist/${encodeURIComponent(name)}`)),
-              })
-            }
+            onClick={() => {
+              setBySteam(banByAccount && !!steamId);
+              setDialog({ kind: 'ban', name, steamId });
+            }}
           >
-            {t('players.whitelistRemove')}
+            {t('players.ban')}
+          </Menu.Item>
+        )}
+        {can.access && (
+          <Menu.Item
+            onClick={() => {
+              setLevel(levels[0]?.id ?? null);
+              setDialog({ kind: 'access', name });
+            }}
+          >
+            {t('players.access')}
+          </Menu.Item>
+        )}
+        {can.whitelist && (
+          <Menu.Item color="red" onClick={() => removeFromWhitelist(name)}>
+            {withPassword ? t('players.whitelistRemove') : t('players.whitelistRemoveName')}
           </Menu.Item>
         )}
       </Menu.Dropdown>
     </Menu>
   );
 
+  const unbanButton = (body: Record<string, string>) =>
+    can.ban && (
+      <Button size="compact-xs" variant="subtle" disabled={!running} onClick={() => void act(() => sapi('POST', '/players/unban', body))}>
+        {t('players.unban')}
+      </Button>
+    );
+
+  const bans = q.data?.bans ?? null;
+  const nameBans = bans?.usernames ?? [];
+  const whitelist = q.data?.whitelist ?? null;
+  const holders = q.data?.levelHolders ?? null;
+  const banTypes = banTargets.filter((x) => x !== 'steamId' || banByAccount);
+
   return (
     <Stack>
       <Group justify="space-between">
         <Title order={2}>{t('players.title')}</Title>
-        {can.whitelist && (
-          <Button leftSection={<IconUserPlus size={16} />} variant="default" disabled={!running} onClick={() => setDialog({ kind: 'whitelist' })}>
-            {t('players.whitelistAdd')}
-          </Button>
-        )}
+        <Group gap="xs">
+          {can.ban && (
+            <Button
+              leftSection={<IconBan size={16} />}
+              variant="default"
+              disabled={!running}
+              onClick={() => {
+                setBanBy(banTypes[0] ?? 'username');
+                setBanWho('');
+                setDialog({ kind: 'banAny' });
+              }}
+            >
+              {t('players.banAny')}
+            </Button>
+          )}
+          {can.whitelist && (
+            <Button leftSection={<IconUserPlus size={16} />} variant="default" disabled={!running} onClick={() => setDialog({ kind: 'whitelist' })}>
+              {withPassword ? t('players.whitelistAdd') : t('players.whitelistAddName')}
+            </Button>
+          )}
+        </Group>
       </Group>
       {!running && <Alert variant="light">{t('players.notRunning')}</Alert>}
 
@@ -174,6 +235,89 @@ export function Players() {
           </Table>
         )}
       </Card>
+
+      {whitelist && has('whitelist') && (
+        <Card withBorder>
+          <Group justify="space-between" mb={4} wrap="wrap">
+            <Text fw={600}>{t('players.whitelist')}</Text>
+            {meta?.whitelist?.toggle && can.whitelist && whitelist.enabled !== null && (
+              <Switch
+                label={t('players.whitelistEnforced')}
+                checked={whitelist.enabled}
+                disabled={!running}
+                onChange={(e) => {
+                  const enabled = e.currentTarget.checked;
+                  void act(() => sapi('POST', '/players/whitelist/enabled', { enabled }));
+                }}
+              />
+            )}
+          </Group>
+          <Text size="xs" c="dimmed" mb="xs">
+            {whitelist.enabled === true ? t('players.whitelistOn') : whitelist.enabled === false ? t('players.whitelistOff') : t('players.whitelistUnknown')}
+          </Text>
+          {whitelist.usernames.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              {t('players.whitelistEmpty')}
+            </Text>
+          ) : (
+            <Table fz="sm">
+              <Table.Tbody>
+                {whitelist.usernames.map((name) => (
+                  <Table.Tr key={name}>
+                    <Table.Td>
+                      <Group gap={6}>
+                        {name}
+                        {online.includes(name) && (
+                          <Badge size="xs" color="green">
+                            {t('players.onlineBadge')}
+                          </Badge>
+                        )}
+                      </Group>
+                    </Table.Td>
+                    <Table.Td w={100} ta="right">
+                      {can.whitelist && (
+                        <Button size="compact-xs" variant="subtle" color="red" disabled={!running} onClick={() => removeFromWhitelist(name)}>
+                          {t('players.remove')}
+                        </Button>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {holders && has('accessLevels') && (
+        <Card withBorder>
+          <Text fw={600}>{t('players.levelHolders')}</Text>
+          <Text size="xs" c="dimmed" mb="xs">
+            {t('players.levelHoldersHelp')}
+          </Text>
+          {holders.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              {t('players.levelHoldersEmpty')}
+            </Text>
+          ) : (
+            <Table fz="sm">
+              <Table.Tbody>
+                {holders.map((h) => (
+                  <Table.Tr key={h.username}>
+                    <Table.Td>{h.username}</Table.Td>
+                    <Table.Td>
+                      <Badge variant="light" color={levelColor(h.level)}>
+                        {levelLabel(h.level)}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td w={50}>{anyAction && playerMenu(h.username, null, online.includes(h.username))}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          )}
+        </Card>
+      )}
 
       {q.data?.accounts && has('accounts') && (
         <Card withBorder>
@@ -237,33 +381,29 @@ export function Players() {
         </Card>
       )}
 
-      {q.data?.bans && has('ban') && (
+      {bans && has('ban') && (
         <Card withBorder>
           <Text fw={600} mb="xs">
             {t('players.bans')}
           </Text>
-          {q.data.bans.steamIds.length === 0 && q.data.bans.ips.length === 0 && (
+          {bans.steamIds.length === 0 && bans.ips.length === 0 && nameBans.length === 0 && (
             <Text size="sm" c="dimmed">
               {t('players.noBans')}
             </Text>
           )}
-          {q.data.bans.steamIds.length > 0 && (
+          {nameBans.length > 0 && (
             <>
               <Text size="sm" fw={500} mb={4}>
-                {t('players.steamBans')}
+                {t('players.nameBans')}
               </Text>
               <Table fz="sm">
                 <Table.Tbody>
-                  {q.data.bans.steamIds.map((b) => (
-                    <Table.Tr key={b.steamId}>
-                      <Table.Td ff="monospace">{b.steamId}</Table.Td>
+                  {nameBans.map((b) => (
+                    <Table.Tr key={b.username}>
+                      <Table.Td>{b.username}</Table.Td>
                       <Table.Td>{b.reason ?? ''}</Table.Td>
                       <Table.Td w={100} ta="right">
-                        {can.ban && (
-                          <Button size="compact-xs" variant="subtle" disabled={!running} onClick={() => void act(() => sapi('POST', '/players/unban', { steamId: b.steamId }))}>
-                            {t('players.unban')}
-                          </Button>
-                        )}
+                        {unbanButton({ username: b.username })}
                       </Table.Td>
                     </Table.Tr>
                   ))}
@@ -271,23 +411,47 @@ export function Players() {
               </Table>
             </>
           )}
-          {q.data.bans.ips.length > 0 && (
+          {bans.steamIds.length > 0 && (
+            <>
+              <Text size="sm" fw={500} mt={nameBans.length ? 'md' : undefined} mb={4}>
+                {t('players.steamBans')}
+              </Text>
+              <Table fz="sm">
+                <Table.Tbody>
+                  {bans.steamIds.map((b) => (
+                    <Table.Tr key={b.steamId}>
+                      <Table.Td ff="monospace">{b.steamId}</Table.Td>
+                      <Table.Td>{b.reason ?? ''}</Table.Td>
+                      <Table.Td w={100} ta="right">
+                        {unbanButton({ steamId: b.steamId })}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </>
+          )}
+          {bans.ips.length > 0 && (
             <>
               <Text size="sm" fw={500} mt="md" mb={4}>
                 {t('players.ipBans')}
               </Text>
-              {!q.data.ipBansTrustworthy && (
+              {!q.data!.ipBansTrustworthy && (
                 <Text size="xs" c="dimmed" mb="xs">
-                  {t('players.ipBansNote')}
+                  {banByAccount ? t('players.ipBansNote') : t('players.ipBansNoteNames')}
                 </Text>
               )}
               <Table fz="sm">
                 <Table.Tbody>
-                  {q.data.bans.ips.map((b) => (
+                  {bans.ips.map((b) => (
                     <Table.Tr key={b.ip}>
                       <Table.Td ff="monospace">{b.ip}</Table.Td>
                       <Table.Td>{b.username ?? ''}</Table.Td>
                       <Table.Td>{b.reason ?? ''}</Table.Td>
+                      {/* Lifted by address only where the game bans addresses itself. */}
+                      <Table.Td w={100} ta="right">
+                        {banByIp && unbanButton({ ip: b.ip })}
+                      </Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
@@ -336,9 +500,13 @@ export function Players() {
             ? t('players.kickTitle', { name: dialog.name })
             : dialog?.kind === 'ban'
               ? t('players.banTitle', { name: dialog.name })
-              : dialog?.kind === 'access'
-                ? `${t('players.access')}: ${dialog.name}`
-                : t('players.whitelistAdd')
+              : dialog?.kind === 'banAny'
+                ? t('players.banAny')
+                : dialog?.kind === 'access'
+                  ? `${t('players.access')}: ${dialog.name}`
+                  : withPassword
+                    ? t('players.whitelistAdd')
+                    : t('players.whitelistAddName')
         }
       >
         {(dialog?.kind === 'kick' || dialog?.kind === 'ban') && (
@@ -361,6 +529,28 @@ export function Players() {
             </Button>
           </Stack>
         )}
+        {dialog?.kind === 'banAny' && (
+          <Stack>
+            <Text size="sm">{t('players.banAnyHelp')}</Text>
+            {banTypes.length > 1 && <SegmentedControl value={banBy} onChange={(v) => setBanBy(v as BanTarget)} data={banTypes.map((x) => ({ value: x, label: targetLabel[x] }))} />}
+            <TextInput
+              label={targetLabel[banBy]}
+              value={banWho}
+              onChange={(e) => setBanWho(e.currentTarget.value.replace(/[\s"]/g, ''))}
+              maxLength={banBy === 'ip' ? 45 : 32}
+              data-autofocus
+            />
+            {banBy === 'ip' && !q.data?.ipBansTrustworthy && (
+              <Text size="xs" c="dimmed">
+                {banByAccount ? t('players.ipBansNote') : t('players.ipBansNoteNames')}
+              </Text>
+            )}
+            <TextInput label={t('players.reason')} value={reason} onChange={(e) => setReason(e.currentTarget.value.replace(/["\r\n]/g, ''))} maxLength={200} />
+            <Button color="red" disabled={!banWho} onClick={() => void act(() => sapi('POST', '/players/ban', { [banBy]: banWho, ...(reason && banBy !== 'steamId' ? { reason } : {}) }))}>
+              {t('players.ban')}
+            </Button>
+          </Stack>
+        )}
         {dialog?.kind === 'access' && (
           <Stack>
             <Text size="sm" c="dimmed">
@@ -375,21 +565,21 @@ export function Players() {
         {dialog?.kind === 'whitelist' && (
           <Stack>
             <Text size="sm" c="dimmed">
-              {t('players.whitelistHelp')}
+              {withPassword ? t('players.whitelistHelp') : t('players.whitelistNameHelp')}
             </Text>
             <TextInput label={t('auth.username')} value={wl.username} onChange={(e) => setWl({ ...wl, username: e.currentTarget.value })} maxLength={32} data-autofocus />
-            <TextInput label={t('players.password')} value={wl.password} onChange={(e) => setWl({ ...wl, password: e.currentTarget.value.replace(/["\r\n\s]/g, '') })} maxLength={64} />
+            {withPassword && <TextInput label={t('players.password')} value={wl.password} onChange={(e) => setWl({ ...wl, password: e.currentTarget.value.replace(/["\r\n\s]/g, '') })} maxLength={64} />}
             <Button
-              disabled={!wl.username.trim() || wl.password.length < 4}
+              disabled={!wl.username.trim() || (withPassword && wl.password.length < 4)}
               onClick={() =>
                 void act(async () => {
-                  const r = await sapi<{ output: string }>('POST', '/players/whitelist', { username: wl.username.trim(), password: wl.password });
+                  const r = await sapi<{ output: string }>('POST', '/players/whitelist', { username: wl.username.trim(), ...(withPassword ? { password: wl.password } : {}) });
                   setWl({ username: '', password: '' });
                   return r;
                 })
               }
             >
-              {t('players.whitelistAdd')}
+              {withPassword ? t('players.whitelistAdd') : t('players.whitelistAddName')}
             </Button>
           </Stack>
         )}

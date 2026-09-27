@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { SERVERS_KEY, useServerApi, useServerScope, withServer, type ServerSummary } from '../api/server';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
+import { forFlavour, impliedBy, localize, type I18n, type LaunchChoices } from '../api/meta';
 import { useMeta } from '../api/useMeta';
 import { EulaNotice } from '../components/Eula';
 import { LaunchField, launchKey } from '../components/LaunchField';
@@ -25,8 +26,12 @@ interface Updates {
   /** The pinned version (Steam branch, release channel); null when the source doesn't list it. */
   branch: string | null;
   latest: { name: string; buildId: string | null; timeUpdated?: number } | null;
-  branches: { name: string; buildId: string | null; timeUpdated: number | null }[];
+  branches: { name: string; buildId: string | null; timeUpdated: number | null; channel?: string; warning?: I18n }[];
   updateAvailable: boolean;
+  /** The adapter's answer in its own terms (UPD-03): what is installed, the newest it would take, and that one's channel. */
+  check?: { available: boolean; current: string | null; latest: string; channel: string | null } | null;
+  /** The version the launch settings pin, as its source lists it: its channel, and why it deserves a second thought (Q13). */
+  pinned?: { id: string; build: string | null; channel: string | null; warning: I18n | null } | null;
 }
 
 /** `GET /api/servers/:sid/limits` (mirrors `ServerLimits` in packages/panel/src/routes/servers.ts); null: the host doesn't say. */
@@ -161,7 +166,7 @@ function ContainerCard({ server, needMb }: { server: ServerSummary; needMb: numb
 }
 
 export function Server() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const errorText = useErrorText();
   const qc = useQueryClient();
   const live = useLive();
@@ -197,6 +202,19 @@ export function Server() {
   const versionKey = launchKey(schema, 'version');
   const memoryKey = launchKey(schema, 'memory');
   const versions = versionKey ? Array.from(new Set([...(updates.data?.branches.map((b) => b.name) ?? []), String(form?.[versionKey] ?? '')])).filter(Boolean) : undefined;
+  // Settings of another flavour (a loader's own) stay stored, out of sight.
+  const flavour = meta?.server.flavour ?? null;
+  const shown = schema.filter((o) => forFlavour(o, flavour));
+  // What the version and what depends on it may be, from the game's download services (UPD-02), for those who may change them.
+  const versionValue = versionKey && typeof form?.[versionKey] === 'string' ? (form[versionKey] as string) : '';
+  const choices = useQuery({
+    queryKey: ['launchChoices', sapi.sid, versionValue],
+    queryFn: () => sapi<LaunchChoices>('GET', `/server/launch/choices?version=${encodeURIComponent(versionValue)}`),
+    enabled: !!meta?.launch.choices && can('server.update') && has('versionPin') && versionValue !== '',
+    staleTime: 5 * 60_000,
+    retry: false,
+    placeholderData: (prev) => prev,
+  });
   const versionChanged = versionKey !== undefined && form !== null && launch.data !== undefined && form[versionKey] !== launch.data[versionKey];
   // A managed server's container limit follows the game's memory (the panel moves it, keeping the room above it);
   // the stack's own server keeps Compose's limit, which the game's memory plus the adapter's overhead must fit in.
@@ -226,9 +244,26 @@ export function Server() {
         {launch.error && <Alert color="red">{errorText(launch.error)}</Alert>}
         {form && (
           <Stack>
-            {schema.map((o) => (
-              <LaunchField key={o.key} o={o} value={form[o.key]} onChange={(v) => setForm({ ...form, [o.key]: v })} versions={o.key === versionKey && o.type === 'string' ? versions : undefined} />
-            ))}
+            {choices.error && (
+              <Text size="xs" c="orange">
+                {t('create.choicesUnavailable', { error: errorText(choices.error) })}
+              </Text>
+            )}
+            {shown.map((o) => {
+              const list = choices.data?.[o.key];
+              return (
+                <LaunchField
+                  key={o.key}
+                  o={o}
+                  value={form[o.key]}
+                  onChange={(v) => setForm({ ...form, [o.key]: v })}
+                  versions={o.key === versionKey && o.type === 'string' ? versions : undefined}
+                  choices={list}
+                  warnings={meta?.launch.warnings}
+                  onChoice={(c) => list && setForm((f) => f && { ...f, [o.key]: c.value, ...impliedBy(c, list, schema) })}
+                />
+              );
+            })}
             {versionChanged && (
               <Alert color="orange" variant="light" icon={<IconAlertTriangle />}>
                 {t('server.versionWarn')}
@@ -265,16 +300,44 @@ export function Server() {
           <Stack gap="sm">
             <Table withRowBorders={false} fz="sm">
               <Table.Tbody>
+                {/* The adapter's own terms when it gives them (a build of the pinned version, a loader); the Steam-branch shape otherwise. */}
                 <Table.Tr>
                   <Table.Td w={160}>{t('server.installed')}</Table.Td>
-                  <Table.Td>{updates.data.installed ? `${updates.data.installed.buildId ?? '—'}${updates.data.installed.branch ? ` (${updates.data.installed.branch})` : ''}` : '—'}</Table.Td>
+                  <Table.Td>
+                    {updates.data.check
+                      ? `${updates.data.check.current ?? '—'}${updates.data.installed?.branch ? ` (${updates.data.installed.branch})` : ''}`
+                      : updates.data.installed
+                        ? `${updates.data.installed.buildId ?? '—'}${updates.data.installed.branch ? ` (${updates.data.installed.branch})` : ''}`
+                        : '—'}
+                  </Table.Td>
                 </Table.Tr>
                 <Table.Tr>
                   <Table.Td>{t('server.latest')}</Table.Td>
-                  <Table.Td>{updates.data.latest ? `${updates.data.latest.buildId ?? '—'}${updates.data.branch ? ` (${updates.data.branch})` : ''}` : '—'}</Table.Td>
+                  <Table.Td>
+                    {updates.data.check
+                      ? `${updates.data.check.latest}${updates.data.check.channel ? ` (${updates.data.check.channel})` : ''}`
+                      : updates.data.latest
+                        ? `${updates.data.latest.buildId ?? '—'}${updates.data.branch ? ` (${updates.data.branch})` : ''}`
+                        : '—'}
+                  </Table.Td>
                 </Table.Tr>
+                {updates.data.pinned?.channel && (
+                  <Table.Tr>
+                    <Table.Td>{t('server.pinnedChannel')}</Table.Td>
+                    <Table.Td>
+                      <Badge variant="light" tt="none" color={updates.data.pinned.warning ? 'orange' : 'gray'}>
+                        {updates.data.pinned.channel}
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                )}
               </Table.Tbody>
             </Table>
+            {updates.data.pinned?.warning && (
+              <Alert color="orange" variant="light" icon={<IconAlertTriangle />}>
+                {localize(updates.data.pinned.warning, i18n.language)}
+              </Alert>
+            )}
             <Group>
               <Badge color={updates.data.updateAvailable ? 'orange' : 'green'}>{updates.data.updateAvailable ? t('server.updateAvailable') : t('server.upToDate')}</Badge>
               {updates.data.updateAvailable && (
