@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.11 |
+| Status | Draft 0.12 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -141,7 +141,12 @@ Each can move into scope later through [change control](#14-change-control).
   owner accepts it, when creating the server or later on its page, with the
   agreement's link in front of them. Until then the server can't start, and
   its game is told the EULA was accepted only after that.
-- **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts. Servers
+- **Minecraft versions and privacy:** the panel offers Minecraft 1.16.5 and
+  newer (Q11). New Paper servers start with bStats usage statistics off; the
+  owner can turn them on like any other setting (Q10, NFR-09).
+- **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts (its server
+  jars are Java and carry ARM64 native libraries; the fact-finding ran x86-64
+  only, so an ARM64 run is part of M7). Servers
   installed with steamcmd need x86-64. Each adapter declares what it runs
   on, confirmed in its milestone (HST-05).
 - **Measured, not guessed:** details marked here, like readiness lines, stop
@@ -174,7 +179,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | UPD-02 | P0 | Choose and pin a version: Steam branch, Minecraft version, loader version. |
 | UPD-03 | P0 | Update checks with a per-server policy: apply when nobody is playing, apply after a countdown, or only notify. |
 | UPD-04 | P0 | Every update takes a safety backup first. |
-| UPD-05 | P0 | Minecraft never moves to a new game version on its own, since that breaks mods and worlds. It only takes builds of the pinned version, unless an admin chooses a new version. |
+| UPD-05 | P0 | Minecraft never moves to a new game version on its own, since that breaks mods and worlds. It only takes builds of the pinned version (for Paper, from the pinned build channel: STABLE unless an admin picks BETA or ALPHA, with a warning), unless an admin chooses a new version. |
 | UPD-06 | P0 | Minecraft's loader is picked per server when it's created: vanilla, Paper or Fabric. |
 | UPD-07 | P1 | Forge and NeoForge as loader choices too. The adapter runs their installers and pins the loader version. |
 | UPD-08 | P2 | Switch an existing Minecraft server to another loader, as a guided change with a backup, since worlds and mods may not carry over. |
@@ -327,7 +332,8 @@ NFR-01's controls, carried over from zomboid-server:
   queries. There is one agent per server, inside that server's container.
 - **Images per runtime family.**
   - `steam` (steamcmd and its libraries): Project Zomboid, Valheim, tModLoader and manifest games.
-  - `java` (a JRE matched to the Minecraft version): Minecraft.
+  - `java` (Eclipse Temurin JREs 25, 21 and 17, picked per server from the
+    Java major its Minecraft version declares): Minecraft.
   - `native`: vanilla Terraria.
 
   Each adapter names its image.
@@ -453,6 +459,10 @@ None open. New questions go here, with an ID, until they're answered.
 | ID | Question | Answer | Lands in |
 |---|---|---|---|
 | Q9 | Who sees the host overview (CPU, memory, disk of the whole machine)? | The owner and admins with scope `all`, the same people who can create servers (integrator's call during M2.0; the owner can change it). | §5, HST-03 |
+| Q10 | Paper turns on bStats (usage statistics sent to bstats.org) by default. Should new Paper servers start with it off? | Yes: off for new servers, and the owner can turn it on (owner, 2026-09-27). | §7, NFR-09 |
+| Q11 | Which Minecraft versions are offered? | 1.16.5 and newer, which Temurin 17, 21 and 25 cover; older ones would need Java 8 (owner, 2026-09-27). | UPD-02, §10 |
+| Q12 | Minecraft 26.x has a JSON-RPC management server (players, lists, settings, notifications). Use it instead of RCON and log reading? | Not in v1: RCON and logs work on every offered version; revisit after v1 (owner, 2026-09-27). | PLY-01/02, CON-02 |
+| Q13 | A new Minecraft version has only ALPHA Paper builds for weeks. Does the version picker offer only versions with a STABLE build? | No: every version is offered, STABLE builds are picked when they exist, and a clear warning shows when only ALPHA or BETA builds do (owner, 2026-09-27). | UPD-02, UPD-05 |
 
 ### Answered
 
@@ -497,3 +507,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.9 | 2026-09-25 | M2 follow-ups: the orchestrator reports the host ports and memory it allows, new servers get free ports inside those ranges, memory and CPU limit changes apply at once (stopped) or at the next start (running), owner-only forced removal (SRV-04 wording), compose cleaned of the pre-orchestrator server settings. |
 | 0.10 | 2026-09-25 | M2 closed: the multi-server web (list, create, delete, per-server roles, server switcher); the acceptance run on real Docker passed with two Project Zomboid servers side by side (`docs/verification/m2-acceptance.md`) and found two bugs, both fixed (a noexec `/tmp` in game containers, an empty world database left by a failed first boot); host-only audit entries (ACC-03), limits visible to a server's admin (SRV-05), the crash watchdog names the last fatal line (SRV-07), game-written keys are locked (CFG-04). |
 | 0.11 | 2026-09-25 | M3 contract step: formats for properties, YAML, TOML, JSON5 and line lists (CFG-02/07/09); skeleton adapters for Minecraft, Terraria, Valheim and manifests, registered but not offered until measured (D4, D5); `java` and `native` runtime images; the Steam Workshop source shared by app id (MOD-03); the owner-only EULA flow (D6, §5, §7); the fixture scrubber (NFR-09); the removal's final backup has its own trigger and an unreachable agent needs a forced removal (SRV-04, BAK-01). |
+| 0.12 | 2026-09-27 | M3 fact-finding: Minecraft Java 26.3 measured for vanilla, Paper and Fabric (`docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3`, `tools/fake-minecraft`); UPD-05 pins Paper's build channel; the `java` image ships Temurin 25, 21 and 17 (§10); ARM64 for Minecraft is confirmed in M7 (§7); Q10–Q13 answered (bStats off by default, 1.16.5 and newer, every Paper version with a warning when not STABLE, the JSON-RPC API after v1). |

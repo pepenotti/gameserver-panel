@@ -4,12 +4,20 @@
 // scripts/core-agnostic.test.ts; other packages (the web) can reuse these.
 
 /**
- * Tokens only Project Zomboid code has any business with: its Steam app ids,
- * its name, its sandbox file, two console commands and its vanilla map.
+ * Tokens only one game's code has any business with. Project Zomboid: its
+ * Steam app ids, its name, its sandbox file, two console commands and its
+ * vanilla map. Minecraft: its download services and loaders, its EULA link,
+ * console commands, player lists and world files. Each game's wave adds its own.
  * Matched case-sensitively; words anywhere (`ProjectZomboid`,
  * `x_SandboxVars.lua`), numbers only when no other digit touches them.
  */
-export const GAME_TOKENS = ['380870', '108600', 'Zomboid', 'SandboxVars', 'servermsg', 'reloadoptions', 'Muldraugh'];
+export const GAME_TOKENS = [
+  // Project Zomboid
+  '380870', '108600', 'Zomboid', 'SandboxVars', 'servermsg', 'reloadoptions', 'Muldraugh',
+  // Minecraft (not `Minecraft` or `server.properties`: the core's comments name them as examples)
+  'bundlerRepoDir', 'paperclip', 'MinecraftEULA', 'piston-meta', 'papermc', 'fabricmc', 'save-all', 'save-off',
+  'whitelist.json', 'banned-players', 'usercache', 'level.dat', 'session.lock', 'nogui', 'Mojang',
+];
 
 /**
  * @typedef {{ line: number; token: string }} TokenHit

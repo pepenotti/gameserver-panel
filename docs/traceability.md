@@ -19,8 +19,8 @@ without a milestone is a PRD bug.
 | UPD-02 | P0 | M1, M3, M5 | `agent.test.ts` branch change and latest builds per branch; `adapter-pz` runtime install tests |
 | UPD-03 | P0 | M1, M3, M5 | `agent.test.ts` "updates on start when asked"; `panel/test/server.test.ts`, `panel/test/schedules.test.ts`; `adapter-pz/test/panel-core.test.ts` (update check); `panel/test/agent-e2e.test.ts` (update check through `ServerCtx.versions()`) |
 | UPD-04 | P0 | M1, M3, M5 | `panel/test/server.test.ts` (safety backup before update) |
-| UPD-05 | P0 | M3 | — |
-| UPD-06 | P0 | M3 | — |
+| UPD-05 | P0 | M3 | measured: `docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3/`; fake: `tools/fake-minecraft/fake-minecraft.test.ts` (Paper channels, Fill v3) |
+| UPD-06 | P0 | M3 | measured: `docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3/`; fake: `tools/fake-minecraft/fake-minecraft.test.ts` (three loaders) |
 | UPD-07 | P1 | M4 | — |
 | UPD-08 | P2 | after v1 | — |
 | CFG-01 | P0 | M1 | `panel/test/config.test.ts` (validation, masking); `adapter-pz/test/panel-config-contract.test.ts` |
@@ -47,7 +47,7 @@ without a milestone is a PRD bug.
 | MOD-05 | P2 | after v1 | — |
 | MOD-06 | P1 | M5 | — |
 | BAK-01 | P0 | M1 | `panel/test/backups.test.ts`; `panel/test/core-adapter.test.ts` (symlinks skipped); `panel/test/server.test.ts` (pre-update backup); `panel/test/agent-e2e.test.ts` (hot backup through the agent); `archive/test/tar.test.ts`; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7; final backup trigger: `registry.test.ts` (SRV-04, BAK-01) |
-| BAK-02 | P0 | M3 | PZ: `archive/test/rooted.test.ts` (hot packs), `agent/test/files.test.ts`, `panel/test/server-files.test.ts` "hot packs through the agent"; a hot backup saves once (`schedules.test.ts`, `backups.test.ts`) |
+| BAK-02 | P0 | M3 | PZ: `archive/test/rooted.test.ts` (hot packs), `agent/test/files.test.ts`, `panel/test/server-files.test.ts` "hot packs through the agent"; a hot backup saves once (`schedules.test.ts`, `backups.test.ts`); Minecraft: flush timing measured in `docs/verification/minecraft-26.3.md` |
 | BAK-03 | P0 | M1 | `panel/test/backups.test.ts` restoring block (parts + undo, running server, damaged archive, staging-only writes); `panel/test/server-files.test.ts` (restore round trip, hostile archives); `agent-e2e.test.ts` (restore + undo); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7 (restore running and stopped, undo) |
 | BAK-04 | P0 | M1 | `panel/test/reset.test.ts`; `adapter-pz/test/panel-core.test.ts` (backup parts, resets) |
 | BAK-05 | P1 | M1 | `panel/test/backups.test.ts` "lets admins download and the owner upload; not operators"; `backups.test.ts` "restores another server's backup under this server's names" |
@@ -88,5 +88,5 @@ without a milestone is a PRD bug.
 | Decision | Proven by |
 |---|---|
 | D4 | `adapters/test/adapters.test.ts`; each `adapter-*/test/contract.test.ts` (skeletons pass the contract suites) |
-| D5 | `panel/test/servers.test.ts` "offers no adapter skeleton…" (unmeasured games are registered, not offered) |
+| D5 | `panel/test/servers.test.ts` "offers no adapter skeleton…" (unmeasured games are registered, not offered); Minecraft measured before its adapter: `docs/verification/minecraft-26.3.md` |
 | D6 | `panel/test/eula.test.ts`; `agent/test/agent.test.ts` "the owner's EULA acceptance (D6)"; `shared/test/permissions.test.ts`; contract suite `adapter-api/src/testing/meta.ts` (an EULA names its agreement) |
