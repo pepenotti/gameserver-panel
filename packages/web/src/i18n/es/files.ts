@@ -8,6 +8,8 @@ export default {
   emptyFolder: 'Todavía no hay archivos en {{folder}}.',
   truncated: 'Solo se muestran los primeros archivos.',
   readonly: 'Solo lectura',
+  stoppedOnly: 'Solo con el servidor apagado',
+  stoppedOnlyHelp: 'El juego en marcha vuelve a escribir este archivo desde la memoria, así que los cambios se guardan solo con el servidor apagado.',
   history: 'Historial',
   historyOf: 'Historial: {{file}}',
   previewSave: 'Revisar y guardar',
