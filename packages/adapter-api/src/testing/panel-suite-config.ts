@@ -141,6 +141,8 @@ export function panelAdapterConfigSuite<S>(adapter: PanelAdapter<S>, opts: Panel
         expect(f.rel, `${f.id} path`).toMatch(RELATIVE);
         // A validate would overwrite the install; settings live with the server's data.
         expect(f.root, `${f.id} root`).not.toBe('install');
+        // A file edited only while the game is stopped takes effect when it starts.
+        if (f.stoppedOnly) expect(f.restartKeys, `${f.id} is stopped-only`).toBe('*');
         const schema = f.schemaId === undefined ? undefined : cfg.schemas[f.schemaId];
         if (f.schemaId !== undefined) expect(schema, `schema ${f.schemaId} of ${f.id}`).toBeDefined();
         for (const [what, keys] of [

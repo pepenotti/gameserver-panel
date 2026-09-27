@@ -151,6 +151,14 @@ export interface VersionInfo {
   description?: string;
   /** Steam branches behind a password are listed but can't be picked. */
   passwordRequired?: boolean;
+  /** The release channel of `build` (Paper's `STABLE`, `BETA`, `ALPHA`). */
+  channel?: string;
+  /**
+   * Why picking this version deserves a second thought, as a code the
+   * panel adapter words (`PanelAdapter.launch.warnings`; Q13: Paper has no
+   * STABLE build of it yet).
+   */
+  warning?: string;
 }
 
 /** How the agent talks to the game besides stdin (a runtime adapter's `channel()`). */
