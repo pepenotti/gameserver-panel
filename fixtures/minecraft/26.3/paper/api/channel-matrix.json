@@ -1,0 +1,494 @@
+{
+  "fetched": "2026-09-27",
+  "note": "Derived: every Paper release version from 1.16.5 up, from GET /v3/projects/paper/versions/<v>/builds (newest first) and /builds/latest.",
+  "versions": [
+    {
+      "version": "26.3",
+      "builds": 47,
+      "newest": 49,
+      "newestChannel": "ALPHA",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "ALPHA": 47
+      },
+      "newestPerChannel": {
+        "ALPHA": 49
+      }
+    },
+    {
+      "version": "26.2",
+      "builds": 114,
+      "newest": 129,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 43,
+        "BETA": 24,
+        "ALPHA": 47
+      },
+      "newestPerChannel": {
+        "STABLE": 129,
+        "BETA": 82,
+        "ALPHA": 58
+      }
+    },
+    {
+      "version": "26.1.2",
+      "builds": 71,
+      "newest": 74,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 22,
+        "BETA": 5,
+        "ALPHA": 44
+      },
+      "newestPerChannel": {
+        "STABLE": 74,
+        "BETA": 52,
+        "ALPHA": 47
+      }
+    },
+    {
+      "version": "26.1.1",
+      "builds": 23,
+      "newest": 29,
+      "newestChannel": "ALPHA",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "ALPHA": 23
+      },
+      "newestPerChannel": {
+        "ALPHA": 29
+      }
+    },
+    {
+      "version": "1.21.11",
+      "builds": 92,
+      "newest": 132,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 63,
+        "BETA": 17,
+        "ALPHA": 12
+      },
+      "newestPerChannel": {
+        "STABLE": 132,
+        "BETA": 66,
+        "ALPHA": 48
+      }
+    },
+    {
+      "version": "1.21.10",
+      "builds": 51,
+      "newest": 130,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 10,
+        "BETA": 17,
+        "ALPHA": 24
+      },
+      "newestPerChannel": {
+        "STABLE": 130,
+        "BETA": 112,
+        "ALPHA": 86
+      }
+    },
+    {
+      "version": "1.21.9",
+      "builds": 20,
+      "newest": 59,
+      "newestChannel": "ALPHA",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "ALPHA": 20
+      },
+      "newestPerChannel": {
+        "ALPHA": 59
+      }
+    },
+    {
+      "version": "1.21.8",
+      "builds": 55,
+      "newest": 60,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 55
+      },
+      "newestPerChannel": {
+        "STABLE": 60
+      }
+    },
+    {
+      "version": "1.21.7",
+      "builds": 28,
+      "newest": 32,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 28
+      },
+      "newestPerChannel": {
+        "STABLE": 32
+      }
+    },
+    {
+      "version": "1.21.6",
+      "builds": 46,
+      "newest": 48,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 6,
+        "ALPHA": 40
+      },
+      "newestPerChannel": {
+        "STABLE": 48,
+        "ALPHA": 42
+      }
+    },
+    {
+      "version": "1.21.5",
+      "builds": 111,
+      "newest": 114,
+      "newestChannel": "ALPHA",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "ALPHA": 111
+      },
+      "newestPerChannel": {
+        "ALPHA": 114
+      }
+    },
+    {
+      "version": "1.21.4",
+      "builds": 224,
+      "newest": 232,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 130,
+        "ALPHA": 94
+      },
+      "newestPerChannel": {
+        "STABLE": 232,
+        "ALPHA": 99
+      }
+    },
+    {
+      "version": "1.21.3",
+      "builds": 82,
+      "newest": 83,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 26,
+        "ALPHA": 56
+      },
+      "newestPerChannel": {
+        "STABLE": 83,
+        "ALPHA": 56
+      }
+    },
+    {
+      "version": "1.21.1",
+      "builds": 128,
+      "newest": 133,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 128
+      },
+      "newestPerChannel": {
+        "STABLE": 133
+      }
+    },
+    {
+      "version": "1.21",
+      "builds": 129,
+      "newest": 130,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 28,
+        "ALPHA": 101
+      },
+      "newestPerChannel": {
+        "STABLE": 130,
+        "ALPHA": 102
+      }
+    },
+    {
+      "version": "1.20.6",
+      "builds": 127,
+      "newest": 151,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 37,
+        "ALPHA": 90
+      },
+      "newestPerChannel": {
+        "STABLE": 151,
+        "ALPHA": 114
+      }
+    },
+    {
+      "version": "1.20.5",
+      "builds": 18,
+      "newest": 22,
+      "newestChannel": "ALPHA",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "ALPHA": 18
+      },
+      "newestPerChannel": {
+        "ALPHA": 22
+      }
+    },
+    {
+      "version": "1.20.4",
+      "builds": 175,
+      "newest": 499,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 151,
+        "ALPHA": 24
+      },
+      "newestPerChannel": {
+        "STABLE": 499,
+        "ALPHA": 342
+      }
+    },
+    {
+      "version": "1.20.2",
+      "builds": 116,
+      "newest": 318,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 99,
+        "ALPHA": 17
+      },
+      "newestPerChannel": {
+        "STABLE": 318,
+        "ALPHA": 215
+      }
+    },
+    {
+      "version": "1.20.1",
+      "builds": 178,
+      "newest": 196,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 178
+      },
+      "newestPerChannel": {
+        "STABLE": 196
+      }
+    },
+    {
+      "version": "1.20",
+      "builds": 16,
+      "newest": 17,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 8,
+        "ALPHA": 8
+      },
+      "newestPerChannel": {
+        "STABLE": 17,
+        "ALPHA": 8
+      }
+    },
+    {
+      "version": "1.19.4",
+      "builds": 102,
+      "newest": 550,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 92,
+        "ALPHA": 10
+      },
+      "newestPerChannel": {
+        "STABLE": 550,
+        "ALPHA": 458
+      }
+    },
+    {
+      "version": "1.19.3",
+      "builds": 140,
+      "newest": 448,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 128,
+        "ALPHA": 12
+      },
+      "newestPerChannel": {
+        "STABLE": 448,
+        "ALPHA": 319
+      }
+    },
+    {
+      "version": "1.19.2",
+      "builds": 189,
+      "newest": 307,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 189
+      },
+      "newestPerChannel": {
+        "STABLE": 307
+      }
+    },
+    {
+      "version": "1.19.1",
+      "builds": 30,
+      "newest": 111,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 30
+      },
+      "newestPerChannel": {
+        "STABLE": 111
+      }
+    },
+    {
+      "version": "1.19",
+      "builds": 76,
+      "newest": 81,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 70,
+        "ALPHA": 6
+      },
+      "newestPerChannel": {
+        "STABLE": 81,
+        "ALPHA": 5
+      }
+    },
+    {
+      "version": "1.18.2",
+      "builds": 169,
+      "newest": 388,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 169
+      },
+      "newestPerChannel": {
+        "STABLE": 388
+      }
+    },
+    {
+      "version": "1.18.1",
+      "builds": 145,
+      "newest": 216,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 81,
+        "ALPHA": 64
+      },
+      "newestPerChannel": {
+        "STABLE": 216,
+        "ALPHA": 132
+      }
+    },
+    {
+      "version": "1.18",
+      "builds": 54,
+      "newest": 66,
+      "newestChannel": "ALPHA",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "ALPHA": 54
+      },
+      "newestPerChannel": {
+        "ALPHA": 66
+      }
+    },
+    {
+      "version": "1.17.1",
+      "builds": 319,
+      "newest": 411,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 319
+      },
+      "newestPerChannel": {
+        "STABLE": 411
+      }
+    },
+    {
+      "version": "1.17",
+      "builds": 73,
+      "newest": 79,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 73
+      },
+      "newestPerChannel": {
+        "STABLE": 79
+      }
+    },
+    {
+      "version": "1.16.5",
+      "builds": 363,
+      "newest": 794,
+      "newestChannel": "STABLE",
+      "latestIsNewest": true,
+      "channelsOnlyMoveForward": true,
+      "counts": {
+        "STABLE": 363
+      },
+      "newestPerChannel": {
+        "STABLE": 794
+      }
+    }
+  ]
+}

@@ -277,3 +277,73 @@ it (tar reports it) should copy that file again.
 - Stop time and memory with several players and a large world (the stop budget).
 - Chat and the "Not Secure" marker with `enforce-secure-profile=true`.
 - arm64 hosts.
+
+## M3 runtime adapter — 2026-09-27
+
+What building the agent side of Minecraft (M3 phase 2) measured on top of the fact-finding:
+Paper's build channels across every offered version, and a real run of the adapter itself, per
+loader, in the product's java image.
+
+### Paper's build channels (UPD-02, UPD-05, Q13)
+| Fact | Value | How verified | Holds for |
+|---|---|---|---|
+| `/builds/latest` | The newest build of **any** channel (never "the newest STABLE"). | Its id against the first of `/builds`, for every version below | 32 of 32 versions |
+| Channel order | A version's builds only move forward: ALPHA, then BETA, then STABLE; no version went back to a less stable channel. So a version has a STABLE build exactly when its newest build is STABLE, and one small request per version (`/builds/latest`, 0.5–1.2 KB) tells the version list which versions need the Q13 warning. | Every build of every Paper release from 1.16.5 to 26.3 (32 versions), oldest to newest | 2026-09-27 |
+| Versions without a STABLE build | 26.3 (49 builds, all ALPHA, 12 days after the release), and five older versions that never got one: 26.1.1, 1.21.9, 1.21.5, 1.20.5, 1.18. | Same | 2026-09-27 |
+| Size of a build list | `/builds` for 1.16.5 is 228 KB (794 builds); 26.3's is 28 KB. The adapter reads a full list only for the version it installs or pins. | Response sizes | 2026-09-27 |
+
+`paper/api/channel-matrix.json` holds the derived table (per version: builds, newest build and
+its channel, per-channel counts and newest ids); a test keeps the adapter's warning rule to it.
+
+### Runtime adapter check (D5, UPD-01, UPD-06, CON-01, PLY-01, BAK-02)
+**Setup.** `gsp/java:s4`, built from the adapter's branch with `node scripts/stack.mjs build java
+java-fake` (1.02 GB on disk; the fake image 344 MB); its JREs answered `java -version` as Temurin
+**25.0.4**, **21.0.12** and **17.0.20**. One server at a time, each in a throwaway `docker run`
+container (removed after its run) hardened like the orchestrator's: user 1000:1000, read-only root, a 256 MB
+`/tmp` tmpfs (exec), all capabilities dropped, `no-new-privileges`, 3 GiB memory (and swap), a
+4096 pids limit, named volumes for `/data` and `/opt/game`, only the game port published on
+127.0.0.1 (30450–30453 → 25565), environment `GAME_ADAPTER=minecraft`, `GAME_FLAVOUR=<loader>`,
+`TZ=UTC` and a random agent token. The agent's API (not published) was driven from inside the
+container: store the launch (`eulaAccepted: true` — the EULA accepted on these throwaway test
+servers only, by the owner's leave), list versions, install, start, read the status, `list` over
+RCON, a hot backup through `POST /v1/archive/pack` (`world` and `server.properties`), stop. A
+server list ping through the published port checked the game port. Every container and volume
+was removed after its run.
+
+| | vanilla 26.3 | Paper 26.2 (default channel STABLE) | Fabric 26.3 (default loader) | vanilla 1.16.5 |
+|---|---|---|---|---|
+| `versions()` | 35 releases, 26.3 … 1.16.5, 0.7 s | 32 versions with their newest build; 6 warned (26.3 ALPHA 49, 26.1.1, 1.21.9, 1.21.5, 1.20.5, 1.18); 26.2 lists its builds; 1.2–2.4 s | 35 releases with loader 0.19.5; 26.3 lists its loaders; 1.0 s | as vanilla 26.3 |
+| Install | 4.8 s: `server.jar` (SHA-1 `33680f5f…`, as in the fact-finding), 60 MB | 15–16 s: build **129** (STABLE, SHA-256 checked) and the patch step; 228 MB | 7.6 s: installer 1.1.2 (maven SHA-256), loader 0.19.5, Mojang's jar checked against its SHA-1; 64 MB | 3.4 s: 37 MB; declares Java **8** |
+| Java | 25 | 25 | 25 | **17** |
+| Start → `running` | 20.8 s | 21.8–23.1 s | 19.5 s | 32.4–33.8 s |
+| Ready | `Done` then `RCON running` on the next line; `running` at the RCON line | console `[hh:mm:ss INFO]: RCON running …` then `… Done (18.982s)!`; `running` 0.1 s after the `Done` line (no grace wait) | as vanilla | as vanilla 26.3 (same header and lines) |
+| Version line → agent | 26.3 | 26.2 | 26.3 | 1.16.5 |
+| Command line | `/opt/java/25/bin/java -Xms2048m -Xmx2048m -DbundlerRepoDir=/opt/game -jar /opt/game/server.jar nogui` | same with `paper.jar` | same plus `-Dfabric.gameJarPath=/opt/game/server.jar`, `fabric-server-launch.jar` | `/opt/java/17/bin/java …` as vanilla |
+| Managed keys after boot | the game rewrote the file and kept them: `server-port=25565`, `server-ip=`, `enable-rcon=true`, `rcon.port=25575`, `rcon.password` = the control secret, `enable-query=false`, `management-server-enabled=false`, `level-name=world` | same | same | same |
+| Status ping via 3045x | `26.3`, protocol 777 | `Paper 26.2`, protocol 776 | `26.3`, 777 | `1.16.5`, 754 |
+| RCON `list`, player poll | `There are 0 of a max of 20 players online: `; poll `{count: 0}`, RCON connected | same | same | same |
+| Hot backup | 1.0 s, 45 entries, `world/level.dat` and all three dimensions; the log shows `[Rcon: Automatic saving is now disabled]`, `[Rcon: Saved the game]`, `[Rcon: Automatic saving is now enabled]` in that order | 1.1 s, 83 entries, same order | 1.0 s, 45 entries, same order | 4.5 s, 20 entries, same order (the pre-26.x world: `world/region`, `DIM-1`, `DIM1`, `playerdata`) |
+| Memory (2 GiB heap, idle) | 1.78 GiB of 3 | 2.49 GiB | 1.82 GiB | 1.87–1.99 GiB |
+| Stop | 1.5 s, exit 0, expected | 1.6 s, exit 0 | 1.5 s, exit 0 | 1.6–2.1 s, exit 0 |
+| `docker diff` (root file system) | empty | empty | empty | empty |
+
+Notes:
+- **RCON (CON-01).** Every command above went through the agent's RCON client, which now sends
+  each packet in a write of its own and the sentinel after the first reply packet; nothing was
+  dropped on any loader or on 1.16.5.
+- **Paper's console and log file differ.** On the console (what the agent reads) Paper prints
+  `[hh:mm:ss LEVEL]: …`; its `logs/latest.log` uses vanilla's `[hh:mm:ss] [thread/LEVEL]: …`.
+- **bStats (Q10, NFR-09).** The adapter wrote `plugins/bStats/config.yml` with `enabled: false`
+  before Paper's first boot. Paper kept `enabled: false`, added its own header comment and a
+  `serverUuid`, and left the adapter's lines in place.
+- **Paper 26.2 defaults to `white-list=false`** (26.3 defaults to true, as recorded above), and so
+  does 1.16.5.
+- **1.16.5 on Java 17** (Q11): installed and run by the adapter; the same ready, RCON, version,
+  save and stop lines as 26.3. Its console boot is `fixtures/minecraft/1.16.5/vanilla/logs/first-boot.log`,
+  its data root `…/tree/data-running.txt`. Paper's pre-26.x world layout (`world_nether`,
+  `world_the_end` beside `world`) was not run.
+- Timings are from one 12-core amd64 host (Docker Desktop, WSL2), small fresh worlds, no
+  players; downloads came from Mojang, PaperMC and Fabric over the internet.
+
+Leftovers: none. `docker ps -a`, `docker volume ls` filtered by `label=gsp.factfinding=minecraft`
+were empty after the runs, and the `gsp/java:s4` and `gsp/java-fake:s4` images were removed.

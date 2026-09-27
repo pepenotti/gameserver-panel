@@ -15,7 +15,12 @@ export interface RuntimeSuiteOptions {
   validLaunch?: () => unknown;
   /** Output captured from the real game (fixtures), which the adapter must read right. */
   captured?: {
-    /** A boot that comes up: one `ready` line, then a `channelReady` one for adapters with a channel; nothing blocking or fatal. */
+    /**
+     * A boot that comes up: one `ready` line, then a `channelReady` one for
+     * adapters with a channel (the ready line itself may carry it, for a game
+     * that opens its channel before it says it is ready); nothing blocking or
+     * fatal.
+     */
     boot: string[];
     /** The version the boot announces, when the game announces one. */
     bootVersion?: string;
@@ -154,7 +159,8 @@ export function runtimeAdapterSuite<P>(adapter: RuntimeAdapter<P>, opts: Runtime
         const signals = captured.boot.map((l) => adapter.classify(l));
         const ready = signals.flatMap((s, i) => (s.ready ? [i] : []));
         expect(ready, 'lines marked `ready`').toHaveLength(1);
-        if (hasChannel) expect(signals.findIndex((s, i) => i > ready[0]! && s.channelReady), 'a `channelReady` line after `ready`').toBeGreaterThan(ready[0]!);
+        // The agent takes `channelReady` on the ready line itself or after it (never before).
+        if (hasChannel) expect(signals.findIndex((s, i) => i >= ready[0]! && s.channelReady), 'a `channelReady` line from `ready` on').toBeGreaterThanOrEqual(ready[0]!);
         expect(signals.filter((s) => s.blockingPrompt || s.fatal)).toEqual([]);
         if (captured.bootVersion) expect([...new Set(signals.flatMap((s) => (s.version ? [s.version] : [])))]).toEqual([captured.bootVersion]);
       });
@@ -253,7 +259,7 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
         game = await host.start(adapter, ctx, p);
         const ready = await waitSignal(game, (s) => !!s.ready, waitMs);
         expect(ready, 'a line with `ready`').toBeGreaterThanOrEqual(0);
-        if (hasChannel) expect(await waitSignal(game, (s) => !!s.channelReady, waitMs, ready), 'a `channelReady` line after `ready`').toBeGreaterThan(ready);
+        if (hasChannel) expect(await waitSignal(game, (s) => !!s.channelReady, waitMs, ready), 'a `channelReady` line from `ready` on').toBeGreaterThanOrEqual(ready);
         expect(game.ctl.ready).toBe(false);
         game.markReady();
         expect(game.ctl.ready).toBe(true);

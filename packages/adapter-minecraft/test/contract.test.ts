@@ -1,36 +1,53 @@
-// The Minecraft skeleton passes the adapter contract suites as it is (D4),
-// declares the EULA with its agreement (D6), and launches nothing yet (D5:
-// measured, not guessed).
+// The Minecraft adapter passes the contract suites (D4, NFR-07): the runtime
+// half with each loader's captured boot and failures (the agent's tests run
+// it live against the fake), the panel half as the M3 contract step left it
+// (its forms, backups and players come with the panel adapter).
 import { describe, expect, it } from 'vitest';
 import { panelAdapterConfigSuite } from '@gsp/adapter-api/testing/panel-suite-config';
 import { panelAdapterCoreSuite } from '@gsp/adapter-api/testing/panel-suite-core';
 import { runtimeAdapterSuite } from '@gsp/adapter-api/testing/runtime-suite';
-import type { RuntimeCtx } from '@gsp/adapter-api';
 import { minecraftPanelAdapter } from '../src/panel';
 import { minecraftRuntimeAdapter } from '../src/runtime';
 import { MINECRAFT_META } from '../src/shared';
+import { fixtureLines } from './helpers';
 
 const server = () => ({ id: 'mc', gameName: 'mc', flavour: 'vanilla' });
 
-runtimeAdapterSuite(minecraftRuntimeAdapter, { validLaunch: () => ({}) });
+for (const loader of ['vanilla', 'paper', 'fabric'] as const) {
+  describe(`captured ${loader} 26.3`, () => {
+    runtimeAdapterSuite(minecraftRuntimeAdapter, {
+      validLaunch: () => ({ version: '26.3', loader, memoryMb: 2048, ...(loader === 'paper' ? { channel: 'ALPHA' } : {}) }),
+      captured: {
+        boot: fixtureLines(loader, 'logs', 'first-boot.log'),
+        bootVersion: '26.3',
+        fatal: [
+          ...fixtureLines(loader, 'logs', 'no-eula.log').filter((l) => /You need to agree to the EULA/.test(l)),
+          ...(loader === 'vanilla' ? ['[19:40:18] [Server thread/WARN]: **** FAILED TO BIND TO PORT!', '[19:40:18] [Server thread/ERROR]: Encountered an unexpected exception', ...fixtureLines('vanilla', 'logs', 'bad-jar.log').filter(Boolean)] : []),
+          ...(loader === 'fabric' ? fixtureLines('fabric', 'logs', 'installed-missing-game-jar.log').filter((l) => /^The Minecraft server \.JAR is missing/.test(l)) : []),
+        ],
+      },
+    });
+  });
+}
+
 panelAdapterCoreSuite(minecraftPanelAdapter, { server, secrets: () => ({}) });
-// No config files are declared yet (they come from the captures), so the checks that need one are left out.
+// The panel skeleton declares no config files yet, so the checks that need one are left out.
 panelAdapterConfigSuite(minecraftPanelAdapter);
 
-describe('the Minecraft skeleton (D4, D5, D6)', () => {
-  it('shares one meta: the java runtime, x86-64 and ARM64, the loaders, and the EULA with its agreement', () => {
+describe('the Minecraft adapter (D4, D6, UPD-06)', () => {
+  it('shares one meta: the java runtime, x86-64 and ARM64, the loaders, the ports, and the EULA with its agreement', () => {
     expect(minecraftRuntimeAdapter.meta).toBe(MINECRAFT_META);
     expect(minecraftPanelAdapter.meta).toBe(MINECRAFT_META);
-    expect(MINECRAFT_META).toMatchObject({ id: 'minecraft', runtime: 'java', arch: ['amd64', 'arm64'], capabilities: ['eula'] });
+    expect(MINECRAFT_META).toMatchObject({ id: 'minecraft', runtime: 'java', arch: ['amd64', 'arm64'], memory: { minMb: 1024, defaultMb: 2048, overheadMb: 1024 }, stopBudgetMs: 120_000 });
     expect(MINECRAFT_META.flavours.map((f) => f.id)).toEqual(['vanilla', 'paper', 'fabric']);
-    expect(MINECRAFT_META.eula?.url).toMatch(/^https:\/\//);
+    expect(MINECRAFT_META.ports).toEqual([
+      expect.objectContaining({ id: 'game', proto: 'tcp', default: 25565, publish: true, sameInsideOut: false }),
+      expect.objectContaining({ id: 'rcon', proto: 'tcp', default: 25575, publish: false, sameInsideOut: false }),
+    ]);
+    expect(MINECRAFT_META.eula?.url).toBe('https://aka.ms/MinecraftEULA');
   });
 
-  it('launches nothing until the fact-finding measured the game', async () => {
-    const ctx = { eulaAccepted: true } as RuntimeCtx;
-    const p = minecraftRuntimeAdapter.parseLaunch({});
-    await expect(minecraftRuntimeAdapter.prepare(ctx, p)).rejects.toThrow(/skeleton/);
-    expect(() => minecraftRuntimeAdapter.command(ctx, p)).toThrow(/skeleton/);
-    expect(minecraftRuntimeAdapter.channel(ctx, p)).toEqual({ kind: 'none' });
+  it("declares what the runtime half implements; the panel's capabilities come with the panel half", () => {
+    expect(MINECRAFT_META.capabilities).toEqual(['rcon', 'stdinConsole', 'save', 'hotBackup', 'players', 'playerHistory', 'versionPin', 'loaders', 'eula']);
   });
 });

@@ -86,7 +86,8 @@ if (/fabric-installer/i.test(path.basename(jar)) && gameArgs[0] === 'server') {
   fs.writeFileSync(path.join(dir, 'fabric-server-launch.jar'), `FAKE fabric-server-launch for ${mc} / ${fl}\n`);
   if (gameArgs.includes('-downloadMinecraft')) {
     out('Downloading Minecraft server');
-    fs.writeFileSync(path.join(dir, 'server.jar'), `FAKE minecraft server ${mc}\n`);
+    // The same bytes downloads.mjs serves as Mojang's jar, so a check against Mojang's SHA-1 passes.
+    fs.writeFileSync(path.join(dir, 'server.jar'), `FAKE-MINECRAFT minecraft server ${mc}\n`);
   }
   out('Done');
   out('Done, start server by running fabric-server-launch.jar');

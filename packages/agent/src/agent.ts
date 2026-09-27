@@ -20,6 +20,7 @@ import type { AgentStatus, AlertKind, CommandResponse, ControlKind, JobInfo, Job
 import type { AgentConfig } from './config';
 import type { EventHub } from './events';
 import { GameRun } from './game';
+import { makeDownload, makeExec, makeFetch } from './install-tools';
 import type { StateStore } from './state-store';
 import { diskStats, ProcessSampler } from './stats';
 import { SteamcmdDriver } from './steamcmd';
@@ -187,7 +188,11 @@ export class Agent {
     };
   }
 
-  /** A job's context: tool lines to the log, progress to the job, and the steamcmd driver for Steam games. */
+  /**
+   * A job's context: tool lines to the log, progress to the job, the
+   * steamcmd driver for Steam games, and downloads and tool runs for games
+   * installed from the web.
+   */
   private installCtx(job: JobInfo | null): InstallCtx {
     const ctx = this.runtimeCtx();
     const onLine = (line: string) => this.hub.emit({ type: 'log', stream: 'agent', line: this.redact(line) });
@@ -213,7 +218,10 @@ export class Agent {
             log: ctx.log,
           })
         : undefined;
-    return { ...ctx, onLine, progress, steam };
+    const get = makeFetch({ userAgent: `gameserver-panel/${this.cfg.version}`, log: ctx.log });
+    const download = makeDownload({ fetch: get, progress });
+    const exec = makeExec({ env: agentEnv(), onLine, cwd: ctx.roots.install });
+    return { ...ctx, onLine, progress, steam, fetch: get, download, exec };
   }
 
   private channelOf(p: unknown): ControlKind {

@@ -10,6 +10,7 @@
   },
   "scripts": { "typecheck": "tsc -p tsconfig.json" },
   "dependencies": {
-    "@gsp/adapter-api": "*"
+    "@gsp/adapter-api": "*",
+    "@gsp/formats": "*"
   }
 }

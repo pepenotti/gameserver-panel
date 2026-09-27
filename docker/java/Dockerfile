@@ -47,23 +47,25 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "/app/agent.mjs"]
 
-# The games' fakes, picked by GAME_ADAPTER (tools/fake-orchestrator/fake-game.mjs).
-# TODO(M3 fact-finding): copy the Minecraft fake here once it exists
-# (tools/fake-minecraft/, next to tools/fake-pz/ in docker/steam).
+# The games' fakes, picked by GAME_ADAPTER (tools/fake-orchestrator/fake-game.mjs):
+# the fake Minecraft server stands in for `java` itself (installer steps
+# included), so the adapter's own argument lists run unchanged.
 FROM base AS fake
 COPY --chown=node:node tools/fake-orchestrator/fake-game.mjs /app/fake/fake-orchestrator/fake-game.mjs
+COPY --chown=node:node tools/fake-minecraft/ /app/fake/fake-minecraft/
 ENV GAME_START_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","server"]'
 
 # ---------------------------------------------------------------------------
-# The Java runtimes. Each Minecraft version needs a particular Java, so the
-# image holds the ones the supported versions need, side by side (e.g.
-# /opt/java/<major>), and the Minecraft adapter picks one per server.
-# TODO(M3 fact-finding): choose the Eclipse Temurin JRE majors from the
-# versions the fact-finding pins, and install each here, for example
-#   COPY --from=eclipse-temurin:<major>-jre /opt/java/openjdk /opt/java/<major>
-# (both architectures, amd64 and arm64: HST-05). None is chosen yet, so this
-# stage adds nothing.
+# The Java runtimes (PRD §10). Each Minecraft version declares a Java major;
+# the adapter runs it on /opt/java/<major>/bin/java, and on 17 for 1.16.5
+# and 1.17.x (they declare 8 and 16; measured to run on 17). Temurin 25, 21
+# and 17 cover Minecraft 1.16.5 and newer (Q11), and each is published for
+# amd64 and arm64 (HST-05). They are read-only here; the game writes only
+# /data, /opt/game and /tmp.
 # ---------------------------------------------------------------------------
 FROM base AS jre
+COPY --from=eclipse-temurin:25-jre /opt/java/openjdk /opt/java/25
+COPY --from=eclipse-temurin:21-jre /opt/java/openjdk /opt/java/21
+COPY --from=eclipse-temurin:17-jre /opt/java/openjdk /opt/java/17
 
 FROM jre AS runtime
