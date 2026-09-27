@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.13 |
+| Status | Draft 0.14 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -144,6 +144,10 @@ Each can move into scope later through [change control](#14-change-control).
 - **Minecraft versions and privacy:** the panel offers Minecraft 1.16.5 and
   newer (Q11). New Paper servers start with bStats usage statistics off; the
   owner can turn them on like any other setting (Q10, NFR-09).
+- **Minecraft's lists:** the running game writes its operator and ban lists
+  back from memory, so the panel changes those files only while the server is
+  stopped; the whitelist is re-read at once, and switching it on or off keeps
+  the settings saved since the server started.
 - **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts (its server
   jars are Java and carry ARM64 native libraries; the fact-finding ran x86-64
   only, so an ARM64 run is part of M7). Servers
@@ -176,7 +180,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | ID | P | Requirement |
 |---|---|---|
 | UPD-01 | P0 | Install from the adapter's source, with progress shown in the UI. |
-| UPD-02 | P0 | Choose and pin a version: Steam branch, Minecraft version, loader version. |
+| UPD-02 | P0 | Choose and pin a version: Steam branch, Minecraft version, loader version. The create form lists the versions a game's download services offer before the server exists. |
 | UPD-03 | P0 | Update checks with a per-server policy: apply when nobody is playing, apply after a countdown, or only notify. |
 | UPD-04 | P0 | Every update takes a safety backup first. |
 | UPD-05 | P0 | Minecraft never moves to a new game version on its own, since that breaks mods and worlds. It only takes builds of the pinned version (for Paper, from the pinned build channel or a more stable one: STABLE unless an admin picks BETA or ALPHA, with a warning), unless an admin chooses a new version. |
@@ -509,3 +513,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.11 | 2026-09-25 | M3 contract step: formats for properties, YAML, TOML, JSON5 and line lists (CFG-02/07/09); skeleton adapters for Minecraft, Terraria, Valheim and manifests, registered but not offered until measured (D4, D5); `java` and `native` runtime images; the Steam Workshop source shared by app id (MOD-03); the owner-only EULA flow (D6, §5, §7); the fixture scrubber (NFR-09); the removal's final backup has its own trigger and an unreachable agent needs a forced removal (SRV-04, BAK-01). |
 | 0.12 | 2026-09-27 | M3 fact-finding: Minecraft Java 26.3 measured for vanilla, Paper and Fabric (`docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3`, `tools/fake-minecraft`); UPD-05 pins Paper's build channel; the `java` image ships Temurin 25, 21 and 17 (§10); ARM64 for Minecraft is confirmed in M7 (§7); Q10–Q13 answered (bStats off by default, 1.16.5 and newer, every Paper version with a warning when not STABLE, the JSON-RPC API after v1). |
 | 0.13 | 2026-09-27 | M3 runtime adapter: Minecraft vanilla, Paper and Fabric run on agents (install and pinning, Java per version, RCON one packet per write, running backups); UPD-05 takes Paper builds of the pinned channel or a more stable one; CON-02 refuses commands longer than the channel takes. |
+| 0.14 | 2026-09-27 | M3 panel adapter: Minecraft offered in the panel with its loaders and the versions each offers (Paper's channel with the Q13 warning, Fabric's loader), the `server.properties` form, moderation by name or IP, the whitelist switched live, operator and ban lists changed only while stopped, running backups, restores and resets per loader; the contract gains name and IP bans, whitelist reads, launch choices and warnings. |
