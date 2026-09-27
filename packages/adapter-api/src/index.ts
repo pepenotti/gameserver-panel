@@ -203,6 +203,50 @@ export interface InstallCtx extends RuntimeCtx {
   progress(percent: number | null, message: string): void;
   /** The agent's steamcmd driver, for adapters of the `steam` runtime family. */
   steam?: SteamCmd;
+  /**
+   * An HTTP GET for games installed from the web (UPD-01): the agent names
+   * itself (`User-Agent: gameserver-panel/<version>`) and retries rate
+   * limits (429, honouring `Retry-After`), server errors (5xx) and network
+   * failures with backoff. Resolves with the first other response, or the
+   * last one once the retries are spent, whatever its status: the adapter
+   * reads `status`. Rejects when the network never answered.
+   */
+  fetch?(url: string): Promise<Response>;
+  /** A file through `fetch`, with progress on the job, checked before it is kept (see `DownloadRequest`). */
+  download?(req: DownloadRequest): Promise<void>;
+  /**
+   * Runs a tool (a game's installer) from an argument array, never a shell,
+   * with the agent's environment minus its token plus `env`; each output
+   * line goes to the job's log like steamcmd's. Resolves when it exits.
+   */
+  exec?(argv: string[], o?: ExecOptions): Promise<ExecResult>;
+}
+
+/** What `InstallCtx.download` fetches and where it keeps it. */
+export interface DownloadRequest {
+  url: string;
+  /** Absolute path; written to a temporary file next to it, renamed into place only once every check passed. */
+  dest: string;
+  /** How the job's progress names it (`paper-26.3-41.jar`). */
+  what: string;
+  /** Checked when given: a mismatch leaves nothing at `dest` and rejects. */
+  size?: number;
+  /** Hex digests, checked when given. */
+  sha1?: string;
+  sha256?: string;
+}
+
+export interface ExecOptions {
+  /** Absolute; the install root when omitted. */
+  cwd?: string;
+  env?: Record<string, string>;
+  /** Killed (SIGKILL) after this long; 10 minutes when omitted. */
+  timeoutMs?: number;
+}
+
+export interface ExecResult {
+  code: number | null;
+  signal: string | null;
 }
 
 /**

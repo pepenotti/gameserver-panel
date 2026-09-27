@@ -5,22 +5,32 @@ import path from 'node:path';
 import type { InstallCtx, LineSignal, RuntimeAdapter } from '@gsp/adapter-api';
 import type { LiveGame, RuntimeHost } from '@gsp/adapter-api/testing/runtime-suite';
 import { GameRun } from '../src/game';
+import { makeDownload, makeExec, makeFetch } from '../src/install-tools';
 import { SteamcmdDriver } from '../src/steamcmd';
 import { freePort } from './helpers';
 
-function env(): Record<string, string | undefined> {
+function baseEnv(): Record<string, string | undefined> {
   const { AGENT_TOKEN: _token, ...rest } = process.env;
   return rest;
 }
 
+export interface AgentHostOptions {
+  /** Added to the environment adapters and the game see (download URLs, the fake's knobs). */
+  env?: Record<string, string>;
+  /** The owner accepted the game's agreement (D6), as a panel's launch would say. */
+  eulaAccepted?: boolean;
+}
+
 /**
  * The runtime contract suite's host, made of the agent's own parts: the
- * GameRun behind every ControlHandle and the steamcmd driver. Tools point at
- * a game's fake server (and fake steamcmd).
+ * GameRun behind every ControlHandle, the steamcmd driver, and the download
+ * and tool-running helpers. Tools point at a game's fake server (and fake
+ * steamcmd or download services).
  */
-export function agentHost(tools: { launcher: string[]; steamcmd: string[] }): RuntimeHost {
+export function agentHost(tools: { launcher: string[]; steamcmd: string[] }, o: AgentHostOptions = {}): RuntimeHost {
   const dirs: string[] = [];
   const runs: GameRun[] = [];
+  const env = () => ({ ...baseEnv(), ...o.env });
   return {
     async context(adapter: RuntimeAdapter): Promise<InstallCtx> {
       const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-contract-'));
@@ -33,6 +43,7 @@ export function agentHost(tools: { launcher: string[]; steamcmd: string[] }): Ru
       for (const decl of adapter.meta.ports) ports[decl.id] = await freePort();
       const home = path.join(dir, 'home');
       const noop = () => undefined;
+      const get = makeFetch({ userAgent: 'gameserver-panel/test', baseDelayMs: 50 });
       return {
         roots,
         stateDir: path.join(dir, 'state'),
@@ -40,6 +51,7 @@ export function agentHost(tools: { launcher: string[]; steamcmd: string[] }): Ru
         state: { controlSecret: randomBytes(24).toString('hex'), gameVersion: null },
         tools: { ...tools, home },
         env: env(),
+        ...(o.eulaAccepted === undefined ? {} : { eulaAccepted: o.eulaAccepted }),
         log: noop,
         onLine: noop,
         progress: noop,
@@ -47,6 +59,9 @@ export function agentHost(tools: { launcher: string[]; steamcmd: string[] }): Ru
           adapter.meta.runtime === 'steam'
             ? new SteamcmdDriver({ steamcmd: tools.steamcmd, home, installDir: roots.install, workshopDir: path.join(roots.data, '.workshop') })
             : undefined,
+        fetch: get,
+        download: makeDownload({ fetch: get }),
+        exec: makeExec({ env: env(), onLine: noop, cwd: roots.install }),
       };
     },
 
