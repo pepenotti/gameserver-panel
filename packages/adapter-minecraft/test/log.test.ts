@@ -31,6 +31,15 @@ describe('log lines (CON-01)', () => {
     expect(versions).toEqual(['26.3']);
   });
 
+  it('1.16.5, the oldest version offered (Q11), boots with the same lines on Java 17', () => {
+    const signals = fixtureLines('..', '1.16.5', 'vanilla', 'logs', 'first-boot.log').map(classify);
+    const ready = signals.flatMap((s, i) => (s.ready ? [i] : []));
+    expect(ready).toHaveLength(1);
+    expect(signals.findIndex((s) => s.channelReady)).toBeGreaterThan(ready[0]!);
+    expect(signals.flatMap((s) => s.version ?? [])).toEqual(['1.16.5']);
+    expect(signals.filter((s) => s.fatal || s.blockingPrompt)).toEqual([]);
+  });
+
   it.each(LOADERS)('%s: joins and leaves (PLY-01)', (loader) => {
     const lines = fixtureLines(loader, 'logs', 'players.log');
     const joins = lines.flatMap((l) => classify(l).join ?? []);
