@@ -10,7 +10,7 @@ import { createOrchestratorServer, listenOnSocket, type Policy } from '@gsp/orch
 import type { AgentStatus, ServerContainer, ServerSpec } from '@gsp/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { request, socketPath, TOKEN } from '../../packages/orchestrator/test/helpers';
-import { FakeBackend } from './backend';
+import { agentEnvFrom, FakeBackend } from './backend';
 
 const SCALE = Number(process.env.TEST_TIME_SCALE) || 1;
 const AGENT_TOKEN = 'fake-orch-agent-token-0123456789abcdef0123';
@@ -189,6 +189,30 @@ describe('the fake orchestrator (dev loop, M2)', () => {
     expect(await request(r.socket, 'PUT', '/v1/servers/pz-3', { body: spec('pz-3', b! + 2) })).toMatchObject({ status: 403, body: { code: 'refused', field: 'id' } });
     expect(await request(r.socket, 'POST', '/v1/servers/nope/start')).toMatchObject({ status: 404 });
     expect(await request(r.socket, 'GET', '/v1/servers/pz/stats')).toMatchObject({ status: 200, body: { id: 'pz', memLimitBytes: 2048 * 1024 * 1024 } });
+  });
+});
+
+describe('what the fake orchestrator passes its agents (dev loop, M3)', () => {
+  it("gives them the fake games' knobs and Minecraft's download services, nothing of its own (UPD-01)", () => {
+    const env = {
+      FAKE_PZ_BOOT_MS: '2500',
+      FAKE_MC_BOOT_MS: '2500',
+      FAKE_ORCH_STATE_DIR: '/state',
+      GAME_MC_MOJANG_URL: 'http://127.0.0.1:30407',
+      GAME_MC_PAPER_URL: 'http://127.0.0.1:30407',
+      GAME_MC_FABRIC_URL: 'http://127.0.0.1:30407',
+      GAME_ADAPTER: 'pz',
+      GAME_MC_OTHER: 'x',
+      ORCH_TOKEN: 'secret',
+      PATH: '/bin',
+    };
+    expect(agentEnvFrom(env)).toEqual({
+      FAKE_PZ_BOOT_MS: '2500',
+      FAKE_MC_BOOT_MS: '2500',
+      GAME_MC_MOJANG_URL: 'http://127.0.0.1:30407',
+      GAME_MC_PAPER_URL: 'http://127.0.0.1:30407',
+      GAME_MC_FABRIC_URL: 'http://127.0.0.1:30407',
+    });
   });
 });
 
