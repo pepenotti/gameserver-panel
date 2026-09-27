@@ -83,6 +83,9 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       need('whitelist', !!p?.whitelistAdd && !!p.whitelistRemove, 'players.whitelistAdd/Remove');
       need('accessLevels', !!p?.setAccess && (p.accessLevels?.length ?? 0) > 0, 'players.setAccess and players.accessLevels');
       need('accounts', !!p?.accounts, 'players.accounts');
+      // What only a game with a whitelist or access levels can have.
+      if (!c.has('whitelist') && (p?.setWhitelistEnabled || p?.whitelist)) missing.push('players.setWhitelistEnabled/whitelist without the whitelist capability');
+      if (!c.has('accessLevels') && p?.levelHolders) missing.push('players.levelHolders without the accessLevels capability');
       need('updateCheck', !!adapter.updates, 'updates.check');
       for (const cap of c) if (cap.startsWith('mods:')) need(cap, !!adapter.mods?.some((m) => m.capability === cap), `a mod source for ${cap}`);
       for (const m of adapter.mods ?? []) if (!c.has(m.capability)) missing.push(`mod source ${m.id} without the ${m.capability} capability`);
@@ -119,6 +122,39 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       const defaults = adapter.launch.defaults();
       expect(defaults !== null && typeof defaults === 'object', 'launch defaults are an object').toBe(true);
       expect(Object.keys(defaults as object).sort()).toEqual([...keys].sort());
+    });
+
+    it('launch settings name only declared flavours, and every warning is worded in both languages (UPD-02, Q13)', () => {
+      const flavours = adapter.meta.flavours.map((f) => f.id);
+      for (const o of adapter.launch.schema) {
+        if (o.flavours === undefined) continue;
+        expect(o.flavours.length, `launch setting ${o.key} is for no flavour`).toBeGreaterThan(0);
+        expect(o.flavours.filter((f) => !flavours.includes(f)), `launch setting ${o.key} flavours`).toEqual([]);
+      }
+      for (const [code, text] of Object.entries(adapter.launch.warnings ?? {})) {
+        expect(code).toMatch(/^[a-z][a-z0-9-]{0,63}$/);
+        expectI18n(text, `warning ${code}`);
+      }
+    });
+
+    it('launch choices refuse, or answer something, when the download services cannot be reached; they never hang', async () => {
+      const choices = adapter.launch.choices;
+      if (!choices) return;
+      const ctx = { fetch: async (): Promise<Response> => Promise.reject(new Error('no network in the contract suite')), env: {} };
+      for (const flavour of adapter.meta.flavours.length ? adapter.meta.flavours.map((f) => f.id) : [null]) {
+        for (const version of [null, '1']) {
+          const r = await choices({ flavour, version }, ctx).then(
+            (x) => x,
+            (e: unknown) => e,
+          );
+          if (r instanceof Error) continue;
+          expect(r !== null && typeof r === 'object', `choices for ${flavour}`).toBe(true);
+          for (const [key, list] of Object.entries(r as Record<string, unknown[]>)) {
+            expect(adapter.launch.schema.map((o) => o.key), `choices for an unknown setting ${key}`).toContain(key);
+            expect(Array.isArray(list)).toBe(true);
+          }
+        }
+      }
     });
 
     it('launch secrets are labelled, unique and not part of the settings form', () => {
@@ -191,8 +227,11 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       }
       expect([...(p.banTargets ?? [])].filter((t) => !['username', 'steamId', 'ip'].includes(t)), 'ban targets').toEqual([]);
       if (p.ban) expect(p.banTargets?.length ?? 0, 'players.ban without banTargets').toBeGreaterThan(0);
+      const byIp = p.banTargets?.includes('ip') ?? false;
       const ctx = bareCtx(adapter, server());
       for (const bad of HOSTILE) {
+        if (p.ban && byIp) await expect(p.ban(ctx, { ip: bad }), `ban ip ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
+        if (p.unban && byIp) await expect(p.unban(ctx, { ip: bad }), `unban ip ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
         if (p.kick) await expect(p.kick(ctx, bad), `kick ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
         if (p.kick) await expect(p.kick(ctx, 'bob', bad), `kick reason ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
         if (p.ban) await expect(p.ban(ctx, { username: bad }), `ban ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
@@ -204,11 +243,32 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       if (p.ban) await expect(p.ban(ctx, {}), 'ban without a target').rejects.toBeInstanceOf(RconProtocolError);
       if (p.setAccess) await expect(p.setAccess(ctx, 'bob', 'not-a-level; quit'), 'unknown access level').rejects.toBeInstanceOf(RconProtocolError);
       expect(ctx.commands).toEqual([]);
+      if (p.ban && byIp) await expect(p.ban(ctx, { ip: 'not-an-address' }), 'ban a word as an ip').rejects.toBeInstanceOf(RconProtocolError);
+      expect(ctx.commands).toEqual([]);
       // A normal kick reaches the game.
       if (p.kick) {
         await p.kick(ctx, 'bob', 'afk');
         expect(ctx.commands.length).toBeGreaterThan(0);
       }
+      // A whitelist without passwords takes a name alone.
+      if (p.whitelistAdd && p.whitelistPassword === false) {
+        const before = ctx.commands.length;
+        await p.whitelistAdd(ctx, 'bob');
+        expect(ctx.commands.length, 'whitelistAdd without a password').toBeGreaterThan(before);
+      }
+    });
+
+    it("reads the whitelist and who holds a level from the game's files, empty on a server without any", async () => {
+      const p = adapter.players;
+      if (!p) return;
+      const ctx = bareCtx(adapter, server());
+      if (p.whitelist) {
+        const w = await p.whitelist(ctx);
+        expect(w.usernames).toEqual([]);
+        expect([true, false, null]).toContain(w.enabled);
+      }
+      if (p.levelHolders) expect(await p.levelHolders(ctx)).toEqual([]);
+      expect(ctx.commands, 'reads send nothing to the game').toEqual([]);
     });
 
     if (opts.server) {

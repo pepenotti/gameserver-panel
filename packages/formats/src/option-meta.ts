@@ -14,9 +14,13 @@ export interface OptionMeta {
   type: OptionType;
   min?: number;
   max?: number;
-  /** Default value as the file writes it (enum defaults resolved to their number). */
+  /** Default value as the file writes it (enum defaults resolved to their number, or their word). */
   default?: string;
-  options?: { value: number; label: Localized }[];
+  /**
+   * An enum's choices: numbers (PZ's sandbox writes `Speed = 2`), or words
+   * for files that write the choice itself (Minecraft's `difficulty=easy`).
+   */
+  options?: { value: number | string; label: Localized }[];
   description: Localized;
   /** What forms call the option; without it, a name derived from the key. */
   label?: Localized;
@@ -74,6 +78,8 @@ export function checkOptionValue(meta: Pick<OptionMeta, 'type' | 'min' | 'max' |
     case 'integer':
     case 'enum':
     case 'decimal': {
+      // Word choices are taken as written; number choices are checked as whole numbers.
+      if (meta.type === 'enum' && meta.options?.some((o) => typeof o.value === 'string')) return meta.options.some((o) => String(o.value) === value) ? null : 'is not one of the allowed choices';
       const re = meta.type === 'decimal' ? /^-?\d+(\.\d+)?$/ : /^-?\d+$/;
       if (!re.test(value)) return meta.type === 'decimal' ? 'must be a number' : 'must be a whole number';
       const n = Number(value);

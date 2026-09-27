@@ -1,14 +1,12 @@
 // The one list of adapters (PRD §10 "Package layout"): every adapter
 // package is registered, and the skeletons of the M3 contract step are not
 // offered anywhere until their milestone measured the game (D4, D5).
-// Minecraft's runtime half is built (M3): agents run it; the panel offers
-// Minecraft once its panel half exists.
+// Minecraft was measured and built in M3: agents run it and the panel
+// offers it.
 import { describe, expect, it } from 'vitest';
 import { panelAdapter, panelAdapterEntries, panelAdapters, runtimeAdapter, runtimeAdapterEntries, runtimeAdapters } from '../src/index';
 
 const SKELETONS = ['terraria', 'valheim', 'manifest'];
-/** Enabled for agents, not yet for the panel. */
-const RUNTIME_ONLY = ['minecraft'];
 
 describe('the adapter list (D4, D5)', () => {
   it('registers every adapter on both sides, with the same meta', () => {
@@ -23,9 +21,9 @@ describe('the adapter list (D4, D5)', () => {
   });
 
   it('offers only enabled adapters: the skeletons are registered but disabled', () => {
-    expect(panelAdapterEntries.filter((e) => !e.enabled).map((e) => e.adapter.meta.id)).toEqual([...RUNTIME_ONLY, ...SKELETONS]);
+    expect(panelAdapterEntries.filter((e) => !e.enabled).map((e) => e.adapter.meta.id)).toEqual(SKELETONS);
     expect(runtimeAdapterEntries.filter((e) => !e.enabled).map((e) => e.adapter.meta.id)).toEqual(SKELETONS);
-    expect(panelAdapters.map((a) => a.meta.id)).toEqual(['pz']);
+    expect(panelAdapters.map((a) => a.meta.id)).toEqual(['pz', 'minecraft']);
     expect(runtimeAdapters.map((a) => a.meta.id)).toEqual(['pz', 'minecraft']);
     expect(panelAdapter('pz').meta.id).toBe('pz');
     expect(runtimeAdapter('pz').meta.id).toBe('pz');
@@ -35,9 +33,10 @@ describe('the adapter list (D4, D5)', () => {
     }
   });
 
-  it("runs Minecraft on agents (UPD-06) while the panel doesn't offer it yet", () => {
+  it('offers Minecraft on both sides, with its loaders as flavours (M3, UPD-06)', () => {
     expect(runtimeAdapter('minecraft').meta.id).toBe('minecraft');
-    expect(() => panelAdapter('minecraft')).toThrow(/No panel adapter/);
+    expect(panelAdapter('minecraft').meta.flavours.map((f) => f.id)).toEqual(['vanilla', 'paper', 'fabric']);
+    expect(panelAdapter('minecraft').meta).toBe(runtimeAdapter('minecraft').meta);
   });
 
   it('gives each adapter the runtime family the PRD names (§10)', () => {

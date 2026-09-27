@@ -172,6 +172,9 @@ describe('server controls', () => {
       latest: { name: 'public', buildId: '25000000', timeUpdated: 1758600000, passwordRequired: false },
       branches: [{ name: 'public', buildId: '25000000', timeUpdated: 1758600000 }],
       updateAvailable: true,
+      // The same in any game's terms (UPD-03): the adapter's answer, and the pinned version as its source lists it.
+      check: { available: true, current: '24909800', latest: '25000000', channel: 'public' },
+      pinned: { id: 'public', build: '25000000', channel: null, warning: null },
     });
     // One versions call per request, for the stored launch settings.
     expect(asked).toEqual([{ launch: { adapter: 'pz', params: expect.objectContaining({ branch: 'public' }) } }]);

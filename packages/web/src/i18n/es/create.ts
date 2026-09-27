@@ -38,4 +38,5 @@ export default {
   memoryHostMax: 'Este panel le da a un servidor como mucho {{max}} MiB en total.',
   memoryMax: 'Como mucho {{max}} MiB acá (el contenedor del servidor puede tener {{limit}} MiB en total).',
   hostTooSmall: 'Este panel le da a un servidor como mucho {{max}} MiB y este juego necesita por lo menos {{need}} MiB: no se puede crear acá.',
+  choicesUnavailable: 'No se pudo cargar la lista de versiones ({{error}}). Igual podés escribir una.',
 } satisfies Translations['create'];

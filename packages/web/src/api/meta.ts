@@ -60,6 +60,52 @@ export interface LaunchOption extends OptionMeta {
   unit?: string;
   /** Increment a number must be a multiple of. */
   step?: number;
+  /** The flavours this setting is for; absent: every one. */
+  flavours?: string[];
+}
+
+/** One value a launch setting may take right now, from the game's download services (the contract's `LaunchChoice`). */
+export interface LaunchChoice {
+  value: string;
+  /** How people read it when the value alone doesn't say. */
+  label?: I18n;
+  /** A short fact shown with it (its newest build, its date). */
+  detail?: string;
+  /** The release channel of what it installs. */
+  channel?: string;
+  /** A code the adapter's `warnings` word: picking it deserves a second thought. */
+  warning?: string;
+  /** Other launch settings that go with picking it. */
+  implies?: Record<string, string>;
+}
+
+/** Choices by launch setting key (`GET /api/adapters/:id/choices`, `GET /api/servers/:sid/server/launch/choices`). */
+export type LaunchChoices = Record<string, LaunchChoice[]>;
+
+/** Whether a launch setting is for a server of `flavour`. */
+export function forFlavour(o: Pick<LaunchOption, 'flavours'>, flavour: string | null): boolean {
+  return !o.flavours || (flavour !== null && o.flavours.includes(flavour));
+}
+
+/** What a version list starts on (Q13): the newest one without a warning, else the newest. */
+export function preferredChoice(list: readonly LaunchChoice[] | undefined): LaunchChoice | undefined {
+  return list?.find((c) => !c.warning) ?? list?.[0];
+}
+
+/**
+ * The settings picking `choice` of a list brings along (`implies`): its
+ * values, and for every setting another choice of the list would set, its
+ * default again (a channel another version needed goes back to stable).
+ */
+export function impliedBy(choice: LaunchChoice, list: readonly LaunchChoice[], schema: readonly LaunchOption[]): Record<string, string> {
+  const keys = new Set(list.flatMap((c) => Object.keys(c.implies ?? {})));
+  const out: Record<string, string> = {};
+  for (const k of keys) {
+    const dflt = schema.find((o) => o.key === k)?.default;
+    const v = choice.implies?.[k] ?? dflt;
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
 }
 
 /** A group of a settings form (the contract's `OptionGroup`, CFG-10); options name theirs in `OptionMeta.group`. */
@@ -93,7 +139,8 @@ export interface Meta {
   };
   server: { id?: string; name?: string; gameName: string; flavour: string | null };
   capabilities: Capability[];
-  launch: { schema: LaunchOption[] };
+  /** `choices`: its versions can be listed; `warnings`: what their warning codes mean. */
+  launch: { schema: LaunchOption[]; choices?: boolean; warnings?: Record<string, I18n> };
   backupParts: { id: string; label: I18n }[];
   /** `options`: what the scope takes (a new seed, a preset); the others are ignored. */
   resets: { id: string; label: I18n; permission: Permission; removeParts: string[]; options?: { newSeed?: boolean; preset?: boolean } }[];
@@ -101,6 +148,10 @@ export interface Meta {
   accessLevels: { id: string; label: I18n }[];
   /** What a ban can name. */
   banTargets?: BanTarget[];
+  /** How the whitelist works: a password per entry (accounts), switched on and off live, listed. */
+  whitelist?: { password: boolean; toggle: boolean; list: boolean };
+  /** Who holds a level above the lowest can be listed. */
+  levelHolders?: boolean;
   modSources: { id: string; capability: Capability; label: I18n }[];
   consoleCatalog: CommandDoc[];
 }
@@ -121,7 +172,8 @@ export interface AdapterSummary {
   eula: boolean;
   /** That license: its name and where to read it; null without one. */
   agreement: { name: I18n; url: string } | null;
-  launch: { schema: LaunchOption[]; secrets: { key: string; label: I18n }[] };
+  /** `choices`: its versions can be listed before a server exists; `warnings`: what their warning codes mean. */
+  launch: { schema: LaunchOption[]; secrets: { key: string; label: I18n }[]; choices?: boolean; warnings?: Record<string, I18n> };
 }
 
 /** An inclusive range of host ports. */

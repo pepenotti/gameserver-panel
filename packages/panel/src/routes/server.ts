@@ -160,20 +160,44 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  // The shape predates adapters (Steam branches); versions map onto it.
+  // What this server's version and version-dependent settings may be set to (UPD-02), from its game's
+  // download services; the same answers the create form gets, for the server's flavour.
+  app.get<{ Querystring: { version?: string } }>(
+    '/server/launch/choices',
+    {
+      config: { permission: 'server.update', capability: 'versionPin' },
+      schema: { querystring: { type: 'object', additionalProperties: false, properties: { version: { type: 'string', pattern: '^[0-9A-Za-z.+-]{1,32}$' } } } },
+    },
+    async (req) => {
+      const { handle } = srvOf(req);
+      return deps.choices.get(handle.adapter, handle.ref.flavour, req.query.version ?? null);
+    },
+  );
+
+  // The shape predates adapters (Steam branches); versions map onto it. `pinned` and `check` say
+  // the same in any game's terms: the version the launch settings pin, as its source lists it
+  // (its channel, and why it deserves a second thought), and the adapter's answer (UPD-03, Q13).
   app.get('/server/updates', { config: { permission: 'server.update', capability: 'updateCheck' } }, async (req) => {
     const { handle } = srvOf(req);
     const ctx = handle.ctx();
-    const check = await handle.adapter.updates?.check(ctx, handle.launchSettings());
+    const launch = handle.launchSettings() as Record<string, unknown>;
+    const check = await handle.adapter.updates?.check(ctx, launch);
     const info = await ctx.versions();
     const channel = check?.channel ?? null;
     const latest = info.versions.find((v) => v.id === channel) ?? null;
+    const warnings = handle.adapter.launch.warnings ?? {};
+    const warning = (code: string | undefined) => (code ? (warnings[code] ?? { en: code, es: code }) : null);
+    const versionKey = handle.adapter.launch.schema.find((o) => o.role === 'version')?.key;
+    const pinnedId = versionKey === undefined ? undefined : launch[versionKey];
+    const pinned = typeof pinnedId === 'string' ? (info.versions.find((v) => v.id === pinnedId) ?? null) : null;
     return {
       installed: info.installed ? { buildId: info.installed.build ?? null, branch: info.installed.channel ?? null } : null,
       branch: channel,
       latest: latest ? { name: latest.id, buildId: latest.build ?? null, timeUpdated: latest.timeUpdated, description: latest.description, passwordRequired: latest.passwordRequired ?? false } : null,
-      branches: info.versions.filter((v) => !v.passwordRequired).map((v) => ({ name: v.id, buildId: v.build ?? null, timeUpdated: v.timeUpdated ?? null })),
+      branches: info.versions.filter((v) => !v.passwordRequired).map((v) => ({ name: v.id, buildId: v.build ?? null, timeUpdated: v.timeUpdated ?? null, ...(v.channel ? { channel: v.channel } : {}), ...(v.warning ? { warning: warning(v.warning) } : {}) })),
       updateAvailable: check?.available ?? false,
+      check: check ? { available: check.available, current: check.current, latest: check.latest, channel } : null,
+      pinned: pinned ? { id: pinned.id, build: pinned.build ?? null, channel: pinned.channel ?? null, warning: warning(pinned.warning) } : null,
     };
   });
 

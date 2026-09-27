@@ -1,7 +1,7 @@
 // The Minecraft adapter passes the contract suites (D4, NFR-07): the runtime
 // half with each loader's captured boot and failures (the agent's tests run
-// it live against the fake), the panel half as the M3 contract step left it
-// (its forms, backups and players come with the panel adapter).
+// it live against the fake), the panel half for each loader with the files
+// the real servers wrote (fixtures/minecraft/26.3).
 import { describe, expect, it } from 'vitest';
 import { panelAdapterConfigSuite } from '@gsp/adapter-api/testing/panel-suite-config';
 import { panelAdapterCoreSuite } from '@gsp/adapter-api/testing/panel-suite-core';
@@ -9,9 +9,7 @@ import { runtimeAdapterSuite } from '@gsp/adapter-api/testing/runtime-suite';
 import { minecraftPanelAdapter } from '../src/panel';
 import { minecraftRuntimeAdapter } from '../src/runtime';
 import { MINECRAFT_META } from '../src/shared';
-import { fixtureLines } from './helpers';
-
-const server = () => ({ id: 'mc', gameName: 'mc', flavour: 'vanilla' });
+import { fixture, fixtureLines } from './helpers';
 
 for (const loader of ['vanilla', 'paper', 'fabric'] as const) {
   describe(`captured ${loader} 26.3`, () => {
@@ -30,9 +28,28 @@ for (const loader of ['vanilla', 'paper', 'fabric'] as const) {
   });
 }
 
-panelAdapterCoreSuite(minecraftPanelAdapter, { server, secrets: () => ({}) });
-// The panel skeleton declares no config files yet, so the checks that need one are left out.
-panelAdapterConfigSuite(minecraftPanelAdapter);
+/** A server's files as the loader's real server left them. */
+function capturedFiles(loader: 'vanilla' | 'paper' | 'fabric'): Record<string, string> {
+  const files: Record<string, string> = {
+    'data/server.properties': fixture(loader, 'config', 'server.properties.after'),
+    'data/eula.txt': fixture(loader, 'config', 'eula.txt.generated'),
+  };
+  for (const f of ['whitelist.json', 'ops.json', 'banned-players.json', 'banned-ips.json', 'usercache.json']) files[`data/${f}`] = fixture(loader, 'files', f);
+  if (loader === 'paper') {
+    for (const f of ['bukkit.yml', 'spigot.yml', 'commands.yml', 'config/paper-global.yml', 'config/paper-world-defaults.yml', 'plugins/bStats/config.yml', 'world/dimensions/minecraft/overworld/paper-world.yml']) {
+      files[`data/${f}`] = fixture('paper', 'data', ...f.split('/'));
+    }
+  }
+  return files;
+}
+
+for (const loader of ['vanilla', 'paper', 'fabric'] as const) {
+  describe(`panel half, ${loader}`, () => {
+    const server = () => ({ id: 'mc', gameName: 'mc', flavour: loader });
+    panelAdapterCoreSuite(minecraftPanelAdapter, { server, secrets: () => ({}) });
+    panelAdapterConfigSuite(minecraftPanelAdapter, { server, files: () => capturedFiles(loader) });
+  });
+}
 
 describe('the Minecraft adapter (D4, D6, UPD-06)', () => {
   it('shares one meta: the java runtime, x86-64 and ARM64, the loaders, the ports, and the EULA with its agreement', () => {
@@ -47,7 +64,25 @@ describe('the Minecraft adapter (D4, D6, UPD-06)', () => {
     expect(MINECRAFT_META.eula?.url).toBe('https://aka.ms/MinecraftEULA');
   });
 
-  it("declares what the runtime half implements; the panel's capabilities come with the panel half", () => {
-    expect(MINECRAFT_META.capabilities).toEqual(['rcon', 'stdinConsole', 'save', 'hotBackup', 'players', 'playerHistory', 'versionPin', 'loaders', 'eula']);
+  it('declares what both halves implement: the runtime (phase 2) and the panel (phase 3); not liveReload', () => {
+    expect(MINECRAFT_META.capabilities).toEqual([
+      'rcon',
+      'stdinConsole',
+      'broadcast',
+      'save',
+      'hotBackup',
+      'players',
+      'playerHistory',
+      'kick',
+      'ban',
+      'whitelist',
+      'accessLevels',
+      'settingsForms',
+      'presets',
+      'versionPin',
+      'loaders',
+      'updateCheck',
+      'eula',
+    ]);
   });
 });

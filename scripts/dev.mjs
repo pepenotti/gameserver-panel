@@ -35,12 +35,17 @@ const port = (/** @type {string} */ key, /** @type {number} */ dflt) => {
   if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error(`${key} must be a port number, got ${v}`);
   return n;
 };
+const panelPort = port('DEV_PANEL_PORT', 8080);
 const ports = {
-  panel: port('DEV_PANEL_PORT', 8080),
+  panel: panelPort,
   agent: port('DEV_AGENT_PORT', 8081),
   web: port('DEV_WEB_PORT', 5173),
   rcon: port('DEV_RCON_PORT', 27115),
+  // Minecraft's fake download services (Mojang, PaperMC, Fabric): a port of the slot's block nothing else uses.
+  downloads: port('DEV_DOWNLOADS_PORT', panelPort + 7),
 };
+/** What the panel (its version choices) and every server's agent (its installs) download Minecraft from. */
+const downloadUrls = Object.fromEntries(['GAME_MC_MOJANG_URL', 'GAME_MC_PAPER_URL', 'GAME_MC_FABRIC_URL'].map((k) => [k, `http://127.0.0.1:${ports.downloads}`]));
 const host = process.env.DEV_HOST || 'localhost';
 const tmp = path.resolve(root, process.env.DEV_STATE_DIR || path.join('.tmp', 'dev'));
 const url = `http://${host}:${ports.web}`;
@@ -68,6 +73,7 @@ env file    ${existsSync(envDev) ? envDev : '(no .env.dev; defaults and environm
 state dir   ${tmp}
 ports       panel ${ports.panel}, agent ${ports.agent}, web ${ports.web}, fake RCON ${ports.rcon}
 orchestrator  fake, on ${orch.socket}; its servers: agents ${orch.agentPorts}, inside ports ${orch.controlPorts}, game ports ${orch.hostPorts}
+downloads   fake Minecraft download services on ${ports.downloads}
 open        ${url}`);
   process.exit(0);
 }
@@ -96,7 +102,16 @@ const procs = [
       FAKE_ORCH_CONTROL_PORTS: orch.controlPorts,
       FAKE_PZ_BOOT_MS: '2500',
       FAKE_PZ_PLAYERS: process.env.FAKE_PZ_PLAYERS ?? 'Rick,Daryl',
+      // Minecraft servers install from the fake download services and boot the fake server.
+      ...downloadUrls,
+      FAKE_MC_BOOT_MS: '2500',
     },
+  },
+  {
+    name: 'downloads',
+    color: 34,
+    cmd: [node, 'tools/fake-minecraft/downloads.mjs', '--port', String(ports.downloads)],
+    env: {},
   },
   {
     // The `default` server of today's single-server wiring (AGENT_URL below).
@@ -139,6 +154,8 @@ const procs = [
       PZ_INSTALL_DIR: path.join(tmp, 'install'),
       BACKUP_DIR: path.join(tmp, 'backups'),
       PZ_SERVER_NAME: 'zomboid',
+      // The create form's Minecraft versions come from the same fake services.
+      ...downloadUrls,
     },
   },
   {

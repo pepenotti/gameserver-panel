@@ -103,7 +103,7 @@ function useLiveIssues(text: string, content: FileContent | undefined): ParseIss
   }, [debounced, content]);
 }
 
-function FileEditor({ id, onDirty }: { id: string; onDirty: (dirty: boolean) => void }) {
+function FileEditor({ id, onDirty, stoppedOnly = false }: { id: string; onDirty: (dirty: boolean) => void; stoppedOnly?: boolean }) {
   const { t } = useTranslation();
   const errorText = useErrorText();
   const fileLabel = useFileLabel();
@@ -186,6 +186,13 @@ function FileEditor({ id, onDirty }: { id: string; onDirty: (dirty: boolean) => 
           <Badge variant="light" color="gray" tt="none">
             {content.format}
           </Badge>
+          {stoppedOnly && (
+            <Tooltip label={t('files.stoppedOnlyHelp')}>
+              <Badge color="orange" variant="light" tt="none">
+                {t('files.stoppedOnly')}
+              </Badge>
+            </Tooltip>
+          )}
           {readonly && (
             <Tooltip label={t(`files.reasons.${readonly}`)}>
               <Badge color="gray" leftSection={<IconLock size={12} />}>
@@ -319,7 +326,7 @@ export function ConfigFiles() {
         <Grid.Col span={{ base: 12, md: 4, lg: 3 }}>{files.error ? <Alert color="red">{errorText(files.error)}</Alert> : files.data ? <FileTree view={files.data} selected={selected} onOpen={open} /> : <Loader />}</Grid.Col>
         <Grid.Col span={{ base: 12, md: 8, lg: 9 }}>
           {selected ? (
-            <FileEditor key={selected} id={selected} onDirty={setDirty} />
+            <FileEditor key={selected} id={selected} onDirty={setDirty} stoppedOnly={files.data?.files.some((f) => f.id === selected && f.stoppedOnly) ?? false} />
           ) : (
             <Alert color="blue" variant="light">
               {t('files.pick')}

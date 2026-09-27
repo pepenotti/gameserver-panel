@@ -30,6 +30,16 @@ const MIB = 1024 * 1024;
 /** What a container would not inherit from the orchestrator's environment. */
 const NOT_INHERITED = /^(ORCH_|FAKE_ORCH_|AGENT_|GAME_|GSP_|DEV_|PANEL_|PZ_|STEAMCMD_)/;
 
+/**
+ * What of the fake orchestrator's own environment every agent gets
+ * (`FakeBackendOptions.env`): the fake games' knobs (`FAKE_*`) and where
+ * Minecraft downloads from (`GAME_MC_*_URL`: the fake download services
+ * in the dev loop, which a real server spec would set as `GAME_*` keys).
+ */
+export function agentEnvFrom(env: NodeJS.ProcessEnv): Record<string, string> {
+  return Object.fromEntries(Object.entries(env).filter((e): e is [string, string] => /^(?:FAKE_(?!ORCH_)|GAME_MC_[A-Z]+_URL$)/.test(e[0]) && e[1] !== undefined));
+}
+
 export interface FakeBackendOptions {
   /** servers.json and one folder per server (data, install, steam). */
   stateDir: string;

@@ -32,6 +32,8 @@ export interface FileDecl {
   managedKeys: string[];
   secretKeys: string[];
   restartKeys: string[] | '*';
+  /** The running game writes it back from memory: saved only while the server is stopped. */
+  stoppedOnly?: boolean;
 }
 
 export interface ConfigMeta {

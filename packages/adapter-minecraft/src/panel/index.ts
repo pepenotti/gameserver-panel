@@ -1,21 +1,41 @@
 /**
- * Minecraft: Java Edition, panel side: a skeleton (M3 contract step).
- * Launch settings, config files (server.properties and friends, with the
- * `properties` format), backups, resets, players and messages come with the
- * M3 adapter, from measured facts (D5).
+ * Minecraft: Java Edition, panel side (M3): launch settings with the loader
+ * as the server's flavour and the versions each loader offers, the config
+ * files and their forms, backups, resets, countdown messages, moderation,
+ * update checks and the console catalog. Every fact comes from
+ * docs/verification/minecraft-26.3.md and fixtures/minecraft/26.3.
  */
 import type { PanelAdapter } from '@gsp/adapter-api';
 import { MINECRAFT_META } from '../shared/meta';
+import { MINECRAFT_BACKUP_PARTS, MINECRAFT_RESETS } from './backups';
+import { minecraftPanelConfig } from './config';
+import { MINECRAFT_CONSOLE_CATALOG } from './console';
+import { minecraftChoices, MINECRAFT_LAUNCH_DEFAULTS, MINECRAFT_LAUNCH_SCHEMA, MINECRAFT_WARNINGS, minecraftToAgent, type MinecraftLaunchSettings } from './launch';
+import { minecraftAnnounce, minecraftBroadcast } from './messages';
+import { minecraftPlayers } from './players';
+import { minecraftCheckUpdate } from './updates';
 
-/** The launch settings the panel stores. TODO(M3): version, loader, memory. */
-export type MinecraftLaunchSettings = Record<string, never>;
+export type { MinecraftLaunchSettings };
+export { BSTATS_SCHEMA, MINECRAFT_PRESETS, minecraftManagedValues } from './config';
+export { DEFAULT_VERSION, MINECRAFT_LAUNCH_DEFAULTS, MINECRAFT_WARNINGS, minecraftChoices, minecraftToAgent, parseMinecraftLaunchSettings } from './launch';
+export { SAY_MAX } from './messages';
+export { MINECRAFT_ACCESS_LEVELS } from './players';
+export { PROPERTIES_GROUPS, PROPERTIES_SCHEMA, PROPERTIES_SECRETS } from './properties';
 
 export const minecraftPanelAdapter: PanelAdapter<MinecraftLaunchSettings> = {
   meta: MINECRAFT_META,
-  launch: { schema: [], defaults: () => ({}), toAgent: () => ({}) },
-  config: { files: () => [], roots: () => [], schemas: {}, managedValues: () => ({}) },
-  backups: { parts: [] },
-  resets: [],
-  // TODO(M3 fact-finding): in-game countdown messages, once the game's say command is measured.
-  messages: { announce: () => null },
+  launch: {
+    schema: MINECRAFT_LAUNCH_SCHEMA,
+    defaults: () => ({ ...MINECRAFT_LAUNCH_DEFAULTS }),
+    toAgent: minecraftToAgent,
+    choices: minecraftChoices,
+    warnings: MINECRAFT_WARNINGS,
+  },
+  config: minecraftPanelConfig,
+  backups: { parts: MINECRAFT_BACKUP_PARTS },
+  resets: MINECRAFT_RESETS,
+  messages: { announce: minecraftAnnounce, broadcast: minecraftBroadcast },
+  players: minecraftPlayers,
+  updates: { check: minecraftCheckUpdate },
+  consoleCatalog: MINECRAFT_CONSOLE_CATALOG,
 };

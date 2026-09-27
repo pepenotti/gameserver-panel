@@ -5,12 +5,19 @@ import type { Deps } from '../http/deps';
 const username = { type: 'string', minLength: 1, maxLength: 32 } as const;
 const reason = { type: 'string', maxLength: 200 } as const;
 const steamId = { type: 'string', pattern: '^\\d{17}$' } as const;
+/** An IPv4 or IPv6 address, as far as a schema can tell (the adapter checks it for real). */
+const ip = { type: 'string', minLength: 2, maxLength: 45, pattern: '^[0-9A-Fa-f.:]+$' } as const;
+/** Whom a ban names: a player's name, a SteamID or an address (the server's adapter says which it takes). */
 const target = {
   type: 'object',
   additionalProperties: false,
-  properties: { username, steamId, reason },
-  anyOf: [{ required: ['username'] }, { required: ['steamId'] }],
+  properties: { username, steamId, ip, reason },
+  anyOf: [{ required: ['username'] }, { required: ['steamId'] }, { required: ['ip'] }],
 } as const;
+
+type Target = { username?: string; steamId?: string; ip?: string };
+const targetOf = (b: Target): Target => ({ ...(b.username !== undefined ? { username: b.username } : {}), ...(b.steamId !== undefined ? { steamId: b.steamId } : {}), ...(b.ip !== undefined ? { ip: b.ip } : {}) });
+const named = (b: Target) => b.steamId ?? b.ip ?? b.username ?? null;
 
 export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   const { audit } = deps;
@@ -21,9 +28,11 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     const full = allowed(req, 'accounts.view');
     return {
       online: players.onlineNow(),
-      // Accounts, SteamIDs and bans are for operators and up.
+      // Accounts, SteamIDs, bans, the whitelist and who holds a level are for operators and up.
       accounts: full ? await players.accounts() : null,
       bans: full ? await players.bans() : null,
+      whitelist: full ? await players.whitelist() : null,
+      levelHolders: full ? await players.levelHolders() : null,
       ipBansTrustworthy: deps.env.clientIpTrustworthy,
     };
   });
@@ -50,25 +59,17 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.post<{ Body: { username?: string; steamId?: string; reason?: string } }>(
-    '/players/ban',
-    { config: { permission: 'players.moderate', capability: 'ban' }, schema: { body: target } },
-    async (req) => {
-      const output = await srvOf(req).players.ban(who(req), { username: req.body.username, steamId: req.body.steamId }, req.body.reason);
-      audit.log({ ...by(req), action: 'player.ban', target: req.body.steamId ?? req.body.username ?? null, detail: req.body.reason ?? null });
-      return { output };
-    },
-  );
+  app.post<{ Body: Target & { reason?: string } }>('/players/ban', { config: { permission: 'players.moderate', capability: 'ban' }, schema: { body: target } }, async (req) => {
+    const output = await srvOf(req).players.ban(who(req), targetOf(req.body), req.body.reason);
+    audit.log({ ...by(req), action: 'player.ban', target: named(req.body), detail: req.body.reason ?? null });
+    return { output };
+  });
 
-  app.post<{ Body: { username?: string; steamId?: string } }>(
-    '/players/unban',
-    { config: { permission: 'players.moderate', capability: 'ban' }, schema: { body: target } },
-    async (req) => {
-      const output = await srvOf(req).players.unban(who(req), { username: req.body.username, steamId: req.body.steamId });
-      audit.log({ ...by(req), action: 'player.unban', target: req.body.steamId ?? req.body.username ?? null });
-      return { output };
-    },
-  );
+  app.post<{ Body: Target }>('/players/unban', { config: { permission: 'players.moderate', capability: 'ban' }, schema: { body: target } }, async (req) => {
+    const output = await srvOf(req).players.unban(who(req), targetOf(req.body));
+    audit.log({ ...by(req), action: 'player.unban', target: named(req.body) });
+    return { output };
+  });
 
   app.post<{ Body: { username: string; level: string } }>(
     '/players/access',
@@ -87,14 +88,18 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.post<{ Body: { username: string; password: string } }>(
+  // A password when the game's whitelist is accounts players join with (the adapter says); a name alone otherwise.
+  app.post<{ Body: { username: string; password?: string } }>(
     '/players/whitelist',
     {
       config: { permission: 'whitelist.manage', capability: 'whitelist' },
-      schema: { body: { type: 'object', required: ['username', 'password'], additionalProperties: false, properties: { username, password: { type: 'string', minLength: 4, maxLength: 64 } } } },
+      schema: { body: { type: 'object', required: ['username'], additionalProperties: false, properties: { username, password: { type: 'string', minLength: 4, maxLength: 64 } } } },
     },
     async (req) => {
-      const output = await srvOf(req).players.whitelistAdd(who(req), req.body.username, req.body.password);
+      const { players } = srvOf(req);
+      const withPassword = players.whitelistNeedsPassword();
+      if (withPassword && req.body.password === undefined) throw new HttpError(400, 'validation', 'password is required', { message: 'password is required' });
+      const output = await players.whitelistAdd(who(req), req.body.username, withPassword ? req.body.password : undefined);
       audit.log({ ...by(req), action: 'player.whitelist-add', target: req.body.username });
       return { output };
     },
@@ -106,6 +111,20 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
     async (req) => {
       const output = await srvOf(req).players.whitelistRemove(who(req), req.params.username);
       audit.log({ ...by(req), action: 'player.whitelist-remove', target: req.params.username });
+      return { output };
+    },
+  );
+
+  // The whitelist switched on or off on the running game (where the adapter can).
+  app.post<{ Body: { enabled: boolean } }>(
+    '/players/whitelist/enabled',
+    {
+      config: { permission: 'whitelist.manage', capability: 'whitelist' },
+      schema: { body: { type: 'object', required: ['enabled'], additionalProperties: false, properties: { enabled: { type: 'boolean' } } } },
+    },
+    async (req) => {
+      const output = await srvOf(req).players.setWhitelistEnabled(who(req), req.body.enabled);
+      audit.log({ ...by(req), action: req.body.enabled ? 'player.whitelist-on' : 'player.whitelist-off' });
       return { output };
     },
   );

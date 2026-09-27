@@ -177,6 +177,13 @@ export class ConfigService implements ConfigStore {
     if (st === 'starting' || st === 'stopping' || st === 'installing') throw new HttpError(409, 'server-busy');
   }
 
+  /** A file the running game writes back from memory (`stoppedOnly`): changed only while it is stopped. */
+  private assertStoppedFor(t: Target): void {
+    if (!t.decl?.stoppedOnly) return;
+    const st = this.d.feed.status_?.state;
+    if (st === 'running' || st === 'starting' || st === 'stopping') throw new HttpError(409, 'config-stopped-only', undefined, { file: t.id });
+  }
+
   // ---------------------------------------------------------- keys & masks
 
   /** Every setting of a text; empty when it doesn't parse. */
@@ -395,6 +402,7 @@ export class ConfigService implements ConfigStore {
         managedKeys: f.managedKeys,
         secretKeys: f.secretKeys,
         restartKeys: f.restartKeys,
+        stoppedOnly: f.stoppedOnly === true,
       })),
       schemas: this.d.adapter.config.schemas,
       groups: this.d.adapter.config.groups ?? {},
@@ -439,6 +447,7 @@ export class ConfigService implements ConfigStore {
         managedKeys: d.managedKeys,
         secretKeys: d.secretKeys,
         restartKeys: d.restartKeys,
+        stoppedOnly: d.stoppedOnly === true,
       });
     }
     const folders: EditableFolder[] = [];
@@ -513,6 +522,7 @@ export class ConfigService implements ConfigStore {
   async prepare(req: ChangeRequest): Promise<PreparedChange> {
     const t = this.target(req.fileId);
     this.assertSavable(t);
+    this.assertStoppedFor(t);
     const disk = await this.requireText(t);
     const baseSha256 = this.shaOf(t, disk);
     if (req.baseSha256 !== undefined && req.baseSha256 !== baseSha256) throw new HttpError(409, 'stale');
@@ -552,6 +562,7 @@ export class ConfigService implements ConfigStore {
     const t = this.target(fileId);
     this.assertSavable(t);
     this.assertWritable();
+    this.assertStoppedFor(t);
     const disk = await this.requireText(t);
     if (o.baseSha256 !== undefined && o.baseSha256 !== this.shaOf(t, disk)) throw new HttpError(409, 'stale');
     const p = this.prepareText(t, disk, content, { managed: o.managed });
@@ -676,6 +687,7 @@ export class ConfigService implements ConfigStore {
     const t = this.target(fileId);
     this.assertSavable(t);
     if (!opts.force) this.assertWritable();
+    if (!opts.force) this.assertStoppedFor(t);
     const disk = await this.requireText(t);
     const p = this.prepareText(t, disk, this.proposedFromChanges(t, disk, changes));
     if (p.next === disk) return { applied: 'unchanged', warnings: [], restartNeeded: false };

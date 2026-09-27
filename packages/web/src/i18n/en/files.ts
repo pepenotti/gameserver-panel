@@ -6,6 +6,8 @@ export default {
   emptyFolder: 'No files in {{folder}} yet.',
   truncated: 'Only the first files are listed.',
   readonly: 'Read-only',
+  stoppedOnly: 'Only while stopped',
+  stoppedOnlyHelp: 'The running game writes this file back from memory, so changes are saved only while the server is stopped.',
   history: 'History',
   historyOf: 'History: {{file}}',
   previewSave: 'Review and save',

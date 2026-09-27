@@ -9,9 +9,11 @@
 //   FAKE_ORCH_STATE_DIR      servers.json and each server's folders (default .tmp/dev/orch)
 //   FAKE_ORCH_AGENT_PORTS    ports for the agents, e.g. 30102-30104
 //   FAKE_ORCH_CONTROL_PORTS  ports for what would stay inside a container (RCON), e.g. 30111-30142
-// FAKE_* variables (FAKE_PZ_BOOT_MS…) reach the fake games.
+// FAKE_* variables (FAKE_PZ_BOOT_MS…) reach the fake games, and GAME_MC_*_URL
+// the agents (Minecraft's download services: tools/fake-minecraft/downloads.mjs
+// in the dev loop).
 import { createOrchestratorServer, listenOnSocket, loadConfig, parsePortRanges, type PortRange } from '@gsp/orchestrator';
-import { FakeBackend } from './backend';
+import { agentEnvFrom, FakeBackend } from './backend';
 
 const expand = (ranges: readonly PortRange[]) => ranges.flatMap(([a, b]) => Array.from({ length: b - a + 1 }, (_, i) => a + i));
 const need = (key: string) => {
@@ -21,7 +23,7 @@ const need = (key: string) => {
 };
 
 const cfg = loadConfig({ ORCH_ALLOW_FAKE: '1', ...process.env, ORCH_VERSION: 'fake' });
-const fakeEnv = Object.fromEntries(Object.entries(process.env).filter((e): e is [string, string] => /^FAKE_(?!ORCH_)/.test(e[0]) && e[1] !== undefined));
+const fakeEnv = agentEnvFrom(process.env);
 const backend = new FakeBackend({
   stateDir: process.env.FAKE_ORCH_STATE_DIR || '.tmp/dev/orch',
   policy: cfg.policy,

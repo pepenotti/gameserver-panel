@@ -447,6 +447,12 @@ export interface ConfigFileDecl {
   seed?: Record<string, Scalar>;
   /** The game executes this file: it must parse as plain data of this shape (CFG-02). */
   dataOnly?: { form: 'assign' | 'function'; name: string };
+  /**
+   * The running game keeps this file in memory and writes it back over any
+   * edit (Minecraft's operator and ban lists): the panel changes it only
+   * while the game is stopped (409 `config-stopped-only` otherwise).
+   */
+  stoppedOnly?: boolean;
 }
 
 /** A folder the text editor may browse (CFG-07, CFG-08). */
@@ -523,6 +529,11 @@ export interface ResetDecl {
 /** Why players are warned in game (the panel's countdowns). */
 export type AnnounceKind = 'restart' | 'stop' | 'update' | 'restore' | 'reset';
 
+/**
+ * Who a ban names: a player's name (the game looks up its account: PZ's
+ * `banuser`, Minecraft's `ban`), a SteamID, or an IP address. An adapter
+ * takes the ones its `banTargets` lists.
+ */
 export interface PlayerTarget {
   username?: string;
   steamId?: string;
@@ -549,6 +560,26 @@ export interface PlayerAccount {
 export interface BanList {
   steamIds: { steamId: string; reason: string | null }[];
   ips: { ip: string; username: string | null; reason: string | null }[];
+  /**
+   * Bans by player name, for games that ban names rather than Steam
+   * accounts (Minecraft: the name, and the account id the game resolved it
+   * to). Lifted with `unban({ username })`.
+   */
+  usernames?: { username: string; id: string | null; reason: string | null }[];
+}
+
+/** A game's whitelist as it stands. */
+export interface WhitelistInfo {
+  /** Whether the game enforces it now; null when that can't be told. */
+  enabled: boolean | null;
+  usernames: string[];
+}
+
+/** A player with an access level above the lowest, from the game's own list (Minecraft's operators). */
+export interface LevelHolder {
+  username: string;
+  /** One of `PlayerOps.accessLevels`' ids. */
+  level: string;
 }
 
 /**
@@ -560,12 +591,23 @@ export interface PlayerOps {
   accessLevels?: readonly AccessLevel[];
   /** The `PlayerTarget` fields `ban` and `unban` accept; a UI offers only these. */
   banTargets?: readonly BanTarget[];
+  /**
+   * Whether `whitelistAdd` takes a password (PZ: the whitelist is accounts
+   * a player joins with); absent means it does. False: a name is enough.
+   */
+  whitelistPassword?: boolean;
   kick?(ctx: ServerCtx, username: string, reason?: string): Promise<string>;
   ban?(ctx: ServerCtx, target: PlayerTarget, reason?: string): Promise<string>;
   unban?(ctx: ServerCtx, target: PlayerTarget): Promise<string>;
   setAccess?(ctx: ServerCtx, username: string, level: string): Promise<string>;
   whitelistAdd?(ctx: ServerCtx, username: string, password?: string): Promise<string>;
   whitelistRemove?(ctx: ServerCtx, username: string): Promise<string>;
+  /** Turns the whitelist on or off on the running game. */
+  setWhitelistEnabled?(ctx: ServerCtx, on: boolean): Promise<string>;
+  /** The whitelist as the game keeps it (read from its files). */
+  whitelist?(ctx: ServerCtx): Promise<WhitelistInfo>;
+  /** Who holds an access level above the lowest, as the game keeps them. */
+  levelHolders?(ctx: ServerCtx): Promise<LevelHolder[]>;
   accounts?(ctx: ServerCtx): Promise<PlayerAccount[]>;
   bans?(ctx: ServerCtx): Promise<BanList>;
 }
@@ -658,6 +700,44 @@ export interface LaunchOption extends OptionMeta {
   unit?: string;
   /** Increment a number must be a multiple of. */
   step?: number;
+  /**
+   * The flavours this setting is for (Paper's build channel); forms show it
+   * only for those, and `toAgent` ignores it for the others. Absent: all.
+   */
+  flavours?: string[];
+}
+
+/** One value a launch setting may take right now, from the game's own download services (UPD-02). */
+export interface LaunchChoice {
+  value: string;
+  /** How people read it, when the value alone doesn't say (an empty value: "the newest stable"). */
+  label?: I18n;
+  /** A short fact shown with it: its newest build, its release date. */
+  detail?: string;
+  /** The release channel of what picking it installs (`STABLE`, `ALPHA`). */
+  channel?: string;
+  /** A code `launch.warnings` words: picking it deserves a second thought (Q13). */
+  warning?: string;
+  /** Other launch settings that go with picking it (a version with only ALPHA builds: that channel). */
+  implies?: Record<string, string>;
+}
+
+/** What the choices are asked for: before a server exists there is only its flavour and the version picked so far. */
+export interface LaunchChoicesQuery {
+  flavour: string | null;
+  /** The value of the `role: 'version'` setting picked so far; null for the version list itself. */
+  version: string | null;
+}
+
+/** Choices by launch setting key; a setting not listed takes what its schema allows. */
+export type LaunchChoices = Record<string, LaunchChoice[]>;
+
+/** What the panel gives `launch.choices`: its own way out to the web. */
+export interface ChoicesCtx {
+  /** An HTTP GET as the panel makes them (it names itself, gives up after a while). */
+  fetch(url: string): Promise<Response>;
+  /** The panel's environment, for adapter-specific knobs (download services a test or the dev loop points elsewhere). */
+  env: Readonly<Record<string, string | undefined>>;
 }
 
 export interface PanelAdapter<S = unknown> {
@@ -670,6 +750,15 @@ export interface PanelAdapter<S = unknown> {
     defaults(): S;
     /** Params for the agent (`LaunchEnvelope.params`), validated there by `RuntimeAdapter.parseLaunch`. */
     toAgent(srv: ServerRef, s: S, secrets: SecretBag, o?: ToAgentOptions): unknown;
+    /**
+     * What the version and version-dependent settings may be set to, from
+     * the game's download services, for a server that may not exist yet
+     * (the create form has no agent to ask). The panel caches the answer
+     * for a few minutes; rejects when the services can't be reached.
+     */
+    choices?(q: LaunchChoicesQuery, ctx: ChoicesCtx): Promise<LaunchChoices>;
+    /** What each warning code of `VersionInfo.warning` and `LaunchChoice.warning` means, for people. */
+    warnings?: Record<string, I18n>;
   };
   config: PanelAdapterConfig;
   backups: { parts: BackupPartDecl[] };

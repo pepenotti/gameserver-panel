@@ -1,4 +1,4 @@
-import type { AccessLevel, BanList, PlayerAccount, PlayerOps, PlayerTarget } from '@gsp/adapter-api';
+import type { AccessLevel, BanList, LevelHolder, PlayerAccount, PlayerOps, PlayerTarget, WhitelistInfo } from '@gsp/adapter-api';
 import { RconProtocolError } from '@gsp/formats';
 import { nowIso, type Db } from '../db/db';
 import { HttpError } from '../http/context';
@@ -115,10 +115,29 @@ export class PlayersService {
     return ops.bans(this.d.server.ctx()).catch(() => ({ steamIds: [], ips: [] }));
   }
 
+  /** The game's whitelist as it stands; null when it can't be listed, empty when it can't be read right now. */
+  async whitelist(): Promise<WhitelistInfo | null> {
+    const ops = this.ops;
+    if (!ops?.whitelist) return null;
+    return ops.whitelist(this.d.server.ctx()).catch(() => ({ enabled: null, usernames: [] }));
+  }
+
+  /** Who holds a level above the lowest (the game's own list); null when it can't be listed. */
+  async levelHolders(): Promise<LevelHolder[] | null> {
+    const ops = this.ops;
+    if (!ops?.levelHolders) return null;
+    return ops.levelHolders(this.d.server.ctx()).catch(() => []);
+  }
+
+  /** Whether whitelist entries need a password (accounts a player joins with). */
+  whitelistNeedsPassword(): boolean {
+    return this.ops?.whitelistPassword !== false;
+  }
+
   // ------------------------------------------------------------ moderation
 
   /** The adapter's moderation, or 409 when the game has no such command. */
-  private need(op: 'kick' | 'ban' | 'unban' | 'setAccess' | 'whitelistAdd' | 'whitelistRemove'): PlayerOps {
+  private need(op: 'kick' | 'ban' | 'unban' | 'setAccess' | 'whitelistAdd' | 'whitelistRemove' | 'setWhitelistEnabled'): PlayerOps {
     const ops = this.ops;
     if (!ops?.[op]) throw new HttpError(409, 'capability-unsupported');
     return ops;
@@ -162,5 +181,10 @@ export class PlayersService {
   whitelistRemove(by: string | null, username: string): Promise<string> {
     const ops = this.need('whitelistRemove');
     return this.moderate(() => ops.whitelistRemove!(this.d.server.ctx(by), username));
+  }
+
+  setWhitelistEnabled(by: string | null, on: boolean): Promise<string> {
+    const ops = this.need('setWhitelistEnabled');
+    return this.moderate(() => ops.setWhitelistEnabled!(this.d.server.ctx(by), on));
   }
 }
