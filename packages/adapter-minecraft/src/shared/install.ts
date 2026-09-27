@@ -81,3 +81,6 @@ export const MANAGED_PROPERTIES = ['server-port', 'server-ip', 'enable-rcon', 'r
 
 /** The world folder (`level-name`), which backups and resets name. */
 export const LEVEL_NAME = 'world';
+
+/** Paper's bStats settings, relative to the data root (the runtime's `BSTATS_CONFIG`; Q10). */
+export const BSTATS_FILE = 'plugins/bStats/config.yml';

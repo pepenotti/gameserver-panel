@@ -4,10 +4,12 @@ import type { AdapterMeta } from '@gsp/adapter-api';
  * Minecraft: Java Edition, shared by the runtime and panel halves. Every
  * value is measured on real 26.3 servers (D5, docs/verification/minecraft-26.3.md).
  *
- * The capabilities are what the runtime half implements (M3 phase 2); the
- * panel's (broadcast, kick, ban, whitelist, operator levels, settings forms,
- * update checks) join them with the panel half. The agent runs this adapter;
- * the panel doesn't offer it yet (`packages/adapters`).
+ * The capabilities: the runtime half's (M3 phase 2: RCON and the console,
+ * saves and running backups, players and their history, pinned versions,
+ * loaders, the EULA) and the panel half's (phase 3: broadcasts, kick, ban,
+ * the whitelist, operator levels, settings forms and presets, update
+ * checks). Not `liveReload`: nothing re-reads server.properties while the
+ * game runs (the whitelist file is re-read on its own).
  */
 export const MINECRAFT_META: AdapterMeta = {
   id: 'minecraft',
@@ -30,7 +32,25 @@ export const MINECRAFT_META: AdapterMeta = {
   // 1 GiB heaps booted every version tried; above a 2 GiB heap an idle server used 341–404 MiB
   // more (players, view distance and plugins add native memory).
   memory: { minMb: 1024, defaultMb: 2048, overheadMb: 1024 },
-  capabilities: ['rcon', 'stdinConsole', 'save', 'hotBackup', 'players', 'playerHistory', 'versionPin', 'loaders', 'eula'],
+  capabilities: [
+    'rcon',
+    'stdinConsole',
+    'broadcast',
+    'save',
+    'hotBackup',
+    'players',
+    'playerHistory',
+    'kick',
+    'ban',
+    'whitelist',
+    'accessLevels',
+    'settingsForms',
+    'presets',
+    'versionPin',
+    'loaders',
+    'updateCheck',
+    'eula',
+  ],
   // A stop took 1.2–4 s on a small world; Paper allows its chunk system up to 60 s per dimension.
   stopBudgetMs: 120_000,
   eula: {
