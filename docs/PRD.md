@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.12 |
+| Status | Draft 0.13 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -179,7 +179,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | UPD-02 | P0 | Choose and pin a version: Steam branch, Minecraft version, loader version. |
 | UPD-03 | P0 | Update checks with a per-server policy: apply when nobody is playing, apply after a countdown, or only notify. |
 | UPD-04 | P0 | Every update takes a safety backup first. |
-| UPD-05 | P0 | Minecraft never moves to a new game version on its own, since that breaks mods and worlds. It only takes builds of the pinned version (for Paper, from the pinned build channel: STABLE unless an admin picks BETA or ALPHA, with a warning), unless an admin chooses a new version. |
+| UPD-05 | P0 | Minecraft never moves to a new game version on its own, since that breaks mods and worlds. It only takes builds of the pinned version (for Paper, from the pinned build channel or a more stable one: STABLE unless an admin picks BETA or ALPHA, with a warning), unless an admin chooses a new version. |
 | UPD-06 | P0 | Minecraft's loader is picked per server when it's created: vanilla, Paper or Fabric. |
 | UPD-07 | P1 | Forge and NeoForge as loader choices too. The adapter runs their installers and pins the loader version. |
 | UPD-08 | P2 | Switch an existing Minecraft server to another loader, as a guided change with a backup, since worlds and mods may not carry over. |
@@ -204,7 +204,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | ID | P | Requirement |
 |---|---|---|
 | CON-01 | P0 | Live log per server for operators and up, with secrets redacted and a filter. |
-| CON-02 | P0 | Raw console (RCON or stdin) for admins, with command arguments sanitised. |
+| CON-02 | P0 | Raw console (RCON or stdin) for admins, with command arguments sanitised. Commands longer than the game's control channel takes are refused before they are sent (Minecraft's RCON: 1446 bytes of text). |
 | CON-03 | P1 | Broadcast a message to players where the game supports it. |
 | CON-04 | P0 | Terraria with TShock is controlled through TShock's REST API for players, kick, ban and broadcast. The API is bound to the server's internal network only, never published, with a token the agent generates. Vanilla Terraria uses stdin. |
 
@@ -508,3 +508,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.10 | 2026-09-25 | M2 closed: the multi-server web (list, create, delete, per-server roles, server switcher); the acceptance run on real Docker passed with two Project Zomboid servers side by side (`docs/verification/m2-acceptance.md`) and found two bugs, both fixed (a noexec `/tmp` in game containers, an empty world database left by a failed first boot); host-only audit entries (ACC-03), limits visible to a server's admin (SRV-05), the crash watchdog names the last fatal line (SRV-07), game-written keys are locked (CFG-04). |
 | 0.11 | 2026-09-25 | M3 contract step: formats for properties, YAML, TOML, JSON5 and line lists (CFG-02/07/09); skeleton adapters for Minecraft, Terraria, Valheim and manifests, registered but not offered until measured (D4, D5); `java` and `native` runtime images; the Steam Workshop source shared by app id (MOD-03); the owner-only EULA flow (D6, §5, §7); the fixture scrubber (NFR-09); the removal's final backup has its own trigger and an unreachable agent needs a forced removal (SRV-04, BAK-01). |
 | 0.12 | 2026-09-27 | M3 fact-finding: Minecraft Java 26.3 measured for vanilla, Paper and Fabric (`docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3`, `tools/fake-minecraft`); UPD-05 pins Paper's build channel; the `java` image ships Temurin 25, 21 and 17 (§10); ARM64 for Minecraft is confirmed in M7 (§7); Q10–Q13 answered (bStats off by default, 1.16.5 and newer, every Paper version with a warning when not STABLE, the JSON-RPC API after v1). |
+| 0.13 | 2026-09-27 | M3 runtime adapter: Minecraft vanilla, Paper and Fabric run on agents (install and pinning, Java per version, RCON one packet per write, running backups); UPD-05 takes Paper builds of the pinned channel or a more stable one; CON-02 refuses commands longer than the channel takes. |

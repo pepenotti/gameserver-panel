@@ -12,15 +12,15 @@ without a milestone is a PRD bug.
 | SRV-04 | P0 | M2 | `panel/test/registry.test.ts` "removing a server" (typed name, stopped, final backup, container + volumes, rows purged, audit kept); `panel/test/servers.test.ts` delete API; forced removal: `registry.test.ts` (busy, running, unreachable agent), `servers.test.ts` (owner-only force); web: delete dialog with typed name and the owner's force (`web/src/components/ServerAdmin.tsx`); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 10 (final backup, forced removal of an unreachable server); `registry.test.ts` "marks the final backup as the final one… (SRV-04, BAK-01)", "says when the server's agent can't be reached… (SRV-04)" |
 | SRV-05 | P0 | M2 | `orchestrator/test/docker-backend.test.ts` (memory and CPU limits, `ORCH_MAX_MEM_MB`); capacity warning in M7; `registry.test.ts` "changing memory and CPU limits (SRV-05)" and create-time memory refusal; `servers.test.ts` limits through the API; web: container-limits card and "applies at next start" badge (`web/src/pages/Server.tsx`); `servers.test.ts` "tells an admin of one server the most the host gives a server… (SRV-05)" (`GET /api/servers/:sid/limits`); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 8 |
 | SRV-06 | P0 | M2 | `panel/test/registry.test.ts` "reconcile" (re-apply, recreate, start, retry); orchestrator derives restart `unless-stopped` (`docker-backend.test.ts`); `registry.test.ts` reconcile keeps a running game's container while a change waits; retry audited: `registry.test.ts` "says in the audit log when a retry finds a failed server in line again (SRV-06)"; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 9 (Docker restart, panel recreated) |
-| SRV-07 | P0 | M2 | `panel/test/schedules.test.ts` per-server block (a crash alert names its server); `panel/test/cross-server.test.ts` (alerts reach only that server's users); `agent/test/agent.test.ts` "says why when it gives up…", "names the fatal line even when it is read after the exit… (SRV-07)"; `adapter-pz/test/runtime.test.ts` "marks the exception PZ logs when its boot dies as fatal… (SRV-07)" |
+| SRV-07 | P0 | M2 | `panel/test/schedules.test.ts` per-server block (a crash alert names its server); `panel/test/cross-server.test.ts` (alerts reach only that server's users); `agent/test/agent.test.ts` "says why when it gives up…", "names the fatal line even when it is read after the exit… (SRV-07)"; `adapter-pz/test/runtime.test.ts` "marks the exception PZ logs when its boot dies as fatal… (SRV-07)"; Minecraft: `adapter-minecraft/test/log.test.ts` (fatal lines), `agent/test/minecraft.test.ts` (an exit with code 0 is a crash) |
 | SRV-08 | P1 | M7 | — |
 | SRV-09 | P2 | after v1 | — |
-| UPD-01 | P0 | M1, M3, M5 | `agent.test.ts` install progress and "install before start"; `agent/test/http.test.ts` "installs and lists versions" |
-| UPD-02 | P0 | M1, M3, M5 | `agent.test.ts` branch change and latest builds per branch; `adapter-pz` runtime install tests |
+| UPD-01 | P0 | M1, M3, M5 | `agent.test.ts` install progress and "install before start"; `agent/test/http.test.ts` "installs and lists versions"; Minecraft: `adapter-minecraft/test/install.test.ts`, `agent/test/install-tools.test.ts` (fetch, checked downloads, tool runs), `agent/test/minecraft.test.ts` |
+| UPD-02 | P0 | M1, M3, M5 | `agent.test.ts` branch change and latest builds per branch; `adapter-pz` runtime install tests; Minecraft: `adapter-minecraft/test/launch.test.ts`, `install.test.ts` (versions 1.16.5 and newer, Paper channels) |
 | UPD-03 | P0 | M1, M3, M5 | `agent.test.ts` "updates on start when asked"; `panel/test/server.test.ts`, `panel/test/schedules.test.ts`; `adapter-pz/test/panel-core.test.ts` (update check); `panel/test/agent-e2e.test.ts` (update check through `ServerCtx.versions()`) |
 | UPD-04 | P0 | M1, M3, M5 | `panel/test/server.test.ts` (safety backup before update) |
-| UPD-05 | P0 | M3 | measured: `docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3/`; fake: `tools/fake-minecraft/fake-minecraft.test.ts` (Paper channels, Fill v3) |
-| UPD-06 | P0 | M3 | measured: `docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3/`; fake: `tools/fake-minecraft/fake-minecraft.test.ts` (three loaders) |
+| UPD-05 | P0 | M3 | measured: `docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3/`; fake: `tools/fake-minecraft/fake-minecraft.test.ts` (Paper channels, Fill v3); Minecraft: `adapter-minecraft/test/install.test.ts` (pinned version, Paper channel and build) |
+| UPD-06 | P0 | M3 | measured: `docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3/`; fake: `tools/fake-minecraft/fake-minecraft.test.ts` (three loaders); Minecraft: `adapter-minecraft/test/contract.test.ts`, `agent/test/runtime-contract.test.ts` (each loader against the fake); real runs in `docs/verification/minecraft-26.3.md` "Runtime adapter check" |
 | UPD-07 | P1 | M4 | — |
 | UPD-08 | P2 | after v1 | — |
 | CFG-01 | P0 | M1 | `panel/test/config.test.ts` (validation, masking); `adapter-pz/test/panel-config-contract.test.ts` |
@@ -33,11 +33,11 @@ without a milestone is a PRD bug.
 | CFG-08 | P0 | M1 | `panel/test/files.test.ts` (LocalServerFiles, editor policy, editor API refusals); `panel/test/server-files.test.ts` (both ServerFiles implementations), `agent/test/files.test.ts`, `archive/test/rooted.test.ts` |
 | CFG-09 | P0 | M1 | `registry.test.ts` comment preservation; `config.test.ts` comments kept; comments and unknown keys kept by every format: `formats/test/{properties,yaml,toml,json5,lines}.test.ts` |
 | CFG-10 | P1 | M1 | manual UI check (Advanced section, search); `web/src/pages/config/OptionsForm.tsx` |
-| CON-01 | P0 | M1 | `agent.test.ts` "never leaks the admin or RCON password"; `agent/test/http.test.ts` event stream; `panel/test/agent-e2e.test.ts` (no secret in any log line) |
-| CON-02 | P0 | M5 | — |
+| CON-01 | P0 | M1 | `agent.test.ts` "never leaks the admin or RCON password"; `agent/test/http.test.ts` event stream; `panel/test/agent-e2e.test.ts` (no secret in any log line); `agent/test/rcon-client.test.ts` (one packet per write, sentinel after the first reply or a fallback, the size limit) |
+| CON-02 | P0 | M5 | `agent/test/rcon-client.test.ts` (commands over the channel's size refused before sending) |
 | CON-03 | P1 | M1 | `panel/test/server.test.ts` (broadcast); `adapter-pz/test/panel-core.test.ts` (messages) |
 | CON-04 | P0 | M5 | — |
-| PLY-01 | P0 | M1 | `agent.test.ts` (join/leave); `adapter-pz/test/runtime.test.ts` (players); live runtime suite "lists who is online" |
+| PLY-01 | P0 | M1 | `agent.test.ts` (join/leave); `adapter-pz/test/runtime.test.ts` (players); live runtime suite "lists who is online"; Minecraft: `adapter-minecraft/test/log.test.ts`, `control.test.ts` |
 | PLY-02 | P1 | M1 | `panel/test/players.test.ts` "records joins and leaves", "emits join/leave events" |
 | PLY-03 | P0 | M1 | `panel/test/players.test.ts`; `adapter-pz/test/panel-core.test.ts` (players); panel core suite (moderation arguments) |
 | MOD-01 | P0 | M1 | `panel/test/mods.test.ts`; `adapter-pz/test/panel-core.test.ts` (Steam Workshop source) |
@@ -47,7 +47,7 @@ without a milestone is a PRD bug.
 | MOD-05 | P2 | after v1 | — |
 | MOD-06 | P1 | M5 | — |
 | BAK-01 | P0 | M1 | `panel/test/backups.test.ts`; `panel/test/core-adapter.test.ts` (symlinks skipped); `panel/test/server.test.ts` (pre-update backup); `panel/test/agent-e2e.test.ts` (hot backup through the agent); `archive/test/tar.test.ts`; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7; final backup trigger: `registry.test.ts` (SRV-04, BAK-01) |
-| BAK-02 | P0 | M3 | PZ: `archive/test/rooted.test.ts` (hot packs), `agent/test/files.test.ts`, `panel/test/server-files.test.ts` "hot packs through the agent"; a hot backup saves once (`schedules.test.ts`, `backups.test.ts`); Minecraft: flush timing measured in `docs/verification/minecraft-26.3.md` |
+| BAK-02 | P0 | M3 | PZ: `archive/test/rooted.test.ts` (hot packs), `agent/test/files.test.ts`, `panel/test/server-files.test.ts` "hot packs through the agent"; a hot backup saves once (`schedules.test.ts`, `backups.test.ts`); Minecraft: flush timing measured in `docs/verification/minecraft-26.3.md`; Minecraft: `adapter-minecraft/test/control.test.ts` (save-off, flush, save-on), `agent/test/minecraft.test.ts` (hot backup through the archive route) |
 | BAK-03 | P0 | M1 | `panel/test/backups.test.ts` restoring block (parts + undo, running server, damaged archive, staging-only writes); `panel/test/server-files.test.ts` (restore round trip, hostile archives); `agent-e2e.test.ts` (restore + undo); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7 (restore running and stopped, undo) |
 | BAK-04 | P0 | M1 | `panel/test/reset.test.ts`; `adapter-pz/test/panel-core.test.ts` (backup parts, resets) |
 | BAK-05 | P1 | M1 | `panel/test/backups.test.ts` "lets admins download and the owner upload; not operators"; `backups.test.ts` "restores another server's backup under this server's names" |
@@ -58,7 +58,7 @@ without a milestone is a PRD bug.
 | ACC-01 | P0 | M1 | `panel/test/auth.test.ts`, `panel/test/users.test.ts`, `panel/test/cli.test.ts` (panelctl) |
 | ACC-02 | P0 | M2 | `shared/test/permissions.test.ts`; `panel/test/cross-server.test.ts` (generated from the route table, both directions, websocket); `panel/test/servers.test.ts` grants/scope API; `panel/test/api-first.test.ts`; web: account scope and per-server roles (`web/src/pages/Users.tsx`) |
 | ACC-03 | P0 | M2 | `panel/test/servers.test.ts` (audit by server); `panel/test/migrations.test.ts` (backfill); web: activity log filtered by server, actor badges (`web/src/pages/Audit.tsx`); `servers.test.ts` "lists the host's own entries alone with server=- (ACC-03)…" |
-| HST-01 | P0 | M2 | `orchestrator/test/*` (spec, Docker backend, HTTP); `scripts/lib/stack-guard.test.ts`; compose rendered by `stack.mjs config`; `scripts/lib/worktree.test.ts` (fresh `.env` has no pre-orchestrator settings); real run: `docs/verification/m2-acceptance.md` (2026-09-25) steps 0–2, 11; `java`/`native` runtime images built and checked in a slot (M3.0 hand-off) |
+| HST-01 | P0 | M2 | `orchestrator/test/*` (spec, Docker backend, HTTP); `scripts/lib/stack-guard.test.ts`; compose rendered by `stack.mjs config`; `scripts/lib/worktree.test.ts` (fresh `.env` has no pre-orchestrator settings); real run: `docs/verification/m2-acceptance.md` (2026-09-25) steps 0–2, 11; `java`/`native` runtime images built and checked in a slot (M3.0 hand-off); `gsp/java` with Temurin 25, 21, 17 built and run hardened (`docs/verification/minecraft-26.3.md`) |
 | HST-02 | P0 | M1 | `panel/test/env.test.ts` (PANEL_HOST default Caddy accepts); `caddy validate` of `docker/caddy/Caddyfile` in both TLS modes (see `docs/verification/pz-b42.md`); real stack (Caddy with internal TLS in front of the panel socket): `docs/verification/m2-acceptance.md` (2026-09-25) step 2 |
 | HST-03 | P1 | M7 | — |
 | HST-04 | P2 | after v1 | — |
@@ -81,7 +81,7 @@ without a milestone is a PRD bug.
 | NFR-06 | NFR | M8 | — |
 | NFR-07 | NFR | M0 | `scripts/verify.sh` gates; `scripts/lib/*.test.ts`, `scripts/dev.test.ts`; per-slot isolation (`worktree-env.mjs`, `stack.mjs`); runtime, panel-core and panel-config contract suites (`adapter-api/src/testing/*`) run against the PZ adapter; tests remove their temp folders (M3.0) |
 | NFR-08 | NFR | M1 | `no-restricted-imports` rule in `eslint.config.js` (lint step of `verify.sh`); done when `LEGACY_GAME_IMPORTERS` is empty; `scripts/core-agnostic.test.ts` (no adapter imports outside `agent/src/main.ts` and `panel/src/wiring.ts`, no game tokens in core `src/**`); `web/test/game-neutral.test.ts`; `web/test/game-neutral.test.ts` also refuses the removed M1 fallback strings; `scripts/core-agnostic.test.ts` also refuses `@gsp/source-*` imports in the core |
-| NFR-09 | NFR | M0 | `scripts/check-private.mjs` and the `privacy` step in `verify.sh`; `scripts/lib/privacy.test.ts`; `.githooks/commit-msg`; `scripts/scrub-fixture.test.ts` (scrubber for captured fixtures) |
+| NFR-09 | NFR | M0 | `scripts/check-private.mjs` and the `privacy` step in `verify.sh`; `scripts/lib/privacy.test.ts`; `.githooks/commit-msg`; `scripts/scrub-fixture.test.ts` (scrubber for captured fixtures); Paper's bStats off for new servers: `adapter-minecraft/test/files.test.ts` |
 
 ## Decisions
 
@@ -89,4 +89,4 @@ without a milestone is a PRD bug.
 |---|---|
 | D4 | `adapters/test/adapters.test.ts`; each `adapter-*/test/contract.test.ts` (skeletons pass the contract suites) |
 | D5 | `panel/test/servers.test.ts` "offers no adapter skeleton…" (unmeasured games are registered, not offered); Minecraft measured before its adapter: `docs/verification/minecraft-26.3.md` |
-| D6 | `panel/test/eula.test.ts`; `agent/test/agent.test.ts` "the owner's EULA acceptance (D6)"; `shared/test/permissions.test.ts`; contract suite `adapter-api/src/testing/meta.ts` (an EULA names its agreement) |
+| D6 | `panel/test/eula.test.ts`; `agent/test/agent.test.ts` "the owner's EULA acceptance (D6)"; `shared/test/permissions.test.ts`; contract suite `adapter-api/src/testing/meta.ts` (an EULA names its agreement); the Minecraft runtime writes `eula=true` only after acceptance: `adapter-minecraft/test/files.test.ts` |
