@@ -272,7 +272,8 @@ export interface LineSignal {
    * The control channel says it is listening. When the adapter has a channel,
    * the agent treats the server as ready after `ready` plus this line, or a
    * short grace period after `ready` alone (PZ: "SERVER STARTED", then
-   * "RCON: listening" ~50 ms later).
+   * "RCON: listening" ~50 ms later). A game that opens its channel before it
+   * says it is ready marks its ready line with both.
    */
   channelReady?: boolean;
   /** Game version announced by this line. */
