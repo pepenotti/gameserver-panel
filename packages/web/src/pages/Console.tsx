@@ -128,7 +128,8 @@ export function Console() {
               </Text>
             ) : (
               shown.map((l) => (
-                <div key={l.seq} style={{ color: lineColor(l) }}>
+                // A progress run keeps one line, updated in place (CON-01).
+                <div key={l.run ?? l.seq} style={{ color: lineColor(l) }}>
                   {l.line}
                 </div>
               ))
