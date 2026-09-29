@@ -1,6 +1,7 @@
 // A recording stand-in for the Docker Engine API, for the orchestrator's
 // tests (NFR-02): the endpoints the orchestrator uses, over plain HTTP on
-// 127.0.0.1, with containers, networks and volumes kept in memory. It answers
+// 127.0.0.1, with containers, networks and volumes kept in memory, and image
+// names that resolve to content ids a test can change ("rebuild"). It answers
 // the way Docker does where the orchestrator depends on it (404 bodies, 304
 // on start/stop, "port is already allocated", endpoints already attached),
 // and records every request so tests can assert exactly what was asked.
@@ -25,6 +26,8 @@ export interface FakeContainer {
   Id: string;
   /** With the leading slash, like Docker. */
   Name: string;
+  /** Content id of the image it was created from (`Config.Image` as it resolved then), like Docker's inspect. */
+  Image: string;
   Config: { Image: string; Labels: Labels; Env: string[] };
   State: { Status: string; Running: boolean; StartedAt: string; FinishedAt: string; ExitCode: number };
   HostConfig: Record<string, unknown> & { PortBindings: Record<string, Binding[]>; Mounts?: { Source?: string }[] };
@@ -57,6 +60,10 @@ export interface FakeDocker {
   info: { Architecture: string; NCPU: number; MemTotal: number; ServerVersion: string; OperatingSystem: string };
   /** Images that exist; null: every image does. */
   images: Set<string> | null;
+  /** The content id an image name resolves to now (`sha256:…`), made up on first use. */
+  imageId(name: string): string;
+  /** `docker build` again under the same name: it resolves to a new id (and exists); returns it. */
+  rebuildImage(name: string): string;
   /** Requests that changed something (everything but GET). */
   writes(): Call[];
   /** The next matching request fails with this status and message. */
@@ -100,6 +107,8 @@ export async function startFakeDocker(): Promise<FakeDocker> {
   const networks = new Map<string, FakeNetwork>();
   const volumes = new Map<string, FakeVolume>();
   const failures: { method: string; path: RegExp; status: number; message: string }[] = [];
+  const imageIds = new Map<string, string>();
+  const imageExists = (name: string) => fd.images === null || fd.images.has(name);
 
   const findContainer = (ref: string) => containers.get(ref) ?? [...containers.values()].find((c) => c.Name === `/${ref}` || (ref.length >= 12 && c.Id.startsWith(ref)));
   const findNetwork = (ref: string) => networks.get(ref) ?? [...networks.values()].find((n) => n.Name === ref);
@@ -127,15 +136,30 @@ export async function startFakeDocker(): Promise<FakeDocker> {
     volumes,
     info: { Architecture: 'x86_64', NCPU: 8, MemTotal: 16 * 1024 ** 3, ServerVersion: '29.0.0-fake', OperatingSystem: 'Fake Linux' },
     images: null,
+    imageId(name) {
+      let id = imageIds.get(name);
+      if (!id) {
+        id = `sha256:${newId()}`;
+        imageIds.set(name, id);
+      }
+      return id;
+    },
+    rebuildImage(name) {
+      imageIds.set(name, `sha256:${newId()}`);
+      fd.images?.add(name);
+      return fd.imageId(name);
+    },
     writes: () => calls.filter((c) => c.method !== 'GET'),
     failNext(method, path, status, message) {
       failures.push({ method, path, status, message });
     },
     addContainer(o) {
+      const image = o.image ?? 'alpine:3';
       const c: FakeContainer = {
         Id: o.id ?? newId(),
         Name: `/${o.name}`,
-        Config: { Image: o.image ?? 'alpine:3', Labels: o.labels ?? {}, Env: [] },
+        Image: fd.imageId(image),
+        Config: { Image: image, Labels: o.labels ?? {}, Env: [] },
         State: { Status: o.running ? 'running' : 'created', Running: !!o.running, StartedAt: o.running ? now() : NO_TIME, FinishedAt: NO_TIME, ExitCode: 0 },
         HostConfig: { PortBindings: Object.fromEntries((o.ports ?? []).map((p) => [`${p.container}/${p.proto}`, [{ HostIp: '0.0.0.0', HostPort: String(p.host) }]])) },
         NetworkSettings: { Networks: {} },
@@ -177,7 +201,7 @@ export async function startFakeDocker(): Promise<FakeDocker> {
       if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]+$/.test(name)) return new Reply(400, { message: `Invalid container name (${name})` });
       if (findContainer(name)) return new Reply(409, { message: `Conflict. The container name "/${name}" is already in use` });
       const image = String(b.Image ?? '');
-      if (fd.images && !fd.images.has(image)) return new Reply(404, { message: `No such image: ${image}` });
+      if (!imageExists(image)) return new Reply(404, { message: `No such image: ${image}` });
       const hc = (b.HostConfig ?? {}) as FakeContainer['HostConfig'];
       const netName = String(hc.NetworkMode ?? 'bridge');
       const net = findNetwork(netName);
@@ -185,6 +209,7 @@ export async function startFakeDocker(): Promise<FakeDocker> {
       const c: FakeContainer = {
         Id: newId(),
         Name: `/${name}`,
+        Image: fd.imageId(image),
         Config: { Image: image, Labels: (b.Labels as Labels) ?? {}, Env: (b.Env as string[]) ?? [] },
         State: { Status: 'created', Running: false, StartedAt: NO_TIME, FinishedAt: NO_TIME, ExitCode: 0 },
         HostConfig: { ...hc, PortBindings: hc.PortBindings ?? {} },
@@ -233,6 +258,13 @@ export async function startFakeDocker(): Promise<FakeDocker> {
         for (const n of networks.values()) delete n.Containers[c.Id];
         return new Reply(204);
       }
+    }
+
+    // ---- images (inspect only: the orchestrator never pulls or builds)
+    if (method === 'GET' && (m = /^\/images\/(.+)\/json$/.exec(path))) {
+      const name = decodeURIComponent(m[1] ?? '');
+      if (!imageExists(name)) return noSuch('image', name);
+      return new Reply(200, { Id: fd.imageId(name), RepoTags: [name] });
     }
 
     // ---- networks

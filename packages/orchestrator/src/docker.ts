@@ -36,6 +36,8 @@ export interface DockerContainer {
   Id: string;
   /** With a leading slash: `/gsp-s1-srv-pz`. */
   Name: string;
+  /** Content id (`sha256:…`) of the image it was created from: what `Config.Image` resolved to then. */
+  Image: string;
   Config: { Image: string; Labels: Labels };
   State: { Status: string; Running: boolean; StartedAt: string; FinishedAt: string; ExitCode: number };
   HostConfig: { PortBindings: Record<string, { HostIp?: string; HostPort?: string }[] | null> | null };
@@ -48,6 +50,12 @@ export interface DockerNetwork {
   Labels: Labels;
   /** Attached containers by id (on inspect). */
   Containers?: Record<string, unknown> | null;
+}
+
+/** `GET /images/{name}/json`, the part this service reads. */
+export interface DockerImage {
+  /** Content id, `sha256:…`: a rebuild under the same tag gives a new one. */
+  Id: string;
 }
 
 export interface DockerVolume {

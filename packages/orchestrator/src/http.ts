@@ -55,6 +55,14 @@ function send(res: http.ServerResponse, status: number, body: unknown): void {
 
 const methodNotAllowed = () => new OrchError('bad-request', 'Method not allowed', undefined, 405);
 
+/** A route's one boolean query parameter (`true` or `false`, at most once; default false), and nothing else. */
+function flag(query: URLSearchParams, name: string): boolean {
+  for (const k of query.keys()) if (k !== name) throw badRequest(`Unknown query parameter ${k.slice(0, 40)}`);
+  const v = query.getAll(name);
+  if (v.length > 1 || (v[0] !== undefined && v[0] !== 'true' && v[0] !== 'false')) throw badRequest(`${name} must be true or false`, name);
+  return v[0] === 'true';
+}
+
 /**
  * The orchestrator API (`@gsp/shared` orchestrator-api, D3): bearer token on
  * every request, strict JSON bodies, only the routes of the contract. Ids are
@@ -106,15 +114,12 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
 
     if (action === undefined) {
       if (method === 'PUT') {
-        noQuery();
-        return [200, await o.backend.apply(parseSpec(body, id, o.policy))];
+        const keepImage = flag(query, 'keepImage');
+        return [200, await o.backend.apply(parseSpec(body, id, o.policy), { keepImage })];
       }
       if (method === 'DELETE') {
         noBody();
-        for (const k of query.keys()) if (k !== 'removeVolumes') throw badRequest(`Unknown query parameter ${k.slice(0, 40)}`);
-        const rv = query.getAll('removeVolumes');
-        if (rv.length > 1 || (rv[0] !== undefined && rv[0] !== 'true' && rv[0] !== 'false')) throw badRequest('removeVolumes must be true or false', 'removeVolumes');
-        return [200, await o.backend.remove(id, rv[0] === 'true')];
+        return [200, await o.backend.remove(id, flag(query, 'removeVolumes'))];
       }
       throw methodNotAllowed();
     }

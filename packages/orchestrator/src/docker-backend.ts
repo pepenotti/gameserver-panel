@@ -1,7 +1,7 @@
-import { isServerId, type ContainerState, type CpuArch, type DeleteResponse, type HostInfo, type ServerContainer, type ServerSpec, type ServerStats } from '@gsp/shared';
+import { isServerId, type ApplyOptions, type ContainerState, type CpuArch, type DeleteResponse, type HostInfo, type ServerContainer, type ServerSpec, type ServerStats } from '@gsp/shared';
 import { IdLocks, Mutex, type Backend } from './backend';
 import { agentUrl, DEFAULT_STOP_TIMEOUT_SEC, LABEL, names, planContainer, VOLUME_KINDS, type ContainerPlan, type StackContext } from './derive';
-import { DockerError, labelFilter, type DockerClient, type DockerContainer, type DockerContainerSummary, type DockerInfo, type DockerNetwork, type DockerStats, type DockerVolume, type Labels } from './docker';
+import { DockerError, labelFilter, type DockerClient, type DockerContainer, type DockerContainerSummary, type DockerImage, type DockerInfo, type DockerNetwork, type DockerStats, type DockerVolume, type Labels } from './docker';
 import { conflict, notFound, OrchError, refused, unavailable } from './errors';
 import type { Policy } from './policy';
 
@@ -12,6 +12,11 @@ const PANEL_SERVICE = 'panel';
 
 const STATES: ReadonlySet<string> = new Set(['created', 'running', 'paused', 'restarting', 'exited', 'dead']);
 const NO_TIME = '0001-01-01T00:00:00Z';
+/** The runtime image names `planContainer` derives (`gsp/<repository>:<tag>`): the only ones it looks up. */
+const RUNTIME_IMAGE = /^gsp\/[a-z0-9][a-z0-9-]{0,63}:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/;
+
+/** An image name's content id now, '' when it names none; one lookup per name. */
+type ImageIds = (name: string) => Promise<string>;
 
 export interface DockerBackendOptions {
   docker: DockerClient;
@@ -41,6 +46,9 @@ function fromDocker(e: DockerError): OrchError {
  * container built from `planContainer`, on its own bridge network that only
  * it and the panel join, with its own named volumes. It only ever touches
  * containers, networks and volumes that carry this stack's labels and names.
+ * Images are only inspected (never pulled, built or removed): a runtime image
+ * rebuilt under its tag is a new content id, and a container on the old one
+ * is recreated at the next PUT that doesn't keep it (HST-01, SRV-05).
  */
 export class DockerBackend implements Backend {
   private readonly busy = new IdLocks();
@@ -76,28 +84,35 @@ export class DockerBackend implements Backend {
   list(): Promise<ServerContainer[]> {
     return this.guard(async () => {
       const out = new Map<string, ServerContainer>();
+      const latest = this.imageIds();
       for (const s of await this.stackContainers()) {
         const id = this.serverIdOf(s);
         if (!id) continue;
         const c = await this.docker.find<DockerContainer>(`/containers/${s.Id}/json`);
-        if (c && this.isOurs(c, id)) out.set(id, this.describe(c, id));
+        if (c && this.isOurs(c, id)) out.set(id, await this.describe(c, id, latest));
       }
       for (const id of await this.networkIds()) if (!out.has(id)) out.set(id, this.missing(id));
       return [...out.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     });
   }
 
-  apply(spec: ServerSpec): Promise<ServerContainer> {
+  apply(spec: ServerSpec, o: ApplyOptions = {}): Promise<ServerContainer> {
     const plan = planContainer(spec, this.o.ctx);
     return this.guard(() =>
       this.busy.run(spec.id, async () => {
         const existing = await this.container(spec.id);
-        if (existing && existing.Config.Labels?.[LABEL.configHash] === plan.configHash) {
+        // The image its tag names now (never pulled): a rebuild under the same tag, as every product upgrade
+        // makes, is a new id, and the container moves to it like it would to a new spec (HST-01, SRV-05).
+        const latest = await this.latestImageId(plan.image);
+        const sameConfig = existing?.Config.Labels?.[LABEL.configHash] === plan.configHash;
+        // Kept: the same image; or asked to keep it (its game runs); or its image is gone (nothing to move to).
+        if (existing && sameConfig && (existing.Image === latest || o.keepImage === true || latest === '')) {
           // Same container: only make sure the panel (maybe recreated since) still reaches it.
           await this.attachPanel(plan.network);
-          return this.describe(existing, spec.id);
+          return this.describe(existing, spec.id, () => Promise.resolve(latest));
         }
         // Refuse before touching anything; check again once no other create can race.
+        if (latest === '') throw unavailable(`The image ${plan.image} is not built on this host`);
         await this.precheck(spec, plan, existing);
         if (existing?.State.Running) await this.stopContainer(existing.Id, DEFAULT_STOP_TIMEOUT_SEC);
         await this.creating.run(async () => {
@@ -232,7 +247,8 @@ export class DockerBackend implements Backend {
     return c;
   }
 
-  private describe(c: DockerContainer, id: string): ServerContainer {
+  /** A container as the API reports it, with the image id Docker recorded on it and the one its image names now. */
+  private async describe(c: DockerContainer, id: string, latest: ImageIds = (name) => this.latestImageId(name)): Promise<ServerContainer> {
     const status = c.State.Status;
     const state: ContainerState = STATES.has(status) ? (status as ContainerState) : status === 'removing' ? 'exited' : 'dead';
     return {
@@ -244,11 +260,37 @@ export class DockerBackend implements Backend {
       image: c.Config.Image,
       specHash: c.Config.Labels?.[LABEL.specHash] ?? '',
       agentUrl: agentUrl(this.stack, id),
+      imageId: c.Image ?? '',
+      latestImageId: await latest(c.Config.Image),
     };
   }
 
   private missing(id: string): ServerContainer {
-    return { id, state: 'missing', startedAt: null, finishedAt: null, exitCode: null, image: '', specHash: '', agentUrl: agentUrl(this.stack, id) };
+    return { id, state: 'missing', startedAt: null, finishedAt: null, exitCode: null, image: '', specHash: '', agentUrl: agentUrl(this.stack, id), imageId: '', latestImageId: '' };
+  }
+
+  /**
+   * The content id a runtime image name resolves to on this host now, '' when
+   * it isn't built. Only names of the allowlist's shape are looked up (a
+   * container's own `Config.Image` is not trusted into a path).
+   */
+  private async latestImageId(name: string): Promise<string> {
+    if (!RUNTIME_IMAGE.test(name)) return '';
+    const image = await this.docker.find<DockerImage>(`/images/${name}/json`);
+    return typeof image?.Id === 'string' ? image.Id : '';
+  }
+
+  /** `latestImageId`, looked up once per name (a listing of many servers of one image). */
+  private imageIds(): ImageIds {
+    const seen = new Map<string, Promise<string>>();
+    return (name) => {
+      let p = seen.get(name);
+      if (!p) {
+        p = this.latestImageId(name);
+        seen.set(name, p);
+      }
+      return p;
+    };
   }
 
   private stopContainer(containerId: string, timeoutSec: number): Promise<unknown> {
