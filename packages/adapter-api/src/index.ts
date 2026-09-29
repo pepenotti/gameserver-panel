@@ -360,6 +360,14 @@ export interface RuntimeAdapter<P = unknown> {
   prepare(ctx: RuntimeCtx, p: P): Promise<void>;
   command(ctx: RuntimeCtx, p: P): LaunchCommand;
   classify(line: string): LineSignal;
+  /**
+   * What people see of the game's output (CON-01, CON-02): a log line or a
+   * control-channel reply without the game's own formatting codes
+   * (Minecraft's `§` colour codes). The agent shows and serves only this,
+   * redacted; `classify` and the adapter's own commands get the raw text.
+   * Absent: shown as it is.
+   */
+  display?(text: string): string;
   channel(ctx: RuntimeCtx, p: P): ChannelSpec;
   /** Ask the game to stop cleanly; the agent waits `budgetMs` for the exit, then escalates to signals. */
   stop(ctl: ControlHandle, o: { budgetMs: number }): Promise<void>;
@@ -399,8 +407,15 @@ export type AgentCommand = CommandRequest;
  * busy checks, and the running game isn't asked to re-read anything.
  */
 export interface ConfigAccess {
-  /** Set keys of a declared config file (`ConfigFileDecl.id`); history note `note`. A file that doesn't exist yet is left alone. */
-  set(fileId: string, values: Record<string, Scalar>, note: string): Promise<void>;
+  /**
+   * Set keys of a declared config file (`ConfigFileDecl.id`); history note
+   * `note`. A file that doesn't exist yet is left alone. For a file the
+   * game rewrites from memory (`reapplyAtStart`), these become the panel's
+   * saved values, put back before the next start; with `live`, the running
+   * game already holds them (it made the change itself, as Minecraft's
+   * `whitelist on`), so there is nothing to put back for those keys.
+   */
+  set(fileId: string, values: Record<string, Scalar>, note: string, o?: { live?: boolean }): Promise<void>;
   /** Write each declared file's `seed` where that file doesn't exist yet; true if one was written. */
   seedIfMissing(): Promise<boolean>;
   /** Apply one of `config.presets` to the file it names (`presets.fileId`). */
@@ -453,6 +468,35 @@ export interface ConfigFileDecl {
    * while the game is stopped (409 `config-stopped-only` otherwise).
    */
   stoppedOnly?: boolean;
+  /**
+   * The running game may write this file back from memory whenever someone
+   * makes it (Minecraft's `server.properties` when an operator types
+   * `whitelist on|off` in game), dropping what the panel saved since the
+   * game started. The panel then puts the values it saved to the file since
+   * its previous start back before each start it makes (CFG-05): the
+   * panel's last saved values win over what the game wrote back, other keys
+   * stay as the game wrote them. Values the game took live
+   * (`ConfigAccess.set` with `live`) aren't put back, and a restore or reset
+   * that replaces the file forgets them.
+   */
+  reapplyAtStart?: boolean;
+  /**
+   * What the game needs of the file beyond its format (CFG-02, CFG-08),
+   * given a text that parses: the entries it couldn't load (Minecraft's
+   * lists hold objects the game writes, not bare names). A save with any
+   * issue is refused (400 `invalid-file`), and the editor shows the issues
+   * of the file as it is on disk. Empty when the game can load it.
+   */
+  check?(text: string): ConfigIssue[];
+}
+
+/** A problem a declared file's own `check` found, for people: where it is, and what to do instead (EN/ES). */
+export interface ConfigIssue {
+  /** 1-based. */
+  line: number;
+  /** 1-based. */
+  col?: number;
+  message: I18n;
 }
 
 /** A folder the text editor may browse (CFG-07, CFG-08). */
@@ -582,11 +626,30 @@ export interface LevelHolder {
   level: string;
 }
 
+/** A `PlayerOps` command, as `PlayerOps.refused` is asked about its reply. */
+export type PlayerOpKind = 'kick' | 'ban' | 'unban' | 'setAccess' | 'whitelistAdd' | 'whitelistRemove' | 'setWhitelistEnabled';
+
+/**
+ * Why the game didn't do a player command (PLY-03): it knows no player by
+ * that name (`player-not-found`), the player isn't online (`player-not-online`,
+ * a kick), or it already was so (`no-change`: already banned, not an
+ * operator, the whitelist already on…).
+ */
+export type PlayerRefusal = 'player-not-found' | 'player-not-online' | 'no-change';
+
 /**
  * Moderation. Each command resolves with the game's reply; arguments the game
  * can't take are refused with `RconProtocolError` from `@gsp/formats`.
  */
 export interface PlayerOps {
+  /**
+   * What the game's reply to a command means when the game refused it
+   * (Minecraft answers a name it can't look up with "That player does not
+   * exist"): the panel then answers with an error instead of the reply.
+   * Null when the game did it, or the reply doesn't say. Absent: every reply
+   * is passed on as it is.
+   */
+  refused?(op: PlayerOpKind, reply: string): PlayerRefusal | null;
   /** Levels `setAccess` accepts, lowest first. */
   accessLevels?: readonly AccessLevel[];
   /** The `PlayerTarget` fields `ban` and `unban` accept; a UI offers only these. */

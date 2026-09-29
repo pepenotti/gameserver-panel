@@ -143,6 +143,8 @@ export function panelAdapterConfigSuite<S>(adapter: PanelAdapter<S>, opts: Panel
         expect(f.root, `${f.id} root`).not.toBe('install');
         // A file edited only while the game is stopped takes effect when it starts.
         if (f.stoppedOnly) expect(f.restartKeys, `${f.id} is stopped-only`).toBe('*');
+        // The panel puts back values of keys: plain text has none.
+        if (f.reapplyAtStart) expect(f.format, `${f.id} is re-applied at start`).not.toBe('text');
         const schema = f.schemaId === undefined ? undefined : cfg.schemas[f.schemaId];
         if (f.schemaId !== undefined) expect(schema, `schema ${f.schemaId} of ${f.id}`).toBeDefined();
         for (const [what, keys] of [
@@ -245,8 +247,26 @@ export function panelAdapterConfigSuite<S>(adapter: PanelAdapter<S>, opts: Panel
         const r = format.parse(buf.toString('utf8'));
         expect(r.ok ? [] : r.issues, `${f.id} parses`).toEqual([]);
         if (r.ok && f.dataOnly) expect(format.checkShape!(r.doc, f.dataOnly), `${f.id} shape`).toBeNull();
+        // What the game wrote, its own check takes (CFG-02).
+        if (r.ok && f.check) expect(f.check(buf.toString('utf8')), `${f.id} check`).toEqual([]);
       }
       expect(seen, 'no declared file found in the fixtures').toBeGreaterThan(0);
+    });
+
+    it("a file's own check says where and what in English and Spanish (CFG-02)", () => {
+      for (const f of cfg.files(server())) {
+        if (!f.check) continue;
+        // Whatever it is given that parses, it answers with issues people can read, never throws.
+        for (const text of ['[]', '{}', '[1, "x", null, {"a": [true]}]', '"text"', '0', 'a=b\n', '']) {
+          if (!formatFor(f).parse(text).ok) continue;
+          const issues = f.check(text);
+          expect(Array.isArray(issues), `${f.id} check of ${text}`).toBe(true);
+          for (const i of issues) {
+            expect(Number.isInteger(i.line) && i.line >= 1, `${f.id} issue line`).toBe(true);
+            expectI18n(i.message, `${f.id} issue`);
+          }
+        }
+      }
     });
 
     it('re-reads a running server after a write, or says it takes a restart (CFG-05)', async () => {

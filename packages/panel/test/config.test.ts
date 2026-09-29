@@ -2,14 +2,16 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import type { ConfigIssue, PanelAdapter } from '@gsp/adapter-api';
+import { panelAdapter, panelAdapters } from '@gsp/adapters/panel';
 import { getPath, iniToRecord, parseIni, parseLuaData } from '@gsp/formats';
 import { MASK } from '../src/config/service';
 import { Client, fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
 const fixtures = fileURLToPath(new URL('../../../fixtures/pz/b42/config/', import.meta.url));
 
-async function setup(opts: { withFiles?: boolean } = { withFiles: true }) {
-  const p = await makePanel();
+async function setup(opts: { withFiles?: boolean; adapters?: readonly PanelAdapter[] } = { withFiles: true }) {
+  const p = await makePanel({}, opts.adapters ? { adapters: opts.adapters } : {});
   const dir = path.join(p.deps.env.pzDataDir, 'Server');
   if (opts.withFiles) {
     mkdirSync(dir, { recursive: true });
@@ -84,6 +86,67 @@ describe('server settings (ini)', () => {
     expect((await c.get('/api/servers/default/config/pending')).json()).toMatchObject({ reasons: ['PublicName'] });
     // A live-only change says so before it is applied.
     expect(((await c.post('/api/servers/default/config/proposals', { fileId: 'ini', changes: { PauseEmpty: 'true' } })).json() as { applies: string }).applies).toBe('live');
+  });
+
+  it('puts back what the panel saved to a file the game rewrote from memory, before the next start it makes; the game’s own keys stay (CFG-05)', async () => {
+    // PZ doesn't rewrite its ini: the same adapter, with the ini declared as a file the game rewrites.
+    const pz = panelAdapter('pz');
+    const rewritten: PanelAdapter = { ...pz, config: { ...pz.config, files: (srv) => pz.config.files(srv).map((f) => (f.id === 'ini' ? { ...f, reapplyAtStart: true } : f)) } };
+    const { p, c } = await setup({ withFiles: true, adapters: [rewritten, ...panelAdapters.filter((a) => a.meta.id !== 'pz')] });
+    const started = async () => {
+      expect((await c.post('/api/servers/default/server/start')).statusCode).toBe(200);
+      await p.srv.ops.idle();
+      expect(p.srv.ops.last()).toMatchObject({ kind: 'start', ok: true });
+    };
+    const before = readFileSync(serverFile(p, '.ini'), 'utf8');
+    p.feed.status_ = fakeStatus({ state: 'running' });
+    // Saved while the game runs: a form change and a raw edit (managed keys are the agent's, never recorded).
+    expect((await save(c, 'ini', { PublicName: 'Saved in the panel', PVP: 'false' })).statusCode).toBe(200);
+    expect((await c.post('/api/servers/default/config/proposals', { fileId: 'ini', text: readFileSync(serverFile(p, '.ini'), 'utf8').replace(/^MaxPlayers=.*$/m, 'MaxPlayers=12') })).statusCode).toBe(200);
+    const proposal = ((await c.get('/api/servers/default/config/proposals')).json() as { id: string }[])[0]!;
+    expect((await c.post(`/api/servers/default/config/proposals/${proposal.id}/apply`)).statusCode).toBe(200);
+    // A value the running game took itself (adapter code says so): nothing to put back for it.
+    await p.srv.handle.ctx('alice').config.set('ini', { PVP: 'false' }, 'the game took it live', { live: true });
+    // The game writes the file from what it loaded at its start, plus a change of its own.
+    writeFileSync(serverFile(p, '.ini'), before.replace(/^Public=.*$/m, 'Public=true'));
+    p.feed.status_ = fakeStatus({ state: 'stopped' });
+    await started();
+    expect(ini(p)).toMatchObject({ PublicName: 'Saved in the panel', MaxPlayers: '12', Public: 'true', PVP: 'true' });
+    const history = p.srv.config.historyOf('ini');
+    expect(history[0]).toMatchObject({ username: null, note: 'kept the settings saved in the panel since the last start (the game rewrote the file): PublicName, MaxPlayers' });
+    expect(history[1]).toMatchObject({ note: 'on disk before this change' });
+    // Put back once: what the game writes after that start is the game's.
+    writeFileSync(serverFile(p, '.ini'), before);
+    await started();
+    expect(ini(p).PublicName).toBe(iniToRecord(parseIni(before)).PublicName);
+    // A restore or reset that replaces the file forgets them.
+    expect((await save(c, 'ini', { PublicName: 'Saved again' })).statusCode).toBe(200);
+    p.srv.config.forgetPanelEdits(['Server']);
+    writeFileSync(serverFile(p, '.ini'), before);
+    await started();
+    expect(ini(p).PublicName).toBe(iniToRecord(parseIni(before)).PublicName);
+    // A file that doesn't parse now keeps the values for the next start, and the start goes on.
+    expect((await save(c, 'ini', { PublicName: 'Saved once more' })).statusCode).toBe(200);
+    writeFileSync(serverFile(p, '.ini'), `${before}\nthis line is not a setting\n`);
+    await started();
+    expect(p.srv.settings.getRaw('config.panelEdits')).toEqual({ ini: { PublicName: 'Saved once more' } });
+    writeFileSync(serverFile(p, '.ini'), before);
+    await started();
+    expect(ini(p).PublicName).toBe('Saved once more');
+    expect(p.agent.calls.filter((x) => x === 'start')).toHaveLength(5);
+  });
+
+  it('leaves a file the game does not rewrite as it is at a start (CFG-05)', async () => {
+    const { p, c } = await setup();
+    p.feed.status_ = fakeStatus({ state: 'running' });
+    expect((await save(c, 'ini', { PublicName: 'Saved in the panel' })).statusCode).toBe(200);
+    const onDisk = readFileSync(serverFile(p, '.ini'), 'utf8').replace(/^PublicName=.*$/m, 'PublicName=Changed by hand');
+    writeFileSync(serverFile(p, '.ini'), onDisk);
+    p.feed.status_ = fakeStatus({ state: 'stopped' });
+    expect((await c.post('/api/servers/default/server/start')).statusCode).toBe(200);
+    await p.srv.ops.idle();
+    expect(readFileSync(serverFile(p, '.ini'), 'utf8')).toBe(onDisk);
+    expect(p.srv.settings.getRaw('config.panelEdits')).toBeNull();
   });
 
   it('refuses writes while the server is booting, and the proposal waits', async () => {
@@ -171,6 +234,32 @@ describe('sandbox', () => {
     });
     expect(readFileSync(serverFile(p, '_SandboxVars.lua'), 'utf8')).toBe(before);
     expect((await c.get('/api/servers/default/config/proposals')).json()).toEqual([]);
+  });
+
+  it("refuses what the file's own check says the game can't load, says it in each language, and shows it for the file as it is (CFG-02, CFG-08)", async () => {
+    // PZ's files declare no check: the same adapter, with one on its ini that refuses a made-up marker.
+    const check = (text: string): ConfigIssue[] =>
+      text.split('\n').flatMap((l, i) => (l.includes('NOT-FOR-THE-GAME') ? [{ line: i + 1, col: 1, message: { en: 'The game cannot load this line', es: 'El juego no puede cargar esta línea' } }] : []));
+    const pz = panelAdapter('pz');
+    const checked: PanelAdapter = { ...pz, config: { ...pz.config, files: (srv) => pz.config.files(srv).map((f) => (f.id === 'ini' ? { ...f, check } : f)) } };
+    const { p, c } = await setup({ withFiles: true, adapters: [checked, ...panelAdapters.filter((a) => a.meta.id !== 'pz')] });
+    const before = readFileSync(serverFile(p, '.ini'), 'utf8');
+    const text = before.replace(/^PublicName=.*$/m, 'PublicName=NOT-FOR-THE-GAME');
+    const line = text.split('\n').findIndex((l) => l.startsWith('PublicName=')) + 1;
+    const r = await c.post('/api/servers/default/config/proposals', { fileId: 'ini', text });
+    expect(r.statusCode).toBe(400);
+    expect(r.json()).toEqual({ error: 'invalid-file', issues: [{ line, col: 1, message: 'The game cannot load this line', localized: { en: 'The game cannot load this line', es: 'El juego no puede cargar esta línea' } }] });
+    // A form change goes through the same check.
+    expect((await save(c, 'ini', { PublicName: 'NOT-FOR-THE-GAME' })).json()).toMatchObject({ error: 'invalid-file', issues: [{ line }] });
+    expect(readFileSync(serverFile(p, '.ini'), 'utf8')).toBe(before);
+    expect((await c.get('/api/servers/default/config/proposals')).json()).toEqual([]);
+    // A file already like that on disk (written by something else) opens with the issue shown.
+    writeFileSync(serverFile(p, '.ini'), text);
+    expect(((await c.get('/api/servers/default/config/files/content?id=ini')).json() as { issues: unknown[] }).issues).toEqual([
+      { line, col: 1, message: 'The game cannot load this line', localized: { en: 'The game cannot load this line', es: 'El juego no puede cargar esta línea' } },
+    ]);
+    // Fixing it saves.
+    expect((await save(c, 'ini', { PublicName: 'Fixed' })).statusCode).toBe(200);
   });
 
   it('applies a game preset onto the options the file has (CFG-06)', async () => {

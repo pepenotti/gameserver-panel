@@ -27,6 +27,14 @@ export interface VersionRow {
   size: number;
 }
 
+/**
+ * A problem of a file's text: where, and what (English). `localized` says it
+ * in each language when the adapter's own check found it (`ConfigFileDecl.check`).
+ */
+export interface FileIssue extends ParseIssue {
+  localized?: I18n;
+}
+
 export interface ApplyResult {
   /** `live`: the running server re-read it; `next-start`: takes effect when it (re)starts. */
   applied: 'live' | 'next-start' | 'unchanged';
@@ -101,8 +109,8 @@ export interface FileContent {
   secretKeys: string[];
   /** Null when the file can be saved. */
   readonlyReason: ReadonlyReason | null;
-  /** Problems of the text as it is on disk. */
-  issues: ParseIssue[];
+  /** Problems of the text as it is on disk: its format's, or the adapter's own check (CFG-02). */
+  issues: FileIssue[];
   /** The shape a file the game executes must keep (the editor checks it as you type). */
   dataOnly: DataShape | null;
 }
@@ -166,7 +174,15 @@ export interface ConfigStore {
    * while the server is stopped: declared files only, no managed-key or busy
    * checks. A file that doesn't exist is left alone.
    */
-  setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string): Promise<void>;
+  setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string, o?: { live?: boolean }): Promise<void>;
+  /**
+   * Before a start the panel makes (CFG-05): files the game rewrites from
+   * memory (`reapplyAtStart`) get back the values the panel saved to them
+   * since its previous start; returns the files it changed.
+   */
+  reapplyPanelEdits(): Promise<string[]>;
+  /** A restore or reset replaced these data-root paths: the panel's saved values of files there are dropped. */
+  forgetPanelEdits(rels: string[]): void;
 
   // ---------------------------------------------------------------- history
   /** A file's versions, newest first. */

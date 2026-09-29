@@ -117,7 +117,7 @@ export class ServerHandle {
   private configAccess(actor: string | null): ConfigAccess {
     const store = this.d.config;
     return {
-      set: (fileId, values, note) => store().setDirect(fileId, values, actor, note),
+      set: (fileId, values, note, o) => store().setDirect(fileId, values, actor, note, o),
       seedIfMissing: () => store().seedIfMissing(),
       applyPreset: async (name) => {
         await store().applyPreset(name, actor, { force: true });

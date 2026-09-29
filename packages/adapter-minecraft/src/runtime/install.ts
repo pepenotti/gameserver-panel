@@ -16,23 +16,10 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { InstallCtx, InstalledInfo, JobResult, RuntimeCtx, VersionsResponse } from '@gsp/adapter-api';
 import { INSTALL_MARKER, LOADER_JARS, type InstallMarker, type MinecraftVersionInfo } from '../shared/install';
-import { channelAllows, compareVersions, isOffered, isPaperChannel, LOADERS, type MinecraftLaunch, type PaperChannel } from '../shared/launch';
+import { channelAllows, isPaperChannel, LOADERS, type MinecraftLaunch, type PaperChannel } from '../shared/launch';
+import { fabricGames, fabricLoadersFor, fabricStableLoader, mojangReleases, paperVersions } from '../shared/versions';
 import { javaCommand, jreFor } from './java';
-import {
-  Api,
-  checkUrl,
-  fabricGames,
-  fabricInstallers,
-  fabricLoaders,
-  fabricLoadersFor,
-  mavenSha256,
-  mojangVersionFile,
-  mojangVersions,
-  paperBuildById,
-  paperBuilds,
-  paperVersions,
-  type PaperBuild,
-} from './sources';
+import { Api, checkUrl, fabricInstallers, mavenSha256, mojangVersionFile, mojangVersions, paperBuildById, paperBuilds, type PaperBuild } from './sources';
 
 /** Downloads wait here, inside the install root, until they are checked. */
 const STAGING = '.gsp-staging';
@@ -146,8 +133,9 @@ async function resolveTarget(ctx: InstallCtx, api: Api, p: MinecraftLaunch): Pro
 
   // Fabric: the installer, the loader it installs, and Mojang's jar it fetches.
   if (!vf.server) throw new Error(`Minecraft ${p.version} has no server download`);
-  if (!(await fabricGames(api)).some((g) => g.version === p.version)) throw new Error(`Fabric does not support Minecraft ${p.version}`);
-  const loaders = (await fabricLoadersFor(api, p.version)) ?? [];
+  // The releases Fabric supports (the launch's version is always an offered release).
+  if (!(await fabricGames(api.get, api.base('fabric'))).includes(p.version)) throw new Error(`Fabric does not support Minecraft ${p.version}`);
+  const loaders = (await fabricLoadersFor(api.get, api.base('fabric'), p.version)) ?? [];
   let loaderVersion = p.loaderVersion;
   if (loaderVersion === null) {
     loaderVersion = loaders.find((l) => l.stable)?.version ?? null;
@@ -233,30 +221,16 @@ export async function install(ctx: InstallCtx, p: MinecraftLaunch, o: { validate
 
 // ------------------------------------------------------------------- versions
 
-const unix = (iso: string | undefined) => {
+const unix = (iso: string | null | undefined) => {
   const t = iso ? Date.parse(iso) : NaN;
   return Number.isNaN(t) ? undefined : Math.floor(t / 1000);
 };
 
-/** Runs `fn` over `items`, `n` at a time, keeping their order. */
-async function pool<T, R>(items: readonly T[], n: number, fn: (x: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i]!);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
-  return out;
-}
-
-const newestFirst = (a: string, b: string) => compareVersions(b, a);
-
 /**
  * `versions()` (UPD-02): Minecraft releases 1.16.5 and newer (Q11) the
- * launch's loader has, newest first, as `MinecraftVersionInfo`:
+ * launch's loader has, newest first, as `MinecraftVersionInfo`, from the
+ * same listings the panel's create form reads (`shared/versions.ts`),
+ * through the agent's fetch and cache:
  *   - vanilla: every release;
  *   - Paper: each version with its newest build and that build's channel,
  *     and `warning: 'paper-no-stable-build'` when it isn't STABLE (Q13).
@@ -272,28 +246,28 @@ export async function listVersions(ctx: InstallCtx, p: MinecraftLaunch): Promise
   let versions: MinecraftVersionInfo[];
   if (p.loader === 'paper') {
     ctx.progress(null, "Checking PaperMC's versions and builds");
-    const offered = [...new Set((await paperVersions(api)).filter(isOffered))].sort(newestFirst);
-    const entries = await pool(offered, 4, async (v): Promise<MinecraftVersionInfo | null> => {
-      const b = await paperBuildById(api, v, 'latest');
-      if (!b) return null;
-      return { id: v, build: String(b.id), channel: b.channel, timeUpdated: unix(b.time), ...(b.channel === 'STABLE' ? {} : { warning: 'paper-no-stable-build' as const }) };
-    });
-    versions = entries.filter((e): e is MinecraftVersionInfo => e !== null);
+    versions = (await paperVersions(api.get, api.base('paper'))).map((v) => ({
+      id: v.id,
+      build: String(v.build),
+      channel: v.channel,
+      timeUpdated: unix(v.time),
+      ...(v.channel === 'STABLE' ? {} : { warning: 'paper-no-stable-build' as const }),
+    }));
     const own = versions.find((v) => v.id === p.version);
     if (own) own.builds = ((await paperBuilds(api, p.version)) ?? []).slice(0, DETAIL_LIMIT).map((b) => ({ id: b.id, channel: b.channel, timeUpdated: unix(b.time) ?? 0 }));
   } else {
     ctx.progress(null, "Checking Mojang's version list");
-    const releases = (await mojangVersions(api)).filter((v) => v.type === 'release' && isOffered(v.id));
-    const released = new Map(releases.map((v) => [v.id, unix(v.releaseTime)]));
+    const releases = await mojangReleases(api.get, api.base('mojang'));
     if (p.loader === 'vanilla') {
-      versions = releases.map((v) => ({ id: v.id, timeUpdated: released.get(v.id) })).sort((a, b) => newestFirst(a.id, b.id));
+      versions = releases.map((v) => ({ id: v.id, timeUpdated: unix(v.time) }));
     } else {
       ctx.progress(null, "Checking Fabric's versions and loaders");
-      const games = (await fabricGames(api)).filter((g) => g.stable && isOffered(g.version));
-      const loader = (await fabricLoaders(api)).find((l) => l.stable)?.version;
-      versions = [...new Set(games.map((g) => g.version))].sort(newestFirst).map((id) => ({ id, ...(loader ? { build: loader } : {}), timeUpdated: released.get(id) }));
+      const released = new Map(releases.map((v) => [v.id, unix(v.time)]));
+      const games = await fabricGames(api.get, api.base('fabric'));
+      const loader = await fabricStableLoader(api.get, api.base('fabric'));
+      versions = games.map((id) => ({ id, ...(loader ? { build: loader } : {}), timeUpdated: released.get(id) }));
       const own = versions.find((v) => v.id === p.version);
-      if (own) own.loaders = ((await fabricLoadersFor(api, p.version)) ?? []).slice(0, DETAIL_LIMIT);
+      if (own) own.loaders = ((await fabricLoadersFor(api.get, api.base('fabric'), p.version)) ?? []).slice(0, DETAIL_LIMIT);
     }
   }
   // Undefined fields don't travel; leave them out so the list compares as JSON.

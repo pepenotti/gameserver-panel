@@ -5,7 +5,7 @@
 // editable folders, moderation over RCON and the game's own lists,
 // countdown messages, backups and resets, update checks.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { AgentCommand, CommandResponse, ServerCtx, ServerRef, VersionsResponse } from '@gsp/adapter-api';
+import type { AgentCommand, CommandResponse, PlayerOpKind, PlayerRefusal, ServerCtx, ServerRef, VersionsResponse } from '@gsp/adapter-api';
 import { memoryServerFiles } from '@gsp/adapter-api/testing/panel-suite-config';
 import { parseProperties, propertiesToRecord, RconProtocolError } from '@gsp/formats';
 import { startFakeDownloads, type FakeDownloads } from '../../../tools/fake-minecraft/downloads.mjs';
@@ -36,7 +36,7 @@ const props = (text: string) => propertiesToRecord(parseProperties(text));
 
 interface TestCtx extends ServerCtx {
   commands: string[];
-  sets: [string, Record<string, unknown>, string][];
+  sets: ([string, Record<string, unknown>, string] | [string, Record<string, unknown>, string, { live?: boolean }])[];
   presets: string[];
   files: ReturnType<typeof memoryServerFiles>;
 }
@@ -60,7 +60,7 @@ function ctxFor(flavour: Loader, files: Record<string, string> = {}, reply: (cmd
     versions: async () => versions ?? { installed: null, versions: [] },
     launchSettings: () => settings(),
     config: {
-      set: async (fileId, values, note) => void sets.push([fileId, values, note]),
+      set: async (fileId, values, note, o) => void sets.push(o ? [fileId, values, note, o] : [fileId, values, note]),
       seedIfMissing: async () => false,
       applyPreset: async (name) => void presets.push(name),
     },
@@ -247,6 +247,8 @@ describe('config files and editable folders (CFG-02, CFG-05, CFG-07, CFG-08, D6)
     expect(files.filter((f) => f.stoppedOnly).map((f) => f.id)).toEqual(['ops', 'banned-players', 'banned-ips']);
     expect(files.find((f) => f.id === 'eula')).toMatchObject({ rel: 'eula.txt', managedKeys: ['eula'] });
     expect(files.find((f) => f.id === 'whitelist')).toMatchObject({ restartKeys: [] });
+    // An operator's `whitelist on|off` in game rewrites server.properties from memory: the panel's settings go back at the next start (CFG-05).
+    expect(files.filter((f) => f.reapplyAtStart).map((f) => f.id)).toEqual(['properties']);
     expect(files.find((f) => f.id === 'paper-global')!.secretKeys).toEqual(['proxies.velocity.secret']);
     expect(files.find((f) => f.id === 'bstats')).toMatchObject({ rel: BSTATS_FILE, schemaId: 'bstats' });
     expect(BSTATS_FILE).toBe(BSTATS_CONFIG);
@@ -272,6 +274,23 @@ describe('config files and editable folders (CFG-02, CFG-05, CFG-07, CFG-08, D6)
     expect(c.commands).toEqual(['whitelist reload']);
   });
 
+  it('says so when the game could not read the whitelist it was told to reload (CFG-02, CFG-05)', async () => {
+    for (const header of ['[19:32:53] [Server thread/WARN]:', '[19:43:29 WARN]:']) {
+      const listeners = new Set<(l: string) => void>();
+      const c = ctxFor('vanilla', {}, (cmd) => {
+        // The game logs the failure (the exception's message on a line of its own), then answers.
+        for (const l of [`${header} Failed to load white-list: `, 'com.google.gson.JsonSyntaxException: Expected entry to be a JsonObject', `${header} Reloaded the whitelist`]) for (const f of listeners) f(l);
+        return cmd === 'whitelist reload' ? 'Reloaded the whitelist' : '';
+      });
+      c.onLog = (f) => (listeners.add(f), () => listeners.delete(f));
+      expect(await minecraftPanelAdapter.config.afterWrite!(c, 'whitelist', [])).toEqual({
+        applied: 'live',
+        warnings: ['Failed to load white-list: com.google.gson.JsonSyntaxException: Expected entry to be a JsonObject'],
+      });
+      expect(listeners.size).toBe(0);
+    }
+  });
+
   it('has game-mode and difficulty presets the form accepts (CFG-06)', async () => {
     const p = minecraftPanelAdapter.config.presets!;
     expect(p.fileId).toBe('properties');
@@ -285,6 +304,64 @@ describe('config files and editable folders (CFG-02, CFG-05, CFG-07, CFG-08, D6)
       }
     }
     await expect(p.load(c, 'constructor')).rejects.toThrow(/Unknown preset/);
+  });
+});
+
+describe('the game’s lists, only as it can load them (CFG-02, CFG-08)', () => {
+  const check = (id: string, text: string) => minecraftPanelAdapter.config.files(srv('vanilla')).find((f) => f.id === id)!.check!(text);
+  const LISTS = { whitelist: 'whitelist.json', ops: 'ops.json', 'banned-players': 'banned-players.json', 'banned-ips': 'banned-ips.json' } as const;
+
+  it('takes every list the three loaders wrote, and an empty one', () => {
+    for (const l of LOADERS) {
+      for (const [id, file] of Object.entries(LISTS)) {
+        expect(check(id, fixture(l, 'files', file)), `${l} ${file}`).toEqual([]);
+        expect(check(id, '[]')).toEqual([]);
+      }
+    }
+  });
+
+  it('refuses a whitelist of bare names, as the owner saved one, and says to use the Players page', () => {
+    const issues = check('whitelist', '["gspffAlice"]');
+    expect(issues).toEqual([{ line: 1, col: 2, message: { en: expect.any(String), es: expect.any(String) } }]);
+    expect(issues[0]!.message.en).toMatch(/^The game can’t load entry 1: each entry is an object with the player’s "uuid" and "name".*Players page.*look up each player’s id/);
+    expect(issues[0]!.message.es).toMatch(/entrada 1.*página Jugadores/);
+    // One issue per entry, where it is.
+    expect(check('whitelist', '[\n  {"uuid": "ffcc114b-0550-393e-a2da-7e8930eb7054", "name": "gspffAlice"},\n  "gspffBob",\n  {"name": "gspffCarol"}\n]').map((i) => [i.line, i.col])).toEqual([
+      [3, 3],
+      [4, 3],
+    ]);
+  });
+
+  it('wants what the game writes in each entry', () => {
+    const alice = { uuid: 'ffcc114b-0550-393e-a2da-7e8930eb7054', name: 'gspffAlice' };
+    const one = (id: string, entry: unknown) => check(id, JSON.stringify([entry])).length;
+    // The whitelist: a player's id and name.
+    expect(one('whitelist', alice)).toBe(0);
+    expect(one('whitelist', { ...alice, uuid: 'not-an-id' })).toBe(1);
+    expect(one('whitelist', { uuid: alice.uuid })).toBe(1);
+    expect(one('whitelist', { ...alice, name: 7 })).toBe(1);
+    expect(one('whitelist', { ...alice, name: ' ' })).toBe(1);
+    // Operators: a level the game reads, and a true or false.
+    expect(one('ops', { ...alice, level: 4, bypassesPlayerLimit: false })).toBe(0);
+    expect(one('ops', { ...alice, level: 4 })).toBe(0);
+    expect(one('ops', alice)).toBe(1);
+    expect(one('ops', { ...alice, level: 5 })).toBe(1);
+    expect(one('ops', { ...alice, level: '4' })).toBe(1);
+    expect(one('ops', { ...alice, level: 4, bypassesPlayerLimit: 'no' })).toBe(1);
+    // Bans: a player's id and name, or an address; what the game adds is text.
+    expect(one('banned-players', { ...alice, created: '2026-09-25 19:47:43 +0000', source: 'Rcon', expires: 'forever', reason: 'griefing' })).toBe(0);
+    expect(one('banned-players', alice)).toBe(0);
+    expect(one('banned-players', { ...alice, reason: null })).toBe(1);
+    expect(one('banned-players', { name: 'gspffAlice' })).toBe(1);
+    expect(one('banned-ips', { ip: '203.0.113.7', reason: 'spam' })).toBe(0);
+    expect(one('banned-ips', { ip: '2001:db8::1' })).toBe(0);
+    expect(one('banned-ips', { ip: 'gspffAlice' })).toBe(1);
+    expect(one('banned-ips', alice)).toBe(1);
+    for (const id of Object.keys(LISTS)) {
+      const top = check(id, '{"uuid": "x"}');
+      expect(top, id).toHaveLength(1);
+      expect(top[0]!.message.en).toMatch(/^The game expects a list here/);
+    }
   });
 });
 
@@ -321,6 +398,53 @@ describe('moderation over RCON and the game’s own lists (PLY-01, PLY-03)', () 
     ]);
     expect(players.accessLevels!.map((l) => l.id)).toEqual(['player', 'operator']);
     expect(players).toMatchObject({ banTargets: ['username', 'ip'], whitelistPassword: false });
+  });
+
+  it('tells the game’s refusals from what it did, by every reply the three loaders gave (PLY-03)', () => {
+    const OPS: [RegExp, PlayerOpKind][] = [
+      [/^kick /, 'kick'],
+      [/^ban(?:-ip)? /, 'ban'],
+      [/^pardon(?:-ip)? /, 'unban'],
+      [/^(?:op|deop) /, 'setAccess'],
+      [/^whitelist add /, 'whitelistAdd'],
+      [/^whitelist remove /, 'whitelistRemove'],
+      [/^whitelist (?:on|off)$/, 'setWhitelistEnabled'],
+    ];
+    // The refusals measured; every other reply to these commands was the game doing it.
+    const refusals = new Map<string, PlayerRefusal>([
+      ['No player was found', 'player-not-online'],
+      ['That player does not exist', 'player-not-found'],
+      ['Nothing changed. The player is already an operator', 'no-change'],
+      ['Nothing changed. The player is not an operator', 'no-change'],
+      ['Whitelist is already turned on', 'no-change'],
+    ]);
+    const seen = new Set<string>();
+    let replies = 0;
+    for (const l of LOADERS) {
+      for (const file of ['moderation.json', 'players-offline.json', 'players-online.json']) {
+        let op: PlayerOpKind | null = null;
+        for (const e of JSON.parse(fixture(l, 'rcon', file)) as { dir: string; kind?: string; type?: number; body?: string }[]) {
+          if (e.dir === 'out' && e.kind === 'cmd') op = OPS.find(([re]) => re.test(e.body!))?.[1] ?? null;
+          else if (e.dir === 'in' && e.type === 0 && op) {
+            expect(players.refused!(op, e.body!), `${l} ${file} ${op}: ${e.body}`).toBe(refusals.get(e.body!) ?? null);
+            if (refusals.has(e.body!)) seen.add(e.body!);
+            replies++;
+          }
+        }
+      }
+    }
+    expect([...seen].sort()).toEqual([...refusals.keys()].sort());
+    expect(replies).toBeGreaterThan(50);
+    // The game's other "nothing changed" texts, from its language file (the fake server answers with them).
+    for (const [op, reply] of [
+      ['ban', 'Nothing changed. The player is already banned'],
+      ['unban', "Nothing changed. The player isn't banned"],
+      ['ban', 'Nothing changed. That IP is already banned'],
+      ['unban', "Nothing changed. That IP isn't banned"],
+      ['whitelistAdd', 'Player is already whitelisted'],
+      ['whitelistRemove', 'Player is not whitelisted'],
+      ['setWhitelistEnabled', 'Whitelist is already turned off'],
+    ] as const) expect(players.refused!(op, reply), reply).toBe('no-change');
   });
 
   it('refuses what isn’t a player name, an address or a plain reason, sending nothing', async () => {
@@ -374,11 +498,20 @@ describe('moderation over RCON and the game’s own lists (PLY-01, PLY-03)', () 
     });
     expect(await players.setWhitelistEnabled!(c, true)).toBe('Whitelist is now turned on');
     expect(c.commands).toEqual(['whitelist on']);
-    expect(c.sets).toEqual([['properties', { motd: 'B' }, expect.stringMatching(/whitelist/)]]);
+    // The whitelist's own key the game now holds: the panel puts nothing back over it at the next start (CFG-05).
+    const live = ['properties', { 'white-list': 'true' }, 'the whitelist was switched on in the game', { live: true }];
+    expect(c.sets).toEqual([['properties', { motd: 'B' }, expect.stringMatching(/whitelist/)], live]);
     // Nothing was pending: nothing to put back.
     const clean = ctxFor('vanilla', { 'data/server.properties': 'white-list=true\n' }, (_cmd, ctx) => (void ctx.files.writeAtomic('data', 'server.properties', 'white-list=false\n'), 'Whitelist is now turned off'));
     await players.setWhitelistEnabled!(clean, false);
-    expect(clean.sets).toEqual([]);
+    expect(clean.sets).toEqual([['properties', { 'white-list': 'false' }, 'the whitelist was switched off in the game', { live: true }]]);
+    // Already on: the game rewrote nothing, so the file isn't watched for a rewrite and nothing is put back.
+    const already = ctxFor('vanilla', { 'data/server.properties': 'motd=B\nwhite-list=false\n' }, () => 'Whitelist is already turned on');
+    const read = already.files.read.bind(already.files);
+    let reads = 0;
+    already.files.read = (root, rel, o) => (reads++, read(root, rel, o));
+    expect(await players.setWhitelistEnabled!(already, true)).toBe('Whitelist is already turned on');
+    expect([reads, already.sets]).toEqual([1, []]);
   });
 });
 

@@ -139,6 +139,36 @@ describe('commands', () => {
     await h.waitEvent((e) => e.event.type === 'log' && e.event.line.includes('(System.in): "save"'));
   });
 
+  it("shows the game's lines and replies as its adapter says people read them, then redacted; readiness still reads them raw (CON-01, CON-02)", async () => {
+    // A game with its own marks in its output: the adapter takes them out for people.
+    const shown = (t: string) => t.replaceAll('ñandú', '').replaceAll('Message sent.', `Sent, with ${h.store.controlSecret}`);
+    h = await makeHarness({}, { adapter: (a) => ({ ...a, display: shown }) });
+    await h.agent.start(launch, undefined);
+    // Readiness is read from the raw lines.
+    await h.waitFor((x) => x.state === 'running');
+    const help = await h.agent.command('help', 'rcon');
+    expect(help.output).toContain('* comando149 : Descripción número 149 — \n');
+    expect(help.output).not.toContain('ñandú');
+    // What the adapter shows is still redacted.
+    expect((await h.agent.command('servermsg "hola ñandú"', 'rcon')).output).toBe('Sent, with <redacted>');
+    expect(await h.agent.command('save', 'stdin')).toEqual({ via: 'stdin', output: null });
+    await h.waitEvent((e) => e.event.type === 'log' && e.event.line.includes('(System.in): "save"'));
+    expect(h.logs().some((l) => l.includes('ñandú'))).toBe(false);
+    // An adapter whose display fails shows the text as it is.
+    await h.cleanup();
+    h = await makeHarness({}, {
+      adapter: (a) => ({
+        ...a,
+        display: () => {
+          throw new Error('broken');
+        },
+      }),
+    });
+    await h.agent.start(launch, undefined);
+    await h.waitFor((x) => x.state === 'running');
+    expect((await h.agent.command('servermsg "hola"', 'rcon')).output).toBe('Message sent.');
+  });
+
   it('rejects multi-line commands and commands while stopped', async () => {
     h = await makeHarness();
     await expect(h.agent.command('players', undefined)).rejects.toThrow(/not running/);

@@ -180,6 +180,35 @@ describe('moderating a Minecraft server through the API (PLY-01, PLY-03)', () =>
     });
   });
 
+  it('answers what the game refused with an error, not a 200 with its reply (PLY-03)', async () => {
+    const { p, owner } = await panel();
+    await create(owner, 'mc-vanilla', 'vanilla');
+    running(p, 'mc-vanilla');
+    const agent = p.fakes('mc-vanilla').agent;
+    const said = (reply: string) => {
+      agent.command = async (c) => (agent.calls.push(`command:${c}`), { via: 'rcon' as const, output: reply });
+    };
+    const post = async (url: string, body: unknown) => {
+      const r = await owner.post(`/api/servers/mc-vanilla${url}`, body);
+      return [r.statusCode, r.json()];
+    };
+    // What the owner met: a name the game can't look up (measured replies, fixtures/minecraft/26.3/*/rcon/moderation.json).
+    said('That player does not exist');
+    expect(await post('/players/whitelist', { username: 'gspffNoSuchPlr7' })).toEqual([404, { error: 'player-not-found', output: 'That player does not exist' }]);
+    expect(await post('/players/ban', { username: 'gspffNoSuchPlr7' })).toEqual([404, { error: 'player-not-found', output: 'That player does not exist' }]);
+    expect(await post('/players/access', { username: 'gspffNoSuchPlr7', level: 'operator' })).toEqual([404, { error: 'player-not-found', output: 'That player does not exist' }]);
+    said('No player was found');
+    expect(await post('/players/kick', { username: 'gspffNoSuchPlr7' })).toEqual([409, { error: 'player-not-online', output: 'No player was found' }]);
+    said('Nothing changed. The player is already an operator');
+    expect(await post('/players/access', { username: 'gspffAlice', level: 'operator' })).toEqual([409, { error: 'level-unchanged', output: 'Nothing changed. The player is already an operator' }]);
+    said('Whitelist is already turned on');
+    expect(await post('/players/whitelist/enabled', { enabled: true })).toEqual([409, { error: 'whitelist-unchanged', output: 'Whitelist is already turned on' }]);
+    // Refused commands aren't moderation that happened.
+    expect(p.deps.audit.list({ action: 'player.' })).toEqual([]);
+    said('Added gspffAlice to the whitelist');
+    expect(await post('/players/whitelist', { username: 'gspffAlice' })).toEqual([200, { output: 'Added gspffAlice to the whitelist' }]);
+  });
+
   it('keeps PZ’s whitelist as it was: accounts with a password, and no switch', async () => {
     const { p, owner } = await panel();
     p.feed.status_ = fakeStatus({ state: 'running' });
@@ -241,6 +270,81 @@ describe('Minecraft config files through the API (CFG-04, CFG-05, D6)', () => {
     // eula=true typed in the editor stays what the owner's acceptance made it.
     expect((await propose('eula', { text: 'eula=true\n' })).statusCode).toBe(200);
     expect(readFileSync(path.join(data, 'eula.txt'), 'utf8')).toMatch(/^eula=false$/m);
+  });
+
+  it('refuses lists the game could not load, a whitelist of bare names first, and says to use the Players page (CFG-02, CFG-08)', async () => {
+    const { owner, data, propose } = await withFiles();
+    const listed = fixture('vanilla', 'files', 'whitelist.json');
+    writeFileSync(path.join(data, 'whitelist.json'), listed);
+    writeFileSync(path.join(data, 'banned-ips.json'), '[]');
+    // What the owner saved in the acceptance run: the game would run with an empty whitelist.
+    for (const fileId of ['whitelist', 'path:data/whitelist.json']) {
+      const r = await propose(fileId, { text: '["gspffAlice"]' });
+      expect(r.statusCode, fileId).toBe(400);
+      expect(r.json()).toEqual({
+        error: 'invalid-file',
+        issues: [{ line: 1, col: 2, message: expect.stringMatching(/Players page/), localized: { en: expect.stringMatching(/Players page/), es: expect.stringMatching(/página Jugadores/) } }],
+      });
+    }
+    expect(readFileSync(path.join(data, 'whitelist.json'), 'utf8')).toBe(listed);
+    expect((await propose('ops', { text: '[{"name": "gspffAlice", "level": 4}]' })).json()).toMatchObject({ error: 'invalid-file', issues: [{ line: 1 }] });
+    expect((await propose('banned-ips', { text: '[{"ip": "gspffAlice"}]' })).json()).toMatchObject({ error: 'invalid-file' });
+    // A list as the game writes it is taken.
+    expect((await propose('whitelist', { text: fixture('paper', 'files', 'whitelist.json') })).statusCode).toBe(200);
+    // One already broken on disk opens with what is wrong with it.
+    writeFileSync(path.join(data, 'whitelist.json'), '[\n  "gspffAlice"\n]');
+    const content = (await owner.get('/api/servers/mc-vanilla/config/files/content?id=whitelist')).json() as { issues: { line: number; localized?: unknown }[] };
+    expect(content.issues).toEqual([expect.objectContaining({ line: 2, col: 3, localized: expect.objectContaining({ es: expect.stringMatching(/entrada 1/) }) })]);
+  });
+
+  it("puts back the settings saved since the start that an operator's whitelist switch in game wrote over; not over a restored file (CFG-05)", async () => {
+    const { p, owner, data, propose } = await withFiles();
+    const srv = p.deps.servers.get('mc-vanilla')!;
+    const file = path.join(data, 'server.properties');
+    const original = readFileSync(file, 'utf8');
+    const value = (k: string) => new RegExp(`^${k}=(.*)$`, 'm').exec(readFileSync(file, 'utf8'))?.[1];
+    const start = async () => {
+      expect((await owner.post('/api/servers/mc-vanilla/server/start')).statusCode).toBe(200);
+      await srv.ops.idle();
+      expect(srv.ops.last()).toMatchObject({ kind: 'start', ok: true });
+    };
+    const stopped = () => (p.fakes('mc-vanilla').feed.status_ = fakeStatus({ state: 'stopped' }));
+    // A backup of the settings as they are (stopped: a cold copy).
+    expect((await owner.post('/api/servers/mc-vanilla/backups')).statusCode).toBe(200);
+    await srv.ops.idle();
+    const backup = srv.backups.list()[0]!;
+
+    running(p, 'mc-vanilla');
+    expect((await propose('properties', { changes: { motd: 'Saved while running', difficulty: 'hard' } })).statusCode).toBe(200);
+    // An operator types "whitelist on" in game: the game writes the file from what it loaded at its start.
+    writeFileSync(file, original.replace(/^white-list=.*$/m, 'white-list=true'));
+    stopped();
+    await start();
+    // The panel's settings are back; the whitelist stays as the operator switched it.
+    expect([value('motd'), value('difficulty'), value('white-list')]).toEqual(['Saved while running', 'hard', 'true']);
+    expect(srv.config.historyOf('properties')[0]!.note).toBe('kept the settings saved in the panel since the last start (the game rewrote the file): difficulty, motd');
+
+    // The panel's own whitelist switch is something the game holds: an operator switching it back in game later wins.
+    running(p, 'mc-vanilla');
+    p.fakes('mc-vanilla').agent.command = async (c) => {
+      if (c === 'whitelist off') writeFileSync(file, readFileSync(file, 'utf8').replace(/^white-list=.*$/m, 'white-list=false'));
+      return { via: 'rcon', output: 'Whitelist is now turned off' };
+    };
+    expect((await owner.post('/api/servers/mc-vanilla/players/whitelist/enabled', { enabled: false })).statusCode).toBe(200);
+    writeFileSync(file, readFileSync(file, 'utf8').replace(/^white-list=.*$/m, 'white-list=true'));
+    stopped();
+    await start();
+    expect(value('white-list')).toBe('true');
+
+    // Saved while running, then the settings restored from the backup: the restored file stays as it was backed up.
+    running(p, 'mc-vanilla');
+    expect((await propose('properties', { changes: { motd: 'Saved before the restore' } })).statusCode).toBe(200);
+    stopped();
+    expect((await owner.post(`/api/servers/mc-vanilla/backups/${encodeURIComponent(backup.name)}/restore`, { parts: ['config'] })).statusCode).toBe(200);
+    await srv.ops.idle();
+    expect(srv.ops.last()).toMatchObject({ kind: 'restore', ok: true });
+    await start();
+    expect(value('motd')).toBe('Servidor de prueba Ñandú ☃');
   });
 
   it('checks the difficulty and game mode against their words (CFG-01)', async () => {

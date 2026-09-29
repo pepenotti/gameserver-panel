@@ -236,7 +236,7 @@ const MIGRATIONS: string[] = [
 ];
 
 /** Settings keys that belong to one server (`server_settings`); every other key is the host's (`settings`). */
-export const SERVER_SETTING_KEYS = ['launch', 'pendingRestart', 'lastRestore', 'mods.enabled', 'mods.imported', 'schedules', 'discord.override'] as const;
+export const SERVER_SETTING_KEYS = ['launch', 'pendingRestart', 'lastRestore', 'mods.enabled', 'mods.imported', 'schedules', 'discord.override', 'config.panelEdits'] as const;
 
 /** How many migrations exist: the database's `user_version` once it is up to date. */
 export const SCHEMA_VERSION = MIGRATIONS.length;

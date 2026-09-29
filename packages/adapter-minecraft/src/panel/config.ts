@@ -13,6 +13,8 @@
  */
 import type { AfterWriteResult, ConfigFileDecl, EditableRoot, OptionMeta, PanelAdapterConfig, Scalar, ServerCtx, ServerRef } from '@gsp/adapter-api';
 import { BSTATS_FILE, LEVEL_NAME, MANAGED_PROPERTIES } from '../shared/install';
+import { MC_PATTERNS, parseLogLine } from '../shared/log';
+import { listCheck } from './lists';
 import { PROPERTIES_GROUPS, PROPERTIES_SCHEMA, PROPERTIES_SECRETS } from './properties';
 
 /** Paper's bStats settings (Q10: off for new servers; the owner may turn it on here). */
@@ -55,6 +57,8 @@ function files(srv: ServerRef): ConfigFileDecl[] {
       managedKeys: [...MANAGED_PROPERTIES],
       secretKeys: PROPERTIES_SECRETS,
       restartKeys: ALL,
+      // The game writes it from memory at an operator's `whitelist on|off` (measured): what the panel saved goes back at the next start (CFG-05).
+      reapplyAtStart: true,
     },
     {
       id: 'eula',
@@ -67,10 +71,33 @@ function files(srv: ServerRef): ConfigFileDecl[] {
       secretKeys: [],
       restartKeys: ALL,
     },
-    { id: 'whitelist', label: { en: 'Whitelist', es: 'Lista blanca' }, root: 'data', rel: 'whitelist.json', format: 'json', managedKeys: [], secretKeys: [], restartKeys: [] },
-    { id: 'ops', label: { en: 'Operators', es: 'Operadores' }, root: 'data', rel: 'ops.json', format: 'json', managedKeys: [], secretKeys: [], restartKeys: ALL, stoppedOnly: true },
-    { id: 'banned-players', label: { en: 'Banned players', es: 'Jugadores baneados' }, root: 'data', rel: 'banned-players.json', format: 'json', managedKeys: [], secretKeys: [], restartKeys: ALL, stoppedOnly: true },
-    { id: 'banned-ips', label: { en: 'Banned addresses', es: 'Direcciones baneadas' }, root: 'data', rel: 'banned-ips.json', format: 'json', managedKeys: [], secretKeys: [], restartKeys: ALL, stoppedOnly: true },
+    // The game's lists: JSON arrays of the objects it writes, never bare names (CFG-02, see ./lists).
+    { id: 'whitelist', label: { en: 'Whitelist', es: 'Lista blanca' }, root: 'data', rel: 'whitelist.json', format: 'json', managedKeys: [], secretKeys: [], restartKeys: [], check: listCheck('whitelist') },
+    { id: 'ops', label: { en: 'Operators', es: 'Operadores' }, root: 'data', rel: 'ops.json', format: 'json', managedKeys: [], secretKeys: [], restartKeys: ALL, stoppedOnly: true, check: listCheck('ops') },
+    {
+      id: 'banned-players',
+      label: { en: 'Banned players', es: 'Jugadores baneados' },
+      root: 'data',
+      rel: 'banned-players.json',
+      format: 'json',
+      managedKeys: [],
+      secretKeys: [],
+      restartKeys: ALL,
+      stoppedOnly: true,
+      check: listCheck('banned-players'),
+    },
+    {
+      id: 'banned-ips',
+      label: { en: 'Banned addresses', es: 'Direcciones baneadas' },
+      root: 'data',
+      rel: 'banned-ips.json',
+      format: 'json',
+      managedKeys: [],
+      secretKeys: [],
+      restartKeys: ALL,
+      stoppedOnly: true,
+      check: listCheck('banned-ips'),
+    },
   ];
   if (srv.flavour === 'paper') {
     const yaml = (id: string, rel: string, en: string, es: string, secretKeys: string[] = []): ConfigFileDecl => ({ id, label: { en, es }, root: 'data', rel, format: 'yaml', managedKeys: [], secretKeys, restartKeys: ALL });
@@ -120,12 +147,39 @@ function roots(srv: ServerRef): EditableRoot[] {
   return out;
 }
 
-/** The whitelist is re-read live (measured: `whitelist reload` takes the file); everything else waits for a start. */
+/** How long the log gets, after `whitelist reload` answered, to say the game couldn't read the file. */
+export const RELOAD_SETTLE_MS = 1000;
+
+/**
+ * The whitelist is re-read live (measured: `whitelist reload` takes the
+ * file); everything else waits for a start. A whitelist the game can't read
+ * leaves it with an empty one: its log says so (a WARN, and the exception's
+ * message on the next line), and that comes back as a warning.
+ */
 async function afterWrite(ctx: ServerCtx, fileId: string): Promise<AfterWriteResult> {
   if (fileId !== 'whitelist') return { applied: 'restart', warnings: [] };
-  const r = await ctx.command({ command: 'whitelist reload', via: 'rcon' });
-  const out = (r.output ?? '').trim();
-  return { applied: 'live', warnings: r.output === null || /^Reloaded the whitelist$/.test(out) ? [] : [out.slice(0, 300)] };
+  const warnings: string[] = [];
+  /** A failure line whose next line may carry the exception's message. */
+  const failed: { line: string | null } = { line: null };
+  const off = ctx.onLog((raw) => {
+    const line = parseLogLine(raw);
+    if (failed.line !== null) {
+      // The exception's message, printed without the game's header.
+      warnings.push((line.header ? failed.line : `${failed.line} ${line.message.trim()}`).slice(0, 300));
+      failed.line = null;
+    }
+    if (line.header && MC_PATTERNS.whitelistLoadFailed.test(line.message)) failed.line = line.message.trim();
+  });
+  try {
+    const r = await ctx.command({ command: 'whitelist reload', via: 'rcon' });
+    const out = (r.output ?? '').trim();
+    if (r.output !== null && !/^Reloaded the whitelist$/.test(out)) warnings.push(out.slice(0, 300));
+    await new Promise((resolve) => setTimeout(resolve, RELOAD_SETTLE_MS));
+  } finally {
+    off();
+  }
+  if (failed.line !== null) warnings.push(failed.line.slice(0, 300));
+  return { applied: 'live', warnings };
 }
 
 /** Game-mode and difficulty presets for `server.properties` (CFG-06): a new world's rules at one click. */

@@ -3,9 +3,9 @@
  * 2026-09-25/27 (docs/verification/minecraft-26.3.md, "Install and pinning"
  * and "Paper's build channels"), with nothing but a GET: the panel's create
  * form asks them before a server, and so an agent, exists. Pure: whoever
- * calls brings the GET (the panel's own, with its User-Agent and timeout).
- * The agent's install and `versions()` read the same services in
- * `runtime/sources.ts`.
+ * calls brings the GET (the panel's own, with its User-Agent and timeout;
+ * the agent's, through its cache, for `versions()` and the install's Fabric
+ * checks). What only an install reads is in `runtime/sources.ts`.
  */
 import { DOWNLOAD_SOURCES } from './install';
 import { compareVersions, isOffered, isPaperChannel, type PaperChannel } from './launch';

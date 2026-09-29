@@ -106,7 +106,7 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
   const players = new PlayersService({ db, feed, server: handle });
   const mods = new ModsService({ db, feed, ops, settings, config, server: handle, sources: parts.mods ?? adapter.mods ?? [] });
   const backups = new BackupService({ dir: parts.backupDir, panelVersion: host.version, feed, server: handle, mods });
-  const control = new Control({ agent, feed, ops, server: handle, backups, beforeStart: parts.beforeStart });
+  const control = new Control({ agent, feed, ops, server: handle, backups, beforeStart: parts.beforeStart, config });
   const flows = new BackupFlows({ agent, feed, ops, control, backups, settings, config, server: handle });
   const scheduler = new Scheduler({ settings, agent, feed, ops, control, flows, backups, mods, notifier, audit });
   const changes = new ConfigProposals({ db, config: () => config, serverId: row.id });

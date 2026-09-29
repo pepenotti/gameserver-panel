@@ -1,5 +1,7 @@
 import { ACCOUNTS, BANS } from '@gsp/adapter-pz/shared';
 import { describe, expect, it } from 'vitest';
+import type { PlayerOpKind, PlayerRefusal } from '@gsp/adapter-api';
+import { panelAdapter, panelAdapters } from '@gsp/adapters/panel';
 import { Client, fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
 const ACCOUNT_ROWS = [
@@ -98,6 +100,42 @@ describe('moderation', () => {
     expect((await c.post('/api/servers/default/players/kick', { username: 'x"; quit' })).json()).toMatchObject({ error: 'invalid-argument' });
     expect((await c.post('/api/servers/default/players/ban', { steamId: '123' })).statusCode).toBe(400);
     expect(p.deps.audit.list({ action: 'player.' }).map((e) => e.action)).toEqual(['player.unban', 'player.ban', 'player.ban', 'player.kick']);
+  });
+
+  it('answers a command the game refused with an error the web words, keeping the game’s reply; PZ’s replies pass as they are (PLY-03)', async () => {
+    // PZ reads no refusals: whatever it answers is the result, as before.
+    const pz = await setup();
+    pz.p.agent.command = async () => ({ via: 'rcon', output: 'User nobody not found.' });
+    expect((await pz.c.post('/api/servers/default/players/kick', { username: 'nobody' })).json()).toEqual({ output: 'User nobody not found.' });
+
+    // An adapter that reads them: the same PZ adapter, told which replies are refusals.
+    const refused = (_op: PlayerOpKind, reply: string): PlayerRefusal | null =>
+      reply === 'no such player' ? 'player-not-found' : reply === 'not online' ? 'player-not-online' : reply === 'nothing changed' ? 'no-change' : null;
+    const base = panelAdapter('pz');
+    const p = await makePanel({}, { adapters: [{ ...base, players: { ...base.players!, refused } }, ...panelAdapters.filter((a) => a.meta.id !== 'pz')] });
+    const { client: c } = await ownerReady(p);
+    let reply = '';
+    p.agent.command = async (cmd) => (p.agent.calls.push(`command:${cmd}`), { via: 'rcon', output: reply });
+    const post = async (url: string, body: unknown, output: string) => {
+      reply = output;
+      const r = await c.post(`/api/servers/default/players${url}`, body);
+      return { status: r.statusCode, body: r.json() as unknown };
+    };
+    expect(await post('/whitelist', { username: 'nobody', password: 'pw-12345' }, 'no such player')).toEqual({ status: 404, body: { error: 'player-not-found', output: 'no such player' } });
+    expect(await post('/kick', { username: 'rick' }, 'not online')).toEqual({ status: 409, body: { error: 'player-not-online', output: 'not online' } });
+    // "Already so" says what already was, by what was asked.
+    const already: [string, unknown, string][] = [
+      ['/ban', { username: 'rick' }, 'already-banned'],
+      ['/unban', { username: 'rick' }, 'not-banned'],
+      ['/access', { username: 'rick', level: 'admin' }, 'level-unchanged'],
+      ['/whitelist', { username: 'rick', password: 'pw-12345' }, 'already-whitelisted'],
+    ];
+    for (const [url, body, error] of already) expect(await post(url, body, 'nothing changed'), url).toEqual({ status: 409, body: { error, output: 'nothing changed' } });
+    const removed = await c.req('DELETE', '/api/servers/default/players/whitelist/rick');
+    expect([removed.statusCode, removed.json()]).toEqual([409, { error: 'not-whitelisted', output: 'nothing changed' }]);
+    // What the game did is a 200 with its reply, and only that is in the audit log.
+    expect(await post('/kick', { username: 'rick' }, 'User rick kicked.')).toEqual({ status: 200, body: { output: 'User rick kicked.' } });
+    expect(p.deps.audit.list({ action: 'player.' }).map((e) => e.action)).toEqual(['player.kick']);
   });
 
   it('falls back to "kick" if "kickuser" is unknown', async () => {

@@ -1,4 +1,4 @@
-import type { AccessLevel, BanList, LevelHolder, PlayerAccount, PlayerOps, PlayerTarget, WhitelistInfo } from '@gsp/adapter-api';
+import type { AccessLevel, BanList, LevelHolder, PlayerAccount, PlayerOpKind, PlayerOps, PlayerRefusal, PlayerTarget, WhitelistInfo } from '@gsp/adapter-api';
 import { RconProtocolError } from '@gsp/formats';
 import { nowIso, type Db } from '../db/db';
 import { HttpError } from '../http/context';
@@ -143,48 +143,79 @@ export class PlayersService {
     return ops;
   }
 
-  /** Arguments the game can't take become a 400. */
-  private async moderate(call: () => Promise<string>): Promise<string> {
+  /**
+   * Arguments the game can't take become a 400; a command the game refused
+   * (the adapter reads its reply, `PlayerOps.refused`) an error with the
+   * game's own words in `output`, not a 200.
+   */
+  private async moderate(ops: PlayerOps, op: PlayerOpKind, call: () => Promise<string>): Promise<string> {
+    let reply: string;
     try {
-      return await call();
+      reply = await call();
     } catch (e) {
       if (e instanceof RconProtocolError) throw new HttpError(400, 'invalid-argument', e.message);
       throw e;
     }
+    const refusal = ops.refused?.(op, reply) ?? null;
+    if (refusal) throw refusalError(op, refusal, reply);
+    return reply;
   }
 
   kick(by: string | null, username: string, reason?: string): Promise<string> {
     const ops = this.need('kick');
-    return this.moderate(() => ops.kick!(this.d.server.ctx(by), username, reason));
+    return this.moderate(ops, 'kick', () => ops.kick!(this.d.server.ctx(by), username, reason));
   }
 
   ban(by: string | null, target: PlayerTarget, reason?: string): Promise<string> {
     const ops = this.need('ban');
-    return this.moderate(() => ops.ban!(this.d.server.ctx(by), target, reason));
+    return this.moderate(ops, 'ban', () => ops.ban!(this.d.server.ctx(by), target, reason));
   }
 
   unban(by: string | null, target: PlayerTarget): Promise<string> {
     const ops = this.need('unban');
-    return this.moderate(() => ops.unban!(this.d.server.ctx(by), target));
+    return this.moderate(ops, 'unban', () => ops.unban!(this.d.server.ctx(by), target));
   }
 
   setAccess(by: string | null, username: string, level: string): Promise<string> {
     const ops = this.need('setAccess');
-    return this.moderate(() => ops.setAccess!(this.d.server.ctx(by), username, level));
+    return this.moderate(ops, 'setAccess', () => ops.setAccess!(this.d.server.ctx(by), username, level));
   }
 
   whitelistAdd(by: string | null, username: string, password?: string): Promise<string> {
     const ops = this.need('whitelistAdd');
-    return this.moderate(() => ops.whitelistAdd!(this.d.server.ctx(by), username, password));
+    return this.moderate(ops, 'whitelistAdd', () => ops.whitelistAdd!(this.d.server.ctx(by), username, password));
   }
 
   whitelistRemove(by: string | null, username: string): Promise<string> {
     const ops = this.need('whitelistRemove');
-    return this.moderate(() => ops.whitelistRemove!(this.d.server.ctx(by), username));
+    return this.moderate(ops, 'whitelistRemove', () => ops.whitelistRemove!(this.d.server.ctx(by), username));
   }
 
   setWhitelistEnabled(by: string | null, on: boolean): Promise<string> {
     const ops = this.need('setWhitelistEnabled');
-    return this.moderate(() => ops.setWhitelistEnabled!(this.d.server.ctx(by), on));
+    return this.moderate(ops, 'setWhitelistEnabled', () => ops.setWhitelistEnabled!(this.d.server.ctx(by), on));
   }
+}
+
+/** A command that changed nothing, by what it was meant to do: what the web says about it. */
+const NO_CHANGE: Record<PlayerOpKind, string> = {
+  kick: 'no-change',
+  ban: 'already-banned',
+  unban: 'not-banned',
+  setAccess: 'level-unchanged',
+  whitelistAdd: 'already-whitelisted',
+  whitelistRemove: 'not-whitelisted',
+  setWhitelistEnabled: 'whitelist-unchanged',
+};
+
+/**
+ * The game's refusal as an HTTP error: 404 `player-not-found` for a name it
+ * knows no player by, 409 `player-not-online`, or 409 with what already was
+ * so; `output` keeps the game's reply.
+ */
+function refusalError(op: PlayerOpKind, refusal: PlayerRefusal, reply: string): HttpError {
+  const output = reply.slice(0, 500);
+  if (refusal === 'player-not-found') return new HttpError(404, 'player-not-found', output, { output });
+  if (refusal === 'player-not-online') return new HttpError(409, 'player-not-online', output, { output });
+  return new HttpError(409, NO_CHANGE[op], output, { output });
 }

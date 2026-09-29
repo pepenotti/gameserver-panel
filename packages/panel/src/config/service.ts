@@ -16,6 +16,7 @@ import type {
   DeclaredFile,
   EditableFolder,
   FileContent,
+  FileIssue,
   PendingRestart,
   PreparedChange,
   ReappliedKey,
@@ -25,6 +26,9 @@ import type {
 
 /** What secret values look like in forms, the text editor, diffs and history. */
 export const MASK = '••••••••';
+/** The server setting holding, per file the game rewrites from memory, the values the panel saved since its last start (CFG-05). */
+export const PANEL_EDITS_KEY = 'config.panelEdits';
+type PanelEdits = Record<string, Record<string, Scalar | null>>;
 /** A secret the change sets to a new value, in a diff. Never written. */
 const MASK_CHANGED = `${MASK} (changed)`;
 const HISTORY_KEEP = 100;
@@ -65,7 +69,7 @@ function parsePathId(id: string): { root: RootId; rel: string } | null {
 }
 
 const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
-const invalidFile = (issues: ParseIssue[]) => new HttpError(400, 'invalid-file', undefined, { issues });
+const invalidFile = (issues: FileIssue[]) =>new HttpError(400, 'invalid-file', undefined, { issues });
 const same = (a: Scalar | undefined, b: Scalar | undefined) => (a === undefined || b === undefined ? a === b : String(a) === String(b));
 
 /** `ServerFiles` refusals as HTTP errors. */
@@ -165,6 +169,13 @@ export class ConfigService implements ConfigStore {
     const text = await this.readText(t);
     if (text === null) throw t.decl ? new HttpError(409, 'config-missing') : new HttpError(404, 'not-found');
     return text;
+  }
+
+  /** What the adapter's own check of a declared file finds in a text that parses (CFG-02), in English and in each language. */
+  private checkIssues(t: Target, text: string): FileIssue[] {
+    const check = t.decl?.check;
+    if (!check) return [];
+    return check(text).map((i) => ({ line: i.line, ...(i.col === undefined ? {} : { col: i.col }), message: i.message.en, localized: i.message }));
   }
 
   private assertSavable(t: Target): void {
@@ -323,6 +334,8 @@ export class ConfigService implements ConfigStore {
 
     const final = t.format.parse(next);
     if (!final.ok) throw invalidFile(final.issues);
+    const checked = this.checkIssues(t, next);
+    if (checked.length) throw invalidFile(checked);
     const nextFlat = t.format.flatten(final.doc);
     const changedKeys = [...new Set([...Object.keys(diskFlat), ...Object.keys(nextFlat)])].filter((k) => !same(diskFlat[k], nextFlat[k]));
 
@@ -514,7 +527,7 @@ export class ConfigService implements ConfigStore {
       managedKeys: t.decl?.managedKeys ?? [],
       secretKeys: t.decl?.secretKeys ?? [],
       readonlyReason: t.reason,
-      issues: r.ok ? [] : r.issues,
+      issues: r.ok ? this.checkIssues(t, text) : r.issues,
       dataOnly: t.decl?.dataOnly ?? null,
     };
   }
@@ -568,6 +581,7 @@ export class ConfigService implements ConfigStore {
     const p = this.prepareText(t, disk, content, { managed: o.managed });
     if (p.next === disk) return { applied: 'unchanged', warnings: [], restartNeeded: false, reapplied: p.reapplied, changedKeys: [], sha256: this.shaOf(t, disk) };
     await this.write(t, disk, p.next, by, note);
+    this.remember(t, this.valuesOf(t, p.next, p.changedKeys));
     const r = await this.finish(t, p.changedKeys, by);
     return { ...r, reapplied: p.reapplied, changedKeys: p.changedKeys, sha256: this.shaOf(t, p.next) };
   }
@@ -669,13 +683,105 @@ export class ConfigService implements ConfigStore {
     return seeded;
   }
 
-  async setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string): Promise<void> {
+  async setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string, o: { live?: boolean } = {}): Promise<void> {
     const t = this.target(fileId);
     if (!t.decl) throw new HttpError(404, 'unknown-file');
     const disk = await this.readText(t);
     if (disk === null) return;
     const next = t.format.edit(disk, values);
     if (next !== disk) await this.write(t, disk, next, by, note);
+    // Values the running game took itself (the whitelist switch) have nothing to be put back over.
+    if (o.live) this.forgetKeys(t, Object.keys(values));
+    else this.remember(t, values);
+  }
+
+  // ------------------------------------------ files the game rewrites (CFG-05)
+
+  /** `keys` of `text` (null where a key is gone). */
+  private valuesOf(t: Target, text: string, keys: string[]): Record<string, Scalar | null> {
+    const flat = this.flat(t, text);
+    return Object.fromEntries(keys.map((k) => [k, flat[k] ?? null]));
+  }
+
+  private panelEdits(): PanelEdits {
+    return this.d.settings.getRaw<PanelEdits>(PANEL_EDITS_KEY) ?? {};
+  }
+
+  /**
+   * The values the panel saved to a file the game may rewrite from memory
+   * (`reapplyAtStart`), kept until the next start the panel makes; managed
+   * keys are the agent's to put back.
+   */
+  private remember(t: Target, values: Record<string, Scalar | null>): void {
+    if (!t.decl?.reapplyAtStart) return;
+    const own = Object.entries(values).filter(([k]) => !t.decl!.managedKeys.includes(k));
+    if (own.length === 0) return;
+    const all = this.panelEdits();
+    all[t.id] = { ...all[t.id], ...Object.fromEntries(own) };
+    this.d.settings.setRaw<PanelEdits>(PANEL_EDITS_KEY, all);
+  }
+
+  /** Keys of a file the running game now holds itself: nothing to put back for them. */
+  private forgetKeys(t: Target, keys: string[]): void {
+    const all = this.panelEdits();
+    const mine = all[t.id];
+    if (!mine || !keys.some((k) => k in mine)) return;
+    for (const k of keys) delete mine[k];
+    if (Object.keys(mine).length === 0) delete all[t.id];
+    this.d.settings.setRaw<PanelEdits | null>(PANEL_EDITS_KEY, Object.keys(all).length ? all : null);
+  }
+
+  /**
+   * Before a start the panel makes (CFG-05): each file the game rewrites
+   * from memory gets back the values the panel saved to it since its
+   * previous start, where they differ (the game dropped them), with a note
+   * in its history; then they are forgotten. Other keys stay as the game
+   * wrote them. A file that can't be read, parsed or edited now keeps its
+   * values for the next start rather than holding this one up. Returns the
+   * files it changed.
+   */
+  async reapplyPanelEdits(): Promise<string[]> {
+    const all = this.panelEdits();
+    const changed: string[] = [];
+    if (Object.keys(all).length === 0) return changed;
+    for (const [fileId, values] of Object.entries(all)) {
+      const decl = this.decls().find((d) => d.id === fileId && d.reapplyAtStart);
+      if (decl) {
+        const t = this.declTarget(decl);
+        try {
+          const disk = await this.readText(t);
+          const parsed = disk === null ? null : t.format.parse(disk);
+          if (disk !== null && parsed && !parsed.ok) continue;
+          if (disk !== null && parsed?.ok) {
+            const flat = t.format.flatten(parsed.doc);
+            const lost = Object.fromEntries(Object.entries(values).filter(([k, v]) => !same(flat[k], v ?? undefined)));
+            if (Object.keys(lost).length) {
+              await this.write(t, disk, t.format.edit(disk, lost), null, `kept the settings saved in the panel since the last start (the game rewrote the file): ${Object.keys(lost).join(', ')}`);
+              changed.push(fileId);
+            }
+          }
+        } catch {
+          continue;
+        }
+      }
+      // Put back, gone (a file that no longer exists starts from the game's defaults), or no longer declared.
+      delete all[fileId];
+    }
+    this.d.settings.setRaw<PanelEdits | null>(PANEL_EDITS_KEY, Object.keys(all).length ? all : null);
+    return changed;
+  }
+
+  /** A restore or reset replaced these data-root paths: the panel's saved values of files there no longer apply. */
+  forgetPanelEdits(rels: string[]): void {
+    const all = this.panelEdits();
+    const covered = (rel: string) => rels.some((r) => rel === r || rel.startsWith(`${r.replace(/\/+$/, '')}/`));
+    let dropped = false;
+    for (const d of this.decls()) {
+      if (d.root !== 'data' || !covered(d.rel) || !(d.id in all)) continue;
+      delete all[d.id];
+      dropped = true;
+    }
+    if (dropped) this.d.settings.setRaw<PanelEdits | null>(PANEL_EDITS_KEY, Object.keys(all).length ? all : null);
   }
 
   async read(fileId: string): Promise<string | null> {
@@ -692,6 +798,7 @@ export class ConfigService implements ConfigStore {
     const p = this.prepareText(t, disk, this.proposedFromChanges(t, disk, changes));
     if (p.next === disk) return { applied: 'unchanged', warnings: [], restartNeeded: false };
     await this.write(t, disk, p.next, by, opts.note ?? this.noteFor(p.changedKeys, p.reapplied));
+    this.remember(t, this.valuesOf(t, p.next, p.changedKeys));
     return this.finish(t, p.changedKeys, by);
   }
 
