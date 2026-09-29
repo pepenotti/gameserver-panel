@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.15 |
+| Status | Draft 0.16 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -132,7 +132,7 @@ Each can move into scope later through [change control](#14-change-control).
 |---|---|---|---|---|---|---|
 | Project Zomboid (Build 42) | — | steamcmd | RCON + stdin | server ini, `SandboxVars.lua`, spawn files | Steam Workshop | UDP 16261–16262 |
 | Minecraft Java | vanilla, Paper, Fabric, Forge, NeoForge (picked per server) | official downloads and loader installers, version pinned | RCON + stdin | `server.properties`, whitelist / ops / bans, plugin and mod configs | Modrinth (Paper plugins; Fabric, Forge and NeoForge mods) | TCP 25565 |
-| Terraria | vanilla, TShock, tModLoader | official download / TShock releases / steamcmd | stdin; TShock adds its REST API | `serverconfig.txt`, world options, TShock config | TShock plugins; tModLoader via Steam Workshop | TCP 7777 |
+| Terraria | vanilla, TShock, tModLoader | terraria.org download / TShock and tModLoader releases on GitHub; tModLoader's Workshop mods with steamcmd | stdin; TShock adds its REST API | `serverconfig.txt`, world options, TShock config | TShock plugins; tModLoader via Steam Workshop | TCP 7777 |
 | Valheim | — | steamcmd | none: signals + log parsing | launch options, admin / banned / permitted lists | — (v1) | UDP 2456–2457 |
 | Other Steam games | — | steamcmd | per manifest | raw files | — | per manifest |
 
@@ -152,10 +152,18 @@ Each can move into scope later through [change control](#14-change-control).
   are added on the Players page), and when an operator's `whitelist on|off` in
   game writes `server.properties` from memory, the settings the panel saved
   since the start are put back before the next start the panel makes.
+- **Terraria:** tModLoader runs on Terraria 1.4.4 while vanilla and TShock
+  follow 1.4.5, and its players need tModLoader. Vanilla Terraria bans by IP
+  address only; behind Docker Desktop every player arrives from the same
+  address, so the panel warns before a vanilla ban there. No Terraria flavour
+  has a license to accept before its server runs (Steam's tModLoader EULA
+  covers the Steam client, not the GitHub release the panel installs).
 - **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts (its server
   jars are Java and carry ARM64 native libraries; the fact-finding ran x86-64
   only, so an ARM64 run is part of M7). Servers
-  installed with steamcmd need x86-64. Each adapter declares what it runs
+  installed with steamcmd need x86-64. Terraria's servers need x86-64
+  (vanilla ships no ARM64 build; TShock's ARM64 builds are unverified). Each
+  adapter declares what it runs
   on, confirmed in its milestone (HST-05).
 - **Measured, not guessed:** details marked here, like readiness lines, stop
   commands and file formats, are confirmed against a real server in each
@@ -214,7 +222,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | CON-01 | P0 | Live log per server for operators and up, with secrets redacted and a filter. |
 | CON-02 | P0 | Raw console (RCON or stdin) for admins, with command arguments sanitised. Commands longer than the game's control channel takes are refused before they are sent (Minecraft's RCON: 1446 bytes of text). |
 | CON-03 | P1 | Broadcast a message to players where the game supports it. |
-| CON-04 | P0 | Terraria with TShock is controlled through TShock's REST API for players, kick, ban and broadcast. The API is bound to the server's internal network only, never published, with a token the agent generates. Vanilla Terraria uses stdin. |
+| CON-04 | P0 | Terraria with TShock is controlled through TShock's REST API for players, kick, ban and broadcast. The API is bound to the server's internal network only, never published, with a token the agent generates and keeps in TShock's config, masked like other secrets. Vanilla Terraria and tModLoader use stdin. |
 
 ### 8.5 Players — PLY
 
@@ -339,12 +347,14 @@ NFR-01's controls, carried over from zomboid-server:
   an adapter: install, launch, readiness, stop, control channel and player
   queries. There is one agent per server, inside that server's container.
 - **Images per runtime family.**
-  - `steam` (steamcmd and its libraries): Project Zomboid, Valheim, tModLoader and manifest games.
+  - `steam` (steamcmd and its libraries): Project Zomboid, Valheim, tModLoader
+    (with Microsoft's .NET 8 runtime; steamcmd fetches its Workshop mods, the
+    game itself comes from GitHub) and manifest games.
   - `java` (Eclipse Temurin JREs 25, 21 and 17, picked per server from the
     Java major its Minecraft version declares): Minecraft.
-  - `native`: vanilla Terraria.
+  - `native` (with Microsoft's .NET 9 runtime): vanilla Terraria and TShock.
 
-  Each adapter names its image.
+  Each adapter names its image; a flavour may name another one.
 - **Orchestrator.** A small service that holds the Docker socket. It creates,
   starts, stops and removes server containers, volumes and networks from a
   fixed, validated spec, and does nothing else. It is reachable only by the
@@ -443,7 +453,8 @@ milestone and the tests that prove it, and is updated with every merge.
 | The Docker socket is host-level power. | A tiny orchestrator with an allowlist and refusal tests, never exposed (D3, NFR-02). |
 | Several servers compete for one PC's memory and CPU. | Per-server limits, capacity warnings, staggered jobs (SRV-05, SCH-02). |
 | Game updates break things (new Minecraft versions, Project Zomboid builds). | Version pinning, update policies, safety backups, fixtures per version. |
-| Mod platform APIs change or rate-limit (Modrinth, Steam). | Caching, backoff, degrading gracefully to "can't check right now". |
+| Mod platform APIs change or rate-limit (Modrinth, Steam, GitHub's 60 anonymous calls an hour). | Caching, backoff, degrading gracefully to "can't check right now". |
+| Vanilla Terraria crashes on a burst of reconnects. | The crash watchdog restarts it (SRV-07); TShock, which survives them, is suggested for public servers. |
 | Scope creep ("add game X"). | Change control, and the manifest path for simple games. |
 | Legal. | Explicit Minecraft EULA acceptance; no game files redistributed; captured fixtures limited to test data. |
 | Forge and NeoForge installers change often. | Pinned loader versions, fixtures per loader, and loaders shipped at P1 after the P0 ones are solid. |
@@ -519,3 +530,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.13 | 2026-09-27 | M3 runtime adapter: Minecraft vanilla, Paper and Fabric run on agents (install and pinning, Java per version, RCON one packet per write, running backups); UPD-05 takes Paper builds of the pinned channel or a more stable one; CON-02 refuses commands longer than the channel takes. |
 | 0.14 | 2026-09-27 | M3 panel adapter: Minecraft offered in the panel with its loaders and the versions each offers (Paper's channel with the Q13 warning, Fabric's loader), the `server.properties` form, moderation by name or IP, the whitelist switched live, operator and ban lists changed only while stopped, running backups, restores and resets per loader; the contract gains name and IP bans, whitelist reads, launch choices and warnings. |
 | 0.15 | 2026-09-29 | M3 fixes from the acceptance run: Minecraft's lists are checked before saving (CFG-02, CFG-08); refused player commands answer errors, not the game's reply (PLY-03); console replies and log lines lose Minecraft's § codes (CON-02); the settings the panel saved survive an operator's whitelist switch in game (CFG-05); the contract gains a file's own check, player-command refusals, a display hook and files re-applied at start. |
+| 0.16 | 2026-09-29 | M5 fact-finding: Terraria 1.4.5.8 measured for vanilla, TShock 6.2.1 and tModLoader v2026.07.3.0 (`docs/verification/terraria-1.4.5.8.md`, `fixtures/terraria/1.4.5.8`, `tools/fake-terraria`); tModLoader installs from its GitHub releases and runs in the steam image with .NET 8, TShock in the native image with .NET 9, and a flavour may name its own image (§7, §10); no Terraria license gate (§7); CON-04's token lives in TShock's config; vanilla's IP bans and reconnect crash noted (§7, §13). |

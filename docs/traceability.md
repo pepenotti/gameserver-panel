@@ -36,16 +36,16 @@ without a milestone is a PRD bug.
 | CON-01 | P0 | M1 | `agent.test.ts` "never leaks the admin or RCON password"; `agent/test/http.test.ts` event stream; `panel/test/agent-e2e.test.ts` (no secret in any log line); `agent/test/rcon-client.test.ts` (one packet per write, sentinel after the first reply or a fallback, the size limit) |
 | CON-02 | P0 | M5 | `agent/test/rcon-client.test.ts` (commands over the channel's size refused before sending); colour codes stripped from shown lines and replies (`RuntimeAdapter.display`): Paper fixtures, `panel/test/minecraft-e2e.test.ts` |
 | CON-03 | P1 | M1 | `panel/test/server.test.ts` (broadcast); `adapter-pz/test/panel-core.test.ts` (messages); Minecraft `say` (256 characters): `adapter-minecraft/test/panel.test.ts` |
-| CON-04 | P0 | M5 | — |
+| CON-04 | P0 | M5 | Terraria measured: `docs/verification/terraria-1.4.5.8.md`, `fixtures/terraria/1.4.5.8/`; fake: `tools/fake-terraria/fake-terraria.test.ts` (TShock REST) |
 | PLY-01 | P0 | M1 | `agent.test.ts` (join/leave); `adapter-pz/test/runtime.test.ts` (players); live runtime suite "lists who is online"; Minecraft: `adapter-minecraft/test/log.test.ts`, `control.test.ts`; Minecraft: `adapter-minecraft/test/panel.test.ts`, `panel/test/minecraft-e2e.test.ts` |
 | PLY-02 | P1 | M1 | `panel/test/players.test.ts` "records joins and leaves", "emits join/leave events" |
 | PLY-03 | P0 | M1 | `panel/test/players.test.ts`; `adapter-pz/test/panel-core.test.ts` (players); panel core suite (moderation arguments); Minecraft kick, ban and pardon by name and IP, whitelist, op: `panel/test/minecraft-e2e.test.ts`; refused moderation answers errors (`PlayerOps.refused`): every captured Minecraft reply tested; PZ unchanged |
 | MOD-01 | P0 | M1 | `panel/test/mods.test.ts`; `adapter-pz/test/panel-core.test.ts` (Steam Workshop source) |
 | MOD-02 | P0 | M4 | — |
-| MOD-03 | P1 | M5 | `source-workshop/test/workshop.test.ts` (the Workshop source by app id, shared with Project Zomboid; tModLoader use in M5) |
+| MOD-03 | P1 | M5 | `source-workshop/test/workshop.test.ts` (the Workshop source by app id, shared with Project Zomboid; tModLoader use in M5); tModLoader Workshop downloads measured anonymously: `docs/verification/terraria-1.4.5.8.md` |
 | MOD-04 | P1 | M4 | — |
 | MOD-05 | P2 | after v1 | — |
-| MOD-06 | P1 | M5 | — |
+| MOD-06 | P1 | M5 | TShock plugin loading measured: `docs/verification/terraria-1.4.5.8.md` |
 | BAK-01 | P0 | M1 | `panel/test/backups.test.ts`; `panel/test/core-adapter.test.ts` (symlinks skipped); `panel/test/server.test.ts` (pre-update backup); `panel/test/agent-e2e.test.ts` (hot backup through the agent); `archive/test/tar.test.ts`; real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7; final backup trigger: `registry.test.ts` (SRV-04, BAK-01); Minecraft parts per loader: `adapter-minecraft/test/panel.test.ts` |
 | BAK-02 | P0 | M3 | PZ: `archive/test/rooted.test.ts` (hot packs), `agent/test/files.test.ts`, `panel/test/server-files.test.ts` "hot packs through the agent"; a hot backup saves once (`schedules.test.ts`, `backups.test.ts`); Minecraft: flush timing measured in `docs/verification/minecraft-26.3.md`; Minecraft: `adapter-minecraft/test/control.test.ts` (save-off, flush, save-on), `agent/test/minecraft.test.ts` (hot backup through the archive route); Minecraft hot backup in order (save-off, saved, save-on): `panel/test/minecraft-e2e.test.ts` |
 | BAK-03 | P0 | M1 | `panel/test/backups.test.ts` restoring block (parts + undo, running server, damaged archive, staging-only writes); `panel/test/server-files.test.ts` (restore round trip, hostile archives); `agent-e2e.test.ts` (restore + undo); real run: `docs/verification/m2-acceptance.md` (2026-09-25) step 7 (restore running and stopped, undo); Minecraft world restore: `panel/test/minecraft-e2e.test.ts` |
@@ -88,5 +88,5 @@ without a milestone is a PRD bug.
 | Decision | Proven by |
 |---|---|
 | D4 | `adapters/test/adapters.test.ts`; each `adapter-*/test/contract.test.ts` (skeletons pass the contract suites) |
-| D5 | `panel/test/servers.test.ts` "offers no adapter skeleton…" (unmeasured games are registered, not offered); Minecraft measured before its adapter: `docs/verification/minecraft-26.3.md` |
+| D5 | `panel/test/servers.test.ts` "offers no adapter skeleton…" (unmeasured games are registered, not offered); Minecraft measured before its adapter: `docs/verification/minecraft-26.3.md`; Terraria measured before its adapter: `docs/verification/terraria-1.4.5.8.md` |
 | D6 | `panel/test/eula.test.ts`; `agent/test/agent.test.ts` "the owner's EULA acceptance (D6)"; `shared/test/permissions.test.ts`; contract suite `adapter-api/src/testing/meta.ts` (an EULA names its agreement); the Minecraft runtime writes `eula=true` only after acceptance: `adapter-minecraft/test/files.test.ts`; an admin's Minecraft server waits for the owner's acceptance: `panel/test/minecraft-e2e.test.ts` |
