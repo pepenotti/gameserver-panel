@@ -1,0 +1,10 @@
+DEBIAN_FRONTEND=noninteractive
+DOTNET_ROOT=/usr/share/dotnet
+FNA_WORKAROUND_WINDOW_RESIZABLE=1
+HOME=/home/node
+HOSTNAME=<container id>
+LANG=C.UTF-8
+NODE_VERSION=24.21.0
+PATH=/usr/share/dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+TZ=UTC
+YARN_VERSION=1.22.22

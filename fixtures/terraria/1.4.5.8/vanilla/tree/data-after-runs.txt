@@ -1,0 +1,24 @@
+# type size path: the data volume after every vanilla run (worlds small1, medium1, large1, cfg1 and the corrupt test files)
+d      4096 .
+f        24 ./banlist.txt
+d      4096 ./home
+d      4096 ./home/.local
+d      4096 ./home/.local/share
+d      4096 ./home/.local/share/Terraria
+d      4096 ./home/.local/share/Terraria/Worlds
+f        44 ./home/.local/share/Terraria/favorites.json
+d      4096 ./sd
+d      4096 ./sd/Worlds
+f        93 ./sd/favorites.json
+f       384 ./serverconfig.txt
+d      4096 ./worlds
+f   2958512 ./worlds/cfg1.wld
+f      4096 ./worlds/corrupt-garbage.wld
+f   2928712 ./worlds/corrupt-truncated.wld
+f   2928712 ./worlds/corrupt-truncated.wld.bak
+f  11512531 ./worlds/large1.wld
+f  11510303 ./worlds/large1.wld.bak
+f   6845523 ./worlds/medium1.wld
+f   2929176 ./worlds/small1.wld
+f   2929176 ./worlds/small1.wld.bak
+f   2929088 ./worlds/small1.wld.bak2

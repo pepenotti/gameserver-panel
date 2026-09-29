@@ -1,0 +1,41 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+Loading world data: 1%
+Loading world data: 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Loading world data: 100%
+Settling liquids 1%
+Settling liquids 2%
+# … 47 more progress lines like these, dropped from the fixture …
+Settling liquids 50%
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+192.0.2.1:57564 is connecting...
+192.0.2.1:57564 was booted: Name is too long.
+192.0.2.1:57578 is connecting...
+192.0.2.1:57578 was booted: Name is too long.
+192.0.2.1:57588 is connecting...
+gspffalice has joined.
+gspffalice has left.
+Saving world data: 2%
+Saving world data: 12%
+# … 7 more progress lines like these, dropped from the fixture …
+Saving world data: 100%
+Validating world save: 15%
+Validating world save: 16%
+Validating world save: 66%
+Backing up world file
+192.0.2.1:45096 is connecting...
+192.0.2.1:45096 was booted: Name is too long.
+> exit
+Saving before exit...

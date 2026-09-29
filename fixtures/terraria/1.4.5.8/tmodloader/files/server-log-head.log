@@ -1,0 +1,49 @@
+[16:32:09.443] [Main Thread/INFO] [tML]: Starting tModLoader server 1.4.4.9+2026.07.3.0|2026.07|stable|Stable|666f69962d3bdffde54fc14025f02634965b4e7c|5250924198908260370 built 09/01/2026 00:07
+[16:32:09.451] [Main Thread/INFO] [tML]: Log date: 09/29/2026
+[16:32:09.451] [Main Thread/INFO] [tML]: Running on Linux (v<kernel release>) X64 NetCore 8.0.31
+[16:32:09.455] [Main Thread/INFO] [tML]: CPU: <n> processors. RAM: <n> GB
+[16:32:09.455] [Main Thread/INFO] [tML]: FrameworkDescription: .NET 8.0.31
+[16:32:09.455] [Main Thread/INFO] [tML]: Executable: /opt/tml/v2026.07.3.0/tModLoader.dll
+[16:32:09.455] [Main Thread/INFO] [tML]: Working Directory: /opt/tml/v2026.07.3.0
+[16:32:09.456] [Main Thread/INFO] [tML]: Launch Parameters: -server -port 7777 -tmlsavedirectory /data/tml -steamworkshopfolder /data/.workshop/steamapps/workshop
+[16:32:09.459] [Main Thread/INFO] [tML]: Parsed Launch Parameters: -server -port 7777 -tmlsavedirectory /data/tml -steamworkshopfolder /data/.workshop/steamapps/workshop
+[16:32:09.840] [Main Thread/INFO] [tML]: Saves Are Located At: /data/tml
+[16:32:10.431] [Main Thread/INFO] [tML]: Distribution Platform: Steam. Detection method: Terraria.exe or Terraria_v1.4.5.8.exe not found nearby
+[16:32:10.458] [Main Thread/DEBUG] [tML]: Native Resolve: FNA, Version=23.10.0.0, Culture=neutral, PublicKeyToken=null -> SDL2
+[16:32:10.459] [Main Thread/DEBUG] [tML]: 	attempting load /opt/tml/v2026.07.3.0/Libraries/Native/Linux/libSDL2-2.0.so.0
+[16:32:10.459] [Main Thread/DEBUG] [tML]: 	success
+[16:32:10.555] [Main Thread/INFO] [tML]: Current 1281930 Workshop Folder Directory: /data/.workshop/steamapps/workshop
+[16:32:12.965] [Main Thread/DEBUG] [tML]: Network compatibility version is 2026.7.3
+[16:32:14.685] [Main Thread/INFO] [tML]: Finding Mods...
+[16:32:14.722] [Main Thread/DEBUG] [tML]: Skipped RecipeBrowser 0.9.9 for tML 2022.9.47.50 from Workshop. Reason: mod is for a different Terraria version/LTS release stream.
+[16:32:14.726] [Main Thread/DEBUG] [tML]: Skipped RecipeBrowser 0.12 for tML 2025.9.3.3 from Workshop. Reason: a newer version exists.
+[16:32:14.726] [Main Thread/DEBUG] [tML]: Skipped RecipeBrowser 0.10.13 for tML 2025.6.3.0 from Workshop. Reason: a newer version exists.
+[16:32:14.727] [Main Thread/DEBUG] [tML]: Selected RecipeBrowser 0.12.0.3 for tML 2026.7.3.0 from Workshop.
+[16:32:14.736] [Main Thread/INFO] [tML]: Finding Mods...
+[16:32:14.769] [Main Thread/INFO] [tML]: Sandboxing: RecipeBrowser (Recipe Browser) v0.12.0.3
+[16:32:14.796] [Main Thread/DEBUG] [tML]: Hook System.Runtime.Loader.AssemblyLoadContext::ValidateAssemblyNameWithSimpleName(Assembly, string) added by tModLoader
+[16:32:14.868] [Main Thread/INFO] [tML]: Constructing Mods...
+[16:32:14.899] [Main Thread/INFO] [tML]: Adding Content: ModLoader (tModLoader) v2026.7.3.0
+[16:32:15.024] [.NET TP Worker/INFO] [tML]: JITModsAsync completed in 150ms
+[16:32:15.066] [Main Thread/INFO] [tML]: Adding Content: RecipeBrowser (Recipe Browser) v0.12.0.3
+[16:32:15.147] [Main Thread/DEBUG] [tML]: Hook Terraria.Player::AdjTiles() added by RecipeBrowser
+[16:32:15.149] [Main Thread/INFO] [tML]: Resizing...
+[16:32:15.269] [Main Thread/INFO] [tML]: Configuring Content: ModLoader (tModLoader) v2026.7.3.0
+[16:32:15.289] [Main Thread/INFO] [tML]: Configuring Content: RecipeBrowser (Recipe Browser) v0.12.0.3
+[16:32:15.388] [Main Thread/INFO] [tML]: Finalizing Content: ModLoader (tModLoader) v2026.7.3.0
+[16:32:15.389] [Main Thread/INFO] [tML]: Finalizing Content: RecipeBrowser (Recipe Browser) v0.12.0.3
+[16:32:15.401] [Main Thread/INFO] [tML]: Mods using the most RAM: RecipeBrowser 331.9 KB
+[16:32:15.412] [Main Thread/INFO] [tML]: RAM physical: tModLoader usage: 418.1 MB, All processes usage: 419.5 MB, Available: <n> GB, Total Installed: <n> GB
+[16:32:15.412] [Main Thread/INFO] [tML]: RAM virtual: tModLoader usage: 505.9 MB, All processes usage: 506.3 MB
+[16:32:15.598] [Main Thread/DEBUG] [tML]: GlobalItem registration stats. Count: 2, Slots per Entity: 1
+	Instanced: 1, Conditional with slot: 0, Conditional by type: 0, Applies to single type: 0
+	List Permutations: 1, Est Memory Consumption: 16 bytes
+[16:32:15.653] [Main Thread/DEBUG] [tML]: GlobalNPC registration stats. Count: 2, Slots per Entity: 1
+	Instanced: 1, Conditional with slot: 0, Conditional by type: 0, Applies to single type: 0
+	List Permutations: 1, Est Memory Consumption: 16 bytes
+[16:32:15.672] [Main Thread/DEBUG] [tML]: GlobalProjectile registration stats. Count: 0, Slots per Entity: 0
+	Instanced: 0, Conditional with slot: 0, Conditional by type: 0, Applies to single type: 0
+	List Permutations: 0, Est Memory Consumption: 0 bytes
+[16:32:15.773] [Main Thread/INFO] [tML]: Adding Recipes...
+[16:32:16.014] [Main Thread/INFO] [tML]: Mod Load Completed in 1287ms
+# … (the rest of tModLoader-Logs/server.log is left out of the fixture)

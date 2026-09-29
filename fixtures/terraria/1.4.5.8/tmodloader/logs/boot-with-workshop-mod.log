@@ -1,0 +1,32 @@
+Finding Mods...
+Sandboxing: Recipe Browser v0.12.0.3
+Constructing Mods...
+Adding Content: tModLoader v2026.7.3.0
+Adding Content: Recipe Browser v0.12.0.3
+Resizing...
+Configuring Content: tModLoader v2026.7.3.0
+Configuring Content: Recipe Browser v0.12.0.3
+Finalizing Content: tModLoader v2026.7.3.0
+Finalizing Content: Recipe Browser v0.12.0.3
+Adding Recipes...
+Terraria Server v1.4.4.9
+
+Loading world data: 1%
+Loading world data: 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Loading world data: 100%
+Settling liquids 1%
+Settling liquids 2%
+# … 47 more progress lines like these, dropped from the fixture …
+Settling liquids 50%
+Running engine preload...
+Terraria Server v1.4.4.9
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+Server started
+> modlist
+: Recipe Browser
+> exit
+: Saving before exit...

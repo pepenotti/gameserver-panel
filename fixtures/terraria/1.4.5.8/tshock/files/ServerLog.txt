@@ -1,0 +1,9 @@
+[09/29/26 15:56:47] [Server API] Verbose: TerrariaApi - Server v2.1.0.0 started.
+[09/29/26 15:56:47] [Server API] Verbose: 	Command line: /opt/tsh/621/TShock.Server -port 7777 -maxplayers 8 -world /data/worlds/tsh1.wld -autocreate 1 -worldname tsh1 -savedirectory /data/sd -configpath /data/tshock -logpath /data/tshock/logs -crashdir /data/tshock/crashes -banlist /data/banlist.txt
+[09/29/26 15:56:47] [Server API] Verbose: 	OS: Unix <kernel release> (64bit: True)
+[09/29/26 15:56:47] [Server API] Verbose: 	Mono: False
+[09/29/26 15:56:47] [TShock] Verbose: Listening on port 7777.
+[09/29/26 15:56:47] [TShock] Verbose: World name will be overridden by: tsh1
+[09/29/26 15:56:47] [TShock] Info: Config path has been set to /data/tshock
+[09/29/26 15:56:47] [TShock] Info: Log path has been set to /data/tshock/logs
+[09/29/26 15:56:48] [Server API] Info: Plugin TShock v6.2.1.0 (by The TShock Team) initiated.

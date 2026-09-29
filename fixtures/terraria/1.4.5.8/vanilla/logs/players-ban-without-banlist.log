@@ -1,0 +1,87 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+Loading world data: 1%
+Loading world data: 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Loading world data: 100%
+Settling liquids 1%
+Settling liquids 2%
+# … 47 more progress lines like these, dropped from the fixture …
+Settling liquids 50%
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+# client: connected
+192.0.2.1:56252 is connecting...
+# client: slot 0 (packet 3, 2 bytes)
+# client: world data (170 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+gspffalice has joined.
+# client: packet 129: finished connecting
+> playing
+gspffalice (192.0.2.1:56252)
+1 player connected.
+: 
+192.0.2.1:56264 is connecting...
+# client: connected
+# client: slot 1 (packet 3, 2 bytes)
+# client: world data (170 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+gspffbob has joined.
+# client: packet 129: finished connecting
+> playing
+gspffalice (192.0.2.1:56252)
+gspffbob (192.0.2.1:56264)
+2 players connected.
+: 
+> kick gspffbob
+# client: KICKED: CLI.KickMessage
+192.0.2.1:56264 was booted: Kicked from server.
+: gspffbob has left.
+# client: connection closed
+> playing
+gspffalice (192.0.2.1:56252)
+1 player connected.
+: 
+192.0.2.1:58234 is connecting...
+# client: connected
+# client: slot 1 (packet 3, 2 bytes)
+# client: world data (170 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+gspffcarol has joined.
+# client: packet 129: finished connecting
+> ban gspffcarol
+Invalid command.
+: 
+# client: connected
+192.0.2.1:53910 is connecting...
+# client: slot 2 (packet 3, 2 bytes)
+192.0.2.1:53910 was booted: gspffcarol is already on this server.
+# client: KICKED: LegacyMultiplayer.5(g)
+# client: world data (170 bytes)
+# client: connection closed
+> say Adiós ☃
+<Server> Adiós ☃
+: 
+# client: leaving
+gspffalice has left.
+> playing
+# client: connection closed
+gspffcarol (192.0.2.1:58234)
+1 player connected.
+: 
+> exit
+Saving before exit...
+# client: connection closed

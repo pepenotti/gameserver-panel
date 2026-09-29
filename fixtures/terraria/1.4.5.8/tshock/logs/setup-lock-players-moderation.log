@@ -1,0 +1,133 @@
+Error Logging Enabled.
+[OTAPI] Starting up (PC Server,3.3.14+ca9c239,ModFw:1.1.15+a2c0c70).
+TerrariaAPI Version: 2.1.0.0 (Protocol v1.4.5.8 (326), OTAPI 3.3.14+ca9c239)
+[TShock] Info Config path has been set to /data/tshock
+[TShock] Info Log path has been set to /data/tshock/logs
+Port overridden by startup argument. Set to 7777
+Startup parameter overrode maximum player slot configuration value.
+Startup parameter overrode REST enable.
+Startup parameter overrode REST port.
+Using ConstileationProvider for tile implementation
+TShock 6.2.1.0 (Profoundly Collaborative (3.11)) now running.
+AutoSave Enabled
+Backups Enabled
+Welcome to TShock for Terraria!
+TShock comes with no warranty & is free software.
+You can modify & distribute it under the terms of the GNU GPLv3.
+[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.
+Terraria Server v1.4.5.8
+
+Resetting game objects
+Loading world data:
+Settling liquids
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+Login before join enabled. Users may be prompted for an account specific password instead of a server password on connect.
+Login using UUID enabled. Users automatically login via UUID.
+A malicious server can easily steal a user's UUID. You may consider turning this option off if you run a public server.
+: Server started
+# client: connected
+192.0.2.1:50098 is connecting...
+# client: slot 0 (packet 3, 2 bytes)
+# client: world data (168 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+# client: packet 129: finished connecting
+gspffalice has joined.
+gspffalice has joined. IP: 192.0.2.1
+# client: leaving
+gspffalice has left.
+Saving world data:
+
+Validating world save:
+Backing up world file
+192.0.2.1:50106 is connecting...
+# client: connected
+# client: slot 0 (packet 3, 2 bytes)
+# client: world data (168 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+# client: packet 129: finished connecting
+gspffbob has joined.
+gspffbob has joined. IP: 192.0.2.1
+192.0.2.1:50114 is connecting...
+# client: connected
+# client: slot 1 (packet 3, 2 bytes)
+192.0.2.1:50114 was booted: #5 - You are banned: Test ban
+# client: KICKED: #5 - You are banned: Test ban
+# client: connection closed
+> playing
+Server executed: /playing.
+Online Players (1/8)
+gspffbob
+: 
+> kick gspffbob Bye from the console
+Server executed: /kick gspffbob Bye from the console.
+192.0.2.1:50106 was booted: Kicked: Bye from the console
+# client: KICKED: Kicked: Bye from the console
+Kicked gspffbob for : 'Bye from the console'
+Server kicked gspffbob for 'Bye from the console'
+: gspffbob has left.
+Saving world data:
+
+Validating world save:
+Backing up world file
+# client: connection closed
+Saving world data:
+
+Validating world save:
+Backing up world file
+> ban add gspffcarol Test console ban
+Server executed: /ban add gspffcarol Test console ban.
+Could not find the target specified. Check that you have the correct spelling.
+: 
+> ban list
+Server executed: /ban list.
+Bans (1/1):
+[8] acc:nobody
+[7] uuid:00000000-0000-0000-0000-000000000000
+[6] ip:192.0.2.77
+[5] name:gspffcarol
+: 
+> ban details 1
+Server executed: /ban details 1.
+No bans found matching the provided ticket number.
+: 
+> ban del 1
+Server executed: /ban del 1.
+Command failed, check logs for more details.
+: 
+> who
+Server executed: /who.
+There are currently no players online.
+: 
+"gspagent" requested REST endpoint: /tokentest
+# client: GET /tokentest?token=<token> 200 {"status":"200","response":"Token is valid and was passed through correctly.","associateduser":"gspagent"}
+# client: GET /v2/users/create?user=gspffadmin&password=gsp-test-pw-1&group=superadmin&token=<token> 200 {"status":"200","response":"User was successfully created"}
+"gspagent" requested REST endpoint: /v2/users/list
+# client: GET /v2/users/list?token=<token> 200 {"status":"200","users":[{"name":"gspffadmin","id":1,"group":"superadmin"}]}
+"gspagent" requested REST endpoint: /v2/users/read?user=gspffadmin&type=name
+# client: GET /v2/users/read?user=gspffadmin&type=name&token=<token> 200 {"status":"200","group":"superadmin","id":"1","name":"gspffadmin"}
+# client: GET /v2/users/update?user=gspffadmin&type=name&group=admin&token=<token> 200 {"status":"200","group-response":"Group updated successfully"}
+"gspagent" requested REST endpoint: /v2/users/read?user=gspffadmin&type=name
+# client: GET /v2/users/read?user=gspffadmin&type=name&token=<token> 200 {"status":"200","group":"admin","id":"1","name":"gspffadmin"}
+"gspagent" requested REST endpoint: /v2/users/destroy?user=gspffadmin&type=name
+# client: GET /v2/users/destroy?user=gspffadmin&type=name&token=<token> 200 {"status":"200","response":"User deleted successfully"}
+"gspagent" requested REST endpoint: /v2/groups/read?group=superadmin
+# client: GET /v2/groups/read?group=superadmin&token=<token> 200 {"status":"200","name":"superadmin","parent":"","chatcolor":"255,255,255","permissions":[],"negatedpermissions":[],"totalpermissions":["*"]}
+# client: GET /v2/token/create?username=gspffadmin&password=gsp-test-pw-1 403 {"status":"403","error":"Username or password may be incorrect or this account may not have sufficient privileges."}
+"gspagent" requested REST endpoint: /v3/bans/list
+# client: GET /v3/bans/list?token=<token> 200 {"status":"200","bans":[{"ticket_number":8,"identifier":"acc:nobody","reason":"Banned","banning_user":"gspagent","start_date_ticks":639262951587826700,"end_date_ticks":3155378976000000000},{"ticket_number":7,"identifier":"uuid:00000000-0000-0000-0000-000000000000","reason":"Banned","banning_user":"g
+> off
+Server executed: /off.
+Saving world data:
+
+Validating world save:
+Backing up world file
+Server shutting down!
+Saving before exit...
+Saving world data:
+Validating world save:

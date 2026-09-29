@@ -1,0 +1,19 @@
+# Written by the fact-finding (M5): every key the sample file names, plus one unknown key.
+world=/data/worlds/cfg1.wld
+autocreate=1
+seed=gsp-seed
+worldname=Config World Ñandú
+difficulty=1
+maxplayers=4
+port=7777
+password=
+motd=From config ☃
+worldpath=/data/worlds
+banlist=/data/banlist.txt
+secure=1
+language=es-ES
+upnp=0
+npcstream=60
+priority=1
+worldrollbackstokeep=2
+unknownkey=1

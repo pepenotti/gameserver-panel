@@ -1,0 +1,31 @@
+{
+ "first": {
+  "status": 200,
+  "etag": "W/\"8e67e163626015a6175a459523f9e60bb787f7154a16852528768bd679112f88\"",
+  "remaining": "58",
+  "used": "2",
+  "limit": "60",
+  "cacheControl": "public, max-age=60, s-maxage=60"
+ },
+ "conditional1": {
+  "status": 304,
+  "etag": "W/\"8e67e163626015a6175a459523f9e60bb787f7154a16852528768bd679112f88\"",
+  "remaining": "57",
+  "used": "3",
+  "limit": "60",
+  "cacheControl": "public, max-age=60, s-maxage=60"
+ },
+ "conditional2": {
+  "status": 304,
+  "etag": "W/\"8e67e163626015a6175a459523f9e60bb787f7154a16852528768bd679112f88\"",
+  "remaining": "56",
+  "used": "4",
+  "limit": "60",
+  "cacheControl": "public, max-age=60, s-maxage=60"
+ },
+ "terrariaNotFound": {
+  "status": 404,
+  "type": "text/plain; charset=utf-8",
+  "body": "Not Found"
+ }
+}

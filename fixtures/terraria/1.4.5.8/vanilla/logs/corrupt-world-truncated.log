@@ -1,0 +1,19 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+Loading world data: 1%
+Loading world data: 2%
+# … 1 more progress lines like these, dropped from the fixture …
+Loading world data: 4%
+Load failed!  No backup found.
+
+System.IO.EndOfStreamException: Unable to read beyond the end of the stream.
+  at System.IO.BinaryReader.ReadByte () [0x00018] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at Terraria.IO.WorldFile.LoadWorldTiles (System.IO.BinaryReader reader, System.Boolean[] importance) [0x00085] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.IO.WorldFile.LoadWorld_Version2 (System.IO.BinaryReader reader) [0x00053] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.IO.WorldFile.LoadWorld () [0x00239] in <2112d06ce89d4f6a9f6500cde02e2815>:0 

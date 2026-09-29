@@ -1,0 +1,178 @@
+Error Logging Enabled.
+[OTAPI] Starting up (PC Server,3.3.14+ca9c239,ModFw:1.1.15+a2c0c70).
+TerrariaAPI Version: 2.1.0.0 (Protocol v1.4.5.8 (326), OTAPI 3.3.14+ca9c239)
+[TShock] Info Config path has been set to /data/tshock
+[TShock] Info Log path has been set to /data/tshock/logs
+Port overridden by startup argument. Set to 7777
+Startup parameter overrode maximum player slot configuration value.
+Using ConstileationProvider for tile implementation
+TShock 6.2.1.0 (Profoundly Collaborative (3.11)) now running.
+AutoSave Enabled
+Backups Enabled
+Welcome to TShock for Terraria!
+TShock comes with no warranty & is free software.
+You can modify & distribute it under the terms of the GNU GPLv3.
+[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.
+Terraria Server v1.4.5.8
+
+Resetting game objects
+Loading world data:
+Settling liquids
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+Login before join enabled. Users may be prompted for an account specific password instead of a server password on connect.
+Login using UUID enabled. Users automatically login via UUID.
+A malicious server can easily steal a user's UUID. You may consider turning this option off if you run a public server.
+TShock Notice: setup-code.txt is still present, and the code located in that file will be used.
+To setup the server, join the game and type /setup <redacted>
+This token will display until disabled by verification. (/setup)
+: Server started
+"gspagent" requested REST endpoint: /v3/bans/destroy?ticketNumber=1&fullDelete=true
+# client: GET /v3/bans/destroy?ticketNumber=1&fullDelete=true&token=<token> 200 {"status":"200","response":"Ban removed."}
+"gspagent" requested REST endpoint: /v3/bans/destroy?ticketNumber=2
+# client: GET /v3/bans/destroy?ticketNumber=2&token=<token> 200 {"status":"200","response":"Ban removed."}
+"gspagent" requested REST endpoint: /v3/bans/destroy?ticketNumber=3&fullDelete=true
+# client: GET /v3/bans/destroy?ticketNumber=3&fullDelete=true&token=<token> 200 {"status":"200","response":"Ban removed."}
+"gspagent" requested REST endpoint: /v3/bans/destroy?ticketNumber=4&fullDelete=true
+# client: GET /v3/bans/destroy?ticketNumber=4&fullDelete=true&token=<token> 200 {"status":"200","response":"Ban removed."}
+"gspagent" requested REST endpoint: /v3/bans/list
+# client: GET /v3/bans/list?token=<token> 200 {"status":"200","bans":[{"ticket_number":2,"identifier":"ip:192.0.2.77","reason":"Test ip","banning_user":"gspagent","start_date_ticks":639262945154118400,"end_date_ticks":639262951471085800}]}
+Anonymous requested REST endpoint: /v2/server/status
+# client: GET /status 200 {"status":"200","name":"","serverversion":"v1.4.5.8","tshockversion":"6.2.1.0","port":7777,"playercount":0,"maxplayers":8,"world":"tsh1","uptime":"0.00:00:09","serverpassword":false}
+Anonymous requested REST endpoint: /v2/server/status
+# client: GET /v2/server/status 200 {"status":"200","name":"","serverversion":"v1.4.5.8","tshockversion":"6.2.1.0","port":7777,"playercount":0,"maxplayers":8,"world":"tsh1","uptime":"0.00:00:09","serverpassword":false}
+# client: GET /tokentest?token=not-a-token 403 {"status":"403","error":"Not authorized. The specified API endpoint requires a token, but the provided token was not valid."}
+Anonymous requested REST endpoint: /v2/server/status
+# client: GET /v2/server/status?token=not-a-token 200 {"status":"200","name":"","serverversion":"v1.4.5.8","tshockversion":"6.2.1.0","port":7777,"playercount":0,"maxplayers":8,"world":"tsh1","uptime":"0.00:00:09","serverpassword":false}
+"gspagent" requested REST endpoint: /tokentest
+# client: GET /tokentest?token=<token> 200 {"status":"200","response":"Token is valid and was passed through correctly.","associateduser":"gspagent"}
+Anonymous requested REST endpoint: /v2/server/status?players=true&rules=true
+# client: GET /v2/server/status?token=<token>&players=true&rules=true 200 {"status":"200","name":"","serverversion":"v1.4.5.8","tshockversion":"6.2.1.0","port":7777,"playercount":0,"maxplayers":8,"world":"tsh1","uptime":"0.00:00:09","serverpassword":false,"players":[],"rules":{"AutoSave":true,"DisableBuild":false,"DisableClownBombs":false,"DisableDungeonGuardian":false,"D
+Anonymous requested REST endpoint: /v3/server/motd
+# client: GET /v3/server/motd?token=<token> 200 {"status":"200","motd":["Welcome to [c/ffff00:%map%] on [c/7ddff8:T][c/81dbf6:S][c/86d7f4:h][c/8ad3f3:o][c/8ecef1:c][c/93caef:k] for [c/55d284:T][c/62d27a:e][c/6fd16f:r][c/7cd165:r][c/89d15a:a][c/95d150:r][c/a4d145:i][c/b1d03b:a].","[c/FFFFFF:Online players (%onlineplayers%/%serverslots%):] [c/FFFF0
+Anonymous requested REST endpoint: /v3/server/rules
+# client: GET /v3/server/rules?token=<token> 200 {"status":"200","rules":["Respect the admins!","Don't use TNT!"]}
+"gspagent" requested REST endpoint: /v2/players/list
+# client: GET /v2/players/list?token=<token> 200 {"status":"200","players":[]}
+"gspagent" requested REST endpoint: /v2/users/list
+# client: GET /v2/users/list?token=<token> 200 {"status":"200","users":[]}
+"gspagent" requested REST endpoint: /v2/groups/list
+# client: GET /v2/groups/list?token=<token> 200 {"status":"200","groups":[{"name":"guest","parent":"","chatcolor":"255,255,255"},{"name":"default","parent":"guest","chatcolor":"255,255,255"},{"name":"vip","parent":"default","chatcolor":"255,255,255"},{"name":"insecure-guest","parent":"","chatcolor":"255,255,255"},{"name":"newadmin","parent":"vip"
+"gspagent" requested REST endpoint: /v3/bans/list
+# client: GET /v3/bans/list?token=<token> 200 {"status":"200","bans":[{"ticket_number":2,"identifier":"ip:192.0.2.77","reason":"Test ip","banning_user":"gspagent","start_date_ticks":639262945154118400,"end_date_ticks":639262951471085800}]}
+# client: GET /v2/token/create?username=nobody&password=nothing 403 {"status":"403","error":"Username or password may be incorrect or this account may not have sufficient privileges."}
+Anonymous requested REST endpoint: /v2/server/status
+# client: POST /v2/server/status?token=<token> 200 {"status":"200","name":"","serverversion":"v1.4.5.8","tshockversion":"6.2.1.0","port":7777,"playercount":0,"maxplayers":8,"world":"tsh1","uptime":"0.00:00:09","serverpassword":false}
+# client: connected
+192.0.2.1:33898 is connecting...
+# client: slot 0 (packet 3, 2 bytes)
+# client: world data (168 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+# client: packet 129: finished connecting
+gspffalice has joined.
+gspffalice has joined. IP: 192.0.2.1
+192.0.2.1:33906 is connecting...
+# client: connected
+# client: slot 1 (packet 3, 2 bytes)
+# client: world data (168 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+# client: packet 129: finished connecting
+gspffbob has joined.
+gspffbob has joined. IP: 192.0.2.1
+192.0.2.1:33920 is connecting...
+# client: connected
+# client: slot 2 (packet 3, 2 bytes)
+# client: world data (168 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+# client: packet 129: finished connecting
+gspffcarol has joined.
+gspffcarol has joined. IP: 192.0.2.1
+> who
+Server executed: /who.
+Online Players (3/8)
+gspffalice, gspffbob, gspffcarol
+: 
+Anonymous requested REST endpoint: /v2/server/status?players=true
+# client: GET /v2/server/status?token=<token>&players=true 200 {"status":"200","name":"","serverversion":"v1.4.5.8","tshockversion":"6.2.1.0","port":7777,"playercount":3,"maxplayers":8,"world":"tsh1","uptime":"0.00:00:14","serverpassword":false,"players":[{"nickname":"gspffalice","username":"","group":"guest","active":true,"state":10,"team":1},{"nickname":"gspf
+"gspagent" requested REST endpoint: /v2/players/list
+# client: GET /v2/players/list?token=<token> 200 {"status":"200","players":[{"nickname":"gspffalice","username":"","group":"guest","active":true,"state":10,"team":1},{"nickname":"gspffbob","username":"","group":"guest","active":true,"state":10,"team":1},{"nickname":"gspffcarol","username":"","group":"guest","active":true,"state":10,"team":1}]}
+"gspagent" requested REST endpoint: /v3/players/read?player=gspffalice
+# client: GET /v3/players/read?player=gspffalice&token=<token> 200 {"status":"200","nickname":"gspffalice","username":null,"ip":"192.0.2.1","group":"guest","registered":null,"muted":false,"position":"2096,245","inventory":"","armor":"","dyes":"","buffs":"0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+"gspagent" requested REST endpoint: /v4/players/read?player=gspffalice
+# client: GET /v4/players/read?player=gspffalice&token=<token> 200 {"status":"200","nickname":"gspffalice","username":null,"ip":"192.0.2.1","group":"guest","registered":null,"muted":false,"position":"2096,245","items":{"inventory":[],"equipment":[],"dyes":[],"piggy":[],"safe":[],"forge":[]},"buffs":"0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+# client: KICKED: Kicked: Bye from the panel
+192.0.2.1:33906 was booted: Kicked: Bye from the panel
+Kicked gspffbob for : 'Bye from the panel'
+"gspagent" requested REST endpoint: /v2/players/kick?player=gspffbob&reason=Bye from the panel
+# client: connection closed
+# client: GET /v2/players/kick?player=gspffbob&reason=Bye%20from%20the%20panel&token=<token> 200 {"status":"200","response":"Player gspffbob was kicked"}
+"gspagent" requested REST endpoint: /v2/players/kick?player=nobody
+# client: GET /v2/players/kick?player=nobody&token=<token> 400 {"status":"400","error":"Player nobody was not found"}
+# client: GET /v3/bans/create?identifier=name:gspffcarol&reason=Test%20ban&token=<token> 500 {"status":"500","error":"Internal server error.","errormsg":"Object reference not set to an instance of an object.","stacktrace":"   at TShockAPI.RestManager.<>c__DisplayClass17_0.<BanCreateV3>b__3(TSPlayer p) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 650\n   at System.Li
+"gspagent" requested REST endpoint: /v2/players/list
+# client: GET /v2/players/list?token=<token> 200 {"status":"200","players":[{"nickname":"gspffalice","username":"","group":"guest","active":true,"state":10,"team":1},{"nickname":"gspffcarol","username":"","group":"guest","active":true,"state":10,"team":1}]}
+# client: GET /v3/bans/create?identifier=ip:192.0.2.77&reason=Test%20ip&token=<token> 500 {"status":"500","error":"Internal server error.","errormsg":"Object reference not set to an instance of an object.","stacktrace":"   at TShockAPI.RestManager.<>c__DisplayClass17_0.<BanCreateV3>b__0(TSPlayer p) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 645\n   at System.Li
+# client: GET /v3/bans/create?identifier=uuid:00000000-0000-0000-0000-000000000000&token=<token> 500 {"status":"500","error":"Internal server error.","errormsg":"Object reference not set to an instance of an object.","stacktrace":"   at TShockAPI.RestManager.<>c__DisplayClass17_0.<BanCreateV3>b__2(TSPlayer p) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 661\n   at System.Li
+# client: GET /v3/bans/create?identifier=acc:nobody&token=<token> 500 {"status":"500","error":"Internal server error.","errormsg":"Object reference not set to an instance of an object.","stacktrace":"   at TShockAPI.RestManager.<>c__DisplayClass17_0.<BanCreateV3>b__1(TSPlayer p) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 657\n   at System.Li
+"gspagent" requested REST endpoint: /v3/bans/create
+# client: GET /v3/bans/create?token=<token> 400 {"status":"400","error":"Missing or empty identifier parameter"}
+"gspagent" requested REST endpoint: /v3/bans/list
+# client: GET /v3/bans/list?token=<token> 200 {"status":"200","bans":[{"ticket_number":5,"identifier":"name:gspffcarol","reason":"Test ban","banning_user":"gspagent","start_date_ticks":639262951556944500,"end_date_ticks":3155378976000000000},{"ticket_number":6,"identifier":"ip:192.0.2.77","reason":"Test ip","banning_user":"gspagent","start_date
+"gspagent" requested REST endpoint: /v3/bans/read?ticketNumber=1
+# client: GET /v3/bans/read?ticketNumber=1&token=<token> 200 {"status":"200","response":"No matching bans found."}
+"gspagent" requested REST endpoint: /v3/bans/read?ticketNumber=999
+# client: GET /v3/bans/read?ticketNumber=999&token=<token> 200 {"status":"200","response":"No matching bans found."}
+"gspagent" requested REST endpoint: /v2/server/broadcast?msg=Hola ☃
+# client: GET /v2/server/broadcast?msg=Hola%20%E2%98%83&token=<token> 200 {"status":"200","response":"The message was broadcasted successfully"}
+gspagent executed: /who.
+"gspagent" requested REST endpoint: /v3/server/rawcmd?cmd=/who
+# client: GET /v3/server/rawcmd?cmd=/who&token=<token> 200 {"status":"200","response":["Online Players ([c/AAFFAA:2]/8)","gspffalice, gspffcarol"]}
+"gspagent" requested REST endpoint: /v3/server/rawcmd?cmd=who
+# client: GET /v3/server/rawcmd?cmd=who&token=<token> 200 {"status":"200","response":["Invalid command entered. Type /help for a list of valid commands."]}
+gspagent executed: /kick nobody.
+"gspagent" requested REST endpoint: /v3/server/rawcmd?cmd=/kick nobody
+# client: GET /v3/server/rawcmd?cmd=/kick%20nobody&token=<token> 200 {"status":"200","response":["Player not found. Unable to kick the player."]}
+Saving world data:
+
+Validating world save:
+Backing up world file
+"gspagent" requested REST endpoint: /v2/world/save
+# client: GET /v2/world/save?token=<token> 200 {"status":"200","response":"World saved"}
+"gspagent" requested REST endpoint: /v2/players/mute?player=gspffalice
+# client: GET /v2/players/mute?player=gspffalice&token=<token> 200 {"status":"200","response":"Player gspffalice has been muted"}
+192.0.2.1:58270 is connecting...
+# client: connected
+# client: slot 1 (packet 3, 2 bytes)
+192.0.2.1:33920 was booted: Kicked: You logged in from the same IP.
+Kicked gspffcarol for : 'You logged in from the same IP.'
+# client: KICKED: Kicked: You logged in from the same IP.
+192.0.2.1:58270 was booted: #5 - You are banned: Test ban
+# client: KICKED: #5 - You are banned: Test ban
+# client: connection closed
+# client: connection closed
+# client: GET /v3/bans/destroy?ticketNumber=1&token=<token> 500 {"status":"500","error":"Internal server error.","errormsg":"The given key '1' was not present in the dictionary.","stacktrace":"   at System.Collections.Generic.Dictionary`2.get_Item(TKey key) in System.Private.CoreLib.dll:token 0x60094f0+0x17\n   at TShockAPI.DB.BanManager.RemoveBan(Int32 ticketNu
+"gspagent" requested REST endpoint: /v3/bans/destroy?ticketNumber=2&fullDelete=true
+# client: GET /v3/bans/destroy?ticketNumber=2&fullDelete=true&token=<token> 200 {"status":"200","response":"Ban removed."}
+"gspagent" requested REST endpoint: /v3/bans/list
+# client: GET /v3/bans/list?token=<token> 200 {"status":"200","bans":[{"ticket_number":5,"identifier":"name:gspffcarol","reason":"Test ban","banning_user":"gspagent","start_date_ticks":639262951556944500,"end_date_ticks":3155378976000000000},{"ticket_number":6,"identifier":"ip:192.0.2.77","reason":"Test ip","banning_user":"gspagent","start_date
+"gspagent" requested REST endpoint: /v2/server/off
+# client: GET /v2/server/off?token=<token> 400 {"status":"400","error":"Missing or invalid confirm parameter"}
+Saving world data:
+
+Validating world save:
+Backing up world file
+192.0.2.1:33898 was booted: Bye
+Bye
+# client: KICKED: Bye
+"gspagent" requested REST endpoint: /v2/server/off?confirm=true&nosave=false&message=Bye
+# client: GET /v2/server/off?confirm=true&nosave=false&message=Bye&token=<token> 200 {"status":"200","response":"The server is shutting down"}
+Saving before exit...
+Saving world data:
+Validating world save:
+# client: connection closed

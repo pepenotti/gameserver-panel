@@ -1,0 +1,523 @@
+[
+ {
+  "t": -0.002,
+  "dir": "client",
+  "text": "connected"
+ },
+ {
+  "t": 0,
+  "dir": "out",
+  "text": "192.0.2.1:50098 is connecting..."
+ },
+ {
+  "t": 0.076,
+  "dir": "client",
+  "text": "slot 0 (packet 3, 2 bytes)"
+ },
+ {
+  "t": 0.108,
+  "dir": "client",
+  "text": "world data (168 bytes)"
+ },
+ {
+  "t": 0.139,
+  "dir": "client",
+  "text": "status: LegacyInterface.44"
+ },
+ {
+  "t": 0.312,
+  "dir": "client",
+  "text": "packet 49: spawning"
+ },
+ {
+  "t": 0.355,
+  "dir": "client",
+  "text": "packet 129: finished connecting"
+ },
+ {
+  "t": 0.373,
+  "dir": "out",
+  "text": "gspffalice has joined."
+ },
+ {
+  "t": 0.374,
+  "dir": "out",
+  "text": "gspffalice has joined. IP: 192.0.2.1"
+ },
+ {
+  "t": 3.997,
+  "dir": "client",
+  "text": "leaving"
+ },
+ {
+  "t": 5.09,
+  "dir": "out",
+  "text": "gspffalice has left."
+ },
+ {
+  "t": 5.117,
+  "dir": "out",
+  "text": "Saving world data:"
+ },
+ {
+  "t": 5.129,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 5.613,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 5.663,
+  "dir": "out",
+  "text": "Backing up world file"
+ },
+ {
+  "t": 6.628,
+  "dir": "out",
+  "text": "192.0.2.1:50106 is connecting..."
+ },
+ {
+  "t": 6.629,
+  "dir": "client",
+  "text": "connected"
+ },
+ {
+  "t": 6.652,
+  "dir": "client",
+  "text": "slot 0 (packet 3, 2 bytes)"
+ },
+ {
+  "t": 6.673,
+  "dir": "client",
+  "text": "world data (168 bytes)"
+ },
+ {
+  "t": 6.693,
+  "dir": "client",
+  "text": "status: LegacyInterface.44"
+ },
+ {
+  "t": 6.76,
+  "dir": "client",
+  "text": "packet 49: spawning"
+ },
+ {
+  "t": 6.781,
+  "dir": "client",
+  "text": "packet 129: finished connecting"
+ },
+ {
+  "t": 6.782,
+  "dir": "out",
+  "text": "gspffbob has joined."
+ },
+ {
+  "t": 6.807,
+  "dir": "out",
+  "text": "gspffbob has joined. IP: 192.0.2.1"
+ },
+ {
+  "t": 6.899,
+  "dir": "out",
+  "text": "192.0.2.1:50114 is connecting..."
+ },
+ {
+  "t": 6.9,
+  "dir": "client",
+  "text": "connected"
+ },
+ {
+  "t": 6.913,
+  "dir": "client",
+  "text": "slot 1 (packet 3, 2 bytes)"
+ },
+ {
+  "t": 6.93,
+  "dir": "out",
+  "text": "192.0.2.1:50114 was booted: #5 - You are banned: Test ban"
+ },
+ {
+  "t": 6.93,
+  "dir": "client",
+  "text": "KICKED: #5 - You are banned: Test ban"
+ },
+ {
+  "t": 6.948,
+  "dir": "client",
+  "text": "connection closed"
+ },
+ {
+  "t": 21.817,
+  "dir": "in",
+  "text": "playing"
+ },
+ {
+  "t": 21.824,
+  "dir": "out",
+  "text": "Server executed: /playing."
+ },
+ {
+  "t": 21.833,
+  "dir": "out",
+  "text": "Online Players (1/8)"
+ },
+ {
+  "t": 21.835,
+  "dir": "out",
+  "text": "gspffbob"
+ },
+ {
+  "t": 22.242,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 22.62,
+  "dir": "in",
+  "text": "kick gspffbob Bye from the console"
+ },
+ {
+  "t": 22.624,
+  "dir": "out",
+  "text": "Server executed: /kick gspffbob Bye from the console."
+ },
+ {
+  "t": 22.625,
+  "dir": "out",
+  "text": "192.0.2.1:50106 was booted: Kicked: Bye from the console"
+ },
+ {
+  "t": 22.626,
+  "dir": "client",
+  "text": "KICKED: Kicked: Bye from the console"
+ },
+ {
+  "t": 22.626,
+  "dir": "out",
+  "text": "Kicked gspffbob for : 'Bye from the console'"
+ },
+ {
+  "t": 22.626,
+  "dir": "out",
+  "text": "Server kicked gspffbob for 'Bye from the console'"
+ },
+ {
+  "t": 22.626,
+  "dir": "out",
+  "text": ": gspffbob has left."
+ },
+ {
+  "t": 22.628,
+  "dir": "out",
+  "text": "Saving world data:"
+ },
+ {
+  "t": 22.643,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 22.864,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 22.893,
+  "dir": "out",
+  "text": "Backing up world file"
+ },
+ {
+  "t": 22.93,
+  "dir": "client",
+  "text": "connection closed"
+ },
+ {
+  "t": 22.951,
+  "dir": "out",
+  "text": "Saving world data:"
+ },
+ {
+  "t": 22.968,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 23.186,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 23.216,
+  "dir": "out",
+  "text": "Backing up world file"
+ },
+ {
+  "t": 24.132,
+  "dir": "in",
+  "text": "ban add gspffcarol Test console ban"
+ },
+ {
+  "t": 24.134,
+  "dir": "out",
+  "text": "Server executed: /ban add gspffcarol Test console ban."
+ },
+ {
+  "t": 24.137,
+  "dir": "out",
+  "text": "Could not find the target specified. Check that you have the correct spelling."
+ },
+ {
+  "t": 24.541,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 25.644,
+  "dir": "in",
+  "text": "ban list"
+ },
+ {
+  "t": 25.647,
+  "dir": "out",
+  "text": "Server executed: /ban list."
+ },
+ {
+  "t": 25.656,
+  "dir": "out",
+  "text": "Bans (1/1):"
+ },
+ {
+  "t": 25.656,
+  "dir": "out",
+  "text": "[8] acc:nobody"
+ },
+ {
+  "t": 25.656,
+  "dir": "out",
+  "text": "[7] uuid:00000000-0000-0000-0000-000000000000"
+ },
+ {
+  "t": 25.656,
+  "dir": "out",
+  "text": "[6] ip:192.0.2.77"
+ },
+ {
+  "t": 25.656,
+  "dir": "out",
+  "text": "[5] name:gspffcarol"
+ },
+ {
+  "t": 26.067,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 26.65,
+  "dir": "in",
+  "text": "ban details 1"
+ },
+ {
+  "t": 26.653,
+  "dir": "out",
+  "text": "Server executed: /ban details 1."
+ },
+ {
+  "t": 26.655,
+  "dir": "out",
+  "text": "No bans found matching the provided ticket number."
+ },
+ {
+  "t": 27.06,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 27.453,
+  "dir": "in",
+  "text": "ban del 1"
+ },
+ {
+  "t": 27.456,
+  "dir": "out",
+  "text": "Server executed: /ban del 1."
+ },
+ {
+  "t": 27.459,
+  "dir": "out",
+  "text": "Command failed, check logs for more details."
+ },
+ {
+  "t": 27.861,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 28.256,
+  "dir": "in",
+  "text": "who"
+ },
+ {
+  "t": 28.259,
+  "dir": "out",
+  "text": "Server executed: /who."
+ },
+ {
+  "t": 28.259,
+  "dir": "out",
+  "text": "There are currently no players online."
+ },
+ {
+  "t": 28.665,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 29.246,
+  "dir": "out",
+  "text": "\"gspagent\" requested REST endpoint: /tokentest"
+ },
+ {
+  "t": 29.27,
+  "dir": "client",
+  "text": "GET /tokentest?token=<token> 200 {\"status\":\"200\",\"response\":\"Token is valid and was passed through correctly.\",\"associateduser\":\"gspagent\"}"
+ },
+ {
+  "t": 29.351,
+  "dir": "client",
+  "text": "GET /v2/users/create?user=gspffadmin&password=gsp-test-pw-1&group=superadmin&token=<token> 200 {\"status\":\"200\",\"response\":\"User was successfully created\"}"
+ },
+ {
+  "t": 29.356,
+  "dir": "out",
+  "text": "\"gspagent\" requested REST endpoint: /v2/users/list"
+ },
+ {
+  "t": 29.359,
+  "dir": "client",
+  "text": "GET /v2/users/list?token=<token> 200 {\"status\":\"200\",\"users\":[{\"name\":\"gspffadmin\",\"id\":1,\"group\":\"superadmin\"}]}"
+ },
+ {
+  "t": 29.363,
+  "dir": "out",
+  "text": "\"gspagent\" requested REST endpoint: /v2/users/read?user=gspffadmin&type=name"
+ },
+ {
+  "t": 29.407,
+  "dir": "client",
+  "text": "GET /v2/users/read?user=gspffadmin&type=name&token=<token> 200 {\"status\":\"200\",\"group\":\"superadmin\",\"id\":\"1\",\"name\":\"gspffadmin\"}"
+ },
+ {
+  "t": 29.425,
+  "dir": "client",
+  "text": "GET /v2/users/update?user=gspffadmin&type=name&group=admin&token=<token> 200 {\"status\":\"200\",\"group-response\":\"Group updated successfully\"}"
+ },
+ {
+  "t": 29.43,
+  "dir": "out",
+  "text": "\"gspagent\" requested REST endpoint: /v2/users/read?user=gspffadmin&type=name"
+ },
+ {
+  "t": 29.475,
+  "dir": "client",
+  "text": "GET /v2/users/read?user=gspffadmin&type=name&token=<token> 200 {\"status\":\"200\",\"group\":\"admin\",\"id\":\"1\",\"name\":\"gspffadmin\"}"
+ },
+ {
+  "t": 29.499,
+  "dir": "out",
+  "text": "\"gspagent\" requested REST endpoint: /v2/users/destroy?user=gspffadmin&type=name"
+ },
+ {
+  "t": 29.5,
+  "dir": "client",
+  "text": "GET /v2/users/destroy?user=gspffadmin&type=name&token=<token> 200 {\"status\":\"200\",\"response\":\"User deleted successfully\"}"
+ },
+ {
+  "t": 29.504,
+  "dir": "out",
+  "text": "\"gspagent\" requested REST endpoint: /v2/groups/read?group=superadmin"
+ },
+ {
+  "t": 29.551,
+  "dir": "client",
+  "text": "GET /v2/groups/read?group=superadmin&token=<token> 200 {\"status\":\"200\",\"name\":\"superadmin\",\"parent\":\"\",\"chatcolor\":\"255,255,255\",\"permissions\":[],\"negatedpermissions\":[],\"totalpermissions\":[\"*\"]}"
+ },
+ {
+  "t": 29.557,
+  "dir": "client",
+  "text": "GET /v2/token/create?username=gspffadmin&password=gsp-test-pw-1 403 {\"status\":\"403\",\"error\":\"Username or password may be incorrect or this account may not have sufficient privileges.\"}"
+ },
+ {
+  "t": 29.562,
+  "dir": "out",
+  "text": "\"gspagent\" requested REST endpoint: /v3/bans/list"
+ },
+ {
+  "t": 29.607,
+  "dir": "client",
+  "text": "GET /v3/bans/list?token=<token> 200 {\"status\":\"200\",\"bans\":[{\"ticket_number\":8,\"identifier\":\"acc:nobody\",\"reason\":\"Banned\",\"banning_user\":\"gspagent\",\"start_date_ticks\":639262951587826700,\"end_date_ticks\":3155378976000000000},{\"ticket_number\":7,\"identifier\":\"uuid:00000000-0000-0000-0000-000000000000\",\"reason\":\"Banned\",\"banning_user\":\"g"
+ },
+ {
+  "t": 29.945,
+  "dir": "in",
+  "text": "off"
+ },
+ {
+  "t": 29.948,
+  "dir": "out",
+  "text": "Server executed: /off."
+ },
+ {
+  "t": 29.949,
+  "dir": "out",
+  "text": "Saving world data:"
+ },
+ {
+  "t": 29.97,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 30.251,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 30.278,
+  "dir": "out",
+  "text": "Backing up world file"
+ },
+ {
+  "t": 30.3,
+  "dir": "out",
+  "text": "Server shutting down!"
+ },
+ {
+  "t": 30.301,
+  "dir": "out",
+  "text": "Saving before exit..."
+ },
+ {
+  "t": 30.301,
+  "dir": "out",
+  "text": "Saving world data:"
+ },
+ {
+  "t": 30.524,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 31.193,
+  "dir": "exit",
+  "text": "exit code=0 signal=null"
+ }
+]

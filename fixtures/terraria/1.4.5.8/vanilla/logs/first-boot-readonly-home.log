@@ -1,0 +1,29 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Failed to create the file: "\home\node\.local\share\Terraria\favorites.json"!
+
+Suggestions:
+1. If you are using an Anti-virus, please make sure it does not block Terraria in any way.
+2. Try making sure your `Documents/My Games/Terraria` folder is not set to 'read-only'.
+3. Try to verify/repair the game installation.
+
+The original Error below
+System.IO.DirectoryNotFoundException: Could not find a part of the path "/home/node/.local/share/Terraria/favorites.json".
+  at System.IO.FileStream..ctor (System.String path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share, System.Int32 bufferSize, System.Boolean anonymous, System.IO.FileOptions options) [0x00164] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.IO.FileStream..ctor (System.String path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share) [0x00000] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at (wrapper remoting-invoke-with-check) System.IO.FileStream..ctor(string,System.IO.FileMode,System.IO.FileAccess,System.IO.FileShare)
+  at System.IO.File.Open (System.String path, System.IO.FileMode mode, System.IO.FileAccess access, System.IO.FileShare share) [0x00000] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.IO.File.Open (System.String path, System.IO.FileMode mode) [0x00000] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at Terraria.Utilities.FileUtilities.Write (System.String path, System.Byte[] data, System.Int32 length, System.Boolean cloud) [0x0003c] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Utilities.FileUtilities.WriteAllBytes (System.String path, System.Byte[] data, System.Boolean cloud) [0x00000] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.IO.FavoritesFile.Save () [0x0001a] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+> exit
+Saving before exit...

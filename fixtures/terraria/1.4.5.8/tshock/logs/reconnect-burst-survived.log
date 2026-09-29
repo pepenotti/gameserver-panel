@@ -1,0 +1,450 @@
+Error Logging Enabled.
+[OTAPI] Starting up (PC Server,3.3.14+ca9c239,ModFw:1.1.15+a2c0c70).
+TerrariaAPI Version: 2.1.0.0 (Protocol v1.4.5.8 (326), OTAPI 3.3.14+ca9c239)
+[TShock] Info Config path has been set to /data/tshock
+[TShock] Info Log path has been set to /data/tshock/logs
+Port overridden by startup argument. Set to 7777
+Using ConstileationProvider for tile implementation
+TShock 6.2.1.0 (Profoundly Collaborative (3.11)) now running.
+AutoSave Enabled
+Backups Enabled
+Welcome to TShock for Terraria!
+TShock comes with no warranty & is free software.
+You can modify & distribute it under the terms of the GNU GPLv3.
+[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.
+Terraria Server v1.4.5.8
+
+Resetting game objects
+Loading world data:
+Settling liquids
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+Login before join enabled. Users may be prompted for an account specific password instead of a server password on connect.
+: Login using UUID enabled. Users automatically login via UUID.
+A malicious server can easily steal a user's UUID. You may consider turning this option off if you run a public server.
+Server started
+192.0.2.1:56604 is connecting...
+192.0.2.1:56604 was booted: You are not using the same version as this server.
+# client: {"r":200,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56620 is connecting...
+Saving world data:
+
+Validating world save:
+Backing up world file
+192.0.2.1:56620 was booted: You are not using the same version as this server.
+# client: {"r":201,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56630 is connecting...
+192.0.2.1:56630 was booted: You are not using the same version as this server.
+# client: {"r":202,"kick":"LegacyMultiplayer.4"}
+Saving world data:
+192.0.2.1:56632 is connecting...
+
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56632 was booted: You are not using the same version as this server.
+# client: {"r":203,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56640 is connecting...
+Validating world save:
+Saving world data:
+192.0.2.1:56640 was booted: You are not using the same version as this server.
+# client: {"r":204,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56650 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56650 was booted: You are not using the same version as this server.
+# client: {"r":205,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56654 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56654 was booted: You are not using the same version as this server.
+# client: {"r":206,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56666 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56666 was booted: You are not using the same version as this server.
+# client: {"r":207,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56674 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56674 was booted: You are not using the same version as this server.
+# client: {"r":208,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56690 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56690 was booted: You are not using the same version as this server.
+# client: {"r":209,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56694 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56694 was booted: You are not using the same version as this server.
+# client: {"r":210,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56700 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56700 was booted: You are not using the same version as this server.
+# client: {"r":211,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56704 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56704 was booted: You are not using the same version as this server.
+# client: {"r":212,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56718 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56718 was booted: You are not using the same version as this server.
+# client: {"r":213,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56722 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56722 was booted: You are not using the same version as this server.
+# client: {"r":214,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52738 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52738 was booted: You are not using the same version as this server.
+# client: {"r":215,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52752 is connecting...
+Validating world save:
+Saving world data:
+192.0.2.1:52752 was booted: You are not using the same version as this server.
+# client: {"r":216,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52768 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52768 was booted: You are not using the same version as this server.
+# client: {"r":217,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52770 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52770 was booted: You are not using the same version as this server.
+# client: {"r":218,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52786 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52786 was booted: You are not using the same version as this server.
+# client: {"r":219,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52798 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52798 was booted: You are not using the same version as this server.
+# client: {"r":220,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52802 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52802 was booted: You are not using the same version as this server.
+# client: {"r":221,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52812 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52812 was booted: You are not using the same version as this server.
+# client: {"r":222,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52828 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52828 was booted: You are not using the same version as this server.
+# client: {"r":223,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52830 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52830 was booted: You are not using the same version as this server.
+# client: {"r":224,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52840 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52840 was booted: You are not using the same version as this server.
+# client: {"r":225,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52848 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52848 was booted: You are not using the same version as this server.
+# client: {"r":226,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52856 is connecting...
+Validating world save:
+Saving world data:
+192.0.2.1:52856 was booted: You are not using the same version as this server.
+# client: {"r":227,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52860 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52860 was booted: You are not using the same version as this server.
+# client: {"r":228,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:52868 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:52868 was booted: You are not using the same version as this server.
+# client: {"r":229,"kick":"LegacyMultiplayer.4"}
+Validating world save:
+Backing up world file
+Saving world data:
+
+Validating world save:
+Backing up world file
+192.0.2.1:56506 is connecting...
+192.0.2.1:56506 was booted: You are not using the same version as this server.
+# client: {"r":200,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56510 is connecting...
+192.0.2.1:56510 was booted: You are not using the same version as this server.
+# client: {"r":201,"kick":"LegacyMultiplayer.4"}
+Saving world data:
+192.0.2.1:56526 is connecting...
+
+Validating world save:
+Backing up world file
+Saving world data:
+
+Validating world save:
+Backing up world file
+192.0.2.1:56526 was booted: You are not using the same version as this server.
+# client: {"r":202,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56532 is connecting...
+192.0.2.1:56532 was booted: You are not using the same version as this server.
+# client: {"r":203,"kick":"LegacyMultiplayer.4"}
+Saving world data:
+192.0.2.1:56536 is connecting...
+
+Validating world save:
+Backing up world file
+Saving world data:
+
+Validating world save:
+Backing up world file
+192.0.2.1:56536 was booted: You are not using the same version as this server.
+# client: {"r":204,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56552 is connecting...
+192.0.2.1:56552 was booted: You are not using the same version as this server.
+# client: {"r":205,"kick":"LegacyMultiplayer.4"}
+Saving world data:
+192.0.2.1:56558 is connecting...
+
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56558 was booted: You are not using the same version as this server.
+# client: {"r":206,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56566 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56566 was booted: You are not using the same version as this server.
+# client: {"r":207,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56568 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56568 was booted: You are not using the same version as this server.
+# client: {"r":208,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56584 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56584 was booted: You are not using the same version as this server.
+# client: {"r":209,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56590 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56590 was booted: You are not using the same version as this server.
+# client: {"r":210,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56594 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56594 was booted: You are not using the same version as this server.
+# client: {"r":211,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56600 is connecting...
+Validating world save:
+Saving world data:
+192.0.2.1:56600 was booted: You are not using the same version as this server.
+# client: {"r":212,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56608 is connecting...
+Validating world save:
+Saving world data:
+192.0.2.1:56608 was booted: You are not using the same version as this server.
+# client: {"r":213,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56614 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56614 was booted: You are not using the same version as this server.
+# client: {"r":214,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56634 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56634 was booted: You are not using the same version as this server.
+# client: {"r":215,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56636 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56636 was booted: You are not using the same version as this server.
+# client: {"r":216,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56642 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56642 was booted: You are not using the same version as this server.
+# client: {"r":217,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56652 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56652 was booted: You are not using the same version as this server.
+# client: {"r":218,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56660 is connecting...
+Validating world save:
+Backing up world file
+# client: {"r":219,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56660 was booted: You are not using the same version as this server.
+Saving world data:
+192.0.2.1:56676 is connecting...
+
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56676 was booted: You are not using the same version as this server.
+# client: {"r":220,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56692 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56692 was booted: You are not using the same version as this server.
+# client: {"r":221,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56706 is connecting...
+Validating world save:
+Backing up world file
+192.0.2.1:56706 was booted: You are not using the same version as this server.
+# client: {"r":222,"kick":"LegacyMultiplayer.4"}
+Saving world data:
+192.0.2.1:56712 is connecting...
+
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56712 was booted: You are not using the same version as this server.
+# client: {"r":223,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56716 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56716 was booted: You are not using the same version as this server.
+# client: {"r":224,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56720 is connecting...
+Validating world save:
+Saving world data:
+192.0.2.1:56720 was booted: You are not using the same version as this server.
+# client: {"r":225,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56724 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56724 was booted: You are not using the same version as this server.
+# client: {"r":226,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56726 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56726 was booted: You are not using the same version as this server.
+# client: {"r":227,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56740 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56740 was booted: You are not using the same version as this server.
+# client: {"r":228,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:56756 is connecting...
+Validating world save:
+Backing up world file
+Saving world data:
+
+192.0.2.1:56756 was booted: You are not using the same version as this server.
+# client: {"r":229,"kick":"LegacyMultiplayer.4"}
+Validating world save:
+Backing up world file
+Saving world data:
+
+Validating world save:
+Backing up world file
+> who
+Server executed: /who.
+There are currently no players online.
+: 
+> exit
+Server executed: /exit.
+Saving world data:
+
+Validating world save:
+Backing up world file
+Server shutting down!
+Saving before exit...
+Saving world data:
+Validating world save:

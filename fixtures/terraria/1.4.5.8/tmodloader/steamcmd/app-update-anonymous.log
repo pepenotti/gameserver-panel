@@ -1,0 +1,56 @@
+steamcmd.sh[41]: Starting  /home/node/steamcmd/linux32/steamcmd
+WARNING: setlocale('en_US.UTF-8') failed, using locale: 'C'. International characters may not work.
+Redirecting stderr to '/home/node/Steam/logs/stderr.txt'
+Logging directory: '/home/node/Steam/logs'
+[  0%] Checking for available updates...
+[----] Verifying installation...
+UpdateUI: skip show logo
+Steam Console Client (c) Valve Corporation - version 1788292693
+-- type 'quit' to exit --
+Loading Steam API...OK
+
+Connecting anonymously to Steam Public...OK
+Waiting for client config...OK
+Waiting for user info...OK
+ Update state (0x0) unknown, progress: 0.00 (0 / 0)
+Success! App '1281930' fully installed.
+Unloading Steam API...OK
+exit=0 seconds= t1=1790692940.311659403 now=1790692949.398350625
+20K	/opt/game
+total 12
+drwxr-xr-x 3 node node 4096 Sep 29 14:42 .
+drwxr-xr-x 1 root root 4096 Sep 29 14:40 ..
+drwxr-xr-x 4 node node 4096 Sep 29 14:42 steamapps
+"AppState"
+{
+	"appid"		"1281930"
+	"Universe"		"1"
+	"name"		"tModLoader"
+	"StateFlags"		"4"
+	"installdir"		"tModLoader"
+	"LastUpdated"		"0"
+	"LastPlayed"		"0"
+	"SizeOnDisk"		"0"
+	"StagingSize"		"0"
+	"buildid"		"25047440"
+	"LastOwner"		"76561198000000001"
+	"DownloadType"		"1"
+	"UpdateResult"		"0"
+	"BytesToDownload"		"0"
+	"BytesDownloaded"		"0"
+	"BytesToStage"		"0"
+	"BytesStaged"		"0"
+	"TargetBuildID"		"25047440"
+	"AutoUpdateBehavior"		"0"
+	"AllowOtherDownloadsWhileRunning"		"0"
+	"ScheduledAutoUpdate"		"0"
+	"InstalledDepots"
+	{
+	}
+	"UserConfig"
+	{
+	}
+	"MountedConfig"
+	{
+	}
+}

@@ -1,0 +1,9 @@
+{
+ "url": "https://terraria.org/api/get/dedicated-servers-names",
+ "status": 200,
+ "headers": {
+  "content-type": "application/json; charset=utf-8",
+  "etag": "W/\"37-sHXUBCm6+qJZfILPwIvANAuokxQ\"",
+  "server": "cloudflare"
+ }
+}

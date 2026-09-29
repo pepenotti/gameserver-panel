@@ -1,0 +1,434 @@
+[
+ {
+  "t": 0.001,
+  "ms": 174,
+  "method": "GET",
+  "path": "/v3/bans/destroy?ticketNumber=1&fullDelete=true&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "51",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Ban removed."
+  }
+ },
+ {
+  "t": 0.176,
+  "ms": 27,
+  "method": "GET",
+  "path": "/v3/bans/destroy?ticketNumber=2&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "51",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Ban removed."
+  }
+ },
+ {
+  "t": 0.203,
+  "ms": 20,
+  "method": "GET",
+  "path": "/v3/bans/destroy?ticketNumber=3&fullDelete=true&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "51",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Ban removed."
+  }
+ },
+ {
+  "t": 0.224,
+  "ms": 59,
+  "method": "GET",
+  "path": "/v3/bans/destroy?ticketNumber=4&fullDelete=true&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "51",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Ban removed."
+  }
+ },
+ {
+  "t": 0.283,
+  "ms": 12,
+  "method": "GET",
+  "path": "/v3/bans/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "263",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "bans": [
+    {
+     "ticket_number": 2,
+     "identifier": "ip:192.0.2.77",
+     "reason": "Test ip",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262945154118400,
+     "end_date_ticks": 639262951471085800
+    }
+   ]
+  }
+ },
+ {
+  "t": 0.295,
+  "ms": 52,
+  "method": "GET",
+  "path": "/status",
+  "status": 200,
+  "headers": {
+   "content-length": "223",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "name": "",
+   "serverversion": "v1.4.5.8",
+   "tshockversion": "6.2.1.0",
+   "port": 7777,
+   "playercount": 0,
+   "maxplayers": 8,
+   "world": "tsh1",
+   "uptime": "0.00:00:09",
+   "serverpassword": false
+  }
+ },
+ {
+  "t": 0.347,
+  "ms": 5,
+  "method": "GET",
+  "path": "/v2/server/status",
+  "status": 200,
+  "headers": {
+   "content-length": "223",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "name": "",
+   "serverversion": "v1.4.5.8",
+   "tshockversion": "6.2.1.0",
+   "port": 7777,
+   "playercount": 0,
+   "maxplayers": 8,
+   "world": "tsh1",
+   "uptime": "0.00:00:09",
+   "serverpassword": false
+  }
+ },
+ {
+  "t": 0.353,
+  "ms": 46,
+  "method": "GET",
+  "path": "/tokentest?token=not-a-token",
+  "status": 403,
+  "headers": {
+   "content-length": "134",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "403",
+   "error": "Not authorized. The specified API endpoint requires a token, but the provided token was not valid."
+  }
+ },
+ {
+  "t": 0.399,
+  "ms": 4,
+  "method": "GET",
+  "path": "/v2/server/status?token=not-a-token",
+  "status": 200,
+  "headers": {
+   "content-length": "223",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "name": "",
+   "serverversion": "v1.4.5.8",
+   "tshockversion": "6.2.1.0",
+   "port": 7777,
+   "playercount": 0,
+   "maxplayers": 8,
+   "world": "tsh1",
+   "uptime": "0.00:00:09",
+   "serverpassword": false
+  }
+ },
+ {
+  "t": 0.403,
+  "ms": 48,
+  "method": "GET",
+  "path": "/tokentest?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "119",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Token is valid and was passed through correctly.",
+   "associateduser": "gspagent"
+  }
+ },
+ {
+  "t": 0.451,
+  "ms": 5,
+  "method": "GET",
+  "path": "/v2/server/status?token=<token>&players=true&rules=true",
+  "status": 200,
+  "headers": {
+   "content-length": "647",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "name": "",
+   "serverversion": "v1.4.5.8",
+   "tshockversion": "6.2.1.0",
+   "port": 7777,
+   "playercount": 0,
+   "maxplayers": 8,
+   "world": "tsh1",
+   "uptime": "0.00:00:09",
+   "serverpassword": false,
+   "players": [],
+   "rules": {
+    "AutoSave": true,
+    "DisableBuild": false,
+    "DisableClownBombs": false,
+    "DisableDungeonGuardian": false,
+    "DisableInvisPvP": false,
+    "DisableSnowBalls": false,
+    "DisableTombstones": false,
+    "EnableWhitelist": false,
+    "HardcoreOnly": false,
+    "PvPMode": "normal",
+    "SpawnProtection": false,
+    "SpawnProtectionRadius": 10,
+    "ServerSideInventory": false
+   }
+  }
+ },
+ {
+  "t": 0.456,
+  "ms": 47,
+  "method": "GET",
+  "path": "/v3/server/motd?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "444",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "motd": [
+    "Welcome to [c/ffff00:%map%] on [c/7ddff8:T][c/81dbf6:S][c/86d7f4:h][c/8ad3f3:o][c/8ecef1:c][c/93caef:k] for [c/55d284:T][c/62d27a:e][c/6fd16f:r][c/7cd165:r][c/89d15a:a][c/95d150:r][c/a4d145:i][c/b1d03b:a].",
+    "[c/FFFFFF:Online players (%onlineplayers%/%serverslots%):] [c/FFFF00:%players%]",
+    "Type [c/55D284:%specifier%][c/62D27A:h][c/6FD16F:e][c/7CD165:l][c/89D15A:p] for a list of commands."
+   ]
+  }
+ },
+ {
+  "t": 0.503,
+  "ms": 4,
+  "method": "GET",
+  "path": "/v3/server/rules?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "87",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "rules": [
+    "Respect the admins!",
+    "Don't use TNT!"
+   ]
+  }
+ },
+ {
+  "t": 0.507,
+  "ms": 48,
+  "method": "GET",
+  "path": "/v2/players/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "38",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "players": []
+  }
+ },
+ {
+  "t": 0.555,
+  "ms": 6,
+  "method": "GET",
+  "path": "/v2/users/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "36",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "users": []
+  }
+ },
+ {
+  "t": 0.561,
+  "ms": 46,
+  "method": "GET",
+  "path": "/v2/groups/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "904",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "groups": [
+    {
+     "name": "guest",
+     "parent": "",
+     "chatcolor": "255,255,255"
+    },
+    {
+     "name": "default",
+     "parent": "guest",
+     "chatcolor": "255,255,255"
+    },
+    {
+     "name": "vip",
+     "parent": "default",
+     "chatcolor": "255,255,255"
+    },
+    {
+     "name": "insecure-guest",
+     "parent": "",
+     "chatcolor": "255,255,255"
+    },
+    {
+     "name": "newadmin",
+     "parent": "vip",
+     "chatcolor": "255,255,255"
+    },
+    {
+     "name": "admin",
+     "parent": "newadmin",
+     "chatcolor": "255,255,255"
+    },
+    {
+     "name": "trustedadmin",
+     "parent": "admin",
+     "chatcolor": "255,255,255"
+    },
+    {
+     "name": "owner",
+     "parent": "trustedadmin",
+     "chatcolor": "255,255,255"
+    },
+    {
+     "name": "superadmin",
+     "parent": "",
+     "chatcolor": "255,255,255"
+    }
+   ]
+  }
+ },
+ {
+  "t": 0.607,
+  "ms": 4,
+  "method": "GET",
+  "path": "/v3/bans/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "263",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "bans": [
+    {
+     "ticket_number": 2,
+     "identifier": "ip:192.0.2.77",
+     "reason": "Test ip",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262945154118400,
+     "end_date_ticks": 639262951471085800
+    }
+   ]
+  }
+ },
+ {
+  "t": 0.611,
+  "ms": 48,
+  "method": "GET",
+  "path": "/v2/token/create?username=nobody&password=nothing",
+  "status": 403,
+  "headers": {
+   "content-length": "125",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "403",
+   "error": "Username or password may be incorrect or this account may not have sufficient privileges."
+  }
+ },
+ {
+  "t": 0.659,
+  "ms": 5,
+  "method": "POST",
+  "path": "/v2/server/status?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "223",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "name": "",
+   "serverversion": "v1.4.5.8",
+   "tshockversion": "6.2.1.0",
+   "port": 7777,
+   "playercount": 0,
+   "maxplayers": 8,
+   "world": "tsh1",
+   "uptime": "0.00:00:09",
+   "serverpassword": false
+  }
+ }
+]

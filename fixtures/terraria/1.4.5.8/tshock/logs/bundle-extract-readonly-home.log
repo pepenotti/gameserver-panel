@@ -1,0 +1,4 @@
+Default extraction directory [/home/node] either doesn't exist or is not accessible for read/write.
+Failure processing application bundle.
+Failed to determine location for extracting embedded files.
+DOTNET_BUNDLE_EXTRACT_BASE_DIR is not set, and a read-write cache directory couldn't be created.

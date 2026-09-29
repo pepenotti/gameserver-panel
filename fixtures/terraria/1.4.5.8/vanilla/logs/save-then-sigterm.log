@@ -1,0 +1,33 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+Loading world data: 1%
+Loading world data: 2%
+# … 94 more progress lines like these, dropped from the fixture …
+Loading world data: 100%
+Settling liquids 1%
+Settling liquids 2%
+# … 47 more progress lines like these, dropped from the fixture …
+Settling liquids 50%
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+> save
+Saving world data: 4%
+Saving world data: 10%
+# … 17 more progress lines like these, dropped from the fixture …
+Saving world data: 100%
+Validating world save: 7%
+Validating world save: 26%
+# … 2 more progress lines like these, dropped from the fixture …
+Validating world save: 99%
+Backing up world file
+: 

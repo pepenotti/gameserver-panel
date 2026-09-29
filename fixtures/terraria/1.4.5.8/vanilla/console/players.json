@@ -1,0 +1,331 @@
+[
+ {
+  "t": -0.003,
+  "dir": "client",
+  "text": "connected"
+ },
+ {
+  "t": 0,
+  "dir": "out",
+  "text": "192.0.2.1:60688 is connecting..."
+ },
+ {
+  "t": 0.086,
+  "dir": "client",
+  "text": "slot 0 (packet 3, 2 bytes)"
+ },
+ {
+  "t": 0.106,
+  "dir": "client",
+  "text": "world data (170 bytes)"
+ },
+ {
+  "t": 0.126,
+  "dir": "client",
+  "text": "status: LegacyInterface.44"
+ },
+ {
+  "t": 0.251,
+  "dir": "client",
+  "text": "packet 49: spawning"
+ },
+ {
+  "t": 0.274,
+  "dir": "out",
+  "text": "gspffalice has joined."
+ },
+ {
+  "t": 0.277,
+  "dir": "client",
+  "text": "packet 129: finished connecting"
+ },
+ {
+  "t": 3.276,
+  "dir": "in",
+  "text": "playing"
+ },
+ {
+  "t": 3.279,
+  "dir": "out",
+  "text": "gspffalice (192.0.2.1:60688)"
+ },
+ {
+  "t": 3.279,
+  "dir": "out",
+  "text": "1 player connected."
+ },
+ {
+  "t": 3.686,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 4.407,
+  "dir": "out",
+  "text": "192.0.2.1:55634 is connecting..."
+ },
+ {
+  "t": 4.408,
+  "dir": "client",
+  "text": "connected"
+ },
+ {
+  "t": 4.412,
+  "dir": "client",
+  "text": "slot 1 (packet 3, 2 bytes)"
+ },
+ {
+  "t": 4.428,
+  "dir": "client",
+  "text": "world data (170 bytes)"
+ },
+ {
+  "t": 4.445,
+  "dir": "client",
+  "text": "status: LegacyInterface.44"
+ },
+ {
+  "t": 4.573,
+  "dir": "client",
+  "text": "packet 49: spawning"
+ },
+ {
+  "t": 4.582,
+  "dir": "out",
+  "text": "gspffbob has joined."
+ },
+ {
+  "t": 4.67,
+  "dir": "client",
+  "text": "packet 129: finished connecting"
+ },
+ {
+  "t": 8.308,
+  "dir": "in",
+  "text": "playing"
+ },
+ {
+  "t": 8.311,
+  "dir": "out",
+  "text": "gspffalice (192.0.2.1:60688)"
+ },
+ {
+  "t": 8.311,
+  "dir": "out",
+  "text": "gspffbob (192.0.2.1:55634)"
+ },
+ {
+  "t": 8.311,
+  "dir": "out",
+  "text": "2 players connected."
+ },
+ {
+  "t": 8.721,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 9.309,
+  "dir": "in",
+  "text": "kick gspffbob"
+ },
+ {
+  "t": 9.313,
+  "dir": "out",
+  "text": "192.0.2.1:55634 was booted: Kicked from server."
+ },
+ {
+  "t": 9.313,
+  "dir": "client",
+  "text": "KICKED: CLI.KickMessage"
+ },
+ {
+  "t": 9.332,
+  "dir": "out",
+  "text": ": gspffbob has left."
+ },
+ {
+  "t": 9.332,
+  "dir": "client",
+  "text": "connection closed"
+ },
+ {
+  "t": 11.31,
+  "dir": "in",
+  "text": "playing"
+ },
+ {
+  "t": 11.313,
+  "dir": "out",
+  "text": "gspffalice (192.0.2.1:60688)"
+ },
+ {
+  "t": 11.313,
+  "dir": "out",
+  "text": "1 player connected."
+ },
+ {
+  "t": 11.726,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 12.452,
+  "dir": "out",
+  "text": "192.0.2.1:55646 is connecting..."
+ },
+ {
+  "t": 12.452,
+  "dir": "client",
+  "text": "connected"
+ },
+ {
+  "t": 12.461,
+  "dir": "client",
+  "text": "slot 1 (packet 3, 2 bytes)"
+ },
+ {
+  "t": 12.477,
+  "dir": "client",
+  "text": "world data (170 bytes)"
+ },
+ {
+  "t": 12.494,
+  "dir": "client",
+  "text": "status: LegacyInterface.44"
+ },
+ {
+  "t": 12.61,
+  "dir": "client",
+  "text": "packet 49: spawning"
+ },
+ {
+  "t": 12.632,
+  "dir": "out",
+  "text": "gspffcarol has joined."
+ },
+ {
+  "t": 12.718,
+  "dir": "client",
+  "text": "packet 129: finished connecting"
+ },
+ {
+  "t": 16.35,
+  "dir": "in",
+  "text": "ban gspffcarol"
+ },
+ {
+  "t": 16.364,
+  "dir": "out",
+  "text": "192.0.2.1:55646 was booted: Banned from server."
+ },
+ {
+  "t": 16.364,
+  "dir": "client",
+  "text": "KICKED: CLI.BanMessage"
+ },
+ {
+  "t": 16.377,
+  "dir": "out",
+  "text": ": gspffcarol has left."
+ },
+ {
+  "t": 16.379,
+  "dir": "client",
+  "text": "connection closed"
+ },
+ {
+  "t": 18.829,
+  "dir": "out",
+  "text": "192.0.2.1:44944 is connecting..."
+ },
+ {
+  "t": 18.829,
+  "dir": "client",
+  "text": "connected"
+ },
+ {
+  "t": 18.844,
+  "dir": "out",
+  "text": "192.0.2.1:44944 was booted: You are banned from this server."
+ },
+ {
+  "t": 18.844,
+  "dir": "client",
+  "text": "KICKED: LegacyMultiplayer.3"
+ },
+ {
+  "t": 18.862,
+  "dir": "client",
+  "text": "connection closed"
+ },
+ {
+  "t": 19.887,
+  "dir": "in",
+  "text": "say Adiós ☃"
+ },
+ {
+  "t": 19.891,
+  "dir": "out",
+  "text": "<Server> Adiós ☃"
+ },
+ {
+  "t": 20.303,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 29.995,
+  "dir": "client",
+  "text": "leaving"
+ },
+ {
+  "t": 30.017,
+  "dir": "out",
+  "text": "gspffalice has left."
+ },
+ {
+  "t": 30.017,
+  "dir": "in",
+  "text": "playing"
+ },
+ {
+  "t": 30.018,
+  "dir": "client",
+  "text": "connection closed"
+ },
+ {
+  "t": 30.02,
+  "dir": "out",
+  "text": "No players connected."
+ },
+ {
+  "t": 30.057,
+  "dir": "out",
+  "text": ": Saving world data: 10%"
+ },
+ {
+  "t": 30.344,
+  "dir": "out",
+  "text": "Backing up world file"
+ },
+ {
+  "t": 31.029,
+  "dir": "in",
+  "text": "exit"
+ },
+ {
+  "t": 31.047,
+  "dir": "out",
+  "text": "Saving before exit..."
+ },
+ {
+  "t": 32.179,
+  "dir": "exit",
+  "text": "exit code=0 signal=null"
+ }
+]

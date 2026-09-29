@@ -1,0 +1,2 @@
+chmod: changing permissions of './LaunchUtils/ScriptCaller.sh': Read-only file system
+/opt/tml/v2026.07.3.0/start-tModLoaderServer.sh: line 56: ./LaunchUtils/ScriptCaller.sh: Permission denied

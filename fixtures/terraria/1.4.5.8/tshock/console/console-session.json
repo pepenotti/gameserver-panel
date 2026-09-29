@@ -1,0 +1,1351 @@
+[
+ {
+  "t": 0,
+  "dir": "out",
+  "text": "Error Logging Enabled."
+ },
+ {
+  "t": 0.006,
+  "dir": "out",
+  "text": "[OTAPI] Starting up (PC Server,3.3.14+ca9c239,ModFw:1.1.15+a2c0c70)."
+ },
+ {
+  "t": 0.226,
+  "dir": "out",
+  "text": "TerrariaAPI Version: 2.1.0.0 (Protocol v1.4.5.8 (326), OTAPI 3.3.14+ca9c239)"
+ },
+ {
+  "t": 0.281,
+  "dir": "out",
+  "text": "[TShock] Info Config path has been set to /data/tshock"
+ },
+ {
+  "t": 0.281,
+  "dir": "out",
+  "text": "[TShock] Info Log path has been set to /data/tshock/logs"
+ },
+ {
+  "t": 0.418,
+  "dir": "out",
+  "text": "Port overridden by startup argument. Set to 7777"
+ },
+ {
+  "t": 0.42,
+  "dir": "out",
+  "text": "Startup parameter overrode maximum player slot configuration value."
+ },
+ {
+  "t": 0.683,
+  "dir": "out",
+  "text": "Using ConstileationProvider for tile implementation"
+ },
+ {
+  "t": 0.683,
+  "dir": "out",
+  "text": "TShock 6.2.1.0 (Profoundly Collaborative (3.11)) now running."
+ },
+ {
+  "t": 0.735,
+  "dir": "out",
+  "text": "AutoSave Enabled"
+ },
+ {
+  "t": 0.735,
+  "dir": "out",
+  "text": "Backups Enabled"
+ },
+ {
+  "t": 0.735,
+  "dir": "out",
+  "text": "Welcome to TShock for Terraria!"
+ },
+ {
+  "t": 0.735,
+  "dir": "out",
+  "text": "TShock comes with no warranty & is free software."
+ },
+ {
+  "t": 0.735,
+  "dir": "out",
+  "text": "You can modify & distribute it under the terms of the GNU GPLv3."
+ },
+ {
+  "t": 0.735,
+  "dir": "out",
+  "text": "[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated."
+ },
+ {
+  "t": 2.853,
+  "dir": "out",
+  "text": "Terraria Server v1.4.5.8"
+ },
+ {
+  "t": 2.853,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 2.896,
+  "dir": "out",
+  "text": "Creating world - Seed: 832987615, Width: 4200, Height: 1200, Evil: -1, Difficulty: 0"
+ },
+ {
+  "t": 2.962,
+  "dir": "out",
+  "text": "Resetting game objects"
+ },
+ {
+  "t": 3.525,
+  "dir": "out",
+  "text": "Generating world terrain"
+ },
+ {
+  "t": 4.527,
+  "dir": "out",
+  "text": "Adding sand"
+ },
+ {
+  "t": 4.604,
+  "dir": "out",
+  "text": "Generating ocean sand"
+ },
+ {
+  "t": 4.624,
+  "dir": "out",
+  "text": "Generating sand patches"
+ },
+ {
+  "t": 5.131,
+  "dir": "out",
+  "text": "Generating surface tunnels"
+ },
+ {
+  "t": 5.138,
+  "dir": "out",
+  "text": "Generating hills"
+ },
+ {
+  "t": 5.159,
+  "dir": "out",
+  "text": "Putting dirt behind dirt"
+ },
+ {
+  "t": 5.268,
+  "dir": "out",
+  "text": "Placing rocks in the dirt"
+ },
+ {
+  "t": 5.969,
+  "dir": "out",
+  "text": "Placing dirt in the rocks"
+ },
+ {
+  "t": 6.675,
+  "dir": "out",
+  "text": "Adding clay"
+ },
+ {
+  "t": 6.772,
+  "dir": "out",
+  "text": "Making random holes"
+ },
+ {
+  "t": 7.938,
+  "dir": "out",
+  "text": "Generating small caves"
+ },
+ {
+  "t": 8.053,
+  "dir": "out",
+  "text": "Generating large caves"
+ },
+ {
+  "t": 9.2,
+  "dir": "out",
+  "text": "Generating surface caves"
+ },
+ {
+  "t": 9.254,
+  "dir": "out",
+  "text": "Adding snow"
+ },
+ {
+  "t": 9.33,
+  "dir": "out",
+  "text": "Generating jungle"
+ },
+ {
+  "t": 16.21,
+  "dir": "out",
+  "text": "Adding more grass"
+ },
+ {
+  "t": 18.615,
+  "dir": "out",
+  "text": "Desertification"
+ },
+ {
+  "t": 20.135,
+  "dir": "out",
+  "text": "Adding mushroom patches"
+ },
+ {
+  "t": 22.708,
+  "dir": "out",
+  "text": "Chiseling marble"
+ },
+ {
+  "t": 23.119,
+  "dir": "out",
+  "text": "Growing granite"
+ },
+ {
+  "t": 23.81,
+  "dir": "out",
+  "text": "Generating floating islands"
+ },
+ {
+  "t": 23.949,
+  "dir": "out",
+  "text": "Placing mud in the dirt"
+ },
+ {
+  "t": 24.078,
+  "dir": "out",
+  "text": "Adding silt"
+ },
+ {
+  "t": 24.151,
+  "dir": "out",
+  "text": "Adding shinies"
+ },
+ {
+  "t": 24.237,
+  "dir": "out",
+  "text": "Adding webs"
+ },
+ {
+  "t": 24.262,
+  "dir": "out",
+  "text": "Creating underworld"
+ },
+ {
+  "t": 24.816,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 24.954,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 25.645,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 26.578,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 26.901,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 26.907,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 26.91,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.062,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.204,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.222,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.261,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.263,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.267,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.295,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.333,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.349,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.403,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.451,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.508,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.536,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.537,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.543,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.577,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.65,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.706,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.785,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.82,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.845,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.857,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.87,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.873,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.878,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.893,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.927,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.953,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.956,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.959,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.959,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.964,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.968,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.968,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.968,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 27.984,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 28.003,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 28.009,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 28.01,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 28.014,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 28.02,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 28.021,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 30.376,
+  "dir": "out",
+  "text": "Making the world bloody"
+ },
+ {
+  "t": 30.583,
+  "dir": "out",
+  "text": "Adding water bodies"
+ },
+ {
+  "t": 30.903,
+  "dir": "out",
+  "text": "Creating dungeon - preparing"
+ },
+ {
+  "t": 30.926,
+  "dir": "out",
+  "text": "Creating dungeon - placing rooms and hallways"
+ },
+ {
+  "t": 31.501,
+  "dir": "out",
+  "text": "Creating dungeon - placing rooms and hallways"
+ },
+ {
+  "t": 31.501,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 31.584,
+  "dir": "out",
+  "text": "Creating dungeon - placing hallway to surface and entrance"
+ },
+ {
+  "t": 31.639,
+  "dir": "out",
+  "text": "Creating dungeon - finding doors and platforms"
+ },
+ {
+  "t": 31.643,
+  "dir": "out",
+  "text": "Creating dungeon - early features"
+ },
+ {
+  "t": 31.671,
+  "dir": "out",
+  "text": "Creating dungeon - placing spikes"
+ },
+ {
+  "t": 31.696,
+  "dir": "out",
+  "text": "Creating dungeon - placing doors"
+ },
+ {
+  "t": 31.778,
+  "dir": "out",
+  "text": "Creating dungeon - placing wall variants"
+ },
+ {
+  "t": 32.138,
+  "dir": "out",
+  "text": "Creating dungeon - placing platforms"
+ },
+ {
+  "t": 32.163,
+  "dir": "out",
+  "text": "Creating dungeon - placing biome chests"
+ },
+ {
+  "t": 32.181,
+  "dir": "out",
+  "text": "Creating dungeon - placing bookshelves"
+ },
+ {
+  "t": 32.235,
+  "dir": "out",
+  "text": "Creating dungeon - placing chests"
+ },
+ {
+  "t": 32.242,
+  "dir": "out",
+  "text": "Creating dungeon - expanding area"
+ },
+ {
+  "t": 32.242,
+  "dir": "out",
+  "text": "Creating dungeon - placing lights"
+ },
+ {
+  "t": 32.293,
+  "dir": "out",
+  "text": "Creating dungeon - placing traps"
+ },
+ {
+  "t": 32.324,
+  "dir": "out",
+  "text": "Creating dungeon - placing furniture"
+ },
+ {
+  "t": 32.422,
+  "dir": "out",
+  "text": "Creating dungeon - placing pictures"
+ },
+ {
+  "t": 32.439,
+  "dir": "out",
+  "text": "Creating dungeon - placing banners"
+ },
+ {
+  "t": 32.444,
+  "dir": "out",
+  "text": "Creating dungeon - placing late features"
+ },
+ {
+  "t": 32.474,
+  "dir": "out",
+  "text": "Creating dungeon - finishing up"
+ },
+ {
+  "t": 32.475,
+  "dir": "out",
+  "text": "Generating mountain caves"
+ },
+ {
+  "t": 32.501,
+  "dir": "out",
+  "text": "Creating beaches"
+ },
+ {
+  "t": 32.518,
+  "dir": "out",
+  "text": "Adding gems"
+ },
+ {
+  "t": 32.848,
+  "dir": "out",
+  "text": "Gravitating sand"
+ },
+ {
+  "t": 33.401,
+  "dir": "out",
+  "text": "Forming the depths"
+ },
+ {
+  "t": 34.752,
+  "dir": "out",
+  "text": "Cleaning up dirt backgrounds"
+ },
+ {
+  "t": 35.786,
+  "dir": "out",
+  "text": "Generating giant trees"
+ },
+ {
+  "t": 35.935,
+  "dir": "out",
+  "text": "Placing altars"
+ },
+ {
+  "t": 35.983,
+  "dir": "out",
+  "text": "Creating jungle ruins"
+ },
+ {
+  "t": 36.297,
+  "dir": "out",
+  "text": "Creating hornet nests"
+ },
+ {
+  "t": 36.664,
+  "dir": "out",
+  "text": "Settling liquids"
+ },
+ {
+  "t": 40.469,
+  "dir": "out",
+  "text": "Generating oasis"
+ },
+ {
+  "t": 40.541,
+  "dir": "out",
+  "text": "Generating shell piles"
+ },
+ {
+  "t": 40.557,
+  "dir": "out",
+  "text": "Smoothing the world"
+ },
+ {
+  "t": 43.371,
+  "dir": "out",
+  "text": "Creating waterfalls"
+ },
+ {
+  "t": 45.982,
+  "dir": "out",
+  "text": "Weathering caverns"
+ },
+ {
+  "t": 48.235,
+  "dir": "out",
+  "text": "Placing life crystals"
+ },
+ {
+  "t": 48.24,
+  "dir": "out",
+  "text": "Placing statues"
+ },
+ {
+  "t": 48.28,
+  "dir": "out",
+  "text": "Hiding treasure"
+ },
+ {
+  "t": 48.731,
+  "dir": "out",
+  "text": "Hiding more treasure"
+ },
+ {
+  "t": 48.838,
+  "dir": "out",
+  "text": "Hiding jungle treasure"
+ },
+ {
+  "t": 48.842,
+  "dir": "out",
+  "text": "Hiding water treasure"
+ },
+ {
+  "t": 48.902,
+  "dir": "out",
+  "text": "Growing spider caves"
+ },
+ {
+  "t": 49.961,
+  "dir": "out",
+  "text": "Mossification"
+ },
+ {
+  "t": 51.161,
+  "dir": "out",
+  "text": "Making cave walls"
+ },
+ {
+  "t": 54.223,
+  "dir": "out",
+  "text": "Growing rich mahogany"
+ },
+ {
+  "t": 54.472,
+  "dir": "out",
+  "text": "Generating sky island houses"
+ },
+ {
+  "t": 54.48,
+  "dir": "out",
+  "text": "Quick cleanup"
+ },
+ {
+  "t": 55.057,
+  "dir": "out",
+  "text": "Placing breakables"
+ },
+ {
+  "t": 56.22,
+  "dir": "out",
+  "text": "Placing hellforges"
+ },
+ {
+  "t": 56.237,
+  "dir": "out",
+  "text": "Spreading grass"
+ },
+ {
+  "t": 56.786,
+  "dir": "out",
+  "text": "Felling trees"
+ },
+ {
+  "t": 56.909,
+  "dir": "out",
+  "text": "Placing traps"
+ },
+ {
+  "t": 60.46,
+  "dir": "out",
+  "text": "Placing objects"
+ },
+ {
+  "t": 60.89,
+  "dir": "out",
+  "text": "Planting sunflowers"
+ },
+ {
+  "t": 60.897,
+  "dir": "out",
+  "text": "Planting trees"
+ },
+ {
+  "t": 61.392,
+  "dir": "out",
+  "text": "Planting herbs"
+ },
+ {
+  "t": 62.54,
+  "dir": "out",
+  "text": "Planting weeds"
+ },
+ {
+  "t": 63.904,
+  "dir": "out",
+  "text": "Growing vines"
+ },
+ {
+  "t": 65.436,
+  "dir": "out",
+  "text": "Planting flowers"
+ },
+ {
+  "t": 65.462,
+  "dir": "out",
+  "text": "Planting mushrooms"
+ },
+ {
+  "t": 65.485,
+  "dir": "out",
+  "text": "Growing long moss"
+ },
+ {
+  "t": 65.892,
+  "dir": "out",
+  "text": "Generating structures"
+ },
+ {
+  "t": 78.325,
+  "dir": "out",
+  "text": "Settling liquids"
+ },
+ {
+  "t": 85.724,
+  "dir": "out",
+  "text": "Growing cacti"
+ },
+ {
+  "t": 87.695,
+  "dir": "out",
+  "text": "Clean up"
+ },
+ {
+  "t": 89.817,
+  "dir": "out",
+  "text": "Growing water plants"
+ },
+ {
+  "t": 90.159,
+  "dir": "out",
+  "text": "Growing speleothems and gem trees"
+ },
+ {
+  "t": 91.566,
+  "dir": "out",
+  "text": "Disarming broken traps"
+ },
+ {
+  "t": 92.151,
+  "dir": "out",
+  "text": "Final clean up"
+ },
+ {
+  "t": 94.96,
+  "dir": "out",
+  "text": "Saving world data:"
+ },
+ {
+  "t": 95.369,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 95.412,
+  "dir": "out",
+  "text": "Resetting game objects"
+ },
+ {
+  "t": 95.617,
+  "dir": "out",
+  "text": "Loading world data:"
+ },
+ {
+  "t": 96.17,
+  "dir": "out",
+  "text": "Settling liquids"
+ },
+ {
+  "t": 97.566,
+  "dir": "out",
+  "text": "Terraria Server v1.4.5.8"
+ },
+ {
+  "t": 97.566,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 97.566,
+  "dir": "out",
+  "text": "Listening on port 7777"
+ },
+ {
+  "t": 97.567,
+  "dir": "out",
+  "text": "Type 'help' for a list of commands."
+ },
+ {
+  "t": 97.567,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 97.571,
+  "dir": "out",
+  "text": "Login before join enabled. Users may be prompted for an account specific password instead of a server password on connect."
+ },
+ {
+  "t": 97.571,
+  "dir": "out",
+  "text": "Login using UUID enabled. Users automatically login via UUID."
+ },
+ {
+  "t": 97.571,
+  "dir": "out",
+  "text": "A malicious server can easily steal a user's UUID. You may consider turning this option off if you run a public server."
+ },
+ {
+  "t": 97.573,
+  "dir": "out",
+  "text": ": To setup the server, join the game and type /setup <redacted>"
+ },
+ {
+  "t": 97.573,
+  "dir": "out",
+  "text": "This token will display until disabled by verification. (/setup)"
+ },
+ {
+  "t": 97.665,
+  "dir": "out",
+  "text": "Server started"
+ },
+ {
+  "t": 102.22,
+  "dir": "in",
+  "text": "help"
+ },
+ {
+  "t": 102.238,
+  "dir": "out",
+  "text": "Server executed: /help."
+ },
+ {
+  "t": 102.242,
+  "dir": "out",
+  "text": "Commands (1/4):"
+ },
+ {
+  "t": 102.242,
+  "dir": "out",
+  "text": "/setup, /user, /login, /logout, /password, /register, /accountinfo, /ban, "
+ },
+ {
+  "t": 102.242,
+  "dir": "out",
+  "text": "/broadcast, /displaylogs, /group, /itemban, /projban, /tileban, /region, "
+ },
+ {
+  "t": 102.242,
+  "dir": "out",
+  "text": "/kick, /mute, /overridessc, /savessc, /uploadssc, /tempgroup, /su, /sudo, "
+ },
+ {
+  "t": 102.242,
+  "dir": "out",
+  "text": "/userinfo, /annoy, /rocket, /firework, /checkupdates, /off, /off-nosave, "
+ },
+ {
+  "t": 102.242,
+  "dir": "out",
+  "text": "Type /help 2 for more."
+ },
+ {
+  "t": 102.656,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 103.725,
+  "dir": "in",
+  "text": "help 2"
+ },
+ {
+  "t": 103.729,
+  "dir": "out",
+  "text": "Server executed: /help 2."
+ },
+ {
+  "t": 103.729,
+  "dir": "out",
+  "text": "Commands (2/4):"
+ },
+ {
+  "t": 103.729,
+  "dir": "out",
+  "text": "/reload, /serverpassword, /version, /whitelist, /give, /item, /butcher, "
+ },
+ {
+  "t": 103.729,
+  "dir": "out",
+  "text": "/renamenpc, /maxspawns, /spawnboss, /spawnmob, /spawnrate, /clearangler, "
+ },
+ {
+  "t": 103.729,
+  "dir": "out",
+  "text": "/home, /spawn, /tp, /tphere, /tpnpc, /tppos, /pos, /tpallow, /worldmode, "
+ },
+ {
+  "t": 103.729,
+  "dir": "out",
+  "text": "/antibuild, /grow, /forcehalloween, /forcexmas, /worldevent, /hardmode, /evil, "
+ },
+ {
+  "t": 103.729,
+  "dir": "out",
+  "text": "Type /help 3 for more."
+ },
+ {
+  "t": 104.145,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 104.742,
+  "dir": "in",
+  "text": "playing"
+ },
+ {
+  "t": 104.745,
+  "dir": "out",
+  "text": "Server executed: /playing."
+ },
+ {
+  "t": 104.747,
+  "dir": "out",
+  "text": "There are currently no players online."
+ },
+ {
+  "t": 105.149,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 105.557,
+  "dir": "in",
+  "text": "who"
+ },
+ {
+  "t": 105.56,
+  "dir": "out",
+  "text": "Server executed: /who."
+ },
+ {
+  "t": 105.56,
+  "dir": "out",
+  "text": "There are currently no players online."
+ },
+ {
+  "t": 105.968,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 106.373,
+  "dir": "in",
+  "text": "version"
+ },
+ {
+  "t": 106.377,
+  "dir": "out",
+  "text": "Server executed: /version."
+ },
+ {
+  "t": 106.387,
+  "dir": "out",
+  "text": "TShock: 6.2.1.0 Profoundly Collaborative (3.11)."
+ },
+ {
+  "t": 106.797,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 107.189,
+  "dir": "in",
+  "text": "time"
+ },
+ {
+  "t": 107.193,
+  "dir": "out",
+  "text": "Server executed: /time."
+ },
+ {
+  "t": 107.194,
+  "dir": "out",
+  "text": "The current time is 8:15."
+ },
+ {
+  "t": 107.594,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 107.994,
+  "dir": "in",
+  "text": "motd"
+ },
+ {
+  "t": 107.997,
+  "dir": "out",
+  "text": "Server executed: /motd."
+ },
+ {
+  "t": 107.998,
+  "dir": "out",
+  "text": "Welcome to tsh1 on TShock for Terraria."
+ },
+ {
+  "t": 107.998,
+  "dir": "out",
+  "text": "Online players (0/8): [c/FFFF00:]"
+ },
+ {
+  "t": 107.998,
+  "dir": "out",
+  "text": "Type /help for a list of commands."
+ },
+ {
+  "t": 108.412,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 108.807,
+  "dir": "in",
+  "text": "say Hola ☃"
+ },
+ {
+  "t": 108.81,
+  "dir": "out",
+  "text": "Server executed: /say Hola ☃."
+ },
+ {
+  "t": 108.814,
+  "dir": "out",
+  "text": "(Server Broadcast) Hola ☃"
+ },
+ {
+  "t": 109.228,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 109.609,
+  "dir": "in",
+  "text": "broadcast Aviso ☃"
+ },
+ {
+  "t": 109.613,
+  "dir": "out",
+  "text": "Server executed: /broadcast Aviso ☃."
+ },
+ {
+  "t": 109.613,
+  "dir": "out",
+  "text": "(Server Broadcast) Aviso ☃"
+ },
+ {
+  "t": 110.017,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 110.423,
+  "dir": "in",
+  "text": "kick nobody"
+ },
+ {
+  "t": 110.426,
+  "dir": "out",
+  "text": "Server executed: /kick nobody."
+ },
+ {
+  "t": 110.427,
+  "dir": "out",
+  "text": "Player not found. Unable to kick the player."
+ },
+ {
+  "t": 110.83,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 111.225,
+  "dir": "in",
+  "text": "ban add nobody"
+ },
+ {
+  "t": 111.228,
+  "dir": "out",
+  "text": "Server executed: /ban add nobody."
+ },
+ {
+  "t": 111.231,
+  "dir": "out",
+  "text": "Could not find the target specified. Check that you have the correct spelling."
+ },
+ {
+  "t": 111.632,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 112.03,
+  "dir": "in",
+  "text": "notacommand"
+ },
+ {
+  "t": 112.034,
+  "dir": "out",
+  "text": "Invalid command entered. Type /help for a list of valid commands."
+ },
+ {
+  "t": 112.444,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 112.839,
+  "dir": "in",
+  "text": "serverpassword"
+ },
+ {
+  "t": 112.844,
+  "dir": "out",
+  "text": "Server executed: /serverpassword."
+ },
+ {
+  "t": 112.844,
+  "dir": "out",
+  "text": "Invalid syntax. Proper syntax: /serverpassword \"<new password>\"."
+ },
+ {
+  "t": 113.249,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 113.654,
+  "dir": "in",
+  "text": "setup"
+ },
+ {
+  "t": 113.657,
+  "dir": "out",
+  "text": "You must use this command in-game."
+ },
+ {
+  "t": 114.063,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 114.459,
+  "dir": "in",
+  "text": "save"
+ },
+ {
+  "t": 114.462,
+  "dir": "out",
+  "text": "Server executed: /save."
+ },
+ {
+  "t": 114.464,
+  "dir": "out",
+  "text": ": Saving world data:"
+ },
+ {
+  "t": 114.471,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 114.681,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 114.719,
+  "dir": "out",
+  "text": "Backing up world file"
+ },
+ {
+  "t": 118.034,
+  "dir": "in",
+  "text": "exit"
+ },
+ {
+  "t": 118.037,
+  "dir": "out",
+  "text": "Server executed: /exit."
+ },
+ {
+  "t": 118.038,
+  "dir": "out",
+  "text": "Saving world data:"
+ },
+ {
+  "t": 118.044,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 118.252,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 118.29,
+  "dir": "out",
+  "text": "Server shutting down!"
+ },
+ {
+  "t": 118.29,
+  "dir": "out",
+  "text": "Saving before exit..."
+ },
+ {
+  "t": 118.29,
+  "dir": "out",
+  "text": "Saving world data:"
+ },
+ {
+  "t": 118.509,
+  "dir": "out",
+  "text": "Validating world save:"
+ },
+ {
+  "t": 119.223,
+  "dir": "exit",
+  "text": "exit code=0 signal=null"
+ }
+]

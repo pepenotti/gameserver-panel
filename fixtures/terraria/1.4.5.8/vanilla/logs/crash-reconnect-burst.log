@@ -1,0 +1,95 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+Loading world data: 1%
+Loading world data: 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Loading world data: 100%
+Settling liquids 1%
+Settling liquids 2%
+# … 47 more progress lines like these, dropped from the fixture …
+Settling liquids 50%
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+192.0.2.1:50212 is connecting...
+192.0.2.1:50212 was booted: You are not using the same version as this server.
+# client: {"r":200,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:50220 is connecting...
+192.0.2.1:50220 was booted: You are not using the same version as this server.
+# client: {"r":201,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:50222 is connecting...
+192.0.2.1:50222 was booted: You are not using the same version as this server.
+# client: {"r":202,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:50234 is connecting...
+192.0.2.1:50234 was booted: You are not using the same version as this server.
+# client: {"r":203,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:50236 is connecting...
+192.0.2.1:50236 was booted: You are not using the same version as this server.
+# client: {"r":204,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:50246 is connecting...
+================
+09/29/2026 16:35:59: Unhandled Exception
+Thread: 8 [Server Loop Thread]
+Culture: 
+Exception: System.ObjectDisposedException: Cannot access a disposed object.
+Object name: 'System.Net.Sockets.NetworkStream'.
+  at System.Net.Sockets.NetworkStream.get_DataAvailable () [0x00015] in <32fc020d7373456995b3d44fa885e01a>:0 
+  at Terraria.Net.Sockets.DebugNetworkStream.get_HasBufferedData () [0x0001f] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Net.Sockets.TcpSocket.Terraria.Net.Sockets.ISocket.IsConnected () [0x0002c] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.RemoteClient.IsConnected () [0x00008] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Netplay.UpdateConnectedClients () [0x00078] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Netplay.ServerLoop () [0x00009] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at System.Threading.ThreadHelper.ThreadStart_Context (System.Object state) [0x00014] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.RunInternal (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state, System.Boolean preserveSyncCtx) [0x00071] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.Run (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state, System.Boolean preserveSyncCtx) [0x00000] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.Run (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state) [0x0002b] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ThreadHelper.ThreadStart () [0x00008] in <d1664be62cd44600bbd25f7afa292479>:0 
+HResult: -2146232798
+================
+[ERROR] FATAL UNHANDLED EXCEPTION: System.ObjectDisposedException: Cannot access a disposed object.
+Object name: 'System.Net.Sockets.NetworkStream'.
+  at System.Net.Sockets.NetworkStream.get_DataAvailable () [0x00015] in <32fc020d7373456995b3d44fa885e01a>:0 
+  at Terraria.Net.Sockets.DebugNetworkStream.get_HasBufferedData () [0x0001f] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Net.Sockets.TcpSocket.Terraria.Net.Sockets.ISocket.IsConnected () [0x0002c] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.RemoteClient.IsConnected () [0x00008] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Netplay.UpdateConnectedClients () [0x00078] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Netplay.ServerLoop () [0x00009] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at System.Threading.ThreadHelper.ThreadStart_Context (System.Object state) [0x00014] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.RunInternal (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state, System.Boolean preserveSyncCtx) [0x00071] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.Run (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state, System.Boolean preserveSyncCtx) [0x00000] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.Run (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state) [0x0002b] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ThreadHelper.ThreadStart () [0x00008] in <d1664be62cd44600bbd25f7afa292479>:0 
+# client: {"r":205,"closed":true}
+# client: {"r":206,"closed":true}
+# client: {"r":207,"closed":true}
+# client: {"r":208,"closed":true}
+# client: {"r":209,"closed":true}
+# client: {"r":210,"closed":true}
+# client: {"r":211,"closed":true}
+# client: {"r":212,"closed":true}
+# client: {"r":213,"closed":true}
+# client: {"r":214,"closed":true}
+# client: {"r":215,"closed":true}
+# client: {"r":216,"closed":true}
+# client: {"r":217,"closed":true}
+# client: {"r":218,"closed":true}
+# client: {"r":219,"closed":true}
+# client: {"r":220,"error":"ECONNREFUSED"}
+# client: {"r":221,"error":"ECONNREFUSED"}
+# client: {"r":222,"error":"ECONNREFUSED"}
+# client: {"r":223,"error":"ECONNREFUSED"}
+# client: {"r":224,"error":"ECONNREFUSED"}
+# client: {"r":225,"error":"ECONNREFUSED"}
+# client: {"r":226,"error":"ECONNREFUSED"}
+# client: {"r":227,"error":"ECONNREFUSED"}
+# client: {"r":228,"error":"ECONNREFUSED"}
+# client: {"r":229,"error":"ECONNREFUSED"}

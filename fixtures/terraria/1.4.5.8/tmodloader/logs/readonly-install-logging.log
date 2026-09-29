@@ -1,0 +1,29 @@
+Failed to init logging
+
+System.IO.DirectoryNotFoundException: Could not find a part of the path '/opt/tml/v2026.07.3.0/tModLoader-Logs'.
+   at System.IO.Enumeration.FileSystemEnumerator`1.CreateDirectoryHandle(String path, Boolean ignoreNotFound)
+   at System.IO.Enumeration.FileSystemEnumerator`1.Init()
+   at System.IO.Enumeration.FileSystemEnumerable`1..ctor(String directory, FindTransform transform, EnumerationOptions options, Boolean isNormalized)
+   at System.IO.Enumeration.FileSystemEnumerableFactory.UserFiles(String directory, String expression, EnumerationOptions options)
+   at System.IO.Directory.InternalEnumeratePaths(String path, String searchPattern, SearchTarget searchTarget, EnumerationOptions options)
+   at System.IO.Directory.GetFiles(String path, String searchPattern, EnumerationOptions enumerationOptions)
+   at Terraria.ModLoader.Logging.GetFreeLogFileName(List`1 baseLogNames, Boolean roll) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 171
+   at Terraria.ModLoader.Logging.InitLogPaths(LogFile logFile) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 161
+   at Terraria.ModLoader.Logging.Init(LogFile logFile) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 61
+tModLoader v2026.7.3.0 Fatal Error
+Failed to init logging
+
+System.IO.DirectoryNotFoundException: Could not find a part of the path '/opt/tml/v2026.07.3.0/tModLoader-Logs'.
+   at System.IO.Enumeration.FileSystemEnumerator`1.CreateDirectoryHandle(String path, Boolean ignoreNotFound)
+   at System.IO.Enumeration.FileSystemEnumerator`1.Init()
+   at System.IO.Enumeration.FileSystemEnumerable`1..ctor(String directory, FindTransform transform, EnumerationOptions options, Boolean isNormalized)
+   at System.IO.Enumeration.FileSystemEnumerableFactory.UserFiles(String directory, String expression, EnumerationOptions options)
+   at System.IO.Directory.InternalEnumeratePaths(String path, String searchPattern, SearchTarget searchTarget, EnumerationOptions options)
+   at System.IO.Directory.GetFiles(String path, String searchPattern, EnumerationOptions enumerationOptions)
+   at Terraria.ModLoader.Logging.GetFreeLogFileName(List`1 baseLogNames, Boolean roll) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 171
+   at Terraria.ModLoader.Logging.InitLogPaths(LogFile logFile) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 161
+   at Terraria.ModLoader.Logging.Init(LogFile logFile) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 61
+
+A Natives.log file containing error information has been generated in
+/opt/tml/v2026.07.3.0/tModLoader-Logs
+(You will need to share this file if asking for help)

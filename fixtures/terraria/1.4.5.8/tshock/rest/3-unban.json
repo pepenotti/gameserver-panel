@@ -1,0 +1,85 @@
+[
+ {
+  "t": 0,
+  "ms": 73,
+  "method": "GET",
+  "path": "/v3/bans/destroy?ticketNumber=1&token=<token>",
+  "status": 500,
+  "headers": {
+   "content-length": "1126",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "500",
+   "error": "Internal server error.",
+   "errormsg": "The given key '1' was not present in the dictionary.",
+   "stacktrace": "   at System.Collections.Generic.Dictionary`2.get_Item(TKey key) in System.Private.CoreLib.dll:token 0x60094f0+0x17\n   at TShockAPI.DB.BanManager.RemoveBan(Int32 ticketNumber, Boolean fullDelete) in <upstream CI build dir>/TShock/TShockAPI/DB/BanManager.cs:line 337\n   at TShockAPI.RestManager.BanDestroyV3(RestRequestArgs args) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 694\n   … (trimmed by the fact-finding)"
+  }
+ },
+ {
+  "t": 0.074,
+  "ms": 22,
+  "method": "GET",
+  "path": "/v3/bans/destroy?ticketNumber=2&fullDelete=true&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "51",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Ban removed."
+  }
+ },
+ {
+  "t": 0.096,
+  "ms": 45,
+  "method": "GET",
+  "path": "/v3/bans/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "971",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "bans": [
+    {
+     "ticket_number": 5,
+     "identifier": "name:gspffcarol",
+     "reason": "Test ban",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951556944500,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 6,
+     "identifier": "ip:192.0.2.77",
+     "reason": "Test ip",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587054200,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 7,
+     "identifier": "uuid:00000000-0000-0000-0000-000000000000",
+     "reason": "Banned",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587210200,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 8,
+     "identifier": "acc:nobody",
+     "reason": "Banned",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587826700,
+     "end_date_ticks": 3155378976000000000
+    }
+   ]
+  }
+ }
+]
