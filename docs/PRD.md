@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.20 |
+| Status | Draft 0.21 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -164,7 +164,10 @@ Each can move into scope later through [change control](#14-change-control).
   starts at about 1 GiB before any mod. A Terraria server's world is named
   after the server's ID, the name the game uses for its files. Vanilla
   Terraria and tModLoader keep their bans in memory: the panel lifts a ban
-  while the server is stopped.
+  while the server is stopped. TShock loads plugins only at start and skips
+  one it can't load without a word; the panel keeps them in the server's data
+  and puts the enabled ones in place before each start. tModLoader takes each
+  Workshop mod from the newest folder built for its version.
 - **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts (its server
   jars are Java and carry ARM64 native libraries; the fact-finding ran x86-64
   only, so an ARM64 run is part of M7). Servers
@@ -245,10 +248,10 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 |---|---|---|
 | MOD-01 | P0 | Project Zomboid Steam Workshop mods, at parity with zomboid-server. |
 | MOD-02 | P0 | Minecraft through Modrinth: search, add by link or ID, filter by the server's loader and game version, resolve dependencies, check for updates. Covers Paper plugins and Fabric mods, plus Forge and NeoForge mods once UPD-07 lands. |
-| MOD-03 | P1 | tModLoader mods through the Steam Workshop, reusing the Project Zomboid code. |
+| MOD-03 | P1 | tModLoader mods through the Steam Workshop, reusing the Project Zomboid code. tModLoader reads only what is on disk: the panel downloads the enabled mods that are missing or have an update before each start. |
 | MOD-04 | P1 | Mod update checks with the same policies as game updates (UPD-03). |
 | MOD-05 | P2 | Thunderstore (Valheim), CurseForge. |
-| MOD-06 | P1 | TShock plugins: add by upload or by a release link, enable, disable, remove, with a restart badge. There's no central catalogue, so no dependency resolution. Admins only, with a warning that plugins run code inside the server. |
+| MOD-06 | P1 | TShock plugins: add by upload (a plugin file or a zip of them) or by a GitHub release link that the server's own agent downloads (HTTPS, GitHub's hosts only, every redirect checked, 16 MiB at most), enable, disable, remove, with a restart badge. There's no central catalogue, so no dependency resolution. Admins only, with a warning that plugins run code inside the server; the audit log records each file's name, size and SHA-256 and where it came from. |
 
 ### 8.7 Backups, restore, reset — BAK
 
@@ -465,7 +468,7 @@ milestone and the tests that prove it, and is updated with every merge.
 | Scope creep ("add game X"). | Change control, and the manifest path for simple games. |
 | Legal. | Explicit Minecraft EULA acceptance; no game files redistributed; captured fixtures limited to test data. |
 | Forge and NeoForge installers change often. | Pinned loader versions, fixtures per loader, and loaders shipped at P1 after the P0 ones are solid. |
-| Third-party code in plugins and mods (Paper, TShock, tModLoader). | Admin-only installs with a warning; the container isolation from NFR-02/03. |
+| Third-party code in plugins and mods (Paper, TShock, tModLoader). | Admin-only installs with a warning and an audit record of each file; plugin links limited to GitHub release assets, downloaded by the server's own agent; the container isolation from NFR-02/03. |
 | Hosts that can't run a game (ARM hosts such as Apple Silicon Macs or a Raspberry Pi). | Architecture declared per adapter, and a clear refusal (HST-05). |
 
 ## 14. Change control
@@ -542,3 +545,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.18 | 2026-09-29 | M5 runtime adapter: vanilla Terraria, TShock and tModLoader run on agents (installs checked against pinned or published digests, the world menu avoided, `exit` to stop, TShock's REST moderation as actions); a flavour may name its own image; installs unpack zip and tar; unchecked newer vanilla versions and memory needs noted (§7). |
 | 0.19 | 2026-09-29 | M2 follow-up (M2-I): progress runs show as one line (CON-01); the agent's player polls stay out of the live log (PLY-01); a change in how the orchestrator builds containers waits for a running game's next start, except a security fix (SRV-05, SRV-06, NFR-02); the orchestrator takes `keepDerivation` on PUT and reports each container's `derivation` (D3). |
 | 0.20 | 2026-09-29 | M5 panel adapter: Terraria offered in the panel for vanilla, TShock and tModLoader (versions with warnings, world size, a secret server password; settings forms with TShock's token hidden whole; moderation per flavour; backups, restores and resets); a Terraria world is named after the server's ID (§7); PLY-03 names the ban targets; CFG-04 hides secrets kept as keys; CFG-09 notes files the game prunes. |
+| 0.21 | 2026-09-29 | M5 mods and plugins: tModLoader's Workshop mods through the shared Workshop source, downloaded before each start (MOD-03); TShock plugins by upload or GitHub release link, downloaded by the server's agent, with a restart badge and an audit record (MOD-06); plugin sources in the adapter contract; §7, §13. |
