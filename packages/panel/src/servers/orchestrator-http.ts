@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { isServerId, type DeleteResponse, type HealthResponse, type HostInfo, type OrchestratorError, type ServerContainer, type ServerSpec, type ServerStats } from '@gsp/shared';
+import { isServerId, type ApplyOptions, type DeleteResponse, type HealthResponse, type HostInfo, type OrchestratorError, type ServerContainer, type ServerSpec, type ServerStats } from '@gsp/shared';
 import { OrchestratorCallError, type OrchestratorClient } from './orchestrator';
 
 export interface OrchestratorHttpOptions {
@@ -91,8 +91,8 @@ export class OrchestratorHttp implements OrchestratorClient {
   }
 
   /** May stop the old container first (the default stop timeout). */
-  async apply(spec: ServerSpec): Promise<ServerContainer> {
-    return this.call('PUT', this.server(spec.id), spec, DEFAULT_STOP_SEC * 1000);
+  async apply(spec: ServerSpec, o: ApplyOptions = {}): Promise<ServerContainer> {
+    return this.call('PUT', `${this.server(spec.id)}${o.keepImage ? '?keepImage=true' : ''}`, spec, DEFAULT_STOP_SEC * 1000);
   }
 
   async start(id: string): Promise<ServerContainer> {
