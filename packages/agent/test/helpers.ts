@@ -70,6 +70,7 @@ export async function makeHarness(overrides: Partial<AgentConfig> = {}, o: { ada
     host: '127.0.0.1',
     port: 0,
     adapter: 'pz',
+    flavour: null,
     installDir: path.join(dir, 'install'),
     dataDir: path.join(dir, 'data'),
     stateDir: path.join(dir, 'state'),

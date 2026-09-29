@@ -87,6 +87,14 @@ export interface Flavour {
   name: I18n;
   /** Replaces the adapter's capabilities for servers of this flavour. */
   capabilities?: Capability[];
+  /**
+   * The image family servers of this flavour run in, when it isn't the
+   * adapter's `AdapterMeta.runtime` (PRD §10: a flavour may name another
+   * image). The panel's server spec asks the orchestrator for it, and the
+   * agent (told the flavour by `GAME_FLAVOUR`) gives installs that family's
+   * tools (the steamcmd driver for `steam`).
+   */
+  runtime?: RuntimeFamily;
 }
 
 /** A license the owner must accept before a game may run (D6): what the `eula` capability means. */

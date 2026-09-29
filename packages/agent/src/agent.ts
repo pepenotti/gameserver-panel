@@ -11,6 +11,7 @@ import type {
   LineSignal,
   RuntimeAdapter,
   RuntimeCtx,
+  RuntimeFamily,
   RuntimeState,
   VersionsResponse,
 } from '@gsp/adapter-api';
@@ -207,7 +208,7 @@ export class Agent {
       }
     };
     const steam =
-      this.adapter.meta.runtime === 'steam'
+      this.runtimeFamily() === 'steam'
         ? new SteamcmdDriver({
             steamcmd: this.cfg.steamcmd,
             home: this.cfg.home,
@@ -222,6 +223,16 @@ export class Agent {
     const download = makeDownload({ fetch: get, progress });
     const exec = makeExec({ env: agentEnv(), onLine, cwd: ctx.roots.install });
     return { ...ctx, onLine, progress, steam, fetch: get, download, exec };
+  }
+
+  /**
+   * The image family this server runs in (PRD §10): its flavour's
+   * (`GAME_FLAVOUR`) when that flavour names one, else the adapter's. Picks
+   * the tools installs get (the steamcmd driver for `steam`).
+   */
+  runtimeFamily(): RuntimeFamily {
+    const f = this.cfg.flavour === null ? undefined : this.adapter.meta.flavours.find((x) => x.id === this.cfg.flavour);
+    return f?.runtime ?? this.adapter.meta.runtime;
   }
 
   private channelOf(p: unknown): ControlKind {
