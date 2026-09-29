@@ -16,7 +16,7 @@ without a milestone is a PRD bug.
 | SRV-08 | P1 | M7 | — |
 | SRV-09 | P2 | after v1 | — |
 | UPD-01 | P0 | M1, M3, M5 | `agent.test.ts` install progress and "install before start"; `agent/test/http.test.ts` "installs and lists versions"; Minecraft: `adapter-minecraft/test/install.test.ts`, `agent/test/install-tools.test.ts` (fetch, checked downloads, tool runs), `agent/test/minecraft.test.ts` |
-| UPD-02 | P0 | M1, M3, M5 | `agent.test.ts` branch change and latest builds per branch; `adapter-pz` runtime install tests; Minecraft: `adapter-minecraft/test/launch.test.ts`, `install.test.ts` (versions 1.16.5 and newer, Paper channels); Minecraft choices before a server exists: `adapter-minecraft/test/panel.test.ts`, `panel/test/minecraft.test.ts` (cache, refusals) |
+| UPD-02 | P0 | M1, M3, M5 | `agent.test.ts` branch change and latest builds per branch; `adapter-pz` runtime install tests; Minecraft: `adapter-minecraft/test/launch.test.ts`, `install.test.ts` (versions 1.16.5 and newer, Paper channels); Minecraft choices before a server exists: `adapter-minecraft/test/panel.test.ts`, `panel/test/minecraft.test.ts` (cache, refusals); one version listing for the create form and the agent (`adapter-minecraft/src/shared/versions.ts`) |
 | UPD-03 | P0 | M1, M3, M5 | `agent.test.ts` "updates on start when asked"; `panel/test/server.test.ts`, `panel/test/schedules.test.ts`; `adapter-pz/test/panel-core.test.ts` (update check); `panel/test/agent-e2e.test.ts` (update check through `ServerCtx.versions()`); Minecraft update checks per loader: `adapter-minecraft/test/panel.test.ts`, `panel/test/minecraft.test.ts` |
 | UPD-04 | P0 | M1, M3, M5 | `panel/test/server.test.ts` (safety backup before update) |
 | UPD-05 | P0 | M3 | measured: `docs/verification/minecraft-26.3.md`, `fixtures/minecraft/26.3/`; fake: `tools/fake-minecraft/fake-minecraft.test.ts` (Paper channels, Fill v3); Minecraft: `adapter-minecraft/test/install.test.ts` (pinned version, Paper channel and build); `panel/test/minecraft.test.ts` (the pinned version's channel and warning) |
@@ -24,22 +24,22 @@ without a milestone is a PRD bug.
 | UPD-07 | P1 | M4 | — |
 | UPD-08 | P2 | after v1 | — |
 | CFG-01 | P0 | M1 | `panel/test/config.test.ts` (validation, masking); `adapter-pz/test/panel-config-contract.test.ts`; Minecraft `server.properties` form: `adapter-minecraft/test/panel.test.ts`; word choices: `formats/test/option-meta.test.ts` |
-| CFG-02 | P0 | M1 | `formats/test/registry.test.ts`, `formats/test/lua-data.test.ts`; `config.test.ts` "rejects raw Lua"; config suite data-only check; `formats/test/{properties,yaml,toml,json5,lines}.test.ts` (M3.0) |
+| CFG-02 | P0 | M1 | `formats/test/registry.test.ts`, `formats/test/lua-data.test.ts`; `config.test.ts` "rejects raw Lua"; config suite data-only check; `formats/test/{properties,yaml,toml,json5,lines}.test.ts` (M3.0); a file's own check (`ConfigFileDecl.check`): Minecraft's four player lists refused in a shape the game can't load (`adapter-minecraft/test/`, `panel/test/`) |
 | CFG-03 | P0 | M1 | `config.test.ts` "history (CFG-03)" |
 | CFG-04 | P0 | M1 | `config.test.ts` "puts managed keys back"; config suite managed values; `adapter-pz/test/panel-config-contract.test.ts` "locks the sandbox file's VERSION… (CFG-04, CFG-01)"; Minecraft locked keys: `adapter-minecraft/test/panel.test.ts`, `panel/test/minecraft.test.ts` |
-| CFG-05 | P0 | M1 | `config.test.ts` "applies live"; `panel-config-contract.test.ts` afterWrite; Minecraft whitelist reload and switch: `adapter-minecraft/test/panel.test.ts`, `panel/test/minecraft-e2e.test.ts` |
+| CFG-05 | P0 | M1 | `config.test.ts` "applies live"; `panel-config-contract.test.ts` afterWrite; Minecraft whitelist reload and switch: `adapter-minecraft/test/panel.test.ts`, `panel/test/minecraft-e2e.test.ts`; settings saved while running re-applied at the next start after an in-game whitelist switch: `panel/test/minecraft-e2e.test.ts` |
 | CFG-06 | P1 | M1 | `config.test.ts` "applies a game preset"; config suite presets; `panel/test/reset.test.ts` preset test; Minecraft presets: `adapter-minecraft/test/panel.test.ts` |
 | CFG-07 | P0 | M1 | `panel/test/files.test.ts` "text editor API"; `registry.test.ts` formatFor; `formats/test/registry.test.ts` (every format id with its highlighting) |
-| CFG-08 | P0 | M1 | `panel/test/files.test.ts` (LocalServerFiles, editor policy, editor API refusals); `panel/test/server-files.test.ts` (both ServerFiles implementations), `agent/test/files.test.ts`, `archive/test/rooted.test.ts` |
+| CFG-08 | P0 | M1 | `panel/test/files.test.ts` (LocalServerFiles, editor policy, editor API refusals); `panel/test/server-files.test.ts` (both ServerFiles implementations), `agent/test/files.test.ts`, `archive/test/rooted.test.ts`; Minecraft list files checked on every save path (text, form, preset, revert, proposal) |
 | CFG-09 | P0 | M1 | `registry.test.ts` comment preservation; `config.test.ts` comments kept; comments and unknown keys kept by every format: `formats/test/{properties,yaml,toml,json5,lines}.test.ts` |
 | CFG-10 | P1 | M1 | manual UI check (Advanced section, search); `web/src/pages/config/OptionsForm.tsx` |
 | CON-01 | P0 | M1 | `agent.test.ts` "never leaks the admin or RCON password"; `agent/test/http.test.ts` event stream; `panel/test/agent-e2e.test.ts` (no secret in any log line); `agent/test/rcon-client.test.ts` (one packet per write, sentinel after the first reply or a fallback, the size limit) |
-| CON-02 | P0 | M5 | `agent/test/rcon-client.test.ts` (commands over the channel's size refused before sending) |
+| CON-02 | P0 | M5 | `agent/test/rcon-client.test.ts` (commands over the channel's size refused before sending); colour codes stripped from shown lines and replies (`RuntimeAdapter.display`): Paper fixtures, `panel/test/minecraft-e2e.test.ts` |
 | CON-03 | P1 | M1 | `panel/test/server.test.ts` (broadcast); `adapter-pz/test/panel-core.test.ts` (messages); Minecraft `say` (256 characters): `adapter-minecraft/test/panel.test.ts` |
 | CON-04 | P0 | M5 | — |
 | PLY-01 | P0 | M1 | `agent.test.ts` (join/leave); `adapter-pz/test/runtime.test.ts` (players); live runtime suite "lists who is online"; Minecraft: `adapter-minecraft/test/log.test.ts`, `control.test.ts`; Minecraft: `adapter-minecraft/test/panel.test.ts`, `panel/test/minecraft-e2e.test.ts` |
 | PLY-02 | P1 | M1 | `panel/test/players.test.ts` "records joins and leaves", "emits join/leave events" |
-| PLY-03 | P0 | M1 | `panel/test/players.test.ts`; `adapter-pz/test/panel-core.test.ts` (players); panel core suite (moderation arguments); Minecraft kick, ban and pardon by name and IP, whitelist, op: `panel/test/minecraft-e2e.test.ts` |
+| PLY-03 | P0 | M1 | `panel/test/players.test.ts`; `adapter-pz/test/panel-core.test.ts` (players); panel core suite (moderation arguments); Minecraft kick, ban and pardon by name and IP, whitelist, op: `panel/test/minecraft-e2e.test.ts`; refused moderation answers errors (`PlayerOps.refused`): every captured Minecraft reply tested; PZ unchanged |
 | MOD-01 | P0 | M1 | `panel/test/mods.test.ts`; `adapter-pz/test/panel-core.test.ts` (Steam Workshop source) |
 | MOD-02 | P0 | M4 | — |
 | MOD-03 | P1 | M5 | `source-workshop/test/workshop.test.ts` (the Workshop source by app id, shared with Project Zomboid; tModLoader use in M5) |
