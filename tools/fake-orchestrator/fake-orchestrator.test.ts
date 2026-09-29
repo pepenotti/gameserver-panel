@@ -217,6 +217,32 @@ describe('runtime image upgrades in the fake orchestrator (HST-01, SRV-05, SRV-0
   });
 });
 
+describe('a release that derives containers differently, in the fake orchestrator (SRV-05, SRV-06, NFR-02)', () => {
+  it('keeps a running server as derived when asked, recreates it otherwise, never across a security fix, and remembers across restarts', { timeout: 60_000 * SCALE }, async () => {
+    const r = await rig();
+    const [game] = await freeUdpPorts(1);
+    expect(await request(r.socket, 'PUT', '/v1/servers/pz', { body: spec('pz', game!) })).toMatchObject({ status: 200, body: { derivation: 'current' } });
+    const started = (await request(r.socket, 'POST', '/v1/servers/pz/start')).body as ServerContainer;
+
+    r.backend.changeDerivation();
+    expect(await request(r.socket, 'GET', '/v1/servers')).toMatchObject({ body: [{ id: 'pz', state: 'running', derivation: 'changed' }] });
+    expect(await request(r.socket, 'PUT', '/v1/servers/pz?keepDerivation=true', { body: spec('pz', game!) })).toMatchObject({ status: 200, body: { state: 'running', startedAt: started.startedAt, derivation: 'changed' } });
+
+    // Still waiting after the fake orchestrator went away and came back.
+    await close(r);
+    const again = await rig({ dir: r.dir, agentPorts: r.agentPorts, controlPorts: r.controlPorts });
+    expect(await request(again.socket, 'GET', '/v1/servers')).toMatchObject({ body: [{ id: 'pz', derivation: 'changed' }] });
+    await request(again.socket, 'POST', '/v1/servers/pz/start');
+    // A security fix: recreated whatever is asked.
+    again.backend.changeDerivation({ security: true });
+    expect(await request(again.socket, 'GET', '/v1/servers')).toMatchObject({ body: [{ id: 'pz', derivation: 'security-fix' }] });
+    expect(await request(again.socket, 'PUT', '/v1/servers/pz?keepDerivation=true&keepImage=true', { body: spec('pz', game!) })).toMatchObject({ status: 200, body: { state: 'created', derivation: 'current' } });
+    // And an ordinary change, not kept: recreated too.
+    again.backend.changeDerivation();
+    expect(await request(again.socket, 'PUT', '/v1/servers/pz', { body: spec('pz', game!) })).toMatchObject({ status: 200, body: { state: 'created', derivation: 'current' } });
+  });
+});
+
 describe('what the fake orchestrator passes its agents (dev loop, M3, M5)', () => {
   it("gives them the fake games' knobs and Minecraft's and Terraria's download services, nothing of its own (UPD-01)", () => {
     const env = {

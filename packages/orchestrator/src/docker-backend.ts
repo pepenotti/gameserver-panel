@@ -1,6 +1,6 @@
 import { isServerId, type ApplyOptions, type ContainerState, type CpuArch, type DeleteResponse, type HostInfo, type ServerContainer, type ServerSpec, type ServerStats } from '@gsp/shared';
 import { IdLocks, Mutex, type Backend } from './backend';
-import { agentUrl, DEFAULT_STOP_TIMEOUT_SEC, LABEL, names, planContainer, VOLUME_KINDS, type ContainerPlan, type StackContext } from './derive';
+import { agentUrl, DEFAULT_STOP_TIMEOUT_SEC, DERIVATION, derivationOf, derivationState, LABEL, names, planContainer, VOLUME_KINDS, type ContainerPlan, type Derivation, type StackContext } from './derive';
 import { DockerError, labelFilter, type DockerClient, type DockerContainer, type DockerContainerSummary, type DockerImage, type DockerInfo, type DockerNetwork, type DockerStats, type DockerVolume, type Labels } from './docker';
 import { conflict, notFound, OrchError, refused, unavailable } from './errors';
 import type { Policy } from './policy';
@@ -22,6 +22,10 @@ export interface DockerBackendOptions {
   docker: DockerClient;
   ctx: StackContext;
   policy: Policy;
+  /** How it derives containers: this release's (`DERIVATION`) unless a test stands in for another release. */
+  derivation?: Derivation;
+  /** What it did that people should know about (a container recreated for a security fix). */
+  log?: (line: string) => void;
 }
 
 function archOf(a: string): CpuArch {
@@ -48,17 +52,22 @@ function fromDocker(e: DockerError): OrchError {
  * containers, networks and volumes that carry this stack's labels and names.
  * Images are only inspected (never pulled, built or removed): a runtime image
  * rebuilt under its tag is a new content id, and a container on the old one
- * is recreated at the next PUT that doesn't keep it (HST-01, SRV-05).
+ * is recreated at the next PUT that doesn't keep it (HST-01, SRV-05). So is
+ * a container another release derived (`DERIVATION_VERSION`), except one
+ * derived before a security fix (`SAFE_DERIVATION`), which no PUT keeps
+ * (SRV-06, NFR-02).
  */
 export class DockerBackend implements Backend {
   private readonly busy = new IdLocks();
   private readonly creating = new Mutex();
   private readonly docker: DockerClient;
   private readonly stack: string;
+  private readonly derivation: Derivation;
 
   constructor(private readonly o: DockerBackendOptions) {
     this.docker = o.docker;
     this.stack = o.ctx.stack;
+    this.derivation = o.derivation ?? DERIVATION;
   }
 
   private async guard<T>(fn: () => Promise<T>): Promise<T> {
@@ -97,16 +106,21 @@ export class DockerBackend implements Backend {
   }
 
   apply(spec: ServerSpec, o: ApplyOptions = {}): Promise<ServerContainer> {
-    const plan = planContainer(spec, this.o.ctx);
+    const plan = planContainer(spec, this.o.ctx, this.derivation);
     return this.guard(() =>
       this.busy.run(spec.id, async () => {
         const existing = await this.container(spec.id);
         // The image its tag names now (never pulled): a rebuild under the same tag, as every product upgrade
         // makes, is a new id, and the container moves to it like it would to a new spec (HST-01, SRV-05).
         const latest = await this.latestImageId(plan.image);
-        const sameConfig = existing?.Config.Labels?.[LABEL.configHash] === plan.configHash;
+        const labels = existing?.Config.Labels;
+        const sameSpec = labels?.[LABEL.specHash] === plan.specHash;
+        const derivation = derivationState(labels, this.derivation);
+        // The container as derived: the same config; or the same spec as another release derived it, asked to keep
+        // it (its game runs, SRV-06), unless that release came before a security fix (NFR-02).
+        const keptConfig = labels?.[LABEL.configHash] === plan.configHash || (sameSpec && o.keepDerivation === true && derivation === 'changed');
         // Kept: the same image; or asked to keep it (its game runs); or its image is gone (nothing to move to).
-        if (existing && sameConfig && (existing.Image === latest || o.keepImage === true || latest === '')) {
+        if (existing && keptConfig && (existing.Image === latest || o.keepImage === true || latest === '')) {
           // Same container: only make sure the panel (maybe recreated since) still reaches it.
           await this.attachPanel(plan.network);
           return this.describe(existing, spec.id, () => Promise.resolve(latest));
@@ -114,6 +128,11 @@ export class DockerBackend implements Backend {
         // Refuse before touching anything; check again once no other create can race.
         if (latest === '') throw unavailable(`The image ${plan.image} is not built on this host`);
         await this.precheck(spec, plan, existing);
+        if (existing && sameSpec && o.keepDerivation === true && derivation === 'security-fix') {
+          this.o.log?.(
+            `${spec.id}: recreating its container although asked to keep it: it was derived by version ${derivationOf(labels)}, before the security fix of version ${this.derivation.safeFrom} (NFR-02)`,
+          );
+        }
         if (existing?.State.Running) await this.stopContainer(existing.Id, DEFAULT_STOP_TIMEOUT_SEC);
         await this.creating.run(async () => {
           await this.precheck(spec, plan, existing);
@@ -262,6 +281,7 @@ export class DockerBackend implements Backend {
       agentUrl: agentUrl(this.stack, id),
       imageId: c.Image ?? '',
       latestImageId: await latest(c.Config.Image),
+      derivation: derivationState(c.Config.Labels, this.derivation),
     };
   }
 

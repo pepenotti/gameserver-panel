@@ -6,7 +6,8 @@ import { pendingHelpKeys } from '../lib/servers';
 /**
  * "Applies at next start" (SRV-05): a server's container waits for its
  * game's next start to be recreated, with new limits, on a newer runtime
- * image, or both. The tooltip says which.
+ * image, built another way after a panel update, or several of them. The
+ * tooltip says which.
  */
 export function PendingBadge({ reasons, size = 'md' }: { reasons: readonly ContainerPendingReason[]; size?: 'sm' | 'md' }) {
   const { t } = useTranslation();

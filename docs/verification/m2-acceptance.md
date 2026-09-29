@@ -271,6 +271,40 @@ never while its game runs.
       `docker image ls --filter dangling=true` lists it; remove it by its id
       (`docker image rm <old id>`), never by pruning.
 
+### 8c. An orchestrator that builds containers another way (SRV-06, NFR-02)
+
+What a release that changes how the orchestrator derives containers (as the
+tmpfs `exec` fix did) does to existing servers: the same as a newer image,
+unless the change is a security fix. `docker inspect <container> --format
+'{{index .Config.Labels "gsp.derivation"}}'` shows the version a container
+was derived by (empty: from before versions, which counts as 0).
+
+- [ ] The upgrade to the first release with versions is one such change: with
+      the stack of an older commit up, pz-a's game running and pz-b's stopped,
+      build this one (`node scripts/stack.mjs build`) and recreate the
+      orchestrator and the panel (`node scripts/stack.mjs up -d --force-recreate orchestrator panel`).
+      Once the panel booted: pz-b has a new container labelled
+      `gsp.derivation=1`; pz-a keeps its unlabelled container and its game
+      keeps running (uptime not reset); `await api('GET', '/api/servers')`
+      shows it with `containerPendingReasons` holding `derivation` (and
+      `image` when the runtime image's id changed too), and the tooltip says
+      a panel update builds containers another way. The orchestrator's log has
+      a `PUT /v1/servers/pz-a` but no stop of pz-a.
+- [ ] Restart pz-a from the panel: a new container labelled
+      `gsp.derivation=1`, `containerPending: false`, the game running again
+      with its world; the audit log says "container recreated the way this
+      panel version builds containers before the game started".
+- [ ] A security fix, in a local build only (never committed): raise
+      `DERIVATION_VERSION` and `SAFE_DERIVATION` in
+      `packages/orchestrator/src/derive.ts` to 2, build and recreate as above
+      with pz-a's game running. pz-a's container is recreated at once (labelled
+      2), its game starts again in it, the orchestrator's log says
+      "recreating its container although asked to keep it … before the
+      security fix of version 2", and the audit log's `server.reconcile`
+      says "container recreated at once for a security fix in how containers
+      are built". Put the source back and build again: both servers are
+      version 1's again (pz-a at its next start).
+
 ## 9. Docker restart (SRV-06): only with the owner's go-ahead
 
 - [ ] Both games running. Restart Docker (Docker Desktop: tray → Restart;
@@ -332,6 +366,7 @@ docker ps -a --filter label=gsp.stack=$S; docker volume ls --filter label=gsp.st
 | 7 Backups | pass | Hot backup `pz-pz-a-<time>-manual.tar.zst` (847 KB, fresh world) and its sidecar in `.tmp/backups/pz-a/`; pz-b's list empty. Restore while running: stopped, swapped, running again in about 65 s; audit `backup.restore` with the parts. Undo after that answered `nothing-to-undo` (by design, checklist reworded); restore while stopped then undo brought the changed `pz-a.ini` line back; a second undo 409. |
 | 8 Memory | pass | PATCH 5632 while running: `containerPending: true`, container untouched, game running. Restart: new container, 5905580032, pending cleared. Stopped + launch memory 2560: recreated at once at 6442450944. 7000: 409 `orchestrator-refused`, `maxMb: 6144`. |
 | 8b Runtime image | not run | Added after this run (M2-H): the check for the fix of runtime images that never reached existing servers. |
+| 8c Derivation | not run | Added after this run (M2-I): the check for the fix of derivation changes (the tmpfs `exec` fix of step 3) recreating running games at the panel's boot. |
 | 9 Docker restart | pass | Panel recreated first (`--force-recreate panel`): back on both networks, games kept running. Then, with the owner's go-ahead, Docker Desktop restarted: every container back within a minute (this stack and the host's other stacks), both games `running` again about 90 s after the engine, agents connected, networks still hold the panel. The panel booted before the orchestrator's socket existed: its first reconcile failed (audited `server.reconcile` ok=false, ENOENT) and the 15 s retry succeeded silently (no-op PUTs in the orchestrator log). Overnight before this step the schedules ran on their own server only: hot backups at 06:00 and 12:00, pz-a's restart at 11:00 and pz-b's at 12:30, each with its cold backup. |
 | 10 Removal | pass | pz-a: 409 `server-running`, then after stopping 200 with its final backup (848 KB, named with the `manual` trigger); no container, volume or network left. pz-b with its container stopped: without `force` 409 `server-running`; with `force` 200, `forced: true`, `finalBackup: null`, `finalBackupError: "Game server agent unreachable: fetch failed"`, the same in the audit entry; nothing left. |
 | 11 Clean up | pass | `stack.mjs clean` removed the stack and its three service images; `docker image rm` the two runtime images. No container, volume, network or `:s1` image left; the host's other stacks untouched. `.tmp/backups/` (9 MB) deleted. |

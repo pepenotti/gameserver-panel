@@ -127,6 +127,18 @@ describe('the panel’s orchestrator client (D3, NFR-03), against the fake orche
     expect(await client.remove('pz', { removeVolumes: true })).toEqual({ removed: true, volumesRemoved: true });
   });
 
+  it('keeps a container as derived when asked, and derives it anew otherwise (SRV-06, NFR-02)', async () => {
+    const created = await client.apply(spec());
+    expect(created.derivation).toBe('current');
+    backend.changeDerivation();
+    expect(await client.list()).toEqual([{ ...created, derivation: 'changed' }]);
+    // Both kept at once: the query carries both.
+    backend.rebuildImage('gsp/steam:dev');
+    expect(await client.apply(spec(), { keepImage: true, keepDerivation: true })).toMatchObject({ state: 'created', derivation: 'changed', imageId: created.imageId });
+    expect(await client.apply(spec(), { keepImage: true })).toMatchObject({ derivation: 'current' });
+    expect(await client.remove('pz', { removeVolumes: true })).toEqual({ removed: true, volumesRemoved: true });
+  });
+
   it("passes the orchestrator's refusals on with their code and field", async () => {
     // What a compromised panel might try: the type says no, the orchestrator says no too.
     const injected = { ...spec().env, LD_PRELOAD: '/tmp/x.so' } as unknown as ServerSpec['env'];

@@ -107,6 +107,14 @@ function waitSignal(game: LiveGame, pred: (s: LineSignal) => boolean, timeoutMs:
   });
 }
 
+/** A `LineSignal.progress` names its run with a non-empty key, and its text (when given) is text. */
+function progressShape(s: LineSignal): void {
+  if (s.progress === undefined) return;
+  expect(typeof s.progress.key, 'progress.key').toBe('string');
+  expect(s.progress.key.trim(), 'progress.key').not.toBe('');
+  if (s.progress.text !== undefined) expect(typeof s.progress.text, 'progress.text').toBe('string');
+}
+
 export function runtimeAdapterSuite<P>(adapter: RuntimeAdapter<P>, opts: RuntimeSuiteOptions = {}): void {
   const caps = new Set<Capability>([...adapter.meta.capabilities, ...adapter.meta.flavours.flatMap((f) => f.capabilities ?? [])]);
   const hasChannel = CHANNEL_CAPS.some((c) => caps.has(c));
@@ -128,6 +136,7 @@ export function runtimeAdapterSuite<P>(adapter: RuntimeAdapter<P>, opts: Runtime
       for (const line of ['', ' ', '\u0000', '> > >', 'x'.repeat(20_000), 'éñ — 😀']) {
         const s = adapter.classify(line);
         expect(typeof s.message).toBe('string');
+        progressShape(s);
       }
     });
 
@@ -162,6 +171,9 @@ export function runtimeAdapterSuite<P>(adapter: RuntimeAdapter<P>, opts: Runtime
         // The agent takes `channelReady` on the ready line itself or after it (never before).
         if (hasChannel) expect(signals.findIndex((s, i) => i >= ready[0]! && s.channelReady), 'a `channelReady` line from `ready` on').toBeGreaterThanOrEqual(ready[0]!);
         expect(signals.filter((s) => s.blockingPrompt || s.fatal)).toEqual([]);
+        // Progress lines (CON-01) name their run; the ready line is never one of them (it stays in the log).
+        for (const s of signals) progressShape(s);
+        expect(signals[ready[0]!]!.progress, 'the ready line as progress').toBeUndefined();
         if (captured.bootVersion) expect([...new Set(signals.flatMap((s) => (s.version ? [s.version] : [])))]).toEqual([captured.bootVersion]);
       });
 

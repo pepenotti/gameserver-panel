@@ -1,14 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AgentEvent, AgentStatus, JobInfo, JobResult, SeqEvent } from '@gsp/shared';
+import { mergeLogs, type LogLine } from '../lib/logs';
 import { SERVERS_KEY, useServerScope } from './server';
 
-export interface LogLine {
-  seq: number;
-  at: string;
-  stream: 'out' | 'err' | 'agent';
-  line: string;
-}
+export type { LogLine };
 
 export interface Alert {
   seq: number;
@@ -81,7 +77,7 @@ type ServerMsg =
 
 function toLog(e: SeqEvent): LogLine | null {
   const ev = e.event as AgentEvent;
-  return ev.type === 'log' ? { seq: e.seq, at: e.at, stream: ev.stream, line: ev.line } : null;
+  return ev.type === 'log' ? { seq: e.seq, at: e.at, stream: ev.stream, line: ev.line, ...(ev.run !== undefined ? { run: ev.run } : {}) } : null;
 }
 
 /**
@@ -111,7 +107,8 @@ export function LiveProvider({ enabled, children }: { enabled: boolean; children
       raf = undefined;
       const add = pending.current;
       pending.current = {};
-      for (const [sid, lines] of Object.entries(add)) if (lines.length) patch(sid, (s) => ({ logs: [...s.logs, ...lines].slice(-MAX_LOGS) }));
+      // A progress run's latest line takes the place of the run's line (CON-01).
+      for (const [sid, lines] of Object.entries(add)) if (lines.length) patch(sid, (s) => ({ logs: mergeLogs(s.logs, lines, MAX_LOGS) }));
     };
 
     const connect = () => {
@@ -164,7 +161,7 @@ export function LiveProvider({ enabled, children }: { enabled: boolean; children
         const ev = msg.event;
         switch (ev.type) {
           case 'log':
-            (pending.current[sid] ??= []).push({ seq: msg.seq, at: msg.at, stream: ev.stream, line: ev.line });
+            (pending.current[sid] ??= []).push(toLog(msg)!);
             raf ??= requestAnimationFrame(flush);
             break;
           case 'state':

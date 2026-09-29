@@ -591,7 +591,7 @@ describe('reconcile (SRV-06)', () => {
     again.orch.calls.length = 0;
     expect(await again.deps.servers.reconcile()).toEqual({ applied: [], started: [], orphans: [], failed: [] });
     // default is Compose's: never applied, started or removed by the panel. pz-two keeps the image it runs.
-    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage']);
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage keepDerivation']);
   });
 
   it('recreates a missing container, starts a stopped one, and reports what it cannot fix', async () => {
@@ -693,7 +693,7 @@ describe('a newer runtime image (HST-01, SRV-05, SRV-06)', () => {
     const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
     again.orch.calls.length = 0;
     expect(await again.deps.servers.reconcile()).toEqual({ applied: [], started: [], orphans: [], failed: [] });
-    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage']);
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage keepDerivation']);
     expect(again.deps.servers.containerPendingReasons('pz-two')).toEqual([]);
   });
 
@@ -709,7 +709,7 @@ describe('a newer runtime image (HST-01, SRV-05, SRV-06)', () => {
     expect(await again.deps.servers.reconcile()).toEqual({ applied: ['pz-two'], started: ['pz-two'], orphans: [], failed: [] });
     // Applied as it was first (to reach its agent, which says the game is stopped), then on the newer image;
     // recreated by the orchestrator, never removed: its volumes stay.
-    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage', 'apply pz-two', 'start pz-two']);
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage keepDerivation', 'apply pz-two keepDerivation', 'start pz-two']);
     expect(p.orch.containers.get('pz-two')).toMatchObject({ state: 'running', imageId: newer, spec: old.spec });
     expect(again.deps.servers.containerPending('pz-two')).toBe(false);
     // The agent keeps its own desired state: the panel neither stopped nor started the game.
@@ -727,7 +727,7 @@ describe('a newer runtime image (HST-01, SRV-05, SRV-06)', () => {
     fake.feed.status_ = fakeStatus({ state: 'running' });
     again.orch.calls.length = 0;
     expect(await again.deps.servers.reconcile()).toEqual({ applied: [], started: [], orphans: [], failed: [] });
-    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage']);
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage keepDerivation']);
     expect(p.orch.containers.get('pz-two')).toBe(old);
     expect(old).toMatchObject({ state: 'running', imageId: expect.not.stringMatching(newer) });
     expect(fake.agent.calls).toEqual([]);
@@ -767,7 +767,7 @@ describe('a newer runtime image (HST-01, SRV-05, SRV-06)', () => {
     const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
     // A recreated panel container is on none of the servers' networks until the orchestrator joins it to one.
     again.fakes('pz-two').agent.status = async () => {
-      if (!again.orch.calls.includes('apply pz-two keepImage')) throw new Error('getaddrinfo ENOTFOUND');
+      if (!again.orch.calls.includes('apply pz-two keepImage keepDerivation')) throw new Error('getaddrinfo ENOTFOUND');
       return fakeStatus({ state: 'running' });
     };
     expect(await again.deps.servers.reconcile()).toMatchObject({ applied: [], failed: [] });
@@ -831,5 +831,134 @@ describe('a newer runtime image (HST-01, SRV-05, SRV-06)', () => {
     expect(p.fakes('pz-two').agent.calls).not.toContain('start');
     expect(p.orch.containers.get('pz-two')).toBe(old);
     expect(p.deps.servers.containerPendingReasons('pz-two')).toEqual(['image']);
+  });
+});
+
+describe('an orchestrator that builds containers another way (SRV-05, SRV-06, NFR-02)', () => {
+  const reconciled = (p: TestPanel) => p.deps.audit.list({ serverId: 'pz-two', action: 'server.reconcile' }).map((e) => e.detail);
+  /** How the fake orchestrator would describe pz-two's container now (without recording a call). */
+  const derivedNow = (p: TestPanel) => {
+    const c = p.orch.containers.get('pz-two')!;
+    return c.derivedBy === p.orch.derivation.version ? 'current' : 'older';
+  };
+
+  it("is taken at once by a stopped game's container when the panel boots: recreated, started, its agent left alone", async () => {
+    const p = await makePanel();
+    await create(p);
+    const old = p.orch.containers.get('pz-two')!;
+    // A product upgrade whose orchestrator derives containers differently, and a new panel over the same database.
+    p.orch.rederive();
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    again.orch.calls.length = 0;
+    expect(await again.deps.servers.reconcile()).toEqual({ applied: ['pz-two'], started: ['pz-two'], orphans: [], failed: [] });
+    // Applied as it was first (to reach its agent, which says the game is stopped), then derived anew; volumes kept.
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage keepDerivation', 'apply pz-two keepImage', 'start pz-two']);
+    expect(p.orch.containers.get('pz-two')).toMatchObject({ state: 'running', spec: old.spec, volumes: true });
+    expect(derivedNow(again)).toBe('current');
+    expect(again.deps.servers.containerPending('pz-two')).toBe(false);
+    expect(again.fakes('pz-two').agent.calls).toEqual([]);
+    expect(reconciled(again)[0]).toBe('container recreated the way this panel version builds containers');
+  });
+
+  it('waits while the game runs, the container and game untouched, and is taken at the next start through the panel', async () => {
+    const p = await makePanel();
+    await create(p);
+    const old = p.orch.containers.get('pz-two')!;
+    p.orch.rederive();
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    const fake = again.fakes('pz-two');
+    fake.feed.status_ = fakeStatus({ state: 'running' });
+    again.orch.calls.length = 0;
+    expect(await again.deps.servers.reconcile()).toEqual({ applied: [], started: [], orphans: [], failed: [] });
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage keepDerivation']);
+    expect(p.orch.containers.get('pz-two')).toBe(old);
+    expect(old.state).toBe('running');
+    expect(fake.agent.calls).toEqual([]);
+    expect(again.deps.servers.containerPendingReasons('pz-two')).toEqual(['derivation']);
+    // A retry or another boot while it still runs: still kept.
+    await again.deps.servers.reconcile();
+    expect(p.orch.containers.get('pz-two')).toBe(old);
+
+    // Start pressed while it runs: the agent says so, and the change keeps waiting.
+    const ctx = again.deps.servers.get('pz-two')!;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(p.orch.containers.get('pz-two')).toBe(old);
+
+    // Stopped, then started through the panel: recreated, derived anew, before the game starts.
+    fake.feed.status_ = fakeStatus({ state: 'stopped' });
+    const atStart: string[] = [];
+    fake.agent.start = async () => {
+      atStart.push(derivedNow(again));
+      return fakeStatus({ state: 'starting' });
+    };
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(ctx.ops.last()).toMatchObject({ kind: 'start', ok: true });
+    expect(atStart).toEqual(['current']);
+    expect(p.orch.containers.get('pz-two')).toMatchObject({ state: 'running', spec: old.spec });
+    expect(again.deps.servers.containerPendingReasons('pz-two')).toEqual([]);
+    expect(reconciled(again)[0]).toBe('container recreated the way this panel version builds containers before the game started');
+  });
+
+  it("is learnt at the game's next start when the orchestrator was upgraded while the panel ran", async () => {
+    const p = await makePanel();
+    await create(p);
+    p.orch.rederive();
+    expect(p.deps.servers.containerPending('pz-two')).toBe(false);
+    const ctx = p.deps.servers.get('pz-two')!;
+    p.orch.calls.length = 0;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(ctx.ops.last()).toMatchObject({ ok: true });
+    expect(p.orch.calls).toEqual(['list', 'apply pz-two', 'start pz-two']);
+    expect(derivedNow(p)).toBe('current');
+    expect(p.fakes('pz-two').agent.calls).toContain('start');
+  });
+
+  it('recreates a container built before a security fix at once, even while its game runs, with whatever else waited, and says so (NFR-02)', async () => {
+    const p = await makePanel();
+    await create(p, { launch: { memoryMb: 2048 } });
+    // New limits wait for the running game's next start…
+    p.fakes('pz-two').feed.status_ = fakeStatus({ state: 'running' });
+    await p.deps.servers.update('pz-two', { memLimitMb: 6144 }, OWNER_ACTOR);
+    expect(p.deps.servers.containerPendingReasons('pz-two')).toEqual(['settings']);
+    // …until an upgrade fixes a security gap in how containers are built.
+    p.orch.rederive({ security: true });
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    again.fakes('pz-two').feed.status_ = fakeStatus({ state: 'running' });
+    again.orch.calls.length = 0;
+    expect(await again.deps.servers.reconcile()).toEqual({ applied: ['pz-two'], started: ['pz-two'], orphans: [], failed: [] });
+    // Nothing is asked to be kept: one recreation with the new limits, derived anew.
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two', 'start pz-two']);
+    expect(p.orch.containers.get('pz-two')).toMatchObject({ state: 'running', spec: expect.objectContaining({ memoryMb: 6144 }) });
+    expect(derivedNow(again)).toBe('current');
+    expect(again.deps.serverRows.get('pz-two')!.spec).toMatchObject({ memoryMb: 6144 });
+    expect(again.deps.servers.containerPendingReasons('pz-two')).toEqual([]);
+    expect(reconciled(again)[0]).toBe('container recreated at once for a security fix in how containers are built, without waiting for its game to stop (a running game starts again in it)');
+  });
+
+  it('takes new limits, a newer image and a changed derivation in one recreation at the next start', async () => {
+    const p = await makePanel();
+    await create(p, { launch: { memoryMb: 2048 } });
+    const fake = p.fakes('pz-two');
+    fake.feed.status_ = fakeStatus({ state: 'running' });
+    await p.deps.servers.update('pz-two', { memLimitMb: 6144 }, OWNER_ACTOR);
+    const newer = p.orch.rebuildImage();
+    p.orch.rederive();
+    const ctx = p.deps.servers.get('pz-two')!;
+    // The start pressed while it runs learns of both, and all three wait.
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(p.deps.servers.containerPendingReasons('pz-two')).toEqual(['settings', 'image', 'derivation']);
+    fake.feed.status_ = fakeStatus({ state: 'stopped' });
+    p.orch.calls.length = 0;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(p.orch.calls.filter((c) => c.startsWith('apply'))).toEqual(['apply pz-two']);
+    expect(p.orch.containers.get('pz-two')).toMatchObject({ imageId: newer, spec: expect.objectContaining({ memoryMb: 6144 }) });
+    expect(derivedNow(p)).toBe('current');
+    expect(p.deps.servers.containerPendingReasons('pz-two')).toEqual([]);
+    expect(reconciled(p)[0]).toBe('container recreated with its changed settings and on a newer runtime image and the way this panel version builds containers before the game started');
   });
 });

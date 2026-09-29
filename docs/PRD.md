@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.18 |
+| Status | Draft 0.19 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -185,8 +185,8 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | SRV-02 | P0 | List servers with their state, players, version and next scheduled restart. Each server has its own pages. |
 | SRV-03 | P0 | Start, stop, restart and kill. Stop and restart use countdown warnings wherever the game can message players. |
 | SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. The owner may force the removal of a server that can't be stopped, won't run or whose agent can't be reached: the final backup is still taken when possible, and the result says when it wasn't and why. |
-| SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. New limits apply at once to a stopped server and at its next start to a running one, as a newer runtime image does. A host view warns when the limits add up to more than the host has. |
-| SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart, and after a product upgrade, on the newer runtime image from its next start. |
+| SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. New limits, a newer runtime image and a new way of building containers from a panel update apply at once to a stopped server and at its next start to a running one. A host view warns when the limits add up to more than the host has. |
+| SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart, and after a product upgrade, on the newer runtime image from its next start. After an orchestrator release that builds containers another way, a running game's container is kept until the game's next start. |
 | SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server, and says why: the last fatal line the game printed (redacted). |
 | SRV-08 | P1 | Connection info per server (address, port, protocol, whether a password is set), plus the router forwards it needs. |
 | SRV-09 | P2 | Clone a server: settings only, or settings plus world. |
@@ -223,7 +223,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 
 | ID | P | Requirement |
 |---|---|---|
-| CON-01 | P0 | Live log per server for operators and up, with secrets redacted and a filter. |
+| CON-01 | P0 | Live log per server for operators and up, with secrets redacted and a filter. A run of progress lines (a world being generated prints one per step) shows as its latest line, updated in place, so a first boot's install and start lines stay in the live log; every line still counts for readiness and failures. |
 | CON-02 | P0 | Raw console (RCON or stdin) for admins, with command arguments sanitised. Commands longer than the game's control channel takes are refused before they are sent (Minecraft's RCON: 1446 bytes of text). |
 | CON-03 | P1 | Broadcast a message to players where the game supports it. |
 | CON-04 | P0 | Terraria with TShock is controlled through TShock's REST API for players, kick, ban and broadcast. The API is bound to the server's internal network only, never published, with a token the agent generates and keeps in TShock's config, masked like other secrets. Vanilla Terraria and tModLoader use stdin. |
@@ -232,7 +232,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 
 | ID | P | Requirement |
 |---|---|---|
-| PLY-01 | P0 | Online players, wherever the game exposes them (RCON, stdin or logs). |
+| PLY-01 | P0 | Online players, wherever the game exposes them (RCON, stdin or logs). Asking a game's console for its players stays out of the live log; the same command sent by a person shows like any other. |
 | PLY-02 | P1 | Join and leave history. |
 | PLY-03 | P0 | Kick, ban and unban, whitelist, and operator/admin levels, mapped to what each game supports. |
 
@@ -313,7 +313,7 @@ on their own; only AST-05 is the assistant itself.
 | ID | Area | Requirement |
 |---|---|---|
 | NFR-01 | Security | At least zomboid-server's controls, listed below. |
-| NFR-02 | Security | The **orchestrator** is the only component with Docker access, and its API is narrow (see D3). Every server container gets `cap_drop: ALL`, `no-new-privileges`, a non-root user and a memory limit. It is never privileged, never on the host network, and has no host mounts beyond its own volumes. Images come from an allowlist. |
+| NFR-02 | Security | The **orchestrator** is the only component with Docker access, and its API is narrow (see D3). Every server container gets `cap_drop: ALL`, `no-new-privileges`, a non-root user and a memory limit. It is never privileged, never on the host network, and has no host mounts beyond its own volumes. Images come from an allowlist. An upgrade never loosens a container: one kept across an orchestrator release is one this stack's orchestrator created from the same spec, and a release that closes a security gap in how containers are built recreates every container built before it at once, even while its game runs, and says so in the audit log. |
 | NFR-03 | Isolation | Each server gets its own internal network. A game container can't reach the panel, the orchestrator or another server. The panel and the orchestrator listen on unix sockets in volumes only they (and the TLS proxy, for the panel) mount, and the orchestrator has no network at all. A game server can still reach the public HTTPS address like any internet client. |
 | NFR-04 | Reliability | Graceful stop with a time budget per game; state survives restarts; watchdogs per server. |
 | NFR-05 | Portability | Linux, Windows and macOS through Docker, on x86-64 and ARM64, within each adapter's declared architectures (HST-05). Nothing in the core depends on the host OS. |
@@ -537,3 +537,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.16 | 2026-09-29 | M5 fact-finding: Terraria 1.4.5.8 measured for vanilla, TShock 6.2.1 and tModLoader v2026.07.3.0 (`docs/verification/terraria-1.4.5.8.md`, `fixtures/terraria/1.4.5.8`, `tools/fake-terraria`); tModLoader installs from its GitHub releases and runs in the steam image with .NET 8, TShock in the native image with .NET 9, and a flavour may name its own image (§7, §10); no Terraria license gate (§7); CON-04's token lives in TShock's config; vanilla's IP bans and reconnect crash noted (§7, §13). |
 | 0.17 | 2026-09-29 | M2 follow-up (M2-H): a newer runtime image reaches each server at its next start, the way changed limits do (HST-01, SRV-05, SRV-06); the orchestrator only inspects images, reports image ids and takes `keepImage` on PUT (D3). |
 | 0.18 | 2026-09-29 | M5 runtime adapter: vanilla Terraria, TShock and tModLoader run on agents (installs checked against pinned or published digests, the world menu avoided, `exit` to stop, TShock's REST moderation as actions); a flavour may name its own image; installs unpack zip and tar; unchecked newer vanilla versions and memory needs noted (§7). |
+| 0.19 | 2026-09-29 | M2 follow-up (M2-I): progress runs show as one line (CON-01); the agent's player polls stay out of the live log (PLY-01); a change in how the orchestrator builds containers waits for a running game's next start, except a security fix (SRV-05, SRV-06, NFR-02); the orchestrator takes `keepDerivation` on PUT and reports each container's `derivation` (D3). |
