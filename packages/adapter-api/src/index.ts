@@ -228,6 +228,35 @@ export interface InstallCtx extends RuntimeCtx {
    * line goes to the job's log like steamcmd's. Resolves when it exits.
    */
   exec?(argv: string[], o?: ExecOptions): Promise<ExecResult>;
+  /**
+   * Unpacks an archive an install downloaded (UPD-01; the images have no
+   * `unzip`): plain files and folders into `dest`, which must lie in the
+   * install or data root. The whole archive is refused when an entry is a
+   * link or any other special file, is absolute, climbs out with `..`, or
+   * would land outside `dest`, and when it is corrupt (a size or CRC that
+   * doesn't match). Files keep an exec bit the archive records (tar, zips
+   * made on Unix) as 0755; the rest are 0644.
+   */
+  extract?(req: ExtractRequest): Promise<ExtractResult>;
+}
+
+/** What `InstallCtx.extract` unpacks, and where. */
+export interface ExtractRequest {
+  /** Absolute path of the archive, in the install or data root. */
+  file: string;
+  /** Absolute folder, in the install or data root, the entries land in; made when missing. */
+  dest: string;
+  format: 'zip' | 'tar' | 'tar.gz';
+  /** Only entries under this folder of the archive (`1458/Linux`); the others are skipped. */
+  only?: string;
+  /** Leading folders dropped from each entry's path (after `only`); entries left without a name are skipped. */
+  strip?: number;
+}
+
+export interface ExtractResult {
+  /** Files and folders written. */
+  files: number;
+  dirs: number;
 }
 
 /** What `InstallCtx.download` fetches and where it keeps it. */

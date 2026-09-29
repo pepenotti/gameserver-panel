@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { InstallCtx, LineSignal, RuntimeAdapter } from '@gsp/adapter-api';
 import type { LiveGame, RuntimeHost } from '@gsp/adapter-api/testing/runtime-suite';
 import { GameRun } from '../src/game';
-import { makeDownload, makeExec, makeFetch } from '../src/install-tools';
+import { makeDownload, makeExec, makeExtract, makeFetch } from '../src/install-tools';
 import { SteamcmdDriver } from '../src/steamcmd';
 import { freePort } from './helpers';
 
@@ -64,6 +64,7 @@ export function agentHost(tools: { launcher: string[]; steamcmd: string[] }, o: 
             : undefined,
         fetch: get,
         download: makeDownload({ fetch: get }),
+        extract: makeExtract(() => [roots.install, roots.data]),
         exec: makeExec({ env: env(), onLine: noop, cwd: roots.install }),
       };
     },
