@@ -193,13 +193,17 @@ export function createErrorField(code: string, extra: Record<string, unknown>, d
   }
 }
 
+type PendingHelpKey = 'servers.pendingStartHelp' | 'servers.pendingImageHelp' | 'servers.pendingDerivationHelp';
+
 /**
- * What a waiting container's "Applies at next start" says (SRV-05, HST-01),
- * one message per reason: new limits, a newer runtime image, or both.
+ * What a waiting container's "Applies at next start" says (SRV-05, SRV-06,
+ * HST-01), one message per reason: new limits, a newer runtime image,
+ * containers built another way, or several.
  */
-export function pendingHelpKeys(reasons: readonly ContainerPendingReason[]): ('servers.pendingStartHelp' | 'servers.pendingImageHelp')[] {
-  const keys: ('servers.pendingStartHelp' | 'servers.pendingImageHelp')[] = [];
-  if (reasons.includes('settings') || !reasons.includes('image')) keys.push('servers.pendingStartHelp');
+export function pendingHelpKeys(reasons: readonly ContainerPendingReason[]): PendingHelpKey[] {
+  const keys: PendingHelpKey[] = [];
+  if (reasons.includes('settings') || reasons.length === 0) keys.push('servers.pendingStartHelp');
   if (reasons.includes('image')) keys.push('servers.pendingImageHelp');
+  if (reasons.includes('derivation')) keys.push('servers.pendingDerivationHelp');
   return keys;
 }

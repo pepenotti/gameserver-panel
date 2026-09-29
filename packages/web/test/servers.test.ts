@@ -112,4 +112,11 @@ describe('a container waiting for the next start (SRV-05, HST-01)', () => {
     expect(en.servers.pendingImageHelp).toMatch(/runtime image/);
     expect(es.servers.pendingImageHelp).toMatch(/imagen de ejecución/);
   });
+
+  it('says so when a panel update builds containers another way, alone or with the rest (SRV-06)', () => {
+    expect(pendingHelpKeys(['derivation'])).toEqual(['servers.pendingDerivationHelp']);
+    expect(pendingHelpKeys(['settings', 'image', 'derivation'])).toEqual(['servers.pendingStartHelp', 'servers.pendingImageHelp', 'servers.pendingDerivationHelp']);
+    expect(en.servers.pendingDerivationHelp).toMatch(/panel update/);
+    expect(es.servers.pendingDerivationHelp).toMatch(/actualización del panel/);
+  });
 });
