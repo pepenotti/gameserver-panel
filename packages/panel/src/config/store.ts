@@ -27,6 +27,14 @@ export interface VersionRow {
   size: number;
 }
 
+/**
+ * A problem of a file's text: where, and what (English). `localized` says it
+ * in each language when the adapter's own check found it (`ConfigFileDecl.check`).
+ */
+export interface FileIssue extends ParseIssue {
+  localized?: I18n;
+}
+
 export interface ApplyResult {
   /** `live`: the running server re-read it; `next-start`: takes effect when it (re)starts. */
   applied: 'live' | 'next-start' | 'unchanged';
@@ -101,8 +109,8 @@ export interface FileContent {
   secretKeys: string[];
   /** Null when the file can be saved. */
   readonlyReason: ReadonlyReason | null;
-  /** Problems of the text as it is on disk. */
-  issues: ParseIssue[];
+  /** Problems of the text as it is on disk: its format's, or the adapter's own check (CFG-02). */
+  issues: FileIssue[];
   /** The shape a file the game executes must keep (the editor checks it as you type). */
   dataOnly: DataShape | null;
 }

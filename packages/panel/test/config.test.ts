@@ -2,14 +2,16 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import type { ConfigIssue, PanelAdapter } from '@gsp/adapter-api';
+import { panelAdapter, panelAdapters } from '@gsp/adapters/panel';
 import { getPath, iniToRecord, parseIni, parseLuaData } from '@gsp/formats';
 import { MASK } from '../src/config/service';
 import { Client, fakeStatus, makePanel, ownerReady, type TestPanel } from './harness';
 
 const fixtures = fileURLToPath(new URL('../../../fixtures/pz/b42/config/', import.meta.url));
 
-async function setup(opts: { withFiles?: boolean } = { withFiles: true }) {
-  const p = await makePanel();
+async function setup(opts: { withFiles?: boolean; adapters?: readonly PanelAdapter[] } = { withFiles: true }) {
+  const p = await makePanel({}, opts.adapters ? { adapters: opts.adapters } : {});
   const dir = path.join(p.deps.env.pzDataDir, 'Server');
   if (opts.withFiles) {
     mkdirSync(dir, { recursive: true });
@@ -171,6 +173,32 @@ describe('sandbox', () => {
     });
     expect(readFileSync(serverFile(p, '_SandboxVars.lua'), 'utf8')).toBe(before);
     expect((await c.get('/api/servers/default/config/proposals')).json()).toEqual([]);
+  });
+
+  it("refuses what the file's own check says the game can't load, says it in each language, and shows it for the file as it is (CFG-02, CFG-08)", async () => {
+    // PZ's files declare no check: the same adapter, with one on its ini that refuses a made-up marker.
+    const check = (text: string): ConfigIssue[] =>
+      text.split('\n').flatMap((l, i) => (l.includes('NOT-FOR-THE-GAME') ? [{ line: i + 1, col: 1, message: { en: 'The game cannot load this line', es: 'El juego no puede cargar esta línea' } }] : []));
+    const pz = panelAdapter('pz');
+    const checked: PanelAdapter = { ...pz, config: { ...pz.config, files: (srv) => pz.config.files(srv).map((f) => (f.id === 'ini' ? { ...f, check } : f)) } };
+    const { p, c } = await setup({ withFiles: true, adapters: [checked, ...panelAdapters.filter((a) => a.meta.id !== 'pz')] });
+    const before = readFileSync(serverFile(p, '.ini'), 'utf8');
+    const text = before.replace(/^PublicName=.*$/m, 'PublicName=NOT-FOR-THE-GAME');
+    const line = text.split('\n').findIndex((l) => l.startsWith('PublicName=')) + 1;
+    const r = await c.post('/api/servers/default/config/proposals', { fileId: 'ini', text });
+    expect(r.statusCode).toBe(400);
+    expect(r.json()).toEqual({ error: 'invalid-file', issues: [{ line, col: 1, message: 'The game cannot load this line', localized: { en: 'The game cannot load this line', es: 'El juego no puede cargar esta línea' } }] });
+    // A form change goes through the same check.
+    expect((await save(c, 'ini', { PublicName: 'NOT-FOR-THE-GAME' })).json()).toMatchObject({ error: 'invalid-file', issues: [{ line }] });
+    expect(readFileSync(serverFile(p, '.ini'), 'utf8')).toBe(before);
+    expect((await c.get('/api/servers/default/config/proposals')).json()).toEqual([]);
+    // A file already like that on disk (written by something else) opens with the issue shown.
+    writeFileSync(serverFile(p, '.ini'), text);
+    expect(((await c.get('/api/servers/default/config/files/content?id=ini')).json() as { issues: unknown[] }).issues).toEqual([
+      { line, col: 1, message: 'The game cannot load this line', localized: { en: 'The game cannot load this line', es: 'El juego no puede cargar esta línea' } },
+    ]);
+    // Fixing it saves.
+    expect((await save(c, 'ini', { PublicName: 'Fixed' })).statusCode).toBe(200);
   });
 
   it('applies a game preset onto the options the file has (CFG-06)', async () => {

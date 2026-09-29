@@ -81,6 +81,16 @@ export interface FilesView {
   folders: EditableFolder[];
 }
 
+/** A problem of a file's text; `localized` when the game's own check found it (said in each language). */
+export interface FileIssue extends ParseIssue {
+  localized?: I18n;
+}
+
+/** An issue in the page's language. */
+export function issueIn(i: FileIssue, lang: string): ParseIssue {
+  return i.localized ? { ...i, message: localize(i.localized, lang) || i.message } : i;
+}
+
 export interface FileContent {
   id: string;
   text: string;
@@ -90,7 +100,8 @@ export interface FileContent {
   managedKeys: string[];
   secretKeys: string[];
   readonlyReason: ReadonlyReason | null;
-  issues: ParseIssue[];
+  /** Problems of the file as it is on disk: its format's, or the game's own check. */
+  issues: FileIssue[];
   dataOnly: DataShape | null;
 }
 

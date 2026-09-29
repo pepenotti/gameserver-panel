@@ -453,6 +453,23 @@ export interface ConfigFileDecl {
    * while the game is stopped (409 `config-stopped-only` otherwise).
    */
   stoppedOnly?: boolean;
+  /**
+   * What the game needs of the file beyond its format (CFG-02, CFG-08),
+   * given a text that parses: the entries it couldn't load (Minecraft's
+   * lists hold objects the game writes, not bare names). A save with any
+   * issue is refused (400 `invalid-file`), and the editor shows the issues
+   * of the file as it is on disk. Empty when the game can load it.
+   */
+  check?(text: string): ConfigIssue[];
+}
+
+/** A problem a declared file's own `check` found, for people: where it is, and what to do instead (EN/ES). */
+export interface ConfigIssue {
+  /** 1-based. */
+  line: number;
+  /** 1-based. */
+  col?: number;
+  message: I18n;
 }
 
 /** A folder the text editor may browse (CFG-07, CFG-08). */

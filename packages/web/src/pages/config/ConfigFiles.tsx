@@ -12,7 +12,7 @@ import { localize } from '../../api/meta';
 import { useServerApi } from '../../api/server';
 import { CodeEditor, type CodeEditorHandle } from '../../components/CodeEditor';
 import { useErrorText } from '../../lib/format';
-import { getContent, propose, useFileLabel, type FileContent, type FilesView, type ProposalPreview, type ReadonlyReason, type TreeEntry } from './api';
+import { getContent, issueIn, propose, useFileLabel, type FileContent, type FileIssue, type FilesView, type ProposalPreview, type ReadonlyReason, type TreeEntry } from './api';
 import { FileHistory } from './ConfigHistory';
 import { ProposalModal } from './ProposalModal';
 
@@ -104,7 +104,7 @@ function useLiveIssues(text: string, content: FileContent | undefined): ParseIss
 }
 
 function FileEditor({ id, onDirty, stoppedOnly = false }: { id: string; onDirty: (dirty: boolean) => void; stoppedOnly?: boolean }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const errorText = useErrorText();
   const fileLabel = useFileLabel();
   const qc = useQueryClient();
@@ -114,7 +114,8 @@ function FileEditor({ id, onDirty, stoppedOnly = false }: { id: string; onDirty:
   // The version being edited; a newer one from the server never replaces unsaved edits.
   const [base, setBase] = useState<FileContent | null>(null);
   const [text, setText] = useState('');
-  const [serverIssues, setServerIssues] = useState<ParseIssue[]>([]);
+  // What the panel found (the save's refusal, or the game's own check of the file as it is), until the text changes.
+  const [serverIssues, setServerIssues] = useState<FileIssue[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
   const [preview, setPreview] = useState<ProposalPreview | null>(null);
@@ -122,7 +123,7 @@ function FileEditor({ id, onDirty, stoppedOnly = false }: { id: string; onDirty:
   const [historyOpen, setHistoryOpen] = useState(false);
   // A read-only file (a script shown for reference) has nothing to fix.
   const liveIssues = useLiveIssues(text, base && !base.readonlyReason ? base : undefined);
-  const issues = serverIssues.length ? serverIssues : liveIssues;
+  const issues = useMemo(() => (serverIssues.length ? serverIssues : liveIssues).map((i) => issueIn(i, i18n.language)), [serverIssues, liveIssues, i18n.language]);
   const dirty = base !== null && text !== base.text;
   const editing = useRef({ base, text });
   editing.current = { base, text };
@@ -130,7 +131,7 @@ function FileEditor({ id, onDirty, stoppedOnly = false }: { id: string; onDirty:
   const adopt = (c: FileContent) => {
     setBase(c);
     setText(c.text);
-    setServerIssues([]);
+    setServerIssues(c.readonlyReason ? [] : c.issues);
     setStale(false);
     setProblem(null);
   };
@@ -170,7 +171,7 @@ function FileEditor({ id, onDirty, stoppedOnly = false }: { id: string; onDirty:
     try {
       setPreview(await propose(sapi, { fileId: id, text, baseSha256: content.sha256 }));
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'invalid-file' && Array.isArray(e.extra.issues)) setServerIssues(e.extra.issues as ParseIssue[]);
+      if (e instanceof ApiError && e.code === 'invalid-file' && Array.isArray(e.extra.issues)) setServerIssues(e.extra.issues as FileIssue[]);
       else if (e instanceof ApiError && e.code === 'stale') setStale(true);
       else setProblem(errorText(e));
     } finally {

@@ -16,6 +16,7 @@ import type {
   DeclaredFile,
   EditableFolder,
   FileContent,
+  FileIssue,
   PendingRestart,
   PreparedChange,
   ReappliedKey,
@@ -65,7 +66,7 @@ function parsePathId(id: string): { root: RootId; rel: string } | null {
 }
 
 const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
-const invalidFile = (issues: ParseIssue[]) => new HttpError(400, 'invalid-file', undefined, { issues });
+const invalidFile = (issues: FileIssue[]) =>new HttpError(400, 'invalid-file', undefined, { issues });
 const same = (a: Scalar | undefined, b: Scalar | undefined) => (a === undefined || b === undefined ? a === b : String(a) === String(b));
 
 /** `ServerFiles` refusals as HTTP errors. */
@@ -165,6 +166,13 @@ export class ConfigService implements ConfigStore {
     const text = await this.readText(t);
     if (text === null) throw t.decl ? new HttpError(409, 'config-missing') : new HttpError(404, 'not-found');
     return text;
+  }
+
+  /** What the adapter's own check of a declared file finds in a text that parses (CFG-02), in English and in each language. */
+  private checkIssues(t: Target, text: string): FileIssue[] {
+    const check = t.decl?.check;
+    if (!check) return [];
+    return check(text).map((i) => ({ line: i.line, ...(i.col === undefined ? {} : { col: i.col }), message: i.message.en, localized: i.message }));
   }
 
   private assertSavable(t: Target): void {
@@ -323,6 +331,8 @@ export class ConfigService implements ConfigStore {
 
     const final = t.format.parse(next);
     if (!final.ok) throw invalidFile(final.issues);
+    const checked = this.checkIssues(t, next);
+    if (checked.length) throw invalidFile(checked);
     const nextFlat = t.format.flatten(final.doc);
     const changedKeys = [...new Set([...Object.keys(diskFlat), ...Object.keys(nextFlat)])].filter((k) => !same(diskFlat[k], nextFlat[k]));
 
@@ -514,7 +524,7 @@ export class ConfigService implements ConfigStore {
       managedKeys: t.decl?.managedKeys ?? [],
       secretKeys: t.decl?.secretKeys ?? [],
       readonlyReason: t.reason,
-      issues: r.ok ? [] : r.issues,
+      issues: r.ok ? this.checkIssues(t, text) : r.issues,
       dataOnly: t.decl?.dataOnly ?? null,
     };
   }
