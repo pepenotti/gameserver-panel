@@ -484,6 +484,7 @@ export class Agent {
         classify: (line) => this.adapter.classify(line),
         channel,
         onLine: (raw, stream, signal) => this.onGameLine(run, raw, stream, signal),
+        onShow: (raw, stream, signal) => this.showGameLine(raw, stream, signal),
         onChannel: (e) => {
           this.controlError = e ? e.message : null;
         },
@@ -519,9 +520,26 @@ export class Agent {
     return this.redact(out);
   }
 
-  private onGameLine(run: GameRun, raw: string, stream: 'out' | 'err', sig: LineSignal): void {
+  /**
+   * A line of the game's output in the live log (CON-01): a progress line
+   * (`LineSignal.progress`) takes the place of the latest one of its run;
+   * anything else the game prints ends its runs (a blank line doesn't: some
+   * games space their progress lines out). A quiet query's reply never
+   * comes here (PLY-01, `GameRun`).
+   */
+  private showGameLine(raw: string, stream: 'out' | 'err', sig: LineSignal): void {
+    const p = sig.progress;
+    if (p && typeof p.key === 'string' && p.key !== '') {
+      this.hub.progress(p.key, { type: 'log', stream, line: this.shown(typeof p.text === 'string' ? p.text : raw) });
+      return;
+    }
     const line = this.shown(raw);
+    if (line.trim() !== '') this.hub.endRuns();
     this.hub.emit({ type: 'log', stream, line });
+  }
+
+  /** What a line of the game's output means, as soon as it is read, whether or not (or when) it is shown. */
+  private onGameLine(run: GameRun, raw: string, _stream: 'out' | 'err', sig: LineSignal): void {
     if (sig.version && sig.version !== this.store.get().gameVersion) {
       this.store.update({ gameVersion: sig.version });
       this.readInstalled();
@@ -546,6 +564,7 @@ export class Agent {
       run.proc.signal('SIGKILL');
     }
     if (sig.fatal) {
+      const line = this.shown(raw);
       this.alert('fatal', line.slice(0, FATAL_SHOWN));
       this.noteFatal(run, line);
     }
@@ -579,6 +598,8 @@ export class Agent {
     this.run = null;
     if (this.readyTimer) clearTimeout(this.readyTimer);
     if (this.pollTimer) clearTimeout(this.pollTimer);
+    // Its progress runs are over: the next run's lines start their own (CON-01).
+    this.hub.endRuns();
     this.players = null;
     const expected = this.expectExit;
     this.lastExit = { code: exit.code, signal: exit.signal, at: new Date().toISOString(), expected };
@@ -673,6 +694,8 @@ export class Agent {
     if (this.pollTimer) clearTimeout(this.pollTimer);
     // While still loading, the console is not read yet: don't wait the full budget.
     const budgetMs = wasStarting ? Math.min(timeoutMs, 30_000) : timeoutMs;
+    // A player poll waiting for its reply doesn't hold the stop back (PLY-01).
+    run.endQuiet();
     const ctl = run.handle((e) => this.log(`${CHANNEL_LABEL[run.kind]} command failed (${e.message}).`));
     void Promise.resolve()
       .then(() => this.adapter.stop(ctl, { budgetMs }))
@@ -713,11 +736,16 @@ export class Agent {
     this.pollTimer.unref();
   }
 
+  /**
+   * The agent's own question to the game (PLY-01), through a quiet handle:
+   * what it writes to the console and the reply the adapter waits for stay
+   * out of the live log, as long as the adapter says which reply it waits for.
+   */
   private async pollPlayers(): Promise<void> {
     const run = this.run;
     if (this.state !== 'running' || !run || !this.adapter.listPlayers) return;
     try {
-      const p = await this.adapter.listPlayers(run.handle(), this.runtimeCtx(), this.params ?? undefined);
+      const p = await this.adapter.listPlayers(run.handle(undefined, { quiet: true }), this.runtimeCtx(), this.params ?? undefined);
       this.controlError = null;
       this.failedPolls = 0;
       if (this.unresponsiveAlerted) {
