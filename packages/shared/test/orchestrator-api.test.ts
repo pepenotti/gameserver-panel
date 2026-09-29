@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isServerId, newerImage, SPEC_ENV_DENIED, SPEC_ENV_KEY } from '../src/orchestrator-api';
+import { changedDerivation, isServerId, newerImage, SPEC_ENV_DENIED, SPEC_ENV_KEY } from '../src/orchestrator-api';
 
 describe('orchestrator contract', () => {
   it('takes server ids the panel database takes: a-z first, then a-z 0-9 -, 2-24 long', () => {
@@ -20,5 +20,13 @@ describe('orchestrator contract', () => {
     expect(newerImage({ imageId: 'sha256:a', latestImageId: '' })).toBe(false);
     expect(newerImage({ imageId: '', latestImageId: 'sha256:b' })).toBe(false);
     expect(newerImage({})).toBe(false);
+  });
+
+  it('calls a derivation changed when the orchestrator would build the container differently now (SRV-06, NFR-02)', () => {
+    expect(changedDerivation({ derivation: 'changed' })).toBe(true);
+    expect(changedDerivation({ derivation: 'security-fix' })).toBe(true);
+    expect(changedDerivation({ derivation: 'current' })).toBe(false);
+    // A missing container, or an orchestrator older than the field: it can't tell.
+    expect(changedDerivation({})).toBe(false);
   });
 });

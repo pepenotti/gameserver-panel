@@ -17,7 +17,7 @@
  *   GET    /v1/health                     → HealthResponse
  *   GET    /v1/host                       → HostInfo
  *   GET    /v1/servers                    → ServerContainer[]   (only this stack's containers)
- *   PUT    /v1/servers/:id?keepImage=false ServerSpec → ServerContainer   (idempotent create or recreate; volumes kept; `ApplyOptions`)
+ *   PUT    /v1/servers/:id?keepImage=false&keepDerivation=false ServerSpec → ServerContainer   (idempotent create or recreate; volumes kept; `ApplyOptions`)
  *   POST   /v1/servers/:id/start          → ServerContainer
  *   POST   /v1/servers/:id/stop           StopRequest → ServerContainer
  *   POST   /v1/servers/:id/restart        StopRequest → ServerContainer
@@ -120,6 +120,10 @@ export interface PortMapping {
  * volumes. The runtime image is part of that state: once it was rebuilt under
  * its tag (a product upgrade), the same spec recreates the container with the
  * newer image too, unless the request keeps it (`ApplyOptions.keepImage`).
+ * So is the way the orchestrator derives the container: once another
+ * orchestrator release derives the same spec differently, the same spec
+ * recreates the container, unless the request keeps it
+ * (`ApplyOptions.keepDerivation`) and the change is no security fix.
  * The orchestrator never pulls: an image that isn't built on the host is
  * refused (`unavailable`) before anything changes.
  */
@@ -147,7 +151,30 @@ export interface ApplyOptions {
    * differs. Default false: the image the tag names now.
    */
   keepImage?: boolean;
+  /**
+   * `keepDerivation=true`: a container created from the same spec is kept
+   * even when this orchestrator derives it differently now (`derivation`
+   * `changed`: a product upgrade changed how containers are built). The
+   * panel asks this while the server's game runs, so the change waits for
+   * the game's next start (SRV-05, SRV-06). It never keeps a container whose
+   * spec differs, nor one derived before a security fix (`derivation`
+   * `security-fix`): that one is recreated at once (NFR-02). Default false.
+   */
+  keepDerivation?: boolean;
 }
+
+/**
+ * How the orchestrator derives a container's spec now, against how it was
+ * derived when the container was created (the same spec):
+ * - `current`: the same way;
+ * - `changed`: another orchestrator release built it (a product upgrade
+ *   changed how containers are built): a PUT of its spec recreates it unless
+ *   the request keeps it (`ApplyOptions.keepDerivation`);
+ * - `security-fix`: changed, and a change since closes a security gap: a PUT
+ *   recreates it at once, even while its game runs and even when asked to
+ *   keep it (NFR-02).
+ */
+export type DerivationState = 'current' | 'changed' | 'security-fix';
 
 /** Docker's container states, plus `missing` for a server whose container is gone. */
 export type ContainerState = 'created' | 'running' | 'paused' | 'restarting' | 'exited' | 'dead' | 'missing';
@@ -162,7 +189,7 @@ export interface ServerContainer {
   image: string;
   /**
    * sha256 of the canonical JSON of the spec it was created from: equal (and
-   * no `newerImage`) means a PUT of that spec is a no-op.
+   * no `newerImage`, no `changedDerivation`) means a PUT of that spec is a no-op.
    */
   specHash: string;
   /** Where the panel reaches the server's agent (on the server's own network). */
@@ -179,6 +206,12 @@ export interface ServerContainer {
    * rebuilt under its tag: see `newerImage`.
    */
   latestImageId?: string;
+  /**
+   * How this orchestrator derives the container now against how it was
+   * derived (`DerivationState`, SRV-06, NFR-02): see `changedDerivation`.
+   * Absent when `missing`, and from an orchestrator older than this field.
+   */
+  derivation?: DerivationState;
 }
 
 /**
@@ -189,6 +222,15 @@ export interface ServerContainer {
  */
 export function newerImage(c: Pick<ServerContainer, 'imageId' | 'latestImageId'>): boolean {
   return !!c.imageId && !!c.latestImageId && c.imageId !== c.latestImageId;
+}
+
+/**
+ * Whether the orchestrator would build a container differently now, for the
+ * same spec (`derivation` `changed` or `security-fix`): a PUT without
+ * `keepDerivation` recreates it. False when it can't tell.
+ */
+export function changedDerivation(c: Pick<ServerContainer, 'derivation'>): boolean {
+  return c.derivation === 'changed' || c.derivation === 'security-fix';
 }
 
 /** `POST /v1/servers/:id/stop` and `/restart`. */
