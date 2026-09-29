@@ -9,12 +9,20 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { InstallCtx } from '@gsp/adapter-api';
+import { afterAll } from 'vitest';
 
 export const TOOLS = fileURLToPath(new URL('../../../tools/fake-minecraft/', import.meta.url));
 export const FIXTURES = fileURLToPath(new URL('../../../fixtures/minecraft/26.3/', import.meta.url));
 export const FAKE_JAVA = [process.execPath, path.join(TOOLS, 'server.mjs')];
 export const fixture = (...p: string[]) => readFileSync(path.join(FIXTURES, ...p), 'utf8');
 export const fixtureLines = (...p: string[]) => fixture(...p).split('\n');
+
+/** Every folder `testCtx` made, removed when the test file ends even if a test never called `cleanup` (NFR-07). */
+const made = new Set<string>();
+afterAll(() => {
+  for (const dir of made) rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  made.clear();
+});
 
 export interface TestCtx extends InstallCtx {
   dir: string;
@@ -26,6 +34,7 @@ export interface TestCtx extends InstallCtx {
 /** Temporary roots and the fake as `java`; `env` holds the download URLs. */
 export function testCtx(o: { env?: Record<string, string>; eulaAccepted?: boolean; ports?: Record<string, number> } = {}): TestCtx {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-mc-'));
+  made.add(dir);
   const roots = { data: path.join(dir, 'data'), install: path.join(dir, 'install') };
   mkdirSync(roots.data, { recursive: true });
   mkdirSync(roots.install, { recursive: true });

@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { InstallCtx } from '@gsp/adapter-api';
+import { afterAll } from 'vitest';
 import { extractArchive } from '@gsp/archive';
 
 export const TOOLS = fileURLToPath(new URL('../../../tools/fake-terraria/', import.meta.url));
@@ -38,6 +39,13 @@ export function freePort(): Promise<number> {
   });
 }
 
+/** Every folder `testCtx` made, removed when the test file ends even if a test never called `cleanup` (NFR-07). */
+const made = new Set<string>();
+afterAll(() => {
+  for (const dir of made) rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  made.clear();
+});
+
 export interface TestCtx extends InstallCtx {
   dir: string;
   logs: string[];
@@ -47,6 +55,7 @@ export interface TestCtx extends InstallCtx {
 /** Temporary roots and the fake as the game; `env` holds the download URLs and the fake's knobs. */
 export function testCtx(o: { env?: Record<string, string>; ports?: Record<string, number> } = {}): TestCtx {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-tr-'));
+  made.add(dir);
   const roots = { data: path.join(dir, 'data'), install: path.join(dir, 'install') };
   mkdirSync(roots.data, { recursive: true });
   mkdirSync(roots.install, { recursive: true });
