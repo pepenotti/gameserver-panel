@@ -593,7 +593,12 @@ export function Players() {
           <Stack>
             <Text size="sm">{byAddress ? t('players.banAnyOnlineHelp') : t('players.banAnyHelp')}</Text>
             {addressWarning}
-            {banTypes.length > 1 && <SegmentedControl value={banBy} onChange={(v) => setBanBy(v as BanTarget)} data={banTypes.map((x) => ({ value: x, label: targetLabel[x] }))} />}
+            {/* Two kinds side by side; more (name, address, client ID, account) in a list that fits a phone. */}
+            {banTypes.length > 2 ? (
+              <Select label={t('players.banBy')} value={banBy} onChange={(v) => v && setBanBy(v as BanTarget)} data={banTypes.map((x) => ({ value: x, label: targetLabel[x] }))} allowDeselect={false} />
+            ) : (
+              banTypes.length > 1 && <SegmentedControl value={banBy} onChange={(v) => setBanBy(v as BanTarget)} data={banTypes.map((x) => ({ value: x, label: targetLabel[x] }))} />
+            )}
             <TextInput
               label={targetLabel[banBy]}
               value={banWho}

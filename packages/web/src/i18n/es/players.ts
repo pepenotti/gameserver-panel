@@ -58,6 +58,7 @@ export default {
   levelHolders: 'Niveles de acceso',
   levelHoldersHelp: 'Los jugadores con más que el nivel más bajo, según los guarda el juego.',
   levelHoldersEmpty: 'Nadie tiene un nivel más alto.',
+  banBy: 'Banear por',
   byUuid: 'ID del cliente (UUID)',
   byAccount: 'Cuenta',
   uuidBans: 'IDs de cliente',

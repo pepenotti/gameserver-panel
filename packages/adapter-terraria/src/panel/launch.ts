@@ -128,8 +128,8 @@ export const TERRARIA_LAUNCH_SCHEMA: LaunchOption[] = [
   },
 ];
 
-/** What each warning code of the version lists means (`VersionInfo.warning`, `LaunchChoice.warning`). */
-export const TERRARIA_WARNINGS: Record<VersionWarning, I18n> = {
+/** What each warning code of the version lists (and tModLoader's preview channel) means (`VersionInfo.warning`, `LaunchChoice.warning`). */
+export const TERRARIA_WARNINGS: Record<VersionWarning | 'tml-preview-channel', I18n> = {
   'unverified-download': {
     en: 'terraria.org publishes no checksums, and this version is newer than the ones this panel checked: its download is taken as it comes. Pick a checked version if you want to be sure.',
     es: 'terraria.org no publica sumas de verificación, y esta versión es más nueva que las que este panel verificó: su descarga se toma tal como llega. Elegí una versión verificada si querés estar seguro.',
@@ -141,6 +141,10 @@ export const TERRARIA_WARNINGS: Record<VersionWarning, I18n> = {
   'tml-preview': {
     en: 'A tModLoader test release: mods may not work with it yet, and players need the same preview. The server then takes preview releases.',
     es: 'Una versión de prueba de tModLoader: puede que los mods todavía no funcionen con ella, y los jugadores necesitan la misma preview. El servidor pasa a aceptar versiones preview.',
+  },
+  'tml-preview-channel': {
+    en: 'The server takes tModLoader’s test releases too: mods may not work with them yet, and players need the same version as the server.',
+    es: 'El servidor acepta también las versiones de prueba de tModLoader: puede que los mods todavía no funcionen con ellas, y los jugadores necesitan la misma versión que el servidor.',
   },
 };
 
@@ -259,6 +263,6 @@ export async function terrariaChoices(q: LaunchChoicesQuery, ctx: ChoicesCtx): P
       ...versions.map((v) => versionChoice(q.flavour as TerrariaFlavour, v)),
     ],
   };
-  if (q.flavour === 'tmodloader') out.channel = TML_CHANNELS.map((c) => ({ value: c, label: CHANNEL_LABELS[c], ...(c === 'preview' ? { warning: 'tml-preview' } : {}) }));
+  if (q.flavour === 'tmodloader') out.channel = TML_CHANNELS.map((c) => ({ value: c, label: CHANNEL_LABELS[c], ...(c === 'preview' ? { warning: 'tml-preview-channel' } : {}) }));
   return out;
 }

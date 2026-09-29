@@ -56,6 +56,7 @@ export default {
   levelHolders: 'Access levels',
   levelHoldersHelp: 'Players with more than the lowest level, as the game keeps them.',
   levelHoldersEmpty: 'Nobody has a higher level.',
+  banBy: 'Ban by',
   byUuid: 'Client ID (UUID)',
   byAccount: 'Account',
   uuidBans: 'Client IDs',

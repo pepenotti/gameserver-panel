@@ -175,7 +175,7 @@ describe('the versions the create form offers (UPD-02)', () => {
     expect(c.version![0]!.detail).toBe('v2026.07.3.0');
     expect(c.channel).toEqual([
       { value: 'stable', label: expect.anything() },
-      { value: 'preview', label: expect.anything(), warning: 'tml-preview' },
+      { value: 'preview', label: expect.anything(), warning: 'tml-preview-channel' },
     ]);
   });
 
