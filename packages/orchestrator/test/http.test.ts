@@ -1,9 +1,11 @@
 import type http from 'node:http';
 import { ORCHESTRATOR_API_VERSION } from '@gsp/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DERIVATION_VERSION } from '../src/derive';
+import { DockerBackend } from '../src/docker-backend';
 import { createOrchestratorServer } from '../src/http';
 import { listenOnSocket } from '../src/listen';
-import { dockerStack, policy, request, socketPath, spec, STACK, TOKEN, type DockerStack } from './helpers';
+import { ctx, dockerStack, policy, request, socketPath, spec, STACK, TOKEN, type DockerStack } from './helpers';
 
 let stack: DockerStack;
 let server: http.Server;
@@ -95,6 +97,10 @@ describe('the orchestrator API (D3, NFR-02, NFR-03)', () => {
     expect(await call('PUT', '/v1/servers/pz?keepImage=yes', { body: spec() })).toMatchObject({ status: 400, body: { code: 'bad-request', field: 'keepImage' } });
     expect(await call('PUT', '/v1/servers/pz?keepImage=true&keepImage=true', { body: spec() })).toMatchObject({ status: 400, body: { field: 'keepImage' } });
     expect(await call('PUT', '/v1/servers/pz?keepImage=true&image=alpine', { body: spec() })).toMatchObject({ status: 400, body: { code: 'bad-request' } });
+    expect(await call('PUT', '/v1/servers/pz?keepDerivation=1', { body: spec() })).toMatchObject({ status: 400, body: { code: 'bad-request', field: 'keepDerivation' } });
+    expect(await call('PUT', '/v1/servers/pz?keepImage=true&keepDerivation=true&keepDerivation=false', { body: spec() })).toMatchObject({ status: 400, body: { field: 'keepDerivation' } });
+    expect(await call('PUT', '/v1/servers/pz?keepDerivation=true&derivation=0', { body: spec() })).toMatchObject({ status: 400, body: { code: 'bad-request' } });
+    expect(await call('DELETE', '/v1/servers/pz?keepDerivation=true')).toMatchObject({ status: 400 });
     expect(await call('GET', '/v1/servers?all=1')).toMatchObject({ status: 400 });
     expect(await call('GET', '/v1/health', { body: {} })).toMatchObject({ status: 400 });
     expect(await call('POST', '/v1/servers/pz/start', { body: { image: 'x' } })).toMatchObject({ status: 400 });
@@ -136,6 +142,29 @@ describe('the orchestrator API (D3, NFR-02, NFR-03)', () => {
     // Not kept: the same spec is no longer a no-op.
     expect(await call('PUT', '/v1/servers/pz?keepImage=false', { body: spec() })).toMatchObject({ status: 200, body: { state: 'created', imageId: newer, latestImageId: newer } });
     expect(await call('DELETE', '/v1/servers/pz?removeVolumes=true')).toMatchObject({ status: 200 });
+  });
+
+  it('keeps a container another release derived while the panel asks, and recreates it when it does not (SRV-06, NFR-02, D3)', async () => {
+    expect(await call('PUT', '/v1/servers/pz', { body: spec() })).toMatchObject({ status: 200, body: { derivation: 'current' } });
+    // The next release, on the same Docker and socket path of its own.
+    const own = socketPath('orch-next');
+    const next = createOrchestratorServer({
+      backend: new DockerBackend({ docker: stack.docker, ctx, policy, derivation: { version: DERIVATION_VERSION + 1, safeFrom: 0 } }),
+      token: TOKEN,
+      version: 'next',
+      policy,
+    });
+    await listenOnSocket(next, own);
+    try {
+      expect(await request(own, 'GET', '/v1/servers')).toMatchObject({ status: 200, body: [{ id: 'pz', derivation: 'changed' }] });
+      const before = stack.fd.writes().length;
+      expect(await request(own, 'PUT', '/v1/servers/pz?keepImage=true&keepDerivation=true', { body: spec() })).toMatchObject({ status: 200, body: { derivation: 'changed' } });
+      expect(stack.fd.writes().length).toBe(before);
+      expect(await request(own, 'PUT', '/v1/servers/pz?keepDerivation=false', { body: spec() })).toMatchObject({ status: 200, body: { state: 'created', derivation: 'current' } });
+      expect(await request(own, 'DELETE', '/v1/servers/pz?removeVolumes=true')).toMatchObject({ status: 200 });
+    } finally {
+      await new Promise((r) => next.close(r));
+    }
   });
 
   it('logs one line per request, never a body or a token', () => {

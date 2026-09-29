@@ -1,4 +1,4 @@
-import { AGENT_CONTAINER_PORT, type RuntimeFamily, type ServerSpec } from '@gsp/shared';
+import { AGENT_CONTAINER_PORT, type DerivationState, type RuntimeFamily, type ServerSpec } from '@gsp/shared';
 import { refused } from './errors';
 import { canonicalJson, sha256, specHash } from './hash';
 
@@ -32,7 +32,53 @@ export const LABEL = {
   specHash: 'gsp.spec-hash',
   /** Hash of the whole derived container config: a PUT that would create the same container is a no-op. */
   configHash: 'gsp.config-hash',
+  /** `DERIVATION_VERSION` of the orchestrator that derived it (part of the config hash). */
+  derivation: 'gsp.derivation',
 } as const;
+
+/**
+ * Version of how `planContainer` derives a container from a spec (SRV-06,
+ * NFR-02): the same spec derives the same container as long as it stays the
+ * same. Raise it with every change to what is derived (a test pins each
+ * family's config hash per version). Each container is labelled with it, and
+ * the label is part of its config hash, so a container another release
+ * derived is one this orchestrator would build differently
+ * (`ServerContainer.derivation`). 1: the first labelled one; containers
+ * from before carry no label and count as 0.
+ */
+export const DERIVATION_VERSION = 1;
+
+/**
+ * The oldest derivation still safe to keep while its game runs (NFR-02). A
+ * change that closes a security gap raises it to that change's own version:
+ * every container derived before it is recreated at its next PUT, even while
+ * its game runs and even when the panel asks to keep it (`keepDerivation`),
+ * and the orchestrator logs why. 0: no derivation so far is unsafe to keep
+ * (before versions, the one change was the tmpfs `exec` fix, and a container
+ * without it is the stricter one).
+ */
+export const SAFE_DERIVATION = 0;
+
+/** The derivation an orchestrator builds, and the oldest it keeps: `DERIVATION_VERSION` and `SAFE_DERIVATION` (tests stand in for other releases). */
+export interface Derivation {
+  version: number;
+  safeFrom: number;
+}
+
+export const DERIVATION: Derivation = { version: DERIVATION_VERSION, safeFrom: SAFE_DERIVATION };
+
+/** The derivation version a container's labels name: 0 when it has none (from before versions) or it isn't one. */
+export function derivationOf(labels: Readonly<Record<string, string>> | null | undefined): number {
+  const raw = labels?.[LABEL.derivation];
+  return raw !== undefined && /^\d{1,9}$/.test(raw) ? Number(raw) : 0;
+}
+
+/** How this orchestrator derives a container now against how it was derived (`DerivationState`), from its labels. */
+export function derivationState(labels: Readonly<Record<string, string>> | null | undefined, d: Derivation = DERIVATION): DerivationState {
+  const v = derivationOf(labels);
+  if (v === d.version) return 'current';
+  return v < d.safeFrom ? 'security-fix' : 'changed';
+}
 
 export type VolumeKind = 'data' | 'install' | 'steam';
 
@@ -138,8 +184,8 @@ export interface ContainerPlan {
   body: ContainerCreateBody;
 }
 
-/** The container a validated spec becomes. */
-export function planContainer(spec: ServerSpec, ctx: StackContext): ContainerPlan {
+/** The container a validated spec becomes (as the derivation `d` builds it: this release's unless a test says otherwise). */
+export function planContainer(spec: ServerSpec, ctx: StackContext, d: Derivation = DERIVATION): ContainerPlan {
   const n = names(ctx.stack, spec.id);
   const image = `gsp/${imageName(spec.runtime, spec.variant, ctx.allowFake)}:${ctx.imageTag}`;
   const env: Record<string, string | undefined> = { ...spec.env, ...ROOT_ENV };
@@ -182,7 +228,7 @@ export function planContainer(spec: ServerSpec, ctx: StackContext): ContainerPla
     NetworkingConfig: { EndpointsConfig: { [n.network]: {} } },
   };
   const sHash = specHash(spec);
-  const labels = { [LABEL.stack]: ctx.stack, [LABEL.server]: spec.id, [LABEL.specHash]: sHash };
+  const labels = { [LABEL.stack]: ctx.stack, [LABEL.server]: spec.id, [LABEL.specHash]: sHash, [LABEL.derivation]: String(d.version) };
   const configHash = sha256(canonicalJson({ ...unlabelled, Labels: labels }));
   return {
     name: n.container,

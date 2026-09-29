@@ -92,7 +92,10 @@ export class OrchestratorHttp implements OrchestratorClient {
 
   /** May stop the old container first (the default stop timeout). */
   async apply(spec: ServerSpec, o: ApplyOptions = {}): Promise<ServerContainer> {
-    return this.call('PUT', `${this.server(spec.id)}${o.keepImage ? '?keepImage=true' : ''}`, spec, DEFAULT_STOP_SEC * 1000);
+    const query = new URLSearchParams();
+    if (o.keepImage) query.set('keepImage', 'true');
+    if (o.keepDerivation) query.set('keepDerivation', 'true');
+    return this.call('PUT', `${this.server(spec.id)}${query.size ? `?${query}` : ''}`, spec, DEFAULT_STOP_SEC * 1000);
   }
 
   async start(id: string): Promise<ServerContainer> {

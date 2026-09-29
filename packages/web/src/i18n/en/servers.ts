@@ -41,6 +41,7 @@ export default {
   pendingStart: 'Applies at next start',
   pendingStartHelp: 'Its container gets its new limits the next time the server starts.',
   pendingImageHelp: 'Its container moves to a newer runtime image, from a panel update, the next time the server starts.',
+  pendingDerivationHelp: 'A panel update builds containers another way: its container is rebuilt that way the next time the server starts.',
   deleteStopFirstOrForce: 'The server is running: stop it first, or force the removal below.',
   deleteUnreachable: 'The server’s agent does not answer: only the owner can remove it now, by forcing the removal.',
   deleteUnreachableOrForce: 'The server’s agent does not answer, so the panel cannot tell whether its game runs or take the final backup: force the removal below.',

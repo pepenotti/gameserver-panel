@@ -55,12 +55,16 @@ function send(res: http.ServerResponse, status: number, body: unknown): void {
 
 const methodNotAllowed = () => new OrchError('bad-request', 'Method not allowed', undefined, 405);
 
-/** A route's one boolean query parameter (`true` or `false`, at most once; default false), and nothing else. */
-function flag(query: URLSearchParams, name: string): boolean {
-  for (const k of query.keys()) if (k !== name) throw badRequest(`Unknown query parameter ${k.slice(0, 40)}`);
-  const v = query.getAll(name);
-  if (v.length > 1 || (v[0] !== undefined && v[0] !== 'true' && v[0] !== 'false')) throw badRequest(`${name} must be true or false`, name);
-  return v[0] === 'true';
+/** A route's boolean query parameters (`true` or `false`, each at most once; default false), and nothing else. */
+function flags<K extends string>(query: URLSearchParams, names: readonly K[]): Record<K, boolean> {
+  for (const k of query.keys()) if (!(names as readonly string[]).includes(k)) throw badRequest(`Unknown query parameter ${k.slice(0, 40)}`);
+  const out = {} as Record<K, boolean>;
+  for (const name of names) {
+    const v = query.getAll(name);
+    if (v.length > 1 || (v[0] !== undefined && v[0] !== 'true' && v[0] !== 'false')) throw badRequest(`${name} must be true or false`, name);
+    out[name] = v[0] === 'true';
+  }
+  return out;
 }
 
 /**
@@ -114,12 +118,12 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
 
     if (action === undefined) {
       if (method === 'PUT') {
-        const keepImage = flag(query, 'keepImage');
-        return [200, await o.backend.apply(parseSpec(body, id, o.policy), { keepImage })];
+        const { keepImage, keepDerivation } = flags(query, ['keepImage', 'keepDerivation']);
+        return [200, await o.backend.apply(parseSpec(body, id, o.policy), { keepImage, keepDerivation })];
       }
       if (method === 'DELETE') {
         noBody();
-        return [200, await o.backend.remove(id, flag(query, 'removeVolumes'))];
+        return [200, await o.backend.remove(id, flags(query, ['removeVolumes']).removeVolumes)];
       }
       throw methodNotAllowed();
     }

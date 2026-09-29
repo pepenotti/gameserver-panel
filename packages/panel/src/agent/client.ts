@@ -27,6 +27,32 @@ export class AgentCallError extends Error {
 
 type Listener = (e: SeqEvent) => void;
 
+/** Where a log line goes among those shown: a progress line where its run's first line was (CON-01), any other line by its own seq. */
+const placeOf = (e: SeqEvent) => (e.event.type === 'log' && e.event.run !== undefined ? e.event.run : e.seq);
+
+/**
+ * A log event into a backlog kept in the order people read it (CON-01): the
+ * line of a progress run already there is replaced by the run's latest; a
+ * run first seen late (its first line gone, or never seen) goes in its place.
+ */
+export function placeLog(logs: SeqEvent[], e: SeqEvent): void {
+  const run = e.event.type === 'log' ? e.event.run : undefined;
+  if (run === undefined) {
+    logs.push(e);
+    return;
+  }
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const x = logs[i]!.event;
+    if (x.type === 'log' && x.run === run) {
+      logs[i] = e;
+      return;
+    }
+  }
+  let at = logs.length;
+  while (at > 0 && placeOf(logs[at - 1]!) > run) at--;
+  logs.splice(at, 0, e);
+}
+
 /** Adapter action names: what `/v1/actions/:name` accepts in a path segment. */
 const ACTION_NAME = /^[a-z][a-z0-9.-]{0,63}$/;
 
@@ -54,7 +80,8 @@ export interface AgentApi {
 
 /**
  * HTTP client for the agent plus a live mirror of its event stream: the
- * latest status and a bounded backlog of log lines for newly opened UIs.
+ * latest status and a bounded backlog of log lines for newly opened UIs (a
+ * progress run as its latest line, in the run's place: `placeLog`).
  */
 export class AgentClient implements AgentApi {
   private lastSeq = 0;
@@ -180,7 +207,7 @@ export class AgentClient implements AgentApi {
     const ev: AgentEvent = e.event;
     if (ev.type === 'state') this.latest = ev.status;
     if (ev.type === 'log') {
-      this.logs.push(e);
+      placeLog(this.logs, e);
       if (this.logs.length > this.logBacklog) this.logs.splice(0, this.logs.length - this.logBacklog);
     }
     for (const l of this.listeners) {

@@ -23,7 +23,7 @@ if (process.argv.includes('--health')) {
   const cfg = loadConfig();
   const docker = new DockerClient(cfg.docker);
   const { stack, imageTag } = await resolveSelf(docker, cfg.self);
-  const backend = new DockerBackend({ docker, policy: cfg.policy, ctx: { stack, imageTag, publishAddr: cfg.publishAddr, allowFake: cfg.policy.allowFake } });
+  const backend = new DockerBackend({ docker, policy: cfg.policy, ctx: { stack, imageTag, publishAddr: cfg.publishAddr, allowFake: cfg.policy.allowFake }, log: (l) => console.log(l) });
   const server = createOrchestratorServer({ backend, token: cfg.token, version: cfg.version, policy: cfg.policy, log: (l) => console.log(l) });
   await listenOnSocket(server, cfg.socket);
   console.log(`orchestrator ${cfg.version} for stack ${stack} (images :${imageTag}) listening on ${cfg.socket}`);

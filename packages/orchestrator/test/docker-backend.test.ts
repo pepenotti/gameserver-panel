@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { FakeDocker } from '../../../tools/fake-docker/fake-docker';
+import { DERIVATION_VERSION, type Derivation } from '../src/derive';
 import { DockerBackend } from '../src/docker-backend';
 import { DockerClient } from '../src/docker';
 import { specHash } from '../src/hash';
@@ -79,7 +80,13 @@ describe('creating a server (D3, NFR-02, NFR-03)', () => {
     ]);
     expect(body.ExposedPorts).toEqual({ '30161/udp': {}, '30162/udp': {} });
     expect(body.NetworkingConfig).toEqual({ EndpointsConfig: { [`${STACK}-net-pz`]: {} } });
-    expect(body.Labels).toEqual({ 'gsp.stack': STACK, 'gsp.server': 'pz', 'gsp.spec-hash': specHash({ ...spec(), cpus: 2 }), 'gsp.config-hash': expect.stringMatching(/^[0-9a-f]{64}$/) });
+    expect(body.Labels).toEqual({
+      'gsp.stack': STACK,
+      'gsp.server': 'pz',
+      'gsp.spec-hash': specHash({ ...spec(), cpus: 2 }),
+      'gsp.derivation': String(DERIVATION_VERSION),
+      'gsp.config-hash': expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
 
     const hc = body.HostConfig;
     expect(Object.keys(hc).sort()).toEqual([
@@ -344,7 +351,7 @@ describe('runtime image upgrades (HST-01, SRV-05, SRV-06, NFR-02)', () => {
     // The id is part of no derived field: the create body is what it was (and nothing else is set).
     const body = fd.writes().find((x) => x.path === '/containers/create')!.body as { Image: string; Labels: Record<string, string> };
     expect(body.Image).toBe(IMAGE);
-    expect(Object.keys(body.Labels).sort()).toEqual(['gsp.config-hash', 'gsp.server', 'gsp.spec-hash', 'gsp.stack']);
+    expect(Object.keys(body.Labels).sort()).toEqual(['gsp.config-hash', 'gsp.derivation', 'gsp.server', 'gsp.spec-hash', 'gsp.stack']);
   });
 
   it('changes nothing for the same spec and the same image', async () => {
@@ -440,6 +447,110 @@ describe('runtime image upgrades (HST-01, SRV-05, SRV-06, NFR-02)', () => {
     ]);
     expect(new Set(imageLookups(fd))).toEqual(new Set([`GET /images/${IMAGE}/json`]));
     expect(writes(fd).filter((w) => w.includes(theirs.Id))).toEqual([]);
+  });
+});
+
+describe('a release that derives containers differently (SRV-05, SRV-06, NFR-02)', () => {
+  const ours = (fd: FakeDocker) => [...fd.containers.values()].find((c) => c.Name === `/${STACK}-srv-pz`)!;
+  const shape = (fd: FakeDocker, from: number) => fd.writes().slice(from).map((x) => `${x.method} ${x.path}`);
+  /** Another orchestrator release on the same Docker: `version` derives differently, and keeps nothing derived before `safeFrom`. */
+  const release = (s: DockerStack, d: Derivation, log?: (l: string) => void) => new DockerBackend({ docker: s.docker, ctx, policy, derivation: d, log });
+
+  /** pz created and started by this release. */
+  async function running(): Promise<DockerStack> {
+    const s = await setup();
+    await s.backend.apply(spec());
+    await s.backend.start('pz');
+    return s;
+  }
+
+  it("reports how it derives each container now: its own current, another release's changed, one from before a security fix as such", async () => {
+    const s = await running();
+    expect((await s.backend.list())[0]).toMatchObject({ id: 'pz', derivation: 'current' });
+    expect(ours(s.fd).Config.Labels['gsp.derivation']).toBe(String(DERIVATION_VERSION));
+    const next = DERIVATION_VERSION + 1;
+    expect((await release(s, { version: next, safeFrom: 0 }).list())[0]).toMatchObject({ derivation: 'changed' });
+    // A downgrade builds it differently too.
+    expect((await release(s, { version: DERIVATION_VERSION - 1, safeFrom: 0 }).list())[0]).toMatchObject({ derivation: 'changed' });
+    expect((await release(s, { version: next, safeFrom: next }).list())[0]).toMatchObject({ derivation: 'security-fix' });
+  });
+
+  it('recreates a container another release derived from the same spec: stopped first, volumes kept, derived anew', async () => {
+    const s = await running();
+    const old = ours(s.fd);
+    const next = release(s, { version: DERIVATION_VERSION + 1, safeFrom: 0 });
+    const before = s.fd.writes().length;
+    const c = await next.apply(spec());
+    expect(shape(s.fd, before)).toEqual([`POST /containers/${old.Id}/stop`, `DELETE /containers/${old.Id}`, 'POST /containers/create']);
+    expect(c).toMatchObject({ state: 'created', specHash: specHash(spec()), derivation: 'current' });
+    expect(ours(s.fd).Config.Labels['gsp.derivation']).toBe(String(DERIVATION_VERSION + 1));
+    expect(s.fd.volumes.size).toBe(3);
+    // In line now: the same spec again changes nothing.
+    const after = s.fd.writes().length;
+    await next.apply(spec());
+    expect(s.fd.writes().length).toBe(after);
+  });
+
+  it('keeps it while asked (its game runs), and still rejoins a recreated panel; never across a changed spec or an image it was not asked to keep', async () => {
+    const s = await running();
+    const old = ours(s.fd);
+    const next = release(s, { version: DERIVATION_VERSION + 1, safeFrom: 0 });
+    const before = s.fd.writes().length;
+    expect(await next.apply(spec(), { keepDerivation: true })).toMatchObject({ state: 'running', derivation: 'changed', specHash: specHash(spec()) });
+    expect(s.fd.writes().length).toBe(before);
+    expect(ours(s.fd)).toBe(old);
+
+    // A panel container recreated meanwhile (the upgrade made one) is joined to the server's network all the same.
+    const panel = s.fd.containers.get(s.panelId)!;
+    s.fd.containers.delete(panel.Id);
+    for (const n of s.fd.networks.values()) delete n.Containers[panel.Id];
+    const fresh = s.fd.addContainer({ name: `${STACK}-panel-1`, running: true, labels: { 'com.docker.compose.project': STACK, 'com.docker.compose.service': 'panel' } });
+    await next.apply(spec(), { keepDerivation: true });
+    expect(s.fd.writes().slice(before).map((c) => `${c.method} ${c.path} ${JSON.stringify(c.body)}`)).toEqual([`POST /networks/${STACK}-net-pz/connect {"Container":"${fresh.Id}"}`]);
+    expect(old.State.Running).toBe(true);
+
+    // A rebuilt image too: kept only when that is asked as well.
+    s.fd.rebuildImage('gsp/steam-fake:s1');
+    expect(await next.apply(spec(), { keepDerivation: true, keepImage: true })).toMatchObject({ state: 'running', derivation: 'changed' });
+    expect(ours(s.fd)).toBe(old);
+    expect(await next.apply(spec(), { keepDerivation: true })).toMatchObject({ state: 'created', derivation: 'current' });
+    // keepDerivation keeps a derivation, never a spec: new limits recreate it, derived anew.
+    await next.start('pz');
+    const older = release(s, { version: DERIVATION_VERSION + 2, safeFrom: 0 });
+    expect(await older.apply(spec({ memoryMb: 3072 }), { keepDerivation: true, keepImage: true })).toMatchObject({ state: 'created', derivation: 'current', specHash: specHash(spec({ memoryMb: 3072 })) });
+  });
+
+  it('recreates one derived before a security fix at once, even while asked to keep it, and says why', async () => {
+    const s = await running();
+    const old = ours(s.fd);
+    const logged: string[] = [];
+    const fixed = release(s, { version: DERIVATION_VERSION + 1, safeFrom: DERIVATION_VERSION + 1 }, (l) => logged.push(l));
+    const before = s.fd.writes().length;
+    expect(await fixed.apply(spec(), { keepDerivation: true, keepImage: true })).toMatchObject({ state: 'created', derivation: 'current' });
+    expect(shape(s.fd, before)).toEqual([`POST /containers/${old.Id}/stop`, `DELETE /containers/${old.Id}`, 'POST /containers/create']);
+    expect(logged).toEqual([expect.stringMatching(new RegExp(`^pz: recreating its container although asked to keep it: it was derived by version ${DERIVATION_VERSION}, before the security fix of version ${DERIVATION_VERSION + 1}`))]);
+    expect(s.fd.volumes.size).toBe(3);
+  });
+
+  it('counts a container from before derivations were labelled as changed: kept while asked, recreated otherwise', async () => {
+    const s = await running();
+    const old = ours(s.fd);
+    // As an orchestrator from before this label left it: no derivation, a config hash of its own.
+    delete old.Config.Labels['gsp.derivation'];
+    old.Config.Labels['gsp.config-hash'] = 'f'.repeat(64);
+    expect((await s.backend.list())[0]).toMatchObject({ derivation: 'changed' });
+    const before = s.fd.writes().length;
+    expect(await s.backend.apply(spec(), { keepDerivation: true })).toMatchObject({ state: 'running', derivation: 'changed' });
+    expect(s.fd.writes().length).toBe(before);
+    expect(await s.backend.apply(spec())).toMatchObject({ state: 'created', derivation: 'current' });
+    expect(shape(s.fd, before)).toEqual([`POST /containers/${old.Id}/stop`, `DELETE /containers/${old.Id}`, 'POST /containers/create']);
+  });
+
+  it('keeps a container derived as this release derives it whatever is asked (a no-op)', async () => {
+    const s = await running();
+    const before = s.fd.writes().length;
+    for (const keepDerivation of [false, true]) expect(await s.backend.apply(spec(), { keepDerivation })).toMatchObject({ state: 'running', derivation: 'current' });
+    expect(s.fd.writes().length).toBe(before);
   });
 });
 

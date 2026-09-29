@@ -3,7 +3,22 @@
 // refuses exactly what production refuses.
 export { IdLocks, Mutex, type Backend } from './backend';
 export { loadConfig, type OrchestratorConfig } from './config';
-export { AGENT_PORT, DEFAULT_STOP_TIMEOUT_SEC, imageName, LABEL, names, planContainer, type ContainerCreateBody, type ContainerPlan, type StackContext } from './derive';
+export {
+  AGENT_PORT,
+  DEFAULT_STOP_TIMEOUT_SEC,
+  DERIVATION,
+  DERIVATION_VERSION,
+  derivationState,
+  imageName,
+  LABEL,
+  names,
+  planContainer,
+  SAFE_DERIVATION,
+  type ContainerCreateBody,
+  type ContainerPlan,
+  type Derivation,
+  type StackContext,
+} from './derive';
 export { DockerBackend, statsOf } from './docker-backend';
 export { DockerClient, DOCKER_API_VERSION, type DockerTarget } from './docker';
 export { badRequest, conflict, notFound, OrchError, refused, unavailable } from './errors';

@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import type { ModSource, PanelAdapter } from '@gsp/adapter-api';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
-import { ORCHESTRATOR_API_VERSION, type AgentStatus, type ApplyOptions, type CpuArch, type GrantRole, type PortRangeInfo, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
+import { ORCHESTRATOR_API_VERSION, type AgentStatus, type ApplyOptions, type CpuArch, type DerivationState, type GrantRole, type PortRangeInfo, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { bootstrapOwner } from '../src/auth/bootstrap';
@@ -100,14 +100,17 @@ export function fakeAgent(feed: FakeFeed): AgentApi & { calls: string[] } {
 
 export const noNetwork = (() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch;
 
-type FakeContainer = ServerContainer & { spec: ServerSpec; volumes: boolean; imageId: string };
+type FakeContainer = ServerContainer & { spec: ServerSpec; volumes: boolean; imageId: string; derivedBy: number };
 
 /**
  * The orchestrator in memory (D3's API, `@gsp/shared` orchestrator-api):
  * containers by id with the spec each was created from, every call made,
- * failures on demand, and runtime images a test can rebuild (`rebuildImage`).
+ * failures on demand, runtime images a test can rebuild (`rebuildImage`), and
+ * a release that derives containers differently (`rederive`).
  */
 export class FakeOrchestrator implements OrchestratorClient {
+  /** The derivation it builds, and the oldest it keeps (the real one's `DERIVATION`). */
+  derivation = { version: 1, safeFrom: 0 };
   arch: CpuArch = 'amd64';
   cpus = 8;
   /** `ORCH_HOST_PORTS` as `GET /v1/host` reports it; undefined: an orchestrator that doesn't say. */
@@ -143,8 +146,19 @@ export class FakeOrchestrator implements OrchestratorClient {
   }
 
   private view(c: FakeContainer): ServerContainer {
-    const { spec: _spec, volumes: _volumes, ...rest } = c;
-    return { ...rest, latestImageId: this.imageId(c.image) };
+    const { spec: _spec, volumes: _volumes, derivedBy: _derivedBy, ...rest } = c;
+    return { ...rest, latestImageId: this.imageId(c.image), derivation: this.derivationOf(c) };
+  }
+
+  private derivationOf(c: FakeContainer): DerivationState {
+    if (c.derivedBy === this.derivation.version) return 'current';
+    return c.derivedBy < this.derivation.safeFrom ? 'security-fix' : 'changed';
+  }
+
+  /** An orchestrator release that derives containers differently (a product upgrade); with `security`, one that closes a security gap. */
+  rederive(o: { security?: boolean } = {}): void {
+    const version = this.derivation.version + 1;
+    this.derivation = { version, safeFrom: o.security ? version : this.derivation.safeFrom };
   }
 
   /** The image a spec runs here. */
@@ -188,15 +202,30 @@ export class FakeOrchestrator implements OrchestratorClient {
     this.check('list');
     return [...this.containers.values()].map((c) => this.view(c));
   }
-  /** Recorded as `apply <id>`, or `apply <id> keepImage`. */
+  /** Recorded as `apply <id>`, with ` keepImage` and ` keepDerivation` when asked. */
   async apply(spec: ServerSpec, o: ApplyOptions = {}) {
-    this.check('apply', o.keepImage ? `${spec.id} keepImage` : spec.id);
+    this.check('apply', `${spec.id}${o.keepImage ? ' keepImage' : ''}${o.keepDerivation ? ' keepDerivation' : ''}`);
     const specHash = createHash('sha256').update(JSON.stringify(spec)).digest('hex');
     const cur = this.containers.get(spec.id);
-    // The same spec on the image its tag names now, or kept on its own (a newer image waits).
-    if (cur?.specHash === specHash && (o.keepImage || cur.imageId === this.imageId(cur.image))) return this.view(cur);
+    // The same spec on the image its tag names now, or kept on its own (a newer image waits); derived as now, or
+    // kept as derived (a changed derivation waits), never across a security fix.
+    const derived = cur ? this.derivationOf(cur) : 'current';
+    if (cur?.specHash === specHash && (o.keepImage || cur.imageId === this.imageId(cur.image)) && (derived === 'current' || (derived === 'changed' && o.keepDerivation))) return this.view(cur);
     const image = this.imageOf(spec);
-    const c: FakeContainer = { id: spec.id, state: 'created', startedAt: null, finishedAt: null, exitCode: null, image, specHash, agentUrl: `http://gsp-${spec.id}:8081`, imageId: this.imageId(image), spec, volumes: true };
+    const c: FakeContainer = {
+      id: spec.id,
+      state: 'created',
+      startedAt: null,
+      finishedAt: null,
+      exitCode: null,
+      image,
+      specHash,
+      agentUrl: `http://gsp-${spec.id}:8081`,
+      imageId: this.imageId(image),
+      spec,
+      volumes: true,
+      derivedBy: this.derivation.version,
+    };
     this.containers.set(spec.id, c);
     return this.view(c);
   }
