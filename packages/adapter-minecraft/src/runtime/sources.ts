@@ -3,18 +3,31 @@
  * measured on 2026-09-25/27: Mojang's version manifest and version files,
  * PaperMC's Fill v3 API, Fabric's meta API. Answers are cached for as long
  * as each service says (`Cache-Control`), so a version list and the install
- * right after it ask once.
+ * right after it ask once. The version lists themselves are
+ * `shared/versions.ts`'s, which the panel's create form uses too; this adds
+ * what only an install reads (version files, builds with their downloads,
+ * installers) and the agent's cache under both.
  */
 import { createHash } from 'node:crypto';
 import type { InstallCtx, RuntimeCtx } from '@gsp/adapter-api';
 import { DOWNLOAD_SOURCES } from '../shared/install';
 import { isPaperChannel, type PaperChannel } from '../shared/launch';
+import type { FabricVersion, Get } from '../shared/versions';
 
 type SourceId = keyof typeof DOWNLOAD_SOURCES;
 
 /** Measured `max-age`s: piston-meta 120 s, Fill 1800 s (project) and 300 s (builds), Fabric meta 1800 s. */
 const TTL_MS = { manifest: 120_000, versionFile: 24 * 3_600_000, paperProject: 1_800_000, paperBuilds: 300_000, fabric: 1_800_000 };
 const cache = new Map<string, { until: number; text: string }>();
+
+/** How long an answer the shared listings asked for is kept, by what the URL is. */
+function ttlOf(url: string): number {
+  const p = new URL(url).pathname;
+  if (p.endsWith('/version_manifest_v2.json')) return TTL_MS.manifest;
+  if (/\/v3\/projects\/paper\/versions\/[^/]+\/builds(?:\/|$)/.test(p)) return TTL_MS.paperBuilds;
+  if (p.includes('/v3/projects/paper')) return TTL_MS.paperProject;
+  return TTL_MS.fabric;
+}
 
 /** A base URL from the environment (tests, the dev loop) or the real service. */
 export function sourceBase(ctx: RuntimeCtx, id: SourceId): { url: string; overridden: boolean } {
@@ -63,6 +76,20 @@ export class Api {
   base(id: SourceId): string {
     return sourceBase(this.ctx, id).url;
   }
+
+  /**
+   * The GET `shared/versions.ts` takes, through this cache: an answer kept
+   * comes back as a fresh 200; others are the service's own response.
+   */
+  readonly get: Get = async (url) => {
+    const hit = cache.get(url);
+    if (hit && hit.until > Date.now()) return new Response(hit.text, { status: 200 });
+    const res = await this.fetch(url);
+    if (!res.ok) return res;
+    const text = await res.text();
+    cache.set(url, { until: Date.now() + ttlOf(url), text });
+    return new Response(text, { status: 200 });
+  };
 
   /** The body as text; null when the status is one of `missing`. */
   async text(src: SourceId, url: string, ttlMs: number, missing: number[] = [404]): Promise<string | null> {
@@ -152,13 +179,6 @@ function paperBuild(x: unknown): PaperBuild | null {
 
 const paperVersionPath = (api: Api, version: string) => `${api.base('paper')}/v3/projects/paper/versions/${encodeURIComponent(version)}`;
 
-/** Every version Paper has (pre-releases included). */
-export async function paperVersions(api: Api): Promise<string[]> {
-  const p = await api.json<{ versions?: Record<string, unknown> }>('paper', `${api.base('paper')}/v3/projects/paper`, TTL_MS.paperProject);
-  if (!p || typeof p.versions !== 'object' || p.versions === null) throw new Error("PaperMC's version list has an unexpected shape");
-  return Object.values(p.versions).flatMap((g) => (Array.isArray(g) ? g.filter((v): v is string => typeof v === 'string') : []));
-}
-
 /** A version's builds, newest first (every channel); null when Paper has no such version. */
 export async function paperBuilds(api: Api, version: string): Promise<PaperBuild[] | null> {
   const list = await api.json<unknown[]>('paper', `${paperVersionPath(api, version)}/builds`, TTL_MS.paperBuilds);
@@ -167,44 +187,17 @@ export async function paperBuilds(api: Api, version: string): Promise<PaperBuild
   return list.map(paperBuild).filter((b): b is PaperBuild => b !== null);
 }
 
-/** One build (`latest`: the newest of any channel); null when there is none. */
-export async function paperBuildById(api: Api, version: string, build: number | 'latest'): Promise<PaperBuild | null> {
+/** One build; null when there is none. */
+export async function paperBuildById(api: Api, version: string, build: number): Promise<PaperBuild | null> {
   const b = await api.json<unknown>('paper', `${paperVersionPath(api, version)}/builds/${build}`, TTL_MS.paperBuilds);
   return b === null ? null : paperBuild(b);
 }
 
 // ------------------------------------------------------------------- Fabric
 
-export interface FabricVersion {
-  version: string;
-  stable: boolean;
-}
-
 function fabricEntries(x: unknown): (FabricVersion & Record<string, unknown>)[] {
   if (!Array.isArray(x)) throw new Error("Fabric's version list has an unexpected shape");
   return x.filter((v): v is FabricVersion & Record<string, unknown> => typeof v?.version === 'string' && typeof v?.stable === 'boolean');
-}
-
-function fabricList(x: unknown): FabricVersion[] {
-  return fabricEntries(x).map((v) => ({ version: v.version, stable: v.stable }));
-}
-
-/** Minecraft versions Fabric supports (`stable` marks releases). */
-export async function fabricGames(api: Api): Promise<FabricVersion[]> {
-  return fabricList(await api.json('fabric', `${api.base('fabric')}/v2/versions/game`, TTL_MS.fabric));
-}
-
-/** Every Fabric Loader, newest first (only the newest is flagged stable). */
-export async function fabricLoaders(api: Api): Promise<FabricVersion[]> {
-  return fabricList(await api.json('fabric', `${api.base('fabric')}/v2/versions/loader`, TTL_MS.fabric));
-}
-
-/** The loaders for one Minecraft version, newest first; null when Fabric doesn't support it (a 400). */
-export async function fabricLoadersFor(api: Api, game: string): Promise<FabricVersion[] | null> {
-  const x = await api.json<{ loader?: unknown }[]>('fabric', `${api.base('fabric')}/v2/versions/loader/${encodeURIComponent(game)}`, TTL_MS.fabric, [400, 404]);
-  if (x === null) return null;
-  if (!Array.isArray(x)) throw new Error("Fabric's loader list has an unexpected shape");
-  return fabricList(x.map((e) => e.loader));
 }
 
 export interface FabricInstaller extends FabricVersion {

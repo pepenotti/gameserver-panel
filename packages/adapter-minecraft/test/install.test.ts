@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { startFakeDownloads, type FakeDownloads } from '../../../tools/fake-minecraft/downloads.mjs';
+import { minecraftChoices } from '../src/panel';
 import { clearSourceCache, minecraftRuntimeAdapter as mc, readMarker } from '../src/runtime';
 import { INSTALL_MARKER, parseMinecraftLaunch, type MinecraftVersionInfo } from '../src/shared';
 import { downloadEnv, testCtx, type TestCtx } from './helpers';
@@ -223,6 +224,20 @@ describe('versions (UPD-02, Q11, Q13)', () => {
       [58, 'ALPHA'],
     ]);
     expect(v[2]).toMatchObject({ id: '1.21.11', build: '132', channel: 'STABLE' });
+  });
+
+  it('offers what the create form offers, from the same listing, asking each service once while its answer is fresh', async () => {
+    for (const loader of ['vanilla', 'paper', 'fabric'] as const) {
+      const c = newCtx();
+      const p = launch({ loader, ...(loader === 'paper' ? { channel: 'ALPHA' } : {}) });
+      const r = await mc.versions!(c, p);
+      const form = await minecraftChoices({ flavour: loader, version: null }, { fetch: c.fetch!, env: c.env });
+      expect(ids(r), loader).toEqual(form.version!.map((v) => v.value));
+      if (loader === 'paper') expect((r.versions as MinecraftVersionInfo[]).map((v) => [v.build, v.channel])).toEqual(form.version!.map((v) => [v.detail!.slice(1), v.channel]));
+      const asked = downloads.requests.length;
+      expect(await mc.versions!(c, p), loader).toEqual(r);
+      expect(downloads.requests.length, `${loader}: asked again`).toBe(asked);
+    }
   });
 
   it("Fabric: each release it supports with the newest stable loader, and the pinned version's loaders", async () => {
