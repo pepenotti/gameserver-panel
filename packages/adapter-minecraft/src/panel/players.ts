@@ -7,7 +7,7 @@
  * operators, bans) are read from the JSON files the game writes.
  */
 import { isIP } from 'node:net';
-import type { AccessLevel, BanList, LevelHolder, PlayerOps, PlayerTarget, ServerCtx, WhitelistInfo } from '@gsp/adapter-api';
+import type { AccessLevel, BanList, LevelHolder, PlayerOpKind, PlayerOps, PlayerRefusal, PlayerTarget, ServerCtx, WhitelistInfo } from '@gsp/adapter-api';
 import { parseProperties, propertiesToRecord, RconProtocolError } from '@gsp/formats';
 
 export const MINECRAFT_ACCESS_LEVELS: readonly AccessLevel[] = [
@@ -74,6 +74,35 @@ async function readProperties(ctx: ServerCtx): Promise<Record<string, string> | 
   }
 }
 
+/** `whitelist on|off` did it. */
+const WHITELIST_SWITCHED = /^Whitelist is now turned (?:on|off)$/;
+
+/**
+ * The game's replies when it didn't do a command, measured on 26.3 (vanilla,
+ * Paper and Fabric alike: `*\/rcon/moderation.json`, `players-offline.json`):
+ * a name it can't look up is "That player does not exist" (ban, pardon, op,
+ * deop, whitelist add and remove), a kick of someone not online "No player
+ * was found", op of an operator and deop of a player "Nothing changed. …",
+ * `whitelist on` when it is on "Whitelist is already turned on". The other
+ * "already" replies are the game's own English texts the fake server uses
+ * (docs/verification/minecraft-26.3.md, "Control"): "Nothing changed. The
+ * player is already banned" / "isn't banned" (and "That IP …"), "Player is
+ * already whitelisted" / "is not whitelisted", "Whitelist is already turned off".
+ */
+const REFUSALS: readonly [RegExp, PlayerRefusal][] = [
+  [/^That player does not exist$/, 'player-not-found'],
+  [/^No player was found$/, 'player-not-online'],
+  [/^Nothing changed\. /, 'no-change'],
+  [/^Player is (?:already|not) whitelisted$/, 'no-change'],
+  [/^Whitelist is already turned (?:on|off)$/, 'no-change'],
+];
+
+/** `PlayerOps.refused`: what a reply means when the game didn't do the command. */
+export function minecraftRefused(_op: PlayerOpKind, reply: string): PlayerRefusal | null {
+  const r = reply.trim();
+  return REFUSALS.find(([re]) => re.test(r))?.[1] ?? null;
+}
+
 function target(t: PlayerTarget): { ip: string } | { name: string } {
   if (t.steamId !== undefined) throw new RconProtocolError('Minecraft bans a player name or an IP address');
   if (t.ip !== undefined) return { ip: ipArg(t.ip) };
@@ -90,7 +119,8 @@ function target(t: PlayerTarget): { ip: string } | { name: string } {
 async function setWhitelistEnabled(ctx: ServerCtx, on: boolean): Promise<string> {
   const before = await readProperties(ctx);
   const out = await run(ctx, `whitelist ${on ? 'on' : 'off'}`);
-  if (!before) return out;
+  // "Whitelist is already turned on": the game rewrote nothing.
+  if (!before || !WHITELIST_SWITCHED.test(out)) return out;
   const want = String(on);
   let after = await readProperties(ctx);
   for (const end = Date.now() + REWRITE_WAIT_MS; after && after['white-list'] !== want && Date.now() < end; ) {
@@ -108,6 +138,7 @@ export const minecraftPlayers: PlayerOps = {
   accessLevels: MINECRAFT_ACCESS_LEVELS,
   banTargets: ['username', 'ip'],
   whitelistPassword: false,
+  refused: minecraftRefused,
 
   kick: async (ctx, username, reason) => run(ctx, `kick ${nameArg(username)}${reasonArg(reason)}`),
 

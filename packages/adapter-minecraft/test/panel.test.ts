@@ -5,7 +5,7 @@
 // editable folders, moderation over RCON and the game's own lists,
 // countdown messages, backups and resets, update checks.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { AgentCommand, CommandResponse, ServerCtx, ServerRef, VersionsResponse } from '@gsp/adapter-api';
+import type { AgentCommand, CommandResponse, PlayerOpKind, PlayerRefusal, ServerCtx, ServerRef, VersionsResponse } from '@gsp/adapter-api';
 import { memoryServerFiles } from '@gsp/adapter-api/testing/panel-suite-config';
 import { parseProperties, propertiesToRecord, RconProtocolError } from '@gsp/formats';
 import { startFakeDownloads, type FakeDownloads } from '../../../tools/fake-minecraft/downloads.mjs';
@@ -398,6 +398,53 @@ describe('moderation over RCON and the game’s own lists (PLY-01, PLY-03)', () 
     expect(players).toMatchObject({ banTargets: ['username', 'ip'], whitelistPassword: false });
   });
 
+  it('tells the game’s refusals from what it did, by every reply the three loaders gave (PLY-03)', () => {
+    const OPS: [RegExp, PlayerOpKind][] = [
+      [/^kick /, 'kick'],
+      [/^ban(?:-ip)? /, 'ban'],
+      [/^pardon(?:-ip)? /, 'unban'],
+      [/^(?:op|deop) /, 'setAccess'],
+      [/^whitelist add /, 'whitelistAdd'],
+      [/^whitelist remove /, 'whitelistRemove'],
+      [/^whitelist (?:on|off)$/, 'setWhitelistEnabled'],
+    ];
+    // The refusals measured; every other reply to these commands was the game doing it.
+    const refusals = new Map<string, PlayerRefusal>([
+      ['No player was found', 'player-not-online'],
+      ['That player does not exist', 'player-not-found'],
+      ['Nothing changed. The player is already an operator', 'no-change'],
+      ['Nothing changed. The player is not an operator', 'no-change'],
+      ['Whitelist is already turned on', 'no-change'],
+    ]);
+    const seen = new Set<string>();
+    let replies = 0;
+    for (const l of LOADERS) {
+      for (const file of ['moderation.json', 'players-offline.json', 'players-online.json']) {
+        let op: PlayerOpKind | null = null;
+        for (const e of JSON.parse(fixture(l, 'rcon', file)) as { dir: string; kind?: string; type?: number; body?: string }[]) {
+          if (e.dir === 'out' && e.kind === 'cmd') op = OPS.find(([re]) => re.test(e.body!))?.[1] ?? null;
+          else if (e.dir === 'in' && e.type === 0 && op) {
+            expect(players.refused!(op, e.body!), `${l} ${file} ${op}: ${e.body}`).toBe(refusals.get(e.body!) ?? null);
+            if (refusals.has(e.body!)) seen.add(e.body!);
+            replies++;
+          }
+        }
+      }
+    }
+    expect([...seen].sort()).toEqual([...refusals.keys()].sort());
+    expect(replies).toBeGreaterThan(50);
+    // The game's other "nothing changed" texts, from its language file (the fake server answers with them).
+    for (const [op, reply] of [
+      ['ban', 'Nothing changed. The player is already banned'],
+      ['unban', "Nothing changed. The player isn't banned"],
+      ['ban', 'Nothing changed. That IP is already banned'],
+      ['unban', "Nothing changed. That IP isn't banned"],
+      ['whitelistAdd', 'Player is already whitelisted'],
+      ['whitelistRemove', 'Player is not whitelisted'],
+      ['setWhitelistEnabled', 'Whitelist is already turned off'],
+    ] as const) expect(players.refused!(op, reply), reply).toBe('no-change');
+  });
+
   it('refuses what isn’t a player name, an address or a plain reason, sending nothing', async () => {
     const c = ctxFor('vanilla');
     const refused = [
@@ -454,6 +501,13 @@ describe('moderation over RCON and the game’s own lists (PLY-01, PLY-03)', () 
     const clean = ctxFor('vanilla', { 'data/server.properties': 'white-list=true\n' }, (_cmd, ctx) => (void ctx.files.writeAtomic('data', 'server.properties', 'white-list=false\n'), 'Whitelist is now turned off'));
     await players.setWhitelistEnabled!(clean, false);
     expect(clean.sets).toEqual([]);
+    // Already on: the game rewrote nothing, so the file isn't watched for a rewrite and nothing is put back.
+    const already = ctxFor('vanilla', { 'data/server.properties': 'motd=B\nwhite-list=false\n' }, () => 'Whitelist is already turned on');
+    const read = already.files.read.bind(already.files);
+    let reads = 0;
+    already.files.read = (root, rel, o) => (reads++, read(root, rel, o));
+    expect(await players.setWhitelistEnabled!(already, true)).toBe('Whitelist is already turned on');
+    expect([reads, already.sets]).toEqual([1, []]);
   });
 });
 

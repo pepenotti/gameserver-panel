@@ -180,6 +180,35 @@ describe('moderating a Minecraft server through the API (PLY-01, PLY-03)', () =>
     });
   });
 
+  it('answers what the game refused with an error, not a 200 with its reply (PLY-03)', async () => {
+    const { p, owner } = await panel();
+    await create(owner, 'mc-vanilla', 'vanilla');
+    running(p, 'mc-vanilla');
+    const agent = p.fakes('mc-vanilla').agent;
+    const said = (reply: string) => {
+      agent.command = async (c) => (agent.calls.push(`command:${c}`), { via: 'rcon' as const, output: reply });
+    };
+    const post = async (url: string, body: unknown) => {
+      const r = await owner.post(`/api/servers/mc-vanilla${url}`, body);
+      return [r.statusCode, r.json()];
+    };
+    // What the owner met: a name the game can't look up (measured replies, fixtures/minecraft/26.3/*/rcon/moderation.json).
+    said('That player does not exist');
+    expect(await post('/players/whitelist', { username: 'gspffNoSuchPlr7' })).toEqual([404, { error: 'player-not-found', output: 'That player does not exist' }]);
+    expect(await post('/players/ban', { username: 'gspffNoSuchPlr7' })).toEqual([404, { error: 'player-not-found', output: 'That player does not exist' }]);
+    expect(await post('/players/access', { username: 'gspffNoSuchPlr7', level: 'operator' })).toEqual([404, { error: 'player-not-found', output: 'That player does not exist' }]);
+    said('No player was found');
+    expect(await post('/players/kick', { username: 'gspffNoSuchPlr7' })).toEqual([409, { error: 'player-not-online', output: 'No player was found' }]);
+    said('Nothing changed. The player is already an operator');
+    expect(await post('/players/access', { username: 'gspffAlice', level: 'operator' })).toEqual([409, { error: 'level-unchanged', output: 'Nothing changed. The player is already an operator' }]);
+    said('Whitelist is already turned on');
+    expect(await post('/players/whitelist/enabled', { enabled: true })).toEqual([409, { error: 'whitelist-unchanged', output: 'Whitelist is already turned on' }]);
+    // Refused commands aren't moderation that happened.
+    expect(p.deps.audit.list({ action: 'player.' })).toEqual([]);
+    said('Added gspffAlice to the whitelist');
+    expect(await post('/players/whitelist', { username: 'gspffAlice' })).toEqual([200, { output: 'Added gspffAlice to the whitelist' }]);
+  });
+
   it('keeps PZ’s whitelist as it was: accounts with a password, and no switch', async () => {
     const { p, owner } = await panel();
     p.feed.status_ = fakeStatus({ state: 'running' });

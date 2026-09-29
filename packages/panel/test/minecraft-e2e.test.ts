@@ -266,6 +266,14 @@ describe('Minecraft end to end, through the fake orchestrator and the fake serve
         });
         expect(await act('/players/unban', { username: BOB })).toBe(`Unbanned ${BOB}`);
         expect(await act('/players/unban', { ip: '203.0.113.7' })).toBe('Unbanned IP 203.0.113.7');
+        // What the game refuses is an error, not a 200 with its reply (PLY-03).
+        const refused = async (p: string, b: unknown) => {
+          const r = await owner.post(url(id, p), b);
+          return [r.statusCode, (r.json() as { error: string }).error];
+        };
+        expect(await refused('/players/whitelist', { username: 'gspffNoSuchPlr7' })).toEqual([404, 'player-not-found']);
+        expect(await refused('/players/kick', { username: 'gspffAlice' })).toEqual([409, 'player-not-online']);
+        expect(await refused('/players/access', { username: BOB, level: 'operator' })).toEqual([409, 'level-unchanged']);
         // Switching the whitelist makes the game rewrite server.properties from memory; the panel's pending change survives.
         expect(await act('/players/whitelist/enabled', { enabled: false })).toBe('Whitelist is now turned off');
         const values = ((await owner.get(url(id, `/config/values?id=properties`))).json() as { values: Record<string, string> }).values;
