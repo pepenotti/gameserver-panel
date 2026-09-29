@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.17 |
+| Status | Draft 0.18 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -158,6 +158,10 @@ Each can move into scope later through [change control](#14-change-control).
   address, so the panel warns before a vanilla ban there. No Terraria flavour
   has a license to accept before its server runs (Steam's tModLoader EULA
   covers the Steam client, not the GitHub release the panel installs).
+  terraria.org publishes no checksums: the panel checks the dedicated server
+  versions it measured against the checksums it recorded, and marks a newer
+  version it can't check yet. Large Terraria worlds need 2 GiB; tModLoader
+  starts at about 1 GiB before any mod.
 - **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts (its server
   jars are Java and carry ARM64 native libraries; the fact-finding ran x86-64
   only, so an ARM64 run is part of M7). Servers
@@ -532,3 +536,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.15 | 2026-09-29 | M3 fixes from the acceptance run: Minecraft's lists are checked before saving (CFG-02, CFG-08); refused player commands answer errors, not the game's reply (PLY-03); console replies and log lines lose Minecraft's § codes (CON-02); the settings the panel saved survive an operator's whitelist switch in game (CFG-05); the contract gains a file's own check, player-command refusals, a display hook and files re-applied at start. |
 | 0.16 | 2026-09-29 | M5 fact-finding: Terraria 1.4.5.8 measured for vanilla, TShock 6.2.1 and tModLoader v2026.07.3.0 (`docs/verification/terraria-1.4.5.8.md`, `fixtures/terraria/1.4.5.8`, `tools/fake-terraria`); tModLoader installs from its GitHub releases and runs in the steam image with .NET 8, TShock in the native image with .NET 9, and a flavour may name its own image (§7, §10); no Terraria license gate (§7); CON-04's token lives in TShock's config; vanilla's IP bans and reconnect crash noted (§7, §13). |
 | 0.17 | 2026-09-29 | M2 follow-up (M2-H): a newer runtime image reaches each server at its next start, the way changed limits do (HST-01, SRV-05, SRV-06); the orchestrator only inspects images, reports image ids and takes `keepImage` on PUT (D3). |
+| 0.18 | 2026-09-29 | M5 runtime adapter: vanilla Terraria, TShock and tModLoader run on agents (installs checked against pinned or published digests, the world menu avoided, `exit` to stop, TShock's REST moderation as actions); a flavour may name its own image; installs unpack zip and tar; unchecked newer vanilla versions and memory needs noted (§7). |
