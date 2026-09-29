@@ -243,26 +243,33 @@ describe('a release that derives containers differently, in the fake orchestrato
   });
 });
 
-describe('what the fake orchestrator passes its agents (dev loop, M3)', () => {
-  it("gives them the fake games' knobs and Minecraft's download services, nothing of its own (UPD-01)", () => {
+describe('what the fake orchestrator passes its agents (dev loop, M3, M5)', () => {
+  it("gives them the fake games' knobs and Minecraft's and Terraria's download services, nothing of its own (UPD-01)", () => {
     const env = {
       FAKE_PZ_BOOT_MS: '2500',
       FAKE_MC_BOOT_MS: '2500',
+      FAKE_TERRARIA_BOOT_MS: '2500',
       FAKE_ORCH_STATE_DIR: '/state',
       GAME_MC_MOJANG_URL: 'http://127.0.0.1:30407',
       GAME_MC_PAPER_URL: 'http://127.0.0.1:30407',
       GAME_MC_FABRIC_URL: 'http://127.0.0.1:30407',
+      GAME_TERRARIA_ORG_URL: 'http://127.0.0.1:30408',
+      GAME_TERRARIA_GITHUB_URL: 'http://127.0.0.1:30408',
       GAME_ADAPTER: 'pz',
       GAME_MC_OTHER: 'x',
+      GAME_TERRARIA_OTHER: 'x',
       ORCH_TOKEN: 'secret',
       PATH: '/bin',
     };
     expect(agentEnvFrom(env)).toEqual({
       FAKE_PZ_BOOT_MS: '2500',
       FAKE_MC_BOOT_MS: '2500',
+      FAKE_TERRARIA_BOOT_MS: '2500',
       GAME_MC_MOJANG_URL: 'http://127.0.0.1:30407',
       GAME_MC_PAPER_URL: 'http://127.0.0.1:30407',
       GAME_MC_FABRIC_URL: 'http://127.0.0.1:30407',
+      GAME_TERRARIA_ORG_URL: 'http://127.0.0.1:30408',
+      GAME_TERRARIA_GITHUB_URL: 'http://127.0.0.1:30408',
     });
   });
 });

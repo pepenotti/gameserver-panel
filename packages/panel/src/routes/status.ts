@@ -15,7 +15,8 @@ export function statusRoutes(app: FastifyInstance, deps: Deps): void {
       serverName: s.handle.ref.gameName,
       agentConnected: s.feed.connected,
       agent,
-      launch: s.handle.launchSettings(),
+      // Secret launch settings (a server password) masked.
+      launch: s.handle.publicLaunchSettings(),
       nextRestart: s.scheduler.nextRuns().restart,
       lastBackup: last ? { at: last.manifest.createdAt, trigger: last.manifest.trigger, mode: last.manifest.mode } : null,
     };

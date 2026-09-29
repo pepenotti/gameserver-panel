@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, NumberInput, Select, Stack, Switch, TextInput } from '@mantine/core';
+import { Alert, Autocomplete, NumberInput, PasswordInput, Select, Stack, Switch, TextInput } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { localize, type I18n, type LaunchChoice, type LaunchOption } from '../api/meta';
@@ -134,6 +134,8 @@ export function LaunchField({
       );
     }
     case 'string':
+      // A secret (a server password) is typed hidden; once saved it reads back masked, and saving the mask keeps it.
+      if (o.secret) return <PasswordInput {...common} value={String(value ?? '')} onChange={(e) => onChange(e.currentTarget.value.replace(/[\r\n]/g, ''))} autoComplete="new-password" />;
       return versions ? (
         // Free text (a pinned build), with every known version listed whatever is typed.
         <Autocomplete {...common} data={versions} filter={({ options }) => options} value={String(value ?? '')} onChange={(v) => onChange(v.replace(/[\r\n]/g, ''))} />

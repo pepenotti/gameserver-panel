@@ -7,17 +7,22 @@ const reason = { type: 'string', maxLength: 200 } as const;
 const steamId = { type: 'string', pattern: '^\\d{17}$' } as const;
 /** An IPv4 or IPv6 address, as far as a schema can tell (the adapter checks it for real). */
 const ip = { type: 'string', minLength: 2, maxLength: 45, pattern: '^[0-9A-Fa-f.:]+$' } as const;
-/** Whom a ban names: a player's name, a SteamID or an address (the server's adapter says which it takes). */
+/** The id a game client sends (TShock's UUID), as far as a schema can tell. */
+const uuid = { type: 'string', minLength: 8, maxLength: 64, pattern: '^[0-9A-Fa-f-]+$' } as const;
+/** An account the game server keeps (TShock's), as the adapter checks it. */
+const account = { type: 'string', minLength: 1, maxLength: 32 } as const;
+/** Whom a ban names: a player's name, a SteamID, an address, a client id or an account (the server's adapter says which it takes). */
 const target = {
   type: 'object',
   additionalProperties: false,
-  properties: { username, steamId, ip, reason },
-  anyOf: [{ required: ['username'] }, { required: ['steamId'] }, { required: ['ip'] }],
+  properties: { username, steamId, ip, uuid, account, reason },
+  anyOf: [{ required: ['username'] }, { required: ['steamId'] }, { required: ['ip'] }, { required: ['uuid'] }, { required: ['account'] }],
 } as const;
 
-type Target = { username?: string; steamId?: string; ip?: string };
-const targetOf = (b: Target): Target => ({ ...(b.username !== undefined ? { username: b.username } : {}), ...(b.steamId !== undefined ? { steamId: b.steamId } : {}), ...(b.ip !== undefined ? { ip: b.ip } : {}) });
-const named = (b: Target) => b.steamId ?? b.ip ?? b.username ?? null;
+type Target = { username?: string; steamId?: string; ip?: string; uuid?: string; account?: string };
+const FIELDS = ['username', 'steamId', 'ip', 'uuid', 'account'] as const;
+const targetOf = (b: Target): Target => Object.fromEntries(FIELDS.filter((k) => b[k] !== undefined).map((k) => [k, b[k]]));
+const named = (b: Target) => b.steamId ?? b.ip ?? b.uuid ?? b.account ?? b.username ?? null;
 
 export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   const { audit } = deps;

@@ -10,8 +10,9 @@
 //   FAKE_ORCH_AGENT_PORTS    ports for the agents, e.g. 30102-30104
 //   FAKE_ORCH_CONTROL_PORTS  ports for what would stay inside a container (RCON), e.g. 30111-30142
 // FAKE_* variables (FAKE_PZ_BOOT_MS…) reach the fake games, and GAME_MC_*_URL
-// the agents (Minecraft's download services: tools/fake-minecraft/downloads.mjs
-// in the dev loop).
+// and GAME_TERRARIA_*_URL the agents (Minecraft's and Terraria's download
+// services: tools/fake-minecraft/downloads.mjs and
+// tools/fake-terraria/downloads.mjs in the dev loop).
 import { createOrchestratorServer, listenOnSocket, loadConfig, parsePortRanges, type PortRange } from '@gsp/orchestrator';
 import { agentEnvFrom, FakeBackend } from './backend';
 

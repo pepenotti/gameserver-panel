@@ -173,9 +173,9 @@ export class BackupFlows {
     );
   }
 
-  /** The adapter's reset scopes. */
+  /** The adapter's reset scopes for this server's flavour. */
   resets(): ResetDecl[] {
-    return this.d.server.adapter.resets;
+    return this.d.server.resets();
   }
 
   /**

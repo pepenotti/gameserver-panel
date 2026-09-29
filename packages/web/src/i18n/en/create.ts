@@ -11,6 +11,7 @@ export default {
   nameHelp: 'What everyone sees in the panel and in Discord messages. You can change it later.',
   id: 'ID',
   idHelp: 'Used in addresses and folder names: 2–24 lowercase letters, digits or dashes. It cannot be changed later.',
+  idWorldHelp: 'The first start creates the server’s world, named after it.',
   ports: 'Ports',
   portsHelp: 'Players connect to these ports; forward them in your router to play from outside. Leave one empty and the panel picks a free one.',
   suggest: 'Use suggested ports',

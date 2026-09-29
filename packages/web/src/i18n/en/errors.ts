@@ -54,6 +54,7 @@ export default {
   'no-change': 'Nothing changed: it already was that way.',
   'already-banned': 'That player or address is already banned.',
   'not-banned': 'That player or address is not banned.',
+  'player-op-failed': 'The game tried but could not do it. Check the server log.',
   'level-unchanged': 'That player already has that access level.',
   'already-whitelisted': 'That player is already on the whitelist.',
   'not-whitelisted': 'That player is not on the whitelist.',

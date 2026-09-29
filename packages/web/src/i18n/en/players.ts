@@ -56,4 +56,14 @@ export default {
   levelHolders: 'Access levels',
   levelHoldersHelp: 'Players with more than the lowest level, as the game keeps them.',
   levelHoldersEmpty: 'Nobody has a higher level.',
+  banBy: 'Ban by',
+  byUuid: 'Client ID (UUID)',
+  byAccount: 'Account',
+  uuidBans: 'Client IDs',
+  accountBans: 'Accounts',
+  addressBanWarning:
+    'This game bans the IP address the player joined from, not their name. Through Docker Desktop every player arrives from the same address, so this ban shuts everyone out, you included, until it is lifted while the server is stopped.',
+  addressBanNote: 'This game bans the IP address the player joined from, not their name: anyone else who joins from that address is banned too.',
+  banAnyOnlineHelp: 'Ban a player who is online: the game bans the address they joined from.',
+  unbanStopped: 'The game keeps its bans in memory: stop the server to lift one.',
 } as const;

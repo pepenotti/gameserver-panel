@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { RconProtocolError } from '@gsp/formats';
 import { PERMISSIONS } from '@gsp/shared';
-import type { AgentCommand, AnnounceKind, Capability, Lang, PanelAdapter, SecretBag, ServerCtx, ServerFiles, ServerRef } from '../index';
+import type { AgentCommand, AnnounceKind, BanTarget, Capability, Lang, PanelAdapter, PlayerOps, SecretBag, ServerCtx, ServerFiles, ServerRef } from '../index';
 import { expectI18n, expectUnique, metaTests } from './meta';
 
 export interface PanelCoreSuiteOptions {
@@ -18,13 +18,26 @@ const KINDS: (AnnounceKind | 'cancelled')[] = ['restart', 'stop', 'update', 'res
 const LANGS: Lang[] = ['en', 'es'];
 /** Arguments no game command may carry: quote breaks, line breaks, NUL. */
 const HOSTILE = ['x"; quit', 'x\nquit', 'x\rquit', 'x\0'];
+const BAN_TARGETS: readonly BanTarget[] = ['username', 'steamId', 'ip', 'uuid', 'account'];
+const PLAYER_OPS = ['kick', 'ban', 'unban', 'setAccess', 'whitelistAdd', 'whitelistRemove', 'setWhitelistEnabled'] as const;
+
+/** Each flavour (or none, for an adapter without flavours), with its capabilities and its moderation. */
+function flavoursOf<S>(adapter: PanelAdapter<S>): { flavour: string | null; caps: Set<Capability>; players: PlayerOps | undefined }[] {
+  const ids: (string | null)[] = adapter.meta.flavours.length ? adapter.meta.flavours.map((f) => f.id) : [null];
+  return ids.map((flavour) => {
+    const f = flavour === null ? undefined : adapter.meta.flavours.find((x) => x.id === flavour);
+    return { flavour, caps: new Set(f?.capabilities ?? adapter.meta.capabilities), players: adapter.playersOf?.(flavour) ?? adapter.players };
+  });
+}
 
 /**
- * A server with no files and no agent: commands and config writes are
- * recorded, the agent knows no versions, everything else is refused.
+ * A server with no files and no agent: commands, runtime actions and config
+ * writes are recorded (an action answers nothing), the agent knows no
+ * versions, everything else is refused.
  */
-function bareCtx<S>(adapter: PanelAdapter<S>, srv: ServerRef): ServerCtx & { commands: AgentCommand[]; configCalls: unknown[][] } {
+function bareCtx<S>(adapter: PanelAdapter<S>, srv: ServerRef): ServerCtx & { commands: AgentCommand[]; actions: [string, unknown][]; configCalls: unknown[][] } {
   const commands: AgentCommand[] = [];
+  const actions: [string, unknown][] = [];
   const configCalls: unknown[][] = [];
   const refuse = async (): Promise<never> => {
     throw new Error('not available in the contract suite');
@@ -50,7 +63,7 @@ function bareCtx<S>(adapter: PanelAdapter<S>, srv: ServerRef): ServerCtx & { com
       commands.push(c);
       return { via: 'rcon', output: '' };
     },
-    action: refuse,
+    action: async (name, input) => void actions.push([name, input]),
     versions: async () => ({ installed: null, versions: [] }),
     launchSettings: () => adapter.launch.defaults(),
     config: {
@@ -60,6 +73,7 @@ function bareCtx<S>(adapter: PanelAdapter<S>, srv: ServerRef): ServerCtx & { com
     },
     onLog: () => () => undefined,
     commands,
+    actions,
     configCalls,
   };
 }
@@ -70,26 +84,44 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
     const caps = () => new Set<Capability>([...adapter.meta.capabilities, ...adapter.meta.flavours.flatMap((f) => f.capabilities ?? [])]);
     const server = (): ServerRef => opts.server?.() ?? { id: 'contract', gameName: 'contract', flavour: null };
 
-    it('implements what its capabilities promise', () => {
-      const c = caps();
-      const p = adapter.players;
+    it('implements what its capabilities promise, flavour by flavour', () => {
       const missing: string[] = [];
-      const need = (cap: Capability, ok: boolean, what: string) => {
-        if (c.has(cap) && !ok) missing.push(`${cap}: ${what}`);
-      };
-      need('broadcast', !!adapter.messages.broadcast, 'messages.broadcast');
-      need('kick', !!p?.kick, 'players.kick');
-      need('ban', !!p?.ban && !!p.unban, 'players.ban/unban');
-      need('whitelist', !!p?.whitelistAdd && !!p.whitelistRemove, 'players.whitelistAdd/Remove');
-      need('accessLevels', !!p?.setAccess && (p.accessLevels?.length ?? 0) > 0, 'players.setAccess and players.accessLevels');
-      need('accounts', !!p?.accounts, 'players.accounts');
-      // What only a game with a whitelist or access levels can have.
-      if (!c.has('whitelist') && (p?.setWhitelistEnabled || p?.whitelist)) missing.push('players.setWhitelistEnabled/whitelist without the whitelist capability');
-      if (!c.has('accessLevels') && p?.levelHolders) missing.push('players.levelHolders without the accessLevels capability');
-      need('updateCheck', !!adapter.updates, 'updates.check');
-      for (const cap of c) if (cap.startsWith('mods:')) need(cap, !!adapter.mods?.some((m) => m.capability === cap), `a mod source for ${cap}`);
-      for (const m of adapter.mods ?? []) if (!c.has(m.capability)) missing.push(`mod source ${m.id} without the ${m.capability} capability`);
+      for (const { flavour, caps: c, players: p } of flavoursOf(adapter)) {
+        const on = flavour === null ? '' : ` (${flavour})`;
+        const need = (cap: Capability, ok: boolean, what: string) => {
+          if (c.has(cap) && !ok) missing.push(`${cap}${on}: ${what}`);
+        };
+        need('broadcast', !!adapter.messages.broadcast || !!adapter.messages.send, 'messages.broadcast or messages.send');
+        need('kick', !!p?.kick, 'players.kick');
+        need('ban', !!p?.ban && !!p.unban, 'players.ban/unban');
+        need('whitelist', !!p?.whitelistAdd && !!p.whitelistRemove, 'players.whitelistAdd/Remove');
+        need('accessLevels', !!p?.setAccess && (p.accessLevels?.length ?? 0) > 0, 'players.setAccess and players.accessLevels');
+        need('accounts', !!p?.accounts, 'players.accounts');
+        // What only a game with a whitelist or access levels can have.
+        if (!c.has('whitelist') && (p?.setWhitelistEnabled || p?.whitelist)) missing.push(`players.setWhitelistEnabled/whitelist without the whitelist capability${on}`);
+        if (!c.has('accessLevels') && p?.levelHolders) missing.push(`players.levelHolders without the accessLevels capability${on}`);
+        need('updateCheck', !!adapter.updates, 'updates.check');
+        for (const cap of c) if (cap.startsWith('mods:')) need(cap, !!adapter.mods?.some((m) => m.capability === cap), `a mod source for ${cap}`);
+      }
+      const all = caps();
+      for (const m of adapter.mods ?? []) if (!all.has(m.capability)) missing.push(`mod source ${m.id} without the ${m.capability} capability`);
       expect(missing).toEqual([]);
+    });
+
+    it('flavour-only resets and console commands name declared flavours', () => {
+      const flavours = adapter.meta.flavours.map((f) => f.id);
+      for (const [what, list] of [
+        ['reset', adapter.resets],
+        ['console command', adapter.consoleCatalog ?? []],
+      ] as const) {
+        for (const x of list) {
+          const f = 'id' in x ? x.id : x.name;
+          if (x.flavours === undefined) continue;
+          expect(x.flavours.length, `${what} ${f} is for no flavour`).toBeGreaterThan(0);
+          expect(x.flavours.filter((id) => !flavours.includes(id)), `${what} ${f} flavours`).toEqual([]);
+        }
+      }
+      if (adapter.playersOf) expect(adapter.meta.flavours.length, 'playersOf without flavours').toBeGreaterThan(0);
     });
 
     it('backup parts and resets are labelled and consistent', () => {
@@ -216,70 +248,81 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
     });
 
     it('player moderation refuses arguments the game cannot take, sending nothing', async () => {
-      const p = adapter.players;
-      if (!p) return;
-      if (p.accessLevels) {
-        expectUnique(
-          p.accessLevels.map((l) => l.id),
-          'access levels',
-        );
-        for (const l of p.accessLevels) expectI18n(l.label, `access level ${l.id}`);
-      }
-      expect([...(p.banTargets ?? [])].filter((t) => !['username', 'steamId', 'ip'].includes(t)), 'ban targets').toEqual([]);
-      if (p.ban) expect(p.banTargets?.length ?? 0, 'players.ban without banTargets').toBeGreaterThan(0);
-      const byIp = p.banTargets?.includes('ip') ?? false;
-      const ctx = bareCtx(adapter, server());
-      for (const bad of HOSTILE) {
-        if (p.ban && byIp) await expect(p.ban(ctx, { ip: bad }), `ban ip ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.unban && byIp) await expect(p.unban(ctx, { ip: bad }), `unban ip ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.kick) await expect(p.kick(ctx, bad), `kick ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.kick) await expect(p.kick(ctx, 'bob', bad), `kick reason ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.ban) await expect(p.ban(ctx, { username: bad }), `ban ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.unban) await expect(p.unban(ctx, { username: bad }), `unban ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.whitelistAdd) await expect(p.whitelistAdd(ctx, bad, 'secret-pw'), `whitelistAdd ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.whitelistRemove) await expect(p.whitelistRemove(ctx, bad), `whitelistRemove ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.setAccess) await expect(p.setAccess(ctx, bad, p.accessLevels?.[0]?.id ?? 'x'), `setAccess ${JSON.stringify(bad)}`).rejects.toBeInstanceOf(RconProtocolError);
-      }
-      if (p.ban) await expect(p.ban(ctx, {}), 'ban without a target').rejects.toBeInstanceOf(RconProtocolError);
-      if (p.setAccess) await expect(p.setAccess(ctx, 'bob', 'not-a-level; quit'), 'unknown access level').rejects.toBeInstanceOf(RconProtocolError);
-      expect(ctx.commands).toEqual([]);
-      if (p.ban && byIp) await expect(p.ban(ctx, { ip: 'not-an-address' }), 'ban a word as an ip').rejects.toBeInstanceOf(RconProtocolError);
-      expect(ctx.commands).toEqual([]);
-      // A normal kick reaches the game.
-      if (p.kick) {
-        await p.kick(ctx, 'bob', 'afk');
-        expect(ctx.commands.length).toBeGreaterThan(0);
-      }
-      // A whitelist without passwords takes a name alone.
-      if (p.whitelistAdd && p.whitelistPassword === false) {
-        const before = ctx.commands.length;
-        await p.whitelistAdd(ctx, 'bob');
-        expect(ctx.commands.length, 'whitelistAdd without a password').toBeGreaterThan(before);
+      for (const { flavour, players: p } of flavoursOf(adapter)) {
+        if (!p) continue;
+        const on = flavour === null ? '' : ` (${flavour})`;
+        if (p.accessLevels) {
+          expectUnique(
+            p.accessLevels.map((l) => l.id),
+            `access levels${on}`,
+          );
+          for (const l of p.accessLevels) expectI18n(l.label, `access level ${l.id}${on}`);
+        }
+        expect([...(p.banTargets ?? [])].filter((t) => !BAN_TARGETS.includes(t)), `ban targets${on}`).toEqual([]);
+        if (p.ban) expect(p.banTargets?.length ?? 0, `players.ban without banTargets${on}`).toBeGreaterThan(0);
+        if (p.banByAddress) expect(!!p.ban, `players.banByAddress without players.ban${on}`).toBe(true);
+        for (const op of p.stoppedOnly ?? []) expect(!!p[op], `players.stoppedOnly names ${op}, which it doesn't have${on}`).toBe(true);
+        const targets = p.banTargets ?? [];
+        const ctx = { ...bareCtx(adapter, { ...server(), flavour }) };
+        const sent = () => ctx.commands.length + ctx.actions.length;
+        for (const bad of HOSTILE) {
+          // Every field it bans by refuses what no game command may carry (a name, an address, an id).
+          for (const t of targets) {
+            if (p.ban) await expect(p.ban(ctx, { [t]: bad }), `ban ${t} ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+            if (p.unban) await expect(p.unban(ctx, { [t]: bad }), `unban ${t} ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+          }
+          if (p.kick) await expect(p.kick(ctx, bad), `kick ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+          if (p.kick) await expect(p.kick(ctx, 'bob', bad), `kick reason ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+          if (p.ban && targets.includes('username')) await expect(p.ban(ctx, { username: 'bob' }, bad), `ban reason ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+          if (p.whitelistAdd) await expect(p.whitelistAdd(ctx, bad, 'secret-pw'), `whitelistAdd ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+          if (p.whitelistRemove) await expect(p.whitelistRemove(ctx, bad), `whitelistRemove ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+          if (p.setAccess) await expect(p.setAccess(ctx, bad, p.accessLevels?.[0]?.id ?? 'x'), `setAccess ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+        }
+        if (p.ban) await expect(p.ban(ctx, {}), `ban without a target${on}`).rejects.toBeInstanceOf(RconProtocolError);
+        // A field it doesn't ban by is refused, not taken for another.
+        for (const t of BAN_TARGETS.filter((x) => !targets.includes(x))) if (p.ban) await expect(p.ban(ctx, { [t]: 'bob' }), `ban by ${t}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+        if (p.setAccess) await expect(p.setAccess(ctx, 'bob', 'not-a-level; quit'), `unknown access level${on}`).rejects.toBeInstanceOf(RconProtocolError);
+        expect(sent(), `sent to the game${on}`).toBe(0);
+        if (p.ban && targets.includes('ip')) await expect(p.ban(ctx, { ip: 'not-an-address' }), `ban a word as an ip${on}`).rejects.toBeInstanceOf(RconProtocolError);
+        expect(sent(), `sent to the game${on}`).toBe(0);
+        // A normal kick reaches the game.
+        if (p.kick) {
+          await p.kick(ctx, 'bob', 'afk');
+          expect(sent(), `kick${on}`).toBeGreaterThan(0);
+        }
+        // A whitelist without passwords takes a name alone.
+        if (p.whitelistAdd && p.whitelistPassword === false) {
+          const before = sent();
+          await p.whitelistAdd(ctx, 'bob');
+          expect(sent(), `whitelistAdd without a password${on}`).toBeGreaterThan(before);
+        }
       }
     });
 
     it('tells a refusal from a reply only by what the game answers, and only for the commands it has (PLY-03)', () => {
-      const p = adapter.players;
-      if (!p?.refused) return;
-      const ops = (['kick', 'ban', 'unban', 'setAccess', 'whitelistAdd', 'whitelistRemove', 'setWhitelistEnabled'] as const).filter((op) => p[op]);
-      expect(ops.length, 'players.refused without a command to refuse').toBeGreaterThan(0);
-      for (const op of ops) {
-        // An empty reply (a stdin command, a game that says nothing) and anything made up are no refusal.
-        for (const reply of ['', 'ok', 'x'.repeat(5000), '\n\n']) expect(p.refused(op, reply), `${op} ${JSON.stringify(reply.slice(0, 20))}`).toBeNull();
+      for (const { flavour, players: p } of flavoursOf(adapter)) {
+        if (!p?.refused) continue;
+        const ops = PLAYER_OPS.filter((op) => p[op]);
+        expect(ops.length, `players.refused without a command to refuse (${flavour})`).toBeGreaterThan(0);
+        for (const op of ops) {
+          // An empty reply (a stdin command, a game that says nothing) and anything made up are no refusal.
+          for (const reply of ['', 'ok', 'x'.repeat(5000), '\n\n']) expect(p.refused(op, reply), `${op} ${JSON.stringify(reply.slice(0, 20))} (${flavour})`).toBeNull();
+        }
       }
     });
 
-    it("reads the whitelist and who holds a level from the game's files, empty on a server without any", async () => {
-      const p = adapter.players;
-      if (!p) return;
-      const ctx = bareCtx(adapter, server());
-      if (p.whitelist) {
-        const w = await p.whitelist(ctx);
-        expect(w.usernames).toEqual([]);
-        expect([true, false, null]).toContain(w.enabled);
+    it("reads the whitelist, who holds a level and the bans from the game's files, empty on a server without any", async () => {
+      for (const { flavour, players: p } of flavoursOf(adapter)) {
+        if (!p) continue;
+        const ctx = bareCtx(adapter, { ...server(), flavour });
+        if (p.whitelist) {
+          const w = await p.whitelist(ctx);
+          expect(w.usernames).toEqual([]);
+          expect([true, false, null]).toContain(w.enabled);
+        }
+        if (p.levelHolders) expect(await p.levelHolders(ctx)).toEqual([]);
+        expect(ctx.commands, `reads send nothing to the game (${flavour})`).toEqual([]);
       }
-      if (p.levelHolders) expect(await p.levelHolders(ctx)).toEqual([]);
-      expect(ctx.commands, 'reads send nothing to the game').toEqual([]);
     });
 
     if (opts.server) {

@@ -136,27 +136,30 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
     },
   );
 
-  app.get('/server/launch', { config: { permission: 'server.view' } }, async (req) => srvOf(req).handle.launchSettings());
+  // Secret settings (a server password) read back masked (`LaunchOption.secret`).
+  app.get('/server/launch', { config: { permission: 'server.view' } }, async (req) => srvOf(req).handle.publicLaunchSettings());
 
   app.put<{ Body: Record<string, unknown> }>(
     '/server/launch',
     { config: { permission: 'server.update' }, schema: { body: { type: 'object', maxProperties: 100 } } },
     async (req) => {
       const { handle } = srvOf(req);
-      const problem = launchBodyProblem(handle.adapter.launch.schema, req.body);
+      // A secret sent back masked is the one stored.
+      const body = handle.withStoredSecrets(req.body);
+      const problem = launchBodyProblem(handle.adapter.launch.schema, body);
       if (problem) throw new HttpError(400, 'validation', problem, { message: problem });
       // The adapter refuses settings it can't turn into launch params (ranges and formats the form can't express).
       try {
-        handle.launchEnvelope({}, req.body);
+        handle.launchEnvelope({}, body);
       } catch (e) {
         throw new HttpError(400, 'validation', (e as Error).message);
       }
-      const before = handle.launchSettings();
+      const before = handle.publicLaunchSettings();
       // SRV-05: more (or less) memory for the game moves its container's limit too, before anything is stored.
-      await deps.servers.followLaunch(srvOf(req).id, req.body, actor(req), req.ip);
-      handle.setLaunchSettings(req.body);
-      audit.log({ ...by(req), action: 'server.launch-settings', detail: { before, after: req.body } });
-      return handle.launchSettings();
+      await deps.servers.followLaunch(srvOf(req).id, body, actor(req), req.ip);
+      handle.setLaunchSettings(body);
+      audit.log({ ...by(req), action: 'server.launch-settings', detail: { before, after: handle.publicLaunchSettings(body) } });
+      return handle.publicLaunchSettings();
     },
   );
 

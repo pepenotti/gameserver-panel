@@ -1,7 +1,7 @@
 import { Alert, Badge, Button, Drawer, Grid, Group, Loader, NavLink, Paper, ScrollArea, Stack, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
-import { IconAlertTriangle, IconFile, IconFileOff, IconFolder, IconHistory, IconLock, IconSettings } from '@tabler/icons-react';
+import { IconAlertTriangle, IconFile, IconFileOff, IconFolder, IconHistory, IconInfoCircle, IconLock, IconSettings } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -220,12 +220,17 @@ function FileEditor({ id, onDirty, stoppedOnly = false }: { id: string; onDirty:
           {t(`files.reasons.${readonly}`)}
         </Alert>
       )}
+      {content.note && (
+        <Alert color="blue" variant="light" icon={<IconInfoCircle />}>
+          {localize(content.note, i18n.language)}
+        </Alert>
+      )}
       {content.managedKeys.length > 0 && (
         <Text size="xs" c="dimmed">
           {t('files.managedNote', { keys: content.managedKeys.join(', ') })}
         </Text>
       )}
-      {content.secretKeys.length > 0 && (
+      {(content.secretKeys.length > 0 || (content.secretTrees?.length ?? 0) > 0) && (
         <Text size="xs" c="dimmed">
           {t('files.secretNote')}
         </Text>

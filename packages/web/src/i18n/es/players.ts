@@ -58,4 +58,14 @@ export default {
   levelHolders: 'Niveles de acceso',
   levelHoldersHelp: 'Los jugadores con más que el nivel más bajo, según los guarda el juego.',
   levelHoldersEmpty: 'Nadie tiene un nivel más alto.',
+  banBy: 'Banear por',
+  byUuid: 'ID del cliente (UUID)',
+  byAccount: 'Cuenta',
+  uuidBans: 'IDs de cliente',
+  accountBans: 'Cuentas',
+  addressBanWarning:
+    'Este juego banea la dirección IP desde la que entró el jugador, no su nombre. A través de Docker Desktop todos los jugadores llegan desde la misma dirección, así que este baneo deja afuera a todos, vos incluido, hasta que se quite con el servidor detenido.',
+  addressBanNote: 'Este juego banea la dirección IP desde la que entró el jugador, no su nombre: cualquier otro que entre desde esa dirección también queda baneado.',
+  banAnyOnlineHelp: 'Banear a un jugador conectado: el juego banea la dirección desde la que entró.',
+  unbanStopped: 'El juego guarda sus baneos en memoria: detené el servidor para quitar uno.',
 } satisfies Translations['players'];

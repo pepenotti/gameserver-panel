@@ -145,6 +145,13 @@ export function panelAdapterConfigSuite<S>(adapter: PanelAdapter<S>, opts: Panel
         if (f.stoppedOnly) expect(f.restartKeys, `${f.id} is stopped-only`).toBe('*');
         // The panel puts back values of keys: plain text has none.
         if (f.reapplyAtStart) expect(f.format, `${f.id} is re-applied at start`).not.toBe('text');
+        if (f.note) expectI18n(f.note, `note of ${f.id}`);
+        // Whole secret objects are found by their place in a JSON document.
+        if (f.secretTrees?.length) {
+          expect(['json', 'json5'], `${f.id} has secret trees`).toContain(f.format);
+          expectUnique(f.secretTrees, `secret trees of ${f.id}`);
+          for (const p of f.secretTrees) expect(p, `secret tree of ${f.id}`).toMatch(/^[^.\s]+(\.[^.\s]+)*$/);
+        }
         const schema = f.schemaId === undefined ? undefined : cfg.schemas[f.schemaId];
         if (f.schemaId !== undefined) expect(schema, `schema ${f.schemaId} of ${f.id}`).toBeDefined();
         for (const [what, keys] of [

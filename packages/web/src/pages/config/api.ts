@@ -34,6 +34,10 @@ export interface FileDecl {
   restartKeys: string[] | '*';
   /** The running game writes it back from memory: saved only while the server is stopped. */
   stoppedOnly?: boolean;
+  /** Objects secret whole, keys included: shown masked, kept as on disk. */
+  secretTrees?: string[];
+  /** What people should know before editing it, from the game's adapter. */
+  note?: I18n | null;
 }
 
 export interface ConfigMeta {
@@ -99,6 +103,10 @@ export interface FileContent {
   sha256: string;
   managedKeys: string[];
   secretKeys: string[];
+  /** Objects secret whole, keys included: shown masked, kept as on disk. */
+  secretTrees?: string[];
+  /** What people should know before editing it, from the game's adapter. */
+  note?: I18n | null;
   readonlyReason: ReadonlyReason | null;
   /** Problems of the file as it is on disk: its format's, or the game's own check. */
   issues: FileIssue[];

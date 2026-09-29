@@ -43,9 +43,14 @@ const ports = {
   rcon: port('DEV_RCON_PORT', 27115),
   // Minecraft's fake download services (Mojang, PaperMC, Fabric): a port of the slot's block nothing else uses.
   downloads: port('DEV_DOWNLOADS_PORT', panelPort + 7),
+  // Terraria's (terraria.org, GitHub's releases): the next one.
+  terrariaDownloads: port('DEV_TERRARIA_DOWNLOADS_PORT', panelPort + 8),
 };
-/** What the panel (its version choices) and every server's agent (its installs) download Minecraft from. */
-const downloadUrls = Object.fromEntries(['GAME_MC_MOJANG_URL', 'GAME_MC_PAPER_URL', 'GAME_MC_FABRIC_URL'].map((k) => [k, `http://127.0.0.1:${ports.downloads}`]));
+/** What the panel (its version choices) and every server's agent (its installs) download Minecraft and Terraria from. */
+const downloadUrls = {
+  ...Object.fromEntries(['GAME_MC_MOJANG_URL', 'GAME_MC_PAPER_URL', 'GAME_MC_FABRIC_URL'].map((k) => [k, `http://127.0.0.1:${ports.downloads}`])),
+  ...Object.fromEntries(['GAME_TERRARIA_ORG_URL', 'GAME_TERRARIA_GITHUB_URL'].map((k) => [k, `http://127.0.0.1:${ports.terrariaDownloads}`])),
+};
 const host = process.env.DEV_HOST || 'localhost';
 const tmp = path.resolve(root, process.env.DEV_STATE_DIR || path.join('.tmp', 'dev'));
 const url = `http://${host}:${ports.web}`;
@@ -73,7 +78,7 @@ env file    ${existsSync(envDev) ? envDev : '(no .env.dev; defaults and environm
 state dir   ${tmp}
 ports       panel ${ports.panel}, agent ${ports.agent}, web ${ports.web}, fake RCON ${ports.rcon}
 orchestrator  fake, on ${orch.socket}; its servers: agents ${orch.agentPorts}, inside ports ${orch.controlPorts}, game ports ${orch.hostPorts}
-downloads   fake Minecraft download services on ${ports.downloads}
+downloads   fake Minecraft download services on ${ports.downloads}, fake Terraria ones on ${ports.terrariaDownloads}
 open        ${url}`);
   process.exit(0);
 }
@@ -102,15 +107,22 @@ const procs = [
       FAKE_ORCH_CONTROL_PORTS: orch.controlPorts,
       FAKE_PZ_BOOT_MS: '2500',
       FAKE_PZ_PLAYERS: process.env.FAKE_PZ_PLAYERS ?? 'Rick,Daryl',
-      // Minecraft servers install from the fake download services and boot the fake server.
+      // Minecraft and Terraria servers install from the fake download services and boot the fake servers.
       ...downloadUrls,
       FAKE_MC_BOOT_MS: '2500',
+      FAKE_TERRARIA_BOOT_MS: '2500',
     },
   },
   {
     name: 'downloads',
     color: 34,
     cmd: [node, 'tools/fake-minecraft/downloads.mjs', '--port', String(ports.downloads)],
+    env: {},
+  },
+  {
+    name: 'tr-downloads',
+    color: 34,
+    cmd: [node, 'tools/fake-terraria/downloads.mjs', '--port', String(ports.terrariaDownloads)],
     env: {},
   },
   {
@@ -154,7 +166,7 @@ const procs = [
       PZ_INSTALL_DIR: path.join(tmp, 'install'),
       BACKUP_DIR: path.join(tmp, 'backups'),
       PZ_SERVER_NAME: 'zomboid',
-      // The create form's Minecraft versions come from the same fake services.
+      // The create form's Minecraft and Terraria versions come from the same fake services.
       ...downloadUrls,
     },
   },

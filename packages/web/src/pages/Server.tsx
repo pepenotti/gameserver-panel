@@ -210,10 +210,11 @@ export function Server() {
   const shown = schema.filter((o) => forFlavour(o, flavour));
   // What the version and what depends on it may be, from the game's download services (UPD-02), for those who may change them.
   const versionValue = versionKey && typeof form?.[versionKey] === 'string' ? (form[versionKey] as string) : '';
+  // An empty version is one too (a game that follows its newest release): the list is asked without one.
   const choices = useQuery({
     queryKey: ['launchChoices', sapi.sid, versionValue],
-    queryFn: () => sapi<LaunchChoices>('GET', `/server/launch/choices?version=${encodeURIComponent(versionValue)}`),
-    enabled: !!meta?.launch.choices && can('server.update') && has('versionPin') && versionValue !== '',
+    queryFn: () => sapi<LaunchChoices>('GET', `/server/launch/choices?${new URLSearchParams(versionValue === '' ? {} : { version: versionValue }).toString()}`),
+    enabled: !!meta?.launch.choices && can('server.update') && has('versionPin') && form !== null,
     staleTime: 5 * 60_000,
     retry: false,
     placeholderData: (prev) => prev,

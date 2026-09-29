@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import { localize } from '../../api/meta';
 import { useServerApi } from '../../api/server';
 import { formatDateTime, useErrorText } from '../../lib/format';
 import { getProposal, propose, useConfigMeta, useFileLabel, type ConfigMeta, type FileDecl, type Proposal, type ProposalPreview, type Value } from './api';
@@ -19,7 +20,7 @@ function Missing() {
 }
 
 function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const sapi = useServerApi();
   const errorText = useErrorText();
   const [presetPreview, setPresetPreview] = useState<ProposalPreview | null>(null);
@@ -32,6 +33,11 @@ function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
     void propose(sapi, { fileId: file.id, preset: name }).then(setPresetPreview, (e: unknown) => notifications.show({ color: 'red', message: errorText(e) }));
   return (
     <Stack>
+      {file.note && (
+        <Alert variant="light" color="blue" icon={<IconInfoCircle />}>
+          {localize(file.note, i18n.language)}
+        </Alert>
+      )}
       {(file.managedKeys.length > 0 || file.restartKeys === '*') && (
         <Alert variant="light" color="blue" icon={<IconInfoCircle />}>
           {[file.restartKeys === '*' ? t('config.restartAllNote') : '', file.managedKeys.length > 0 ? t('config.managedNote') : ''].filter(Boolean).join(' ')}

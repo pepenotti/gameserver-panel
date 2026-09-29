@@ -62,6 +62,8 @@ export interface LaunchOption extends OptionMeta {
   step?: number;
   /** The flavours this setting is for; absent: every one. */
   flavours?: string[];
+  /** A value people choose that is kept hidden (a password): it reads back masked, and sending the mask keeps it. */
+  secret?: boolean;
 }
 
 /** One value a launch setting may take right now, from the game's download services (the contract's `LaunchChoice`). */
@@ -127,7 +129,8 @@ export interface PortDecl {
   label: I18n;
 }
 
-export type BanTarget = 'username' | 'steamId' | 'ip';
+/** What a ban can name (the contract's `BanTarget`): a name, a SteamID, an address, the id a game client sends, an account the server keeps. */
+export type BanTarget = 'username' | 'steamId' | 'ip' | 'uuid' | 'account';
 
 export interface Meta {
   adapter: {
@@ -148,6 +151,10 @@ export interface Meta {
   accessLevels: { id: string; label: I18n }[];
   /** What a ban can name. */
   banTargets?: BanTarget[];
+  /** The game bans the address a player joined from, whatever the ban names: everyone sharing it is banned too (warn first). */
+  banByAddress?: boolean;
+  /** Player commands that work only while the game is stopped (lifting a ban the game keeps in memory). */
+  stoppedOnly?: string[];
   /** How the whitelist works: a password per entry (accounts), switched on and off live, listed. */
   whitelist?: { password: boolean; toggle: boolean; list: boolean };
   /** Who holds a level above the lowest can be listed. */

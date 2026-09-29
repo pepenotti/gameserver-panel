@@ -72,6 +72,10 @@ export interface DeclaredFile {
   restartKeys: string[] | '*';
   /** The running game writes it back from memory: changed only while the game is stopped (409 `config-stopped-only`). */
   stoppedOnly: boolean;
+  /** Objects secret whole, keys included: shown masked and kept as on disk (`ConfigFileDecl.secretTrees`). */
+  secretTrees: string[];
+  /** What people should know before editing it (the adapter's `ConfigFileDecl.note`); null: nothing. */
+  note: I18n | null;
 }
 
 export interface TreeEntry {
@@ -107,6 +111,10 @@ export interface FileContent {
   sha256: string;
   managedKeys: string[];
   secretKeys: string[];
+  /** Objects secret whole: shown as a mask, kept as on disk. */
+  secretTrees: string[];
+  /** What people should know before editing it; null: nothing. */
+  note: I18n | null;
   /** Null when the file can be saved. */
   readonlyReason: ReadonlyReason | null;
   /** Problems of the text as it is on disk: its format's, or the adapter's own check (CFG-02). */
@@ -116,7 +124,7 @@ export interface FileContent {
 }
 
 export interface ConfigMeta {
-  files: Pick<DeclaredFile, 'id' | 'label' | 'format' | 'schemaId' | 'managedKeys' | 'secretKeys' | 'restartKeys' | 'stoppedOnly'>[];
+  files: Pick<DeclaredFile, 'id' | 'label' | 'format' | 'schemaId' | 'managedKeys' | 'secretKeys' | 'restartKeys' | 'stoppedOnly' | 'secretTrees' | 'note'>[];
   schemas: Record<string, OptionMeta[]>;
   /** Each schema's form groups, in order (CFG-10); options name theirs in `group`. */
   groups: Record<string, OptionGroup[]>;

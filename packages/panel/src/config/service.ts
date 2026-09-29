@@ -23,6 +23,7 @@ import type {
   TreeEntry,
   VersionRow,
 } from './store';
+import { inTree, maskTrees, restoreTrees } from './trees';
 
 /** What secret values look like in forms, the text editor, diffs and history. */
 export const MASK = '••••••••';
@@ -204,11 +205,19 @@ export class ConfigService implements ConfigStore {
     return r.ok ? t.format.flatten(r.doc) : {};
   }
 
+  /** The declared file's objects that are secret whole (`secretTrees`). */
+  private trees(t: Target): string[] {
+    return t.decl?.secretTrees ?? [];
+  }
+
   /**
-   * `text` with each non-empty secret masked; keys in `changed` get a marker
-   * so a diff shows the secret changes without showing it.
+   * `text` with each non-empty secret masked, and each secret tree too;
+   * keys in `changed` get a marker so a diff shows the secret changes
+   * without showing it.
    */
   private mask(t: Target, text: string, changed: ReadonlySet<string> = new Set()): string {
+    const trees = this.trees(t);
+    if (trees.length && t.decl) text = maskTrees(t.decl.format, text, trees, MASK);
     const keys = t.decl?.secretKeys ?? [];
     if (keys.length === 0) return text;
     const r = t.format.parse(text);
@@ -231,8 +240,10 @@ export class ConfigService implements ConfigStore {
     return sha256(this.mask(t, text));
   }
 
-  /** Secrets the change doesn't touch go back to the mask, so they come from disk when it is applied. */
+  /** Secrets the change doesn't touch go back to the mask, so they come from disk when it is applied; secret trees always do. */
   private remask(t: Target, next: string, disk: string): string {
+    const trees = this.trees(t);
+    if (trees.length && t.decl) next = maskTrees(t.decl.format, next, trees, MASK);
     const keys = t.decl?.secretKeys ?? [];
     if (keys.length === 0) return next;
     const nextFlat = this.flat(t, next);
@@ -259,7 +270,7 @@ export class ConfigService implements ConfigStore {
     const fields: Record<string, string> = {};
     const clean: Record<string, Scalar | null> = {};
     for (const [key, value] of Object.entries(changes)) {
-      if (t.decl?.managedKeys.includes(key)) {
+      if (t.decl?.managedKeys.includes(key) || inTree(key, this.trees(t))) {
         fields[key] = 'managed';
         continue;
       }
@@ -315,11 +326,25 @@ export class ConfigService implements ConfigStore {
       flat = this.flat(t, next);
     };
 
+    const reapplied: ReappliedKey[] = [];
+    // Secret trees are kept as on disk, whatever the text holds (the mask, or an edit).
+    const trees = this.trees(t);
+    if (trees.length && t.decl) {
+      let r: ReturnType<typeof restoreTrees>;
+      try {
+        r = restoreTrees(t.decl.format, next, disk, trees, MASK);
+      } catch (e) {
+        throw invalidFile([{ line: 1, message: (e as Error).message }]);
+      }
+      next = r.text;
+      flat = this.flat(t, next);
+      for (const k of r.touched) reapplied.push({ key: k, value: MASK, why: 'managed' });
+    }
+
     const restore: Record<string, Scalar | null> = {};
     for (const k of t.decl?.secretKeys ?? []) if (flat[k] === MASK) restore[k] = diskFlat[k] ?? null;
     if (Object.keys(restore).length) edit(restore);
 
-    const reapplied: ReappliedKey[] = [];
     if (t.decl && o.managed !== false) {
       const panel = this.managedValues()[t.id] ?? {};
       const fix: Record<string, Scalar | null> = {};
@@ -416,6 +441,8 @@ export class ConfigService implements ConfigStore {
         secretKeys: f.secretKeys,
         restartKeys: f.restartKeys,
         stoppedOnly: f.stoppedOnly === true,
+        secretTrees: f.secretTrees ?? [],
+        note: f.note ?? null,
       })),
       schemas: this.d.adapter.config.schemas,
       groups: this.d.adapter.config.groups ?? {},
@@ -430,7 +457,14 @@ export class ConfigService implements ConfigStore {
     if (text === null) return { values: {}, missing: true, sha256: null };
     const r = t.format.parse(text);
     if (!r.ok) throw new HttpError(409, 'invalid-file', undefined, { issues: r.issues });
-    const values = t.format.flatten(r.doc);
+    const trees = this.trees(t);
+    // A secret tree's keys are secrets too: the form sees the tree itself, masked when it holds anything.
+    const values = Object.fromEntries(Object.entries(t.format.flatten(r.doc)).filter(([k]) => !inTree(k, trees)));
+    if (trees.length && t.decl) {
+      const masked = t.format.parse(maskTrees(t.decl.format, text, trees, MASK));
+      const flat = masked.ok ? t.format.flatten(masked.doc) : {};
+      for (const tree of trees) if (flat[tree] === MASK) values[tree] = MASK;
+    }
     for (const k of t.decl?.secretKeys ?? []) if (values[k] !== undefined && String(values[k]) !== '') values[k] = MASK;
     return { values, missing: false, sha256: this.shaOf(t, text) };
   }
@@ -461,6 +495,8 @@ export class ConfigService implements ConfigStore {
         secretKeys: d.secretKeys,
         restartKeys: d.restartKeys,
         stoppedOnly: d.stoppedOnly === true,
+        secretTrees: d.secretTrees ?? [],
+        note: d.note ?? null,
       });
     }
     const folders: EditableFolder[] = [];
@@ -526,6 +562,8 @@ export class ConfigService implements ConfigStore {
       sha256: this.shaOf(t, text),
       managedKeys: t.decl?.managedKeys ?? [],
       secretKeys: t.decl?.secretKeys ?? [],
+      secretTrees: this.trees(t),
+      note: t.decl?.note ?? null,
       readonlyReason: t.reason,
       issues: r.ok ? this.checkIssues(t, text) : r.issues,
       dataOnly: t.decl?.dataOnly ?? null,

@@ -433,6 +433,11 @@ describe('fake-terraria server.mjs: TShock', () => {
     } finally {
       db.close();
     }
+    // Started again, it reads them back (their dates are .NET ticks, beyond JavaScript's safe integers) and keeps banning.
+    const again = start('tshock', tshockArgs(dir), { dir, env: { FAKE_TERRARIA_PLAYERS: 'gspffalice' } });
+    await again.waitFor(/was booted: #1 - You are banned: Test$/);
+    again.send('ban list');
+    await again.waitFor(/^\[1\] name:gspffalice$/);
   });
 });
 

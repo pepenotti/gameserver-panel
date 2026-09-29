@@ -13,6 +13,7 @@ export default {
   nameHelp: 'Lo que todos ven en el panel y en los mensajes de Discord. Lo podés cambiar después.',
   id: 'ID',
   idHelp: 'Se usa en direcciones y nombres de carpetas: de 2 a 24 letras minúsculas, números o guiones. Después no se puede cambiar.',
+  idWorldHelp: 'El primer inicio crea el mundo del servidor, con este nombre.',
   ports: 'Puertos',
   portsHelp: 'Los jugadores se conectan a estos puertos; abrilos en tu router para jugar desde afuera. Si dejás uno vacío, el panel elige uno libre.',
   suggest: 'Usar los puertos sugeridos',
