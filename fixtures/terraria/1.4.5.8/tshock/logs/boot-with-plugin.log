@@ -1,0 +1,26 @@
+# TShock 6.2.1 starting with a third-party plugin in ServerPlugins (Bagger v1.3.1, its GitHub release), after the agent copied it there.
+Error Logging Enabled.
+[OTAPI] Starting up (PC Server,3.3.14+ca9c239,ModFw:1.1.15+a2c0c70).
+TerrariaAPI Version: 2.1.0.0 (Protocol v1.4.5.8 (326), OTAPI 3.3.14+ca9c239)
+[TShock] Info Config path has been set to /data/tshock
+[TShock] Info Log path has been set to /data/tshock/logs
+Port overridden by startup argument. Set to 7777
+Startup parameter overrode maximum player slot configuration value.
+Using ConstileationProvider for tile implementation
+TShock 6.2.1.0 (Profoundly Collaborative (3.11)) now running.
+AutoSave Enabled
+Backups Enabled
+Welcome to TShock for Terraria!
+TShock comes with no warranty & is free software.
+You can modify & distribute it under the terms of the GNU GPLv3.
+[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.
+[Server API] Info Plugin Bagger v1.3.1 (by Soofa) initiated.
+Terraria Server v1.4.5.8
+# … a new small world's generation (phase names and blank lines) left out …
+Listening on port 7777
+Type 'help' for a list of commands.
+
+Login before join enabled. Users may be prompted for an account specific password instead of a server password on connect.
+Login using UUID enabled. Users automatically login via UUID.
+A malicious server can easily steal a user's UUID. You may consider turning this option off if you run a public server.
+Server started

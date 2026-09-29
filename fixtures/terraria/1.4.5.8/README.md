@@ -58,3 +58,10 @@ gateway (every client connects from it through the published port), now `192.0.2
 anonymous account id became `76561198000000001`. Two over-matches of the scrubber were undone by
 hand: the container's HOME `/home/node` in .NET's bundle error, and TShock's upstream CI path in
 REST stack traces (`<upstream CI build dir>`).
+
+## Added by the mods and plugins check (M5, MOD-06)
+`tshock/logs/boot-with-plugin.log`: TShock 6.2.1's own output when it started with a third-party
+plugin (Bagger v1.3.1, from its GitHub release) that the product's agent had downloaded and
+copied into `ServerPlugins`, in the product's `gsp/native` image; the world generation's phase
+names and blank lines are cut to one note line. Scrubbed with `scripts/scrub-fixture.mjs`
+(`--keep-ip 6.2.1.0,2.1.0.0`), which changed nothing, and read by hand.

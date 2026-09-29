@@ -169,6 +169,15 @@ describe('the patterns the adapter will use match the real captures', () => {
     expect(lines(fixture('tshock', 'logs', 'no-dotnet-runtime.log')).some((l) => PATTERNS.noDotnet.test(l))).toBe(true);
   });
 
+  it("TShock: a third-party plugin's load line, right after TShock's own, which the fake prints the same way (MOD-06)", () => {
+    const boot = lines(fixture('tshock', 'logs', 'boot-with-plugin.log'));
+    const plugin = /^\[Server API\] Info Plugin (\S+) v(\S+) \(by (.+)\) initiated\.$/;
+    expect(boot.filter((l) => plugin.test(l))).toEqual(['[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.', '[Server API] Info Plugin Bagger v1.3.1 (by Soofa) initiated.']);
+    const own = boot.indexOf('[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.');
+    expect(boot[own + 1]).toMatch(plugin);
+    expect(boot.filter((l) => PATTERNS.ready.test(l))).toHaveLength(1);
+  });
+
   it('tModLoader: boot, mods, save, world menu', () => {
     const boot = lines(fixture('tmodloader', 'logs', 'first-boot.log'));
     expect(boot.filter((l) => PATTERNS.ready.test(l))).toHaveLength(1);
