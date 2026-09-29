@@ -36,7 +36,7 @@ const props = (text: string) => propertiesToRecord(parseProperties(text));
 
 interface TestCtx extends ServerCtx {
   commands: string[];
-  sets: [string, Record<string, unknown>, string][];
+  sets: ([string, Record<string, unknown>, string] | [string, Record<string, unknown>, string, { live?: boolean }])[];
   presets: string[];
   files: ReturnType<typeof memoryServerFiles>;
 }
@@ -60,7 +60,7 @@ function ctxFor(flavour: Loader, files: Record<string, string> = {}, reply: (cmd
     versions: async () => versions ?? { installed: null, versions: [] },
     launchSettings: () => settings(),
     config: {
-      set: async (fileId, values, note) => void sets.push([fileId, values, note]),
+      set: async (fileId, values, note, o) => void sets.push(o ? [fileId, values, note, o] : [fileId, values, note]),
       seedIfMissing: async () => false,
       applyPreset: async (name) => void presets.push(name),
     },
@@ -247,6 +247,8 @@ describe('config files and editable folders (CFG-02, CFG-05, CFG-07, CFG-08, D6)
     expect(files.filter((f) => f.stoppedOnly).map((f) => f.id)).toEqual(['ops', 'banned-players', 'banned-ips']);
     expect(files.find((f) => f.id === 'eula')).toMatchObject({ rel: 'eula.txt', managedKeys: ['eula'] });
     expect(files.find((f) => f.id === 'whitelist')).toMatchObject({ restartKeys: [] });
+    // An operator's `whitelist on|off` in game rewrites server.properties from memory: the panel's settings go back at the next start (CFG-05).
+    expect(files.filter((f) => f.reapplyAtStart).map((f) => f.id)).toEqual(['properties']);
     expect(files.find((f) => f.id === 'paper-global')!.secretKeys).toEqual(['proxies.velocity.secret']);
     expect(files.find((f) => f.id === 'bstats')).toMatchObject({ rel: BSTATS_FILE, schemaId: 'bstats' });
     expect(BSTATS_FILE).toBe(BSTATS_CONFIG);
@@ -496,11 +498,13 @@ describe('moderation over RCON and the game’s own lists (PLY-01, PLY-03)', () 
     });
     expect(await players.setWhitelistEnabled!(c, true)).toBe('Whitelist is now turned on');
     expect(c.commands).toEqual(['whitelist on']);
-    expect(c.sets).toEqual([['properties', { motd: 'B' }, expect.stringMatching(/whitelist/)]]);
+    // The whitelist's own key the game now holds: the panel puts nothing back over it at the next start (CFG-05).
+    const live = ['properties', { 'white-list': 'true' }, 'the whitelist was switched on in the game', { live: true }];
+    expect(c.sets).toEqual([['properties', { motd: 'B' }, expect.stringMatching(/whitelist/)], live]);
     // Nothing was pending: nothing to put back.
     const clean = ctxFor('vanilla', { 'data/server.properties': 'white-list=true\n' }, (_cmd, ctx) => (void ctx.files.writeAtomic('data', 'server.properties', 'white-list=false\n'), 'Whitelist is now turned off'));
     await players.setWhitelistEnabled!(clean, false);
-    expect(clean.sets).toEqual([]);
+    expect(clean.sets).toEqual([['properties', { 'white-list': 'false' }, 'the whitelist was switched off in the game', { live: true }]]);
     // Already on: the game rewrote nothing, so the file isn't watched for a rewrite and nothing is put back.
     const already = ctxFor('vanilla', { 'data/server.properties': 'motd=B\nwhite-list=false\n' }, () => 'Whitelist is already turned on');
     const read = already.files.read.bind(already.files);

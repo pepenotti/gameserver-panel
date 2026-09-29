@@ -57,6 +57,8 @@ function files(srv: ServerRef): ConfigFileDecl[] {
       managedKeys: [...MANAGED_PROPERTIES],
       secretKeys: PROPERTIES_SECRETS,
       restartKeys: ALL,
+      // The game writes it from memory at an operator's `whitelist on|off` (measured): what the panel saved goes back at the next start (CFG-05).
+      reapplyAtStart: true,
     },
     {
       id: 'eula',

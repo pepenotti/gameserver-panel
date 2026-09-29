@@ -114,7 +114,9 @@ function target(t: PlayerTarget): { ip: string } | { name: string } {
  * `whitelist on|off` makes the game rewrite server.properties from memory
  * (measured), so settings the panel saved since the game started would be
  * lost: they are read before, and written back once the game has rewritten
- * the file (whatever differs from before, but the whitelist itself).
+ * the file (whatever differs from before, but the whitelist itself). The
+ * whitelist's own key is one the game now holds: the panel's
+ * next-start re-apply (`reapplyAtStart`) leaves it to the game.
  */
 async function setWhitelistEnabled(ctx: ServerCtx, on: boolean): Promise<string> {
   const before = await readProperties(ctx);
@@ -131,6 +133,7 @@ async function setWhitelistEnabled(ctx: ServerCtx, on: boolean): Promise<string>
   const lost: Record<string, string> = {};
   for (const [k, v] of Object.entries(before)) if (k !== 'white-list' && after[k] !== v) lost[k] = v;
   if (Object.keys(lost).length) await ctx.config.set('properties', lost, 'kept settings saved since the server started (the whitelist was switched)');
+  await ctx.config.set('properties', { 'white-list': want }, `the whitelist was switched ${on ? 'on' : 'off'} in the game`, { live: true });
   return out;
 }
 

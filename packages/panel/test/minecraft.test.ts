@@ -297,6 +297,56 @@ describe('Minecraft config files through the API (CFG-04, CFG-05, D6)', () => {
     expect(content.issues).toEqual([expect.objectContaining({ line: 2, col: 3, localized: expect.objectContaining({ es: expect.stringMatching(/entrada 1/) }) })]);
   });
 
+  it("puts back the settings saved since the start that an operator's whitelist switch in game wrote over; not over a restored file (CFG-05)", async () => {
+    const { p, owner, data, propose } = await withFiles();
+    const srv = p.deps.servers.get('mc-vanilla')!;
+    const file = path.join(data, 'server.properties');
+    const original = readFileSync(file, 'utf8');
+    const value = (k: string) => new RegExp(`^${k}=(.*)$`, 'm').exec(readFileSync(file, 'utf8'))?.[1];
+    const start = async () => {
+      expect((await owner.post('/api/servers/mc-vanilla/server/start')).statusCode).toBe(200);
+      await srv.ops.idle();
+      expect(srv.ops.last()).toMatchObject({ kind: 'start', ok: true });
+    };
+    const stopped = () => (p.fakes('mc-vanilla').feed.status_ = fakeStatus({ state: 'stopped' }));
+    // A backup of the settings as they are (stopped: a cold copy).
+    expect((await owner.post('/api/servers/mc-vanilla/backups')).statusCode).toBe(200);
+    await srv.ops.idle();
+    const backup = srv.backups.list()[0]!;
+
+    running(p, 'mc-vanilla');
+    expect((await propose('properties', { changes: { motd: 'Saved while running', difficulty: 'hard' } })).statusCode).toBe(200);
+    // An operator types "whitelist on" in game: the game writes the file from what it loaded at its start.
+    writeFileSync(file, original.replace(/^white-list=.*$/m, 'white-list=true'));
+    stopped();
+    await start();
+    // The panel's settings are back; the whitelist stays as the operator switched it.
+    expect([value('motd'), value('difficulty'), value('white-list')]).toEqual(['Saved while running', 'hard', 'true']);
+    expect(srv.config.historyOf('properties')[0]!.note).toBe('kept the settings saved in the panel since the last start (the game rewrote the file): difficulty, motd');
+
+    // The panel's own whitelist switch is something the game holds: an operator switching it back in game later wins.
+    running(p, 'mc-vanilla');
+    p.fakes('mc-vanilla').agent.command = async (c) => {
+      if (c === 'whitelist off') writeFileSync(file, readFileSync(file, 'utf8').replace(/^white-list=.*$/m, 'white-list=false'));
+      return { via: 'rcon', output: 'Whitelist is now turned off' };
+    };
+    expect((await owner.post('/api/servers/mc-vanilla/players/whitelist/enabled', { enabled: false })).statusCode).toBe(200);
+    writeFileSync(file, readFileSync(file, 'utf8').replace(/^white-list=.*$/m, 'white-list=true'));
+    stopped();
+    await start();
+    expect(value('white-list')).toBe('true');
+
+    // Saved while running, then the settings restored from the backup: the restored file stays as it was backed up.
+    running(p, 'mc-vanilla');
+    expect((await propose('properties', { changes: { motd: 'Saved before the restore' } })).statusCode).toBe(200);
+    stopped();
+    expect((await owner.post(`/api/servers/mc-vanilla/backups/${encodeURIComponent(backup.name)}/restore`, { parts: ['config'] })).statusCode).toBe(200);
+    await srv.ops.idle();
+    expect(srv.ops.last()).toMatchObject({ kind: 'restore', ok: true });
+    await start();
+    expect(value('motd')).toBe('Servidor de prueba Ñandú ☃');
+  });
+
   it('checks the difficulty and game mode against their words (CFG-01)', async () => {
     const { data, propose } = await withFiles();
     expect((await propose('properties', { changes: { difficulty: 'hard', gamemode: 'creative' } })).statusCode).toBe(200);
