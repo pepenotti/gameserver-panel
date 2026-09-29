@@ -67,6 +67,19 @@ export const MC_PATTERNS = {
   list: /^There are (\d+) of a max of \d+ players online:(.*)$/s,
 } as const;
 
+/**
+ * The game's formatting codes: `§` and a colour (`0`–`9`, `a`–`f`), a
+ * style (`k`–`o`), a reset (`r`), or `x` before a six-digit colour (each
+ * digit its own `§` code). Paper's replies carry them (its `help`:
+ * `§e--------- §fHelp: §rIndex (1/23) …`, fixtures/minecraft/26.3/paper/rcon/long.json).
+ */
+const FORMATTING = /§[0-9a-fk-orx]/gi;
+
+/** A line or reply as people read it: without the game's formatting codes (CON-01, CON-02). */
+export function stripFormatting(text: string): string {
+  return text.replace(FORMATTING, '');
+}
+
 /** The `list` reply; null when it isn't one. */
 export function parsePlayerList(reply: string): PlayerList | null {
   const m = MC_PATTERNS.list.exec(reply.trim());

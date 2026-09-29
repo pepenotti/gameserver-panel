@@ -306,6 +306,14 @@ function saveWorld() {
   fs.writeFileSync(f, `FAKE level ${Date.now()}\n`);
 }
 
+const PAPER_HELP = [
+  '§e--------- §fHelp: §rIndex (1/23) §e--------------------------',
+  '§7Use /help [n] to get page n of help.',
+  '§7§6Aliases: §fLists command aliases',
+  '§f§6Bukkit: §fAll commands for Bukkit',
+  '§f§6Minecraft: §fAll commands for Minecraft',
+  '§f§6Paper: §fAll commands for Paper',
+];
 const HELP = ['/advancement (grant|revoke)', '/ban <targets> [<reason>]', '/ban-ip <target> [<reason>]', '/banlist [ips|players]', '/deop <targets>', '/help [<command>]', '/kick <targets> [<reason>]', '/list [uuids]', '/op <targets>', '/pardon <targets>', '/pardon-ip <target>', '/save-all [flush]', '/save-off', '/save-on', '/say <message>', '/stop', '/version', '/whitelist (on|off|list|add|remove|reload)'];
 
 /**
@@ -457,8 +465,9 @@ function run(line, src) {
       }
     }
     case 'help':
-      // Vanilla's is over 4096 characters (its RCON reply comes in two packets); Paper's is paged.
-      return loader === 'paper' ? ['--------- Help: Index ---------------------------------', 'Use /help [n] to get page n of help.'] : Array.from({ length: 300 }, (_, i) => HELP[i % HELP.length]);
+      // Vanilla's is over 4096 characters (its RCON reply comes in two packets); Paper's is paged, and
+      // coloured with § codes (the first lines of fixtures/minecraft/26.3/paper/rcon/long.json).
+      return loader === 'paper' ? PAPER_HELP : Array.from({ length: 300 }, (_, i) => HELP[i % HELP.length]);
     case 'version':
       return loader === 'paper' ? [`This server is running Paper version ${VERSION}-41-main@a15fed9 (FAKE) (Implementing API version ${VERSION}.build.41-alpha)`, 'You are running the latest version'] : ['Server version info:', `id = ${VERSION}`, `name = ${VERSION}`, 'protocol = 777 (0x309)', 'stable = yes'];
     // Test hooks, like the PZ fake's.

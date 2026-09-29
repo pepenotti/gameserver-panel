@@ -274,6 +274,10 @@ describe('Minecraft end to end, through the fake orchestrator and the fake serve
         expect(await refused('/players/whitelist', { username: 'gspffNoSuchPlr7' })).toEqual([404, 'player-not-found']);
         expect(await refused('/players/kick', { username: 'gspffAlice' })).toEqual([409, 'player-not-online']);
         expect(await refused('/players/access', { username: BOB, level: 'operator' })).toEqual([409, 'level-unchanged']);
+        // The console shows replies without the game's colour codes (CON-02): Paper's help comes with § codes.
+        const help = (await owner.post(url(id, '/server/command'), { command: 'help' })).json() as { output: string | null };
+        expect(help.output).toMatch(l.flavour === 'paper' ? /^--------- Help: Index \(1\/23\) -+\nUse \/help \[n\]/ : /ban/);
+        expect(help.output).not.toContain('§');
         // Switching the whitelist makes the game rewrite server.properties from memory; the panel's pending change survives.
         expect(await act('/players/whitelist/enabled', { enabled: false })).toBe('Whitelist is now turned off');
         const values = ((await owner.get(url(id, `/config/values?id=properties`))).json() as { values: Record<string, string> }).values;

@@ -1,8 +1,8 @@
 // Reading the game's output (CON-01, PLY-01, SRV-07): every captured 26.3
 // log, per loader.
 import { describe, expect, it } from 'vitest';
-import { classify } from '../src/runtime';
-import { parseLogLine, parsePlayerList } from '../src/shared';
+import { classify, minecraftRuntimeAdapter } from '../src/runtime';
+import { parseLogLine, parsePlayerList, stripFormatting } from '../src/shared';
 import { fixture, fixtureLines } from './helpers';
 
 const LOADERS = ['vanilla', 'paper', 'fabric'] as const;
@@ -107,5 +107,30 @@ describe('who is online (PLY-01)', () => {
     expect(parsePlayerList('There are 0 of a max of 20 players online: ')).toEqual({ count: 0, names: [] });
     expect(parsePlayerList('Unknown or incomplete command. See below for errorlist<--[HERE]')).toBeNull();
     expect(parsePlayerList('')).toBeNull();
+  });
+});
+
+describe('what people read (CON-01, CON-02)', () => {
+  const replies = (loader: string, file: string) =>
+    (JSON.parse(fixture(loader, 'rcon', file)) as { dir: string; type?: number; body?: string }[]).filter((e) => e.dir === 'in' && e.type === 0).map((e) => e.body!);
+
+  it("takes Paper's colour and style codes out of its replies, keeping the words", () => {
+    const [help] = replies('paper', 'long.json');
+    expect(help).toMatch(/§[0-9a-fr]/);
+    const shown = minecraftRuntimeAdapter.display!(help!);
+    expect(shown).not.toContain('§');
+    expect(shown.split('\n').slice(0, 3)).toEqual(['--------- Help: Index (1/23) --------------------------', 'Use /help [n] to get page n of help.', 'Aliases: Lists command aliases']);
+    expect(stripFormatting('§x§1§2§a§b§3§4Hex §lbold§r and §Kmagic')).toBe('Hex bold and magic');
+  });
+
+  it('leaves every other reply and log line the three loaders wrote as it is', () => {
+    for (const loader of LOADERS) {
+      for (const file of ['short.json', 'moderation.json', 'players-offline.json', 'players-online.json', 'save.json']) {
+        for (const r of replies(loader, file)) expect(minecraftRuntimeAdapter.display!(r), `${loader} ${file}`).toBe(r);
+      }
+      for (const file of ['first-boot.log', 'players.log', 'console-session.log']) {
+        for (const l of fixtureLines(loader, 'logs', file)) expect(minecraftRuntimeAdapter.display!(l), `${loader} ${file}`).toBe(l);
+      }
+    }
   });
 });

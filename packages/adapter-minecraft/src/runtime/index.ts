@@ -10,7 +10,7 @@ import type { ControlHandle, FileRoots, LaunchCommand, LineSignal, PlayerList, R
 import { isFatal } from '@gsp/formats';
 import { LOADER_JARS } from '../shared/install';
 import { parseMinecraftLaunch, type MinecraftLaunch } from '../shared/launch';
-import { MC_PATTERNS, parseLogLine, parsePlayerList } from '../shared/log';
+import { MC_PATTERNS, parseLogLine, parsePlayerList, stripFormatting } from '../shared/log';
 import { MINECRAFT_META } from '../shared/meta';
 import { managedProperties, prepare } from './files';
 import { install, installedInfo, installNeeded, listVersions, readMarker } from './install';
@@ -130,6 +130,9 @@ export const minecraftRuntimeAdapter: RuntimeAdapter<MinecraftLaunch> = {
   },
 
   classify,
+
+  // Paper's replies (and plugins' lines) carry § colour codes: people read them without.
+  display: stripFormatting,
 
   channel: (ctx) => ({ kind: 'rcon', port: Number(managedProperties(ctx)['rcon.port']), password: ctx.state.controlSecret }),
 
