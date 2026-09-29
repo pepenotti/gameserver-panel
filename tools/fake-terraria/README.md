@@ -77,5 +77,15 @@ zips come truncated), `not-found`, `rate-limit` (GitHub's documented 403, not ca
 `timeout` | `missing-item`.
 
 ## Registering it
-The fake images copy the fakes they run (`docker/*/Dockerfile`, target `fake`); see
-`docs/verification/terraria-1.4.5.8.md` for the lines to add.
+`fake-game.mjs` finds these by adapter id already. The fake runtime images copy the fakes they run
+(target `fake` of the Dockerfile of the family the Terraria adapter ends up in):
+
+```dockerfile
+COPY --chown=node:node tools/fake-terraria/ /app/fake/fake-terraria/
+ENV GAME_START_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","server"]'
+# and, where tModLoader's Workshop mods are downloaded:
+ENV STEAMCMD_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","steamcmd"]'
+```
+
+`docker/steam`'s fake target runs `fake-game.mjs steamcmd` for every adapter, so tModLoader's
+Workshop downloads reach `steamcmd.mjs` there as soon as the folder is copied.
