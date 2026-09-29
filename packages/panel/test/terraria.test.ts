@@ -105,10 +105,19 @@ describe('Terraria offered in the panel (M5, SRV-01, HST-05, UPD-02)', () => {
     expect(JSON.stringify(p.deps.audit.list({}))).not.toContain('join-us-2026');
   });
 
-  it('describes each flavour’s moderation, parts, resets and console (AST-04, PLY-03, BAK-04)', async () => {
+  it('describes each flavour’s moderation, parts, resets, console and mods (AST-04, PLY-03, BAK-04, MOD-03, MOD-06)', async () => {
     const { owner } = await panel();
     for (const f of ['vanilla', 'tshock', 'tmodloader']) await create(owner, `tr-${f}`, f);
-    type Meta = { banTargets: string[]; banByAddress: boolean; stoppedOnly: string[]; backupParts: { id: string }[]; resets: { id: string }[]; consoleCatalog: { name: string }[]; capabilities: string[] };
+    type Meta = {
+      banTargets: string[];
+      banByAddress: boolean;
+      stoppedOnly: string[];
+      backupParts: { id: string }[];
+      resets: { id: string }[];
+      consoleCatalog: { name: string }[];
+      capabilities: string[];
+      modSources: Record<string, unknown>[];
+    };
     const meta = async (id: string) => (await owner.get(`/api/servers/${id}/meta`)).json() as Meta;
     const vanilla = await meta('tr-vanilla');
     expect(vanilla).toMatchObject({ banTargets: ['username'], banByAddress: true, stoppedOnly: ['unban'] });
@@ -117,13 +126,31 @@ describe('Terraria offered in the panel (M5, SRV-01, HST-05, UPD-02)', () => {
     expect(vanilla.consoleCatalog.map((x) => x.name)).toContain('password');
     expect(vanilla.capabilities).toEqual(expect.arrayContaining(['kick', 'ban', 'broadcast', 'settingsForms', 'updateCheck']));
     expect(vanilla.capabilities).not.toContain('restApi');
+    // Vanilla has no mods; TShock its plugin files, with the warning shown before adding one; tModLoader the Workshop.
+    expect(vanilla.modSources).toEqual([]);
+    expect(vanilla.capabilities.filter((c) => c.startsWith('mods:'))).toEqual([]);
     const tshock = await meta('tr-tshock');
     expect(tshock).toMatchObject({ banTargets: ['username', 'ip', 'uuid', 'account'], banByAddress: false, stoppedOnly: [] });
-    expect(tshock.backupParts.map((x) => x.id)).toEqual(['world', 'settings', 'database']);
+    expect(tshock.backupParts.map((x) => x.id)).toEqual(['world', 'settings', 'database', 'plugins']);
     expect(tshock.resets.map((x) => x.id)).toEqual(['world', 'players', 'factory']);
     expect(tshock.consoleCatalog.map((x) => x.name)).toEqual(expect.arrayContaining(['who', 'ban add']));
     expect(tshock.consoleCatalog.map((x) => x.name)).not.toContain('password');
-    expect((await meta('tr-tmodloader')).consoleCatalog.map((x) => x.name)).toContain('modlist');
+    expect(tshock.modSources).toEqual([
+      {
+        id: 'tshock-plugins',
+        capability: 'mods:tshock',
+        label: { en: 'TShock plugins', es: 'Plugins de TShock' },
+        kind: 'files',
+        warning: { en: expect.stringMatching(/runs its own code inside this server/), es: expect.stringMatching(/ejecuta su propio código/) },
+        extensions: ['.dll'],
+        maxBytes: 16 * 1024 * 1024,
+        linkHint: { en: expect.stringMatching(/GitHub release/), es: expect.any(String) },
+      },
+    ]);
+    const tml = await meta('tr-tmodloader');
+    expect(tml.consoleCatalog.map((x) => x.name)).toContain('modlist');
+    expect(tml.backupParts.map((x) => x.id)).toEqual(['world', 'settings', 'mods']);
+    expect(tml.modSources).toEqual([{ id: 'steam-workshop', capability: 'mods:workshop', label: { en: 'Steam Workshop', es: 'Steam Workshop' }, kind: 'catalogue', serverFetches: false }]);
     // A players reset is TShock's alone.
     expect((await owner.post('/api/servers/tr-vanilla/reset', { scope: 'players', confirm: 'tr-vanilla' })).json()).toMatchObject({ message: 'unknown reset scope' });
   });

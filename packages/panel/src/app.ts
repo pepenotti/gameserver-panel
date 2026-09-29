@@ -16,6 +16,7 @@ import { configRoutes } from './routes/config';
 import { fileRoutes } from './routes/files';
 import { metaRoutes } from './routes/meta';
 import { modRoutes } from './routes/mods';
+import { pluginRoutes } from './routes/plugins';
 import { playerRoutes } from './routes/players';
 import { proposalRoutes } from './routes/proposals';
 import { resetRoutes } from './routes/reset';
@@ -69,7 +70,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
 
   await app.register(cookie);
   await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
-  // Only the backup upload route reads multipart bodies (owner-only, size-capped there).
+  // Only the upload routes read multipart bodies, each size-capped there: backups (owner only) and plugins (admins, MOD-06).
   await app.register(multipart, { limits: { files: 1, fields: 0, parts: 1 } });
   installGuards(app, deps);
 
@@ -107,6 +108,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
     resetRoutes(s, deps);
     playerRoutes(s, deps);
     modRoutes(s, deps);
+    pluginRoutes(s, deps);
     scheduleRoutes(s, deps);
   });
 

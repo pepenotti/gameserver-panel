@@ -40,7 +40,12 @@ export function metaRoutes(app: FastifyInstance, _deps: Deps): void {
       whitelist: { password: p?.whitelistPassword !== false, toggle: !!p?.setWhitelistEnabled, list: !!p?.whitelist },
       // Who holds a level above the lowest can be listed.
       levelHolders: !!p?.levelHolders,
-      modSources: (a.mods ?? []).map((m) => ({ id: m.id, capability: m.capability, label: m.label })),
+      // Its flavour's mod sources: catalogues (mods added by id or link, their load order) and plugin files people bring,
+      // with the warning shown before adding one and what an upload or link may be (MOD-03, MOD-06).
+      modSources: [
+        ...s.mods.sources.map((m) => ({ id: m.id, capability: m.capability, label: m.label, kind: 'catalogue' as const, serverFetches: m.serverFetches !== false })),
+        ...s.plugins.sources.map((m) => ({ id: m.id, capability: m.capability, label: m.label, kind: 'files' as const, warning: m.warning, extensions: m.extensions, maxBytes: m.maxBytes, linkHint: m.linkHint ?? null })),
+      ],
       consoleCatalog: s.handle.consoleCatalog(),
     };
   });

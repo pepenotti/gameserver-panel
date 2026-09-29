@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { startFakeDownloads } from './downloads.mjs';
+import { fakeAssembly, fakePlugin, startFakeDownloads } from './downloads.mjs';
 
 const SCALE = Number(process.env.TEST_TIME_SCALE) || 1;
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -167,6 +167,15 @@ describe('the patterns the adapter will use match the real captures', () => {
     expect(mod.some((l) => /\/setup \d/.test(l))).toBe(false); // setup.lock: no setup code
     expect(lines(fixture('tshock', 'logs', 'save-then-exit.log')).some((l) => PATTERNS.saved.test(l))).toBe(true);
     expect(lines(fixture('tshock', 'logs', 'no-dotnet-runtime.log')).some((l) => PATTERNS.noDotnet.test(l))).toBe(true);
+  });
+
+  it("TShock: a third-party plugin's load line, right after TShock's own, which the fake prints the same way (MOD-06)", () => {
+    const boot = lines(fixture('tshock', 'logs', 'boot-with-plugin.log'));
+    const plugin = /^\[Server API\] Info Plugin (\S+) v(\S+) \(by (.+)\) initiated\.$/;
+    expect(boot.filter((l) => plugin.test(l))).toEqual(['[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.', '[Server API] Info Plugin Bagger v1.3.1 (by Soofa) initiated.']);
+    const own = boot.indexOf('[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.');
+    expect(boot[own + 1]).toMatch(plugin);
+    expect(boot.filter((l) => PATTERNS.ready.test(l))).toHaveLength(1);
   });
 
   it('tModLoader: boot, mods, save, world menu', () => {
@@ -361,6 +370,22 @@ describe('fake-terraria server.mjs: TShock', () => {
     expect(again.lines.some((l) => /\/setup /.test(l))).toBe(false);
   });
 
+  it('loads the plugins in ServerPlugins next to TShock.Server at start, ignoring without a word what is no plugin (MOD-06)', async () => {
+    const dir = tempDir();
+    const install = path.join(dir, 'install');
+    const plugins = path.join(install, 'tshock-v6.2.1', 'ServerPlugins');
+    mkdirSync(plugins, { recursive: true });
+    writeFileSync(path.join(install, 'tshock-v6.2.1', 'TShock.Server'), '');
+    writeFileSync(path.join(plugins, 'TShockAPI.dll'), 'FAKE TShockAPI 6.2.1\n');
+    writeFileSync(path.join(plugins, 'HelloPlugin.dll'), fakePlugin('HelloPlugin', '1.2.0', 'gspff'));
+    writeFileSync(path.join(plugins, 'HelloLib.dll'), fakeAssembly('HelloLib'));
+    writeFileSync(path.join(plugins, 'Broken.dll'), 'garbage');
+    const f = start('tshock', tshockArgs(dir), { dir, env: { GAME_INSTALL_DIR: install } });
+    await f.waitFor(PATTERNS.ready);
+    expect(f.lines.filter((l) => /^\[Server API\] Info Plugin /.test(l))).toEqual(['[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.', '[Server API] Info Plugin HelloPlugin v1.2.0 (by gspff) initiated.']);
+    expect(f.lines.join('\n')).not.toMatch(/HelloLib|Broken/);
+  });
+
   it('console: "Server executed" echoes, who, kick with its three lines, bans by name refuse the join', async () => {
     const dir = tempDir();
     const f = start('tshock', tshockArgs(dir), { env: { FAKE_TERRARIA_PLAYERS: 'gspffalice,gspffbob' } });
@@ -466,6 +491,27 @@ describe('fake-terraria server.mjs: tModLoader', () => {
     expect(await f.exited).toBe(0);
   });
 
+  it('takes from each Workshop item the folder tModLoader 2026.7 takes: not a newer one, not one of the 1.4.3 line (MOD-03)', async () => {
+    const dir = tempDir();
+    const content = path.join(dir, 'ws', 'content', '1281930');
+    // As measured for Recipe Browser: 2022.9 (1.4.3) and 2026.7 are skipped or taken; a folder for a newer tModLoader is skipped.
+    for (const [id, name, folders] of [
+      ['1', 'Taken', ['2022.9', '2025.9', '2026.7', '2026.9']],
+      ['2', 'OnlyLegacy', ['2022.9']],
+      ['3', 'OnlyNewer', ['2027.1']],
+    ] as const) {
+      for (const v of folders) {
+        mkdirSync(path.join(content, id, v), { recursive: true });
+        writeFileSync(path.join(content, id, v, `${name}.tmod`), `${name} ${v}`);
+      }
+    }
+    mkdirSync(path.join(dir, 'tml', 'Mods'), { recursive: true });
+    writeFileSync(path.join(dir, 'tml', 'Mods', 'enabled.json'), JSON.stringify(['Taken', 'OnlyLegacy', 'OnlyNewer']));
+    const f = start('tmodloader', ['-server', '-nosteam', '-port', '7777', '-world', path.join(dir, 'm.wld'), '-autocreate', '1', '-worldname', 'm', '-tmlsavedirectory', path.join(dir, 'tml'), '-steamworkshopfolder', path.join(dir, 'ws')], { dir });
+    await f.waitFor(PATTERNS.ready);
+    expect(f.lines.filter((l) => l.startsWith('Sandboxing: '))).toEqual(['Sandboxing: Taken v1.0']);
+  });
+
   it('without a world: the menu, with its Mods List line, and it waits', async () => {
     const dir = tempDir();
     const f = start('tmodloader', ['-server', '-tmlsavedirectory', path.join(dir, 'tml')]);
@@ -526,6 +572,25 @@ describe('fake-terraria downloads.mjs', () => {
       const again = await get(`${s.url}/repos/tModLoader/tModLoader/releases?per_page=10`, { 'if-none-match': etag });
       expect(again.status).toBe(304);
       expect(Number(again.headers.get('x-ratelimit-remaining'))).toBe(Number(first.headers.get('x-ratelimit-remaining')) - 1);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("a plugin's release downloads redirect to the asset host as github.com's do; latest redirects to the tag first (MOD-06)", async () => {
+    const s = await startFakeDownloads();
+    try {
+      const rel = `${s.url}/gspff/HelloPlugin/releases`;
+      const hop = await fetch(`${rel}/download/v1.0.0/HelloPlugin.dll`, { redirect: 'manual' });
+      expect([hop.status, hop.headers.get('location')]).toEqual([302, `${s.url}/__release-assets/HelloPlugin.dll`]);
+      expect((await fetch(`${rel}/latest/download/HelloPlugin.dll`, { redirect: 'manual' })).headers.get('location')).toBe('/gspff/HelloPlugin/releases/download/v1.0.0/HelloPlugin.dll');
+      const dll = Buffer.from(await (await get(`${rel}/download/v1.0.0/HelloPlugin.dll`)).arrayBuffer());
+      expect(dll.equals(fakePlugin('HelloPlugin'))).toBe(true);
+      const zip = Buffer.from(await (await get(`${rel}/download/v1.0.0/HelloPlugins.zip`)).arrayBuffer());
+      expect(zip.includes(Buffer.from('ServerPlugins/HelloLib.dll'))).toBe(true);
+      expect(new URL((await fetch(`${rel}/download/v1.0.0/Elsewhere.dll`, { redirect: 'manual' })).headers.get('location')!).hostname).toBe('localhost');
+      expect((await fetch(`${rel}/download/v1.0.0/Huge.dll`, { method: 'HEAD' })).headers.get('content-length')).toBe(String(16 * 1024 * 1024 + 1));
+      expect((await get(`${rel}/download/v1.0.0/Nope.dll`)).status).toBe(404);
     } finally {
       await s.close();
     }

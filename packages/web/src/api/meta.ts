@@ -159,9 +159,22 @@ export interface Meta {
   whitelist?: { password: boolean; toggle: boolean; list: boolean };
   /** Who holds a level above the lowest can be listed. */
   levelHolders?: boolean;
-  modSources: { id: string; capability: Capability; label: I18n }[];
+  /** Its flavour's mod sources: catalogues, and plugin files people bring. */
+  modSources: ModSourceMeta[];
   consoleCatalog: CommandDoc[];
 }
+
+/**
+ * A mod source as `GET /meta` describes it: a catalogue (mods added by id or
+ * link, with a load order; `serverFetches`: the game fetches its items itself
+ * when it starts), or plugin files people bring (`kind: 'files'`: uploaded,
+ * or from a release link the server downloads; the warning shown before
+ * adding one; the file endings and the size limit of an upload; what a link
+ * must be, when links are taken).
+ */
+export type ModSourceMeta =
+  | { id: string; capability: Capability; label: I18n; kind?: 'catalogue'; serverFetches?: boolean }
+  | { id: string; capability: Capability; label: I18n; kind: 'files'; warning: I18n; extensions: string[]; maxBytes: number; linkHint: I18n | null };
 
 /** A game a server can be created from (`GET /api/adapters`, mirrors `AdapterSummary` in packages/panel/src/routes/servers.ts). */
 export interface AdapterSummary {

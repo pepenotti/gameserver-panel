@@ -733,6 +733,16 @@ export class ConfigService implements ConfigStore {
     else this.remember(t, values);
   }
 
+  async writeDirect(fileId: string, text: string, by: string | null, note: string): Promise<void> {
+    const t = this.target(fileId);
+    if (!t.decl) throw new HttpError(404, 'unknown-file');
+    const r = t.format.parse(text);
+    if (!r.ok) throw new HttpError(400, 'invalid-file', undefined, { issues: r.issues });
+    const disk = await this.readText(t);
+    if (disk === text) return;
+    await this.write(t, disk, text, by, note);
+  }
+
   // ------------------------------------------ files the game rewrites (CFG-05)
 
   /** `keys` of `text` (null where a key is gone). */

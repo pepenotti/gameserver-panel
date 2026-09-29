@@ -5,10 +5,12 @@
  * file (`Worlds/<world>.wld`, and tModLoader's `.twld` next to it) without
  * the game's own `.bak` and `.bak2`; the settings; TShock's database
  * (accounts, bans, server-side characters), copied through SQLite while the
- * game runs. Left out on purpose: tModLoader's own world zips
- * (`Worlds/Backups`), the Workshop cache (`.workshop`, downloaded again),
- * logs (`tshock/logs`, `ServerLog.txt`), crash reports, TShock's own
- * backups, the game's `favorites.json`.
+ * game runs; TShock's plugin files (MOD-06) and tModLoader's list of enabled
+ * mods with their settings (MOD-03). Left out on purpose: tModLoader's own
+ * world zips (`Worlds/Backups`), the Workshop cache (`.workshop`: the panel
+ * downloads the enabled mods again before a start), logs (`tshock/logs`,
+ * `ServerLog.txt`), crash reports, TShock's own backups, the game's
+ * `favorites.json`, uploads on their way in (`.gsp-uploads`).
  *
  * The world is named after the server (`ServerRef.gameName`), which is
  * fixed once it exists.
@@ -16,6 +18,7 @@
 import { randomInt } from 'node:crypto';
 import type { BackupPartDecl, ResetDecl, ResetOptions, ServerCtx, ServerRef } from '@gsp/adapter-api';
 import { DATA } from '../shared/install';
+import { PLUGINS } from '../shared/plugins';
 
 const world = (srv: ServerRef) => `${DATA.worlds}/${srv.gameName}`;
 
@@ -31,13 +34,25 @@ export const TERRARIA_BACKUP_PARTS: BackupPartDecl[] = [
   {
     id: 'settings',
     label: { en: 'Settings and bans', es: 'Configuración y baneos' },
-    paths: (srv) => [DATA.serverConfig, DATA.banlist, ...(srv.flavour === 'tshock' ? TSHOCK_SETTINGS : []), ...(srv.flavour === 'tmodloader' ? [DATA.tmlEnabled] : [])],
+    paths: (srv) => [DATA.serverConfig, DATA.banlist, ...(srv.flavour === 'tshock' ? TSHOCK_SETTINGS : [])],
   },
   {
     id: 'database',
     label: { en: 'TShock database (accounts, bans, server-side characters)', es: 'Base de datos de TShock (cuentas, baneos, personajes en el servidor)' },
     paths: (srv) => (srv.flavour === 'tshock' ? [DATA.tshockDb] : []),
     sqlite: [DATA.tshockDb],
+  },
+  {
+    // MOD-06: the plugin files, enabled and disabled (their own settings are TShock's files, in `settings`).
+    id: 'plugins',
+    label: { en: 'TShock plugins', es: 'Plugins de TShock' },
+    paths: (srv) => (srv.flavour === 'tshock' ? [PLUGINS.enabled] : []),
+  },
+  {
+    // MOD-03: which mods are enabled, and their settings; the mods themselves are downloaded again (`.workshop` is left out).
+    id: 'mods',
+    label: { en: 'Enabled mods and their settings', es: 'Mods activados y sus ajustes' },
+    paths: (srv) => (srv.flavour === 'tmodloader' ? [DATA.tmlEnabled, DATA.tmlModConfigs] : []),
   },
 ];
 
@@ -57,8 +72,8 @@ async function newWorld(ctx: ServerCtx, o: ResetOptions): Promise<void> {
  *   world   — a new world at the next start; settings and bans stay
  *   players — TShock: a new world, and its database (accounts, bans,
  *             server-side characters, regions) starts over
- *   factory — everything: the next start writes the panel's settings and
- *             the game's defaults again
+ *   factory — everything, plugins and the mod list included: the next start
+ *             writes the panel's settings and the game's defaults again
  */
 export const TERRARIA_RESETS: ResetDecl[] = [
   {
@@ -82,6 +97,6 @@ export const TERRARIA_RESETS: ResetDecl[] = [
     id: 'factory',
     label: { en: 'Factory reset', es: 'Restablecer de fábrica' },
     permission: 'reset.factory',
-    removeParts: ['world', 'settings', 'database'],
+    removeParts: ['world', 'settings', 'database', 'plugins', 'mods'],
   },
 ];

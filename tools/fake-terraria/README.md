@@ -39,7 +39,8 @@ What it reproduces, per the measurements:
 - the files: the world written in place, then the previous save moved to `.bak` (and `.bak` to
   `.bak2`); `favorites.json`; tModLoader's world in `<save dir>/Worlds` with its `.twld`, its logs
   in `<working dir>/tModLoader-Logs`, Workshop mods from `-steamworkshopfolder` listed in
-  `Mods/enabled.json`; TShock's `config.json` completed with its 145 defaults and stripped of
+  `Mods/enabled.json`, each from the version folder tModLoader 2026.7 takes (not one built for a
+  newer tModLoader, not one of the 1.4.3 line, 2022.9 and older: measured); TShock's `config.json` completed with its 145 defaults and stripped of
   unknown keys (no final newline), `setup-code.txt` unless `setup.lock` exists or an account does,
   `ServerLog.txt` in the working directory, users and bans in a real SQLite `tshock.sqlite`;
 - TShock's REST API (when `RestApiEnabled` or `--rest-enabled true`): anonymous `/status` and
@@ -47,6 +48,11 @@ What it reproduces, per the measurements:
   list and read, kick, bans (`/v3/bans/create` answers 500 while players are online but stores the
   ban, as measured; `ticketNumber` parameters), broadcast, `rawcmd` (needs the `/`), world save,
   users and groups, `/v2/server/off?confirm=true`; `LogRest` lines without the token;
+- TShock's plugins: at start, each `.dll` in `ServerPlugins/` next to `TShock.Server` (found as the
+  folder of `GAME_INSTALL_DIR`, else `FAKE_TERRARIA_INSTALL_DIR`, holding a `TShock.Server`) that
+  is a fake plugin (`downloads.mjs` `fakePlugin`) prints `[Server API] Info Plugin <name> v<version>
+  (by <author>) initiated.` after TShock's own; anything else there is ignored without a word
+  (measured for a broken `.dll` and an assembly that is no plugin);
 - signals: SIGTERM exits 143 without saving (vanilla, TShock); tModLoader saves and exits 0.
 
 Scenarios (`FAKE_TERRARIA_SCENARIO`): `normal`, `crash-after-ready` (the unhandled exception
@@ -59,7 +65,7 @@ Desktop's port publishing), `FAKE_TERRARIA_BIND_HOST` (127.0.0.1). Test hooks on
 
 Not modelled: world generation's 30 000 progress lines (a few samples only), the language setting
 (`language=es-ES` translates every console line, commands included: the adapter pins English),
-TShock's own timed backups and plugins, tModLoader's multiplayer handshake and ModConfigs.
+TShock's own timed backups, a real plugin's own lines, tModLoader's multiplayer handshake and ModConfigs.
 
 ## downloads.mjs
 `node downloads.mjs [--port N]` or `startFakeDownloads({ port, fail })`. The archives are tiny real
@@ -70,6 +76,12 @@ terraria.org publishes no checksum. Every GitHub API call counts against 60 an h
 conditional one answered 304 (measured anonymously); `GET /__requests` lists what was asked.
 Failures (`FAKE_TERRARIA_DOWNLOAD_FAIL` or `fail`): `bad-checksum` (digests don't match; terraria.org
 zips come truncated), `not-found`, `rate-limit` (GitHub's documented 403, not captured).
+A fake TShock plugin's release (`gspff/HelloPlugin`, tag `v1.0.0`) is served the way github.com
+serves release downloads, a 302 to the asset host (here `/__release-assets/…`), and
+`releases/latest/download/<file>` redirects to the tag first: `HelloPlugin.dll`, `HelloPlugins.zip`
+(the plugin, an assembly that is no plugin, a readme), `NotAPlugin.dll`, `Escape.zip` (an entry
+outside its folder), `Huge.dll` (one byte over 16 MiB), `Notes.txt`, and `Elsewhere.dll`, sent on to
+another host (`localhost` for `127.0.0.1`).
 
 ## steamcmd.mjs
 `FAKE_TML_STEAM_OWNED=1` makes `app_update` install a stub (an account owning Terraria);

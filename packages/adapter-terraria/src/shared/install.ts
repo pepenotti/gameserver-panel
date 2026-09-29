@@ -132,8 +132,10 @@ export const DATA = {
   tshockDb: 'tshock/tshock.sqlite',
   tshockLogs: 'tshock/logs',
   tshockCrashes: 'tshock/crashes',
-  /** tModLoader's enabled mods: a JSON array of mod names. */
+  /** tModLoader's enabled mods: a JSON array of mod names (the panel's Mods page writes it). */
   tmlEnabled: 'Mods/enabled.json',
+  /** Where tModLoader keeps the server-side settings of mods that have some (not seen with the mod measured). */
+  tmlModConfigs: 'ModConfigs',
   /** steamcmd's Workshop cache (the agent's `workshopDir`), which tModLoader reads its mods from. */
   workshop: '.workshop/steamapps/workshop',
 } as const;

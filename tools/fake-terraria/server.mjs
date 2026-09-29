@@ -755,7 +755,22 @@ function worldMenu() {
 }
 
 // ------------------------------------------------------------------ tModLoader mods
-/** Enabled mods found in the workshop folder (newest version folder) or <save dir>/Mods. */
+/**
+ * The version folder tModLoader 2026.7 takes from a Workshop item (measured in its server.log):
+ * the newest one not built for a newer tModLoader ("Skipped … Reason: a newer version exists." for
+ * the others) and not of the 1.4.3 line, 2022.9 and older ("… for a different Terraria
+ * version/LTS release stream.").
+ */
+function pickFolder(folders) {
+  const v = (f) => f.split('.').map(Number);
+  const le = (a, b) => a[0] < b[0] || (a[0] === b[0] && a[1] <= b[1]);
+  const mine = v(TML.split('.').slice(0, 2).join('.'));
+  return folders
+    .filter((f) => /^\d{4}\.\d+$/.test(f))
+    .sort((a, b) => (le(v(a), v(b)) ? 1 : -1))
+    .find((f) => le(v(f), mine) && !le(v(f), [2022, 9]));
+}
+/** Enabled mods found in the workshop folder (the folder tModLoader takes) or <save dir>/Mods. */
 let mods = [];
 function findMods() {
   let enabled;
@@ -770,15 +785,43 @@ function findMods() {
   if (content && fs.existsSync(content)) {
     for (const id of fs.readdirSync(content)) {
       const dir = path.join(content, id);
-      const versions = fs.readdirSync(dir).filter((d) => /^\d{4}\.\d+$/.test(d)).sort((a, b) => Number(b.replace('.', '')) - Number(a.replace('.', '')));
-      for (const v of versions) {
-        for (const f of fs.readdirSync(path.join(dir, v))) if (f.endsWith('.tmod') && !found.has(f.slice(0, -5))) found.set(f.slice(0, -5), { name: f.slice(0, -5), version: '1.0', display: f.slice(0, -5) });
-      }
+      const v = pickFolder(fs.readdirSync(dir));
+      if (!v) continue;
+      for (const f of fs.readdirSync(path.join(dir, v))) if (f.endsWith('.tmod') && !found.has(f.slice(0, -5))) found.set(f.slice(0, -5), { name: f.slice(0, -5), version: '1.0', display: f.slice(0, -5) });
     }
   }
   const local = path.join(saveDir, 'Mods');
   if (fs.existsSync(local)) for (const f of fs.readdirSync(local)) if (f.endsWith('.tmod')) found.set(f.slice(0, -5), { name: f.slice(0, -5), version: '1.0', display: f.slice(0, -5) });
   mods = enabled.filter((n) => found.has(n)).map((n) => found.get(n));
+}
+
+// ------------------------------------------------------------------ TShock plugins
+/**
+ * The plugins in `ServerPlugins/` next to TShock.Server, which TShock loads at start (measured):
+ * the fake's install folder is found in GAME_INSTALL_DIR (the agent's), else
+ * FAKE_TERRARIA_INSTALL_DIR, as the folder holding a TShock.Server. A file with the fake plugin's
+ * marker (downloads.mjs `fakePlugin`) is initialised; anything else (a broken dll, an assembly
+ * that isn't a plugin, TShock's own fake TShockAPI.dll) is ignored without a word (measured).
+ */
+function serverPlugins() {
+  const root = env.GAME_INSTALL_DIR || env.FAKE_TERRARIA_INSTALL_DIR;
+  if (!root || !fs.existsSync(root)) return [];
+  const home = fs.readdirSync(root).map((d) => path.join(root, d)).find((d) => fs.existsSync(path.join(d, 'TShock.Server')));
+  const dir = home && path.join(home, 'ServerPlugins');
+  if (!dir || !fs.existsSync(dir)) return [];
+  const found = [];
+  for (const f of fs.readdirSync(dir).sort()) {
+    if (!f.toLowerCase().endsWith('.dll')) continue;
+    let text;
+    try {
+      text = fs.readFileSync(path.join(dir, f), 'latin1');
+    } catch {
+      continue;
+    }
+    const m = /FAKE-TSHOCK-PLUGIN name=(\S+) version=(\S+) author=(\S+)/.exec(text);
+    if (text.startsWith('MZ') && m) found.push({ name: m[1], version: m[2], author: m[3] });
+  }
+  return found;
 }
 
 // ------------------------------------------------------------------ boot
@@ -853,6 +896,7 @@ async function boot() {
     out('TShock comes with no warranty & is free software.');
     out('You can modify & distribute it under the terms of the GNU GPLv3.');
     out(`[Server API] Info Plugin TShock v${TSHOCK} (by The TShock Team) initiated.`);
+    for (const p of serverPlugins()) out(`[Server API] Info Plugin ${p.name} v${p.version} (by ${p.author}) initiated.`);
   }
   if (!(tml && !worldFile && !autocreate)) {
     // (tModLoader's world menu prints its own header)

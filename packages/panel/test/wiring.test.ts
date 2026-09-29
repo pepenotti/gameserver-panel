@@ -47,6 +47,7 @@ const SERVER_FIELDS = {
   flows: true,
   players: true,
   mods: true,
+  plugins: true,
   scheduler: true,
   notifier: true,
   changes: true,

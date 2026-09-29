@@ -9,19 +9,22 @@ import type { AdapterMeta, Capability } from '@gsp/adapter-api';
  */
 const COMMON: Capability[] = ['stdinConsole', 'broadcast', 'save', 'hotBackup', 'players', 'playerHistory', 'kick', 'ban', 'settingsForms', 'versionPin', 'updateCheck', 'worldCreate'];
 
+/** tModLoader's app on the Steam Workshop: its mods' consumer app, downloadable anonymously (measured). */
+export const TML_WORKSHOP_APP_ID = 1281930;
+
 /**
  * Terraria, shared by the runtime and panel halves. Every value is measured
  * on real servers (D5, docs/verification/terraria-1.4.5.8.md): vanilla
  * 1.4.5.8, TShock 6.2.1 and tModLoader v2026.07.3.0.
  *
  * Each flavour lists its capabilities (a flavour's list replaces the
- * adapter's): today the same for the three, since what differs is how
- * they do it (TShock bans by name, IP, UUID or account through its REST
- * API; vanilla and tModLoader ban an online player's IP on the console).
- * TShock's plugins (`mods:tshock`, MOD-06) and tModLoader's Workshop mods
- * (`mods:workshop`, MOD-03) join their flavour's list with their mod
- * sources. TShock's REST API is reached through the runtime's actions, not
- * as a control channel, so `restApi` (which the contract reads as a REST
+ * adapter's): the same moderation and settings for the three, since what
+ * differs is how they do it (TShock bans by name, IP, UUID or account
+ * through its REST API; vanilla and tModLoader ban an online player's IP on
+ * the console), plus each one's mods: TShock's plugins (`mods:tshock`,
+ * MOD-06) and tModLoader's Workshop mods (`mods:workshop`, MOD-03).
+ * TShock's REST API is reached through the runtime's actions, not as a
+ * control channel, so `restApi` (which the contract reads as a REST
  * channel) is not declared.
  */
 export const TERRARIA_META: AdapterMeta = {
@@ -35,8 +38,8 @@ export const TERRARIA_META: AdapterMeta = {
   arch: ['amd64'],
   flavours: [
     { id: 'vanilla', name: { en: 'Vanilla', es: 'Vanilla' }, capabilities: [...COMMON] },
-    { id: 'tshock', name: { en: 'TShock', es: 'TShock' }, capabilities: [...COMMON] },
-    { id: 'tmodloader', name: { en: 'tModLoader', es: 'tModLoader' }, runtime: 'steam', capabilities: [...COMMON] },
+    { id: 'tshock', name: { en: 'TShock', es: 'TShock' }, capabilities: [...COMMON, 'mods:tshock'] },
+    { id: 'tmodloader', name: { en: 'tModLoader', es: 'tModLoader' }, runtime: 'steam', capabilities: [...COMMON, 'mods:workshop'] },
   ],
   ports: [
     // A client joined through a different published port (30550 → 7777): the port inside need not match.

@@ -129,6 +129,8 @@ export interface WorkshopSourceOptions<M extends ModEntry> {
   fallbackGameVersion: string;
   toConfig: ModSource<M>['toConfig'];
   fromConfig?: ModSource<M>['fromConfig'];
+  /** False when the game server doesn't fetch its items itself when it starts (`ModSource.serverFetches`). */
+  serverFetches?: boolean;
   /** Replaces `fetch` (tests). */
   fetch?: Fetch;
   /** Default `steam-workshop`. */
@@ -166,7 +168,8 @@ export function createWorkshopSource<M extends ModEntry>(o: WorkshopSourceOption
       return null;
     },
 
-    toConfig: (enabled: EnabledMod[], entries: ReadonlyMap<string, M>): { fileId: string; values: Record<string, Scalar> } => o.toConfig(enabled, entries),
+    toConfig: (enabled: EnabledMod[], entries: ReadonlyMap<string, M>): { fileId: string; values: Record<string, Scalar>; text?: string } => o.toConfig(enabled, entries),
     ...(o.fromConfig ? { fromConfig: o.fromConfig } : {}),
+    ...(o.serverFetches === undefined ? {} : { serverFetches: o.serverFetches }),
   };
 }

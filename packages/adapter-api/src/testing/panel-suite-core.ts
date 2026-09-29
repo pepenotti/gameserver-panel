@@ -3,7 +3,7 @@
 //   panelAdapterCoreSuite(pzPanelAdapter, { server: () => ({ … }), secrets: () => ({ … }) });
 import { describe, expect, it } from 'vitest';
 import { RconProtocolError } from '@gsp/formats';
-import { PERMISSIONS } from '@gsp/shared';
+import { FS_WRITE_MAX_BYTES, PERMISSIONS } from '@gsp/shared';
 import type { AgentCommand, AnnounceKind, BanTarget, Capability, Lang, PanelAdapter, PlayerOps, SecretBag, ServerCtx, ServerFiles, ServerRef } from '../index';
 import { expectI18n, expectUnique, metaTests } from './meta';
 
@@ -101,10 +101,11 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         if (!c.has('whitelist') && (p?.setWhitelistEnabled || p?.whitelist)) missing.push(`players.setWhitelistEnabled/whitelist without the whitelist capability${on}`);
         if (!c.has('accessLevels') && p?.levelHolders) missing.push(`players.levelHolders without the accessLevels capability${on}`);
         need('updateCheck', !!adapter.updates, 'updates.check');
-        for (const cap of c) if (cap.startsWith('mods:')) need(cap, !!adapter.mods?.some((m) => m.capability === cap), `a mod source for ${cap}`);
+        for (const cap of c) if (cap.startsWith('mods:')) need(cap, !!adapter.mods?.some((m) => m.capability === cap) || !!adapter.plugins?.some((m) => m.capability === cap), `a mod or plugin source for ${cap}`);
       }
       const all = caps();
       for (const m of adapter.mods ?? []) if (!all.has(m.capability)) missing.push(`mod source ${m.id} without the ${m.capability} capability`);
+      for (const m of adapter.plugins ?? []) if (!all.has(m.capability)) missing.push(`plugin source ${m.id} without the ${m.capability} capability`);
       expect(missing).toEqual([]);
     });
 
@@ -247,6 +248,27 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       }
     });
 
+    it('plugin sources: labelled, warn in both languages, take plugin files within the upload limit, refuse junk links (MOD-06)', () => {
+      const sources = adapter.plugins ?? [];
+      expectUnique(
+        sources.map((m) => m.id),
+        'plugin source ids',
+      );
+      for (const m of sources) {
+        expectI18n(m.label, `plugin source ${m.id}`);
+        expectI18n(m.warning, `plugin source ${m.id} warning`);
+        if (m.linkHint) expectI18n(m.linkHint, `plugin source ${m.id} link hint`);
+        expect(m.extensions.length, `${m.id} extensions`).toBeGreaterThan(0);
+        for (const x of m.extensions) expect(x, `${m.id} extension`).toMatch(/^\.[a-z0-9]{1,10}$/);
+        expect(m.extensions, `${m.id}: a zip is how several plugins come, not a plugin`).not.toContain('.zip');
+        expect(Number.isInteger(m.maxBytes) && m.maxBytes > 0 && m.maxBytes <= FS_WRITE_MAX_BYTES, `${m.id} maxBytes`).toBe(true);
+        expect(m.uploadDir, `${m.id} uploadDir`).toMatch(/^(?![/\\])(?!.*(^|[/\\])\.\.([/\\]|$))[^\\]+$/);
+        for (const junk of ['', '   ', 'not a link', 'javascript:alert(1)', 'file:///etc/passwd', 'ftp://example.com/a.dll', 'http://example.com/a.dll', 'https://example.invalid/a.dll', '../../etc/passwd']) {
+          expect(m.checkLink(junk, {}), `${m.id} checkLink(${JSON.stringify(junk)})`).not.toBeNull();
+        }
+      }
+    });
+
     it('player moderation refuses arguments the game cannot take, sending nothing', async () => {
       for (const { flavour, players: p } of flavoursOf(adapter)) {
         if (!p) continue;
@@ -335,6 +357,28 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         for (const m of adapter.mods ?? []) {
           const ref = m.parseRef('1234567890');
           if (ref) expect(await m.scan(bareCtx(adapter, srv()), ref, '')).toBeNull();
+        }
+      });
+
+      it('plugin sources keep their uploads out of backups and the editor, refuse bad names and links without reaching the server, and never claim what the server did not say (MOD-06)', async () => {
+        const within = (rel: string, dir: string) => dir === '' || rel === dir || rel.startsWith(`${dir.replace(/\/+$/, '')}/`) || dir.startsWith(`${rel.replace(/\/+$/, '')}/`);
+        for (const m of adapter.plugins ?? []) {
+          for (const x of adapter.backups.parts) for (const p of x.paths(srv())) expect(within(p, m.uploadDir), `${m.id} uploads under backup part ${x.id} (${p})`).toBe(false);
+          for (const r of adapter.config.roots(srv())) if (r.root === 'data') expect(r.rel !== '' && within(m.uploadDir, r.rel), `${m.id} uploads in editable folder ${r.id}`).toBe(false);
+          const ctx = bareCtx(adapter, srv());
+          for (const bad of ['../x.dll', 'a/b.dll', '', 'x\n.dll']) {
+            expect(await m.setEnabled(ctx, bad, true), `${m.id} setEnabled(${JSON.stringify(bad)})`).toMatchObject({ ok: false, reason: 'bad-name' });
+            expect(await m.remove(ctx, bad), `${m.id} remove(${JSON.stringify(bad)})`).toMatchObject({ ok: false, reason: 'bad-name' });
+          }
+          // (Which hosts are allowed is `checkLink`'s, asked first with the panel's environment; the agent asks again.)
+          expect(await m.add(ctx, { url: 'not a link' }), `${m.id} add of a junk link`).toMatchObject({ ok: false });
+          expect(await m.add(ctx, { url: 'javascript:alert(1)' }), `${m.id} add of a script link`).toMatchObject({ ok: false });
+          expect(await m.add(ctx, { upload: '../escape.dll', name: 'escape.dll' }), `${m.id} add of an upload outside its folder`).toMatchObject({ ok: false });
+          expect(ctx.actions, `${m.id} reached the server`).toEqual([]);
+          // A server that answers nothing did nothing.
+          for (const reply of [await m.list(ctx).catch(() => null), await m.setEnabled(ctx, 'x.dll', true).catch(() => null), await m.remove(ctx, 'x.dll').catch(() => null)]) {
+            if (reply !== null) expect(reply.ok, `${m.id} claimed success without an answer`).toBe(false);
+          }
         }
       });
 

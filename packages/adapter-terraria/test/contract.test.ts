@@ -69,13 +69,28 @@ describe('the Terraria adapter (D4, D5, PRD §7, §10)', () => {
     expect(TERRARIA_META.eula).toBeUndefined();
   });
 
-  it('declares what both halves implement, the same list for each flavour (their mods come with MOD-03 and MOD-06)', () => {
+  it('declares what both halves implement: the same for each flavour, plus TShock’s plugins and tModLoader’s Workshop mods (MOD-03, MOD-06)', () => {
     const caps = ['stdinConsole', 'broadcast', 'save', 'hotBackup', 'players', 'playerHistory', 'kick', 'ban', 'settingsForms', 'versionPin', 'updateCheck', 'worldCreate'];
     expect(TERRARIA_META.capabilities).toEqual(caps);
-    for (const f of TERRARIA_META.flavours) expect(f.capabilities, f.id).toEqual(caps);
+    expect(Object.fromEntries(TERRARIA_META.flavours.map((f) => [f.id, f.capabilities]))).toEqual({ vanilla: caps, tshock: [...caps, 'mods:tshock'], tmodloader: [...caps, 'mods:workshop'] });
+    // One source each: the Workshop (the game's app id on it, not a dedicated server's) and TShock's plugin files.
+    expect(terrariaPanelAdapter.mods?.map((m) => [m.id, m.capability, m.serverFetches])).toEqual([['steam-workshop', 'mods:workshop', false]]);
+    expect(terrariaPanelAdapter.plugins?.map((m) => [m.id, m.capability, m.extensions])).toEqual([['tshock-plugins', 'mods:tshock', ['.dll']]]);
     // TShock's REST API is reached through the runtime's actions, not as a control channel.
     expect(TERRARIA_META.flavours.flatMap((f) => f.capabilities ?? [])).not.toContain('restApi');
     expect(terrariaRuntimeAdapter.channel(undefined as never, undefined as never)).toEqual({ kind: 'stdin' });
-    expect(Object.keys(terrariaRuntimeAdapter.actions ?? {})).toEqual(['tshock-players', 'tshock-kick', 'tshock-ban', 'tshock-unban', 'tshock-bans', 'tshock-broadcast']);
+    expect(Object.keys(terrariaRuntimeAdapter.actions ?? {})).toEqual([
+      'tshock-players',
+      'tshock-kick',
+      'tshock-ban',
+      'tshock-unban',
+      'tshock-bans',
+      'tshock-broadcast',
+      'tshock-plugins',
+      'tshock-plugin-add',
+      'tshock-plugin-set',
+      'tshock-plugin-remove',
+      'workshop-download',
+    ]);
   });
 });

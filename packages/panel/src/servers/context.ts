@@ -9,6 +9,7 @@ import type { ModsService } from '../mods/service';
 import type { Notify } from '../notifier/discord';
 import type { OpRunner } from '../ops/runner';
 import type { PlayersService } from '../players/service';
+import type { PluginsService } from '../plugins/service';
 import type { ProposalService } from '../proposals/service';
 import type { Scheduler } from '../scheduler/scheduler';
 import type { ServerHandle } from '../server/handle';
@@ -46,6 +47,8 @@ export interface ServerContext {
   readonly flows: BackupFlows;
   readonly players: PlayersService;
   readonly mods: ModsService;
+  /** Plugin files people bring (MOD-06), for a flavour that takes them. */
+  readonly plugins: PluginsService;
   readonly scheduler: Scheduler;
   /** Its Discord messages: the host's webhook or its own override (SCH-03), each naming the server. */
   readonly notifier: Notify;

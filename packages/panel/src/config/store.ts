@@ -184,6 +184,12 @@ export interface ConfigStore {
    */
   setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string, o?: { live?: boolean }): Promise<void>;
   /**
+   * A declared file written whole by the panel's own services (a mod list
+   * that isn't key/values), created when missing, into its history like any
+   * other write. The text must parse in the file's format.
+   */
+  writeDirect(fileId: string, text: string, by: string | null, note: string): Promise<void>;
+  /**
    * Before a start the panel makes (CFG-05): files the game rewrites from
    * memory (`reapplyAtStart`) get back the values the panel saved to them
    * since its previous start; returns the files it changed.

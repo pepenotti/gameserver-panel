@@ -28,6 +28,7 @@ import { wireNotifications } from './notifier/events';
 import { PanelBus } from './ops/bus';
 import { OpRunner } from './ops/runner';
 import { PlayersService } from './players/service';
+import { PluginsService } from './plugins/service';
 import { ConfigProposals } from './proposals/service';
 import { HostJobs } from './scheduler/host-jobs';
 import { Scheduler } from './scheduler/scheduler';
@@ -65,8 +66,10 @@ export interface ServerParts {
   files: ServerFiles;
   /** The secrets the panel holds for it, by `LaunchSecretDecl.key`. */
   secrets: () => Readonly<Record<string, string>>;
-  /** Mod sources in place of the adapter's (tests: sources that don't reach the network). */
+  /** Mod sources in place of the adapter's (tests: sources that don't reach the network); the server uses those its flavour has the capability of. */
   mods?: readonly ModSource[];
+  /** The panel's environment for its plugin source's link check (tests point the release host elsewhere); default the process's. */
+  linkEnv?: Readonly<Record<string, string | undefined>>;
   /** Where its backups go. */
   backupDir: string;
   /** Before its game starts (the registry's `ServerHooks`). */
@@ -104,9 +107,17 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
   });
   const config: ConfigService = new ConfigService({ db, settings, feed, adapter, server: handle, files });
   const players = new PlayersService({ db, feed, server: handle });
-  const mods = new ModsService({ db, feed, ops, settings, config, server: handle, sources: parts.mods ?? adapter.mods ?? [] });
+  // Its flavour's mods and plugins only (one flavour of a game may take plugin files, another Workshop mods).
+  const caps = capabilitiesOf(adapter, row.flavour);
+  const mods = new ModsService({ db, feed, ops, settings, config, server: handle, sources: (parts.mods ?? adapter.mods ?? []).filter((m) => caps.has(m.capability)) });
+  const plugins = new PluginsService({ settings, server: handle, feed, config, sources: (adapter.plugins ?? []).filter((m) => caps.has(m.capability)), env: parts.linkEnv ?? process.env });
   const backups = new BackupService({ dir: parts.backupDir, panelVersion: host.version, feed, server: handle, mods });
-  const control = new Control({ agent, feed, ops, server: handle, backups, beforeStart: parts.beforeStart, config });
+  const beforeStart = async () => {
+    await parts.beforeStart?.();
+    // Mods the game won't fetch itself are downloaded now (MOD-03).
+    await mods.beforeStart();
+  };
+  const control = new Control({ agent, feed, ops, server: handle, backups, beforeStart, config });
   const flows = new BackupFlows({ agent, feed, ops, control, backups, settings, config, server: handle });
   const scheduler = new Scheduler({ settings, agent, feed, ops, control, flows, backups, mods, notifier, audit });
   const changes = new ConfigProposals({ db, config: () => config, serverId: row.id });
@@ -140,6 +151,7 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
     flows,
     players,
     mods,
+    plugins,
     scheduler,
     notifier,
     changes,
@@ -206,8 +218,13 @@ export interface PanelDepsOptions {
   adapter?: PanelAdapter;
   /** The adapters servers are created from and run with (default: every adapter in `@gsp/adapters`). */
   adapters?: readonly PanelAdapter[];
-  /** Mod sources in place of the adapters' (tests: sources that don't reach the network). */
-  mods?: readonly ModSource[];
+  /**
+   * Mod sources in place of the adapters' (tests: sources that don't reach
+   * the network): one list for every adapter, or lists by adapter id (an
+   * adapter not named keeps its own). Each server uses those its flavour has
+   * the capability of.
+   */
+  mods?: readonly ModSource[] | Readonly<Record<string, readonly ModSource[]>>;
   /** How the Discord notifier reaches Discord (tests: not at all). */
   fetch?: typeof fetch;
   /** How launch choices reach the games' download services, and the environment naming them (tests: the fake ones, or nothing). */
@@ -267,7 +284,9 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
         files: f.files(row, target, env),
         // `default`'s secrets are in the environment; every other server's in its row.
         secrets: managed ? () => serverRows.secrets(row.id) : () => env.secrets,
-        mods: o.mods,
+        mods: o.mods === undefined || Array.isArray(o.mods) ? (o.mods as readonly ModSource[] | undefined) : (o.mods as Readonly<Record<string, readonly ModSource[]>>)[row.adapter],
+        // A plugin link is checked against the same environment the download services' choices read.
+        linkEnv: o.downloads?.env,
         backupDir: backupDirOf(env, row),
         beforeStart: managed ? hooks.beforeStart : undefined,
         eula: () => {
