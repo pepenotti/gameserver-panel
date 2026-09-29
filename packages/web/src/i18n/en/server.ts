@@ -30,4 +30,5 @@ export default {
   cpusNone: 'No limit',
   limitsApplied: 'Limits saved and applied.',
   limitsNextStart: 'Limits saved; they apply the next time the server starts.',
+  imageNextStart: 'A panel update brought a newer runtime image: the container moves to it the next time the server starts.',
 } as const;
