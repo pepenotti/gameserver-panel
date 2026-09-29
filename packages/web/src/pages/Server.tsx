@@ -213,7 +213,7 @@ export function Server() {
   // An empty version is one too (a game that follows its newest release): the list is asked without one.
   const choices = useQuery({
     queryKey: ['launchChoices', sapi.sid, versionValue],
-    queryFn: () => sapi<LaunchChoices>('GET', `/server/launch/choices${versionValue === '' ? '' : `?version=${encodeURIComponent(versionValue)}`}`),
+    queryFn: () => sapi<LaunchChoices>('GET', `/server/launch/choices?${new URLSearchParams(versionValue === '' ? {} : { version: versionValue }).toString()}`),
     enabled: !!meta?.launch.choices && can('server.update') && has('versionPin') && form !== null,
     staleTime: 5 * 60_000,
     retry: false,

@@ -80,7 +80,7 @@ describe('createPanelDeps (the one composition root)', () => {
     // Its backups stay where they always were; its secrets in the environment.
     expect(srv.backups.dir).toBe(deps.env.backupDir);
     expect(srv.handle.secrets()).toEqual({ adminPassword: 'AdminPw-123456' });
-    expect(deps.adapters.map((a) => a.meta.id)).toEqual(['pz', 'minecraft']);
+    expect(deps.adapters.map((a) => a.meta.id)).toEqual(['pz', 'minecraft', 'terraria']);
   });
 
   it('answers 501 for what needs the orchestrator while this build has none (FACTORIES)', async () => {

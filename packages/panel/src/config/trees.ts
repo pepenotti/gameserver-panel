@@ -1,8 +1,8 @@
 /**
  * Objects of a JSON or JSON5 config file that are secret whole, keys
  * included (`ConfigFileDecl.secretTrees`, CFG-04): a game that keeps a token
- * as an object key (TShock's `ApplicationRestTokens`) can't be masked value
- * by value. What people see of such a file (forms, the text editor, diffs,
+ * as an object key (TShock does, for its REST API) can't be masked value by
+ * value. What people see of such a file (forms, the text editor, diffs,
  * history) has the object replaced by a masked string, and a save puts back
  * what is on disk there, whatever the text holds. A file that doesn't parse
  * is still masked, by a tolerant scan for the object's key.

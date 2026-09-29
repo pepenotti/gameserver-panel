@@ -527,8 +527,8 @@ export interface ConfigFileDecl {
   secretKeys: string[];
   /**
    * Dotted paths of objects in a JSON or JSON5 file that are secret whole,
-   * their keys included (TShock keeps its REST tokens as the keys of
-   * `ApplicationRestTokens`). Forms, raw text, diffs and history show each
+   * their keys included (TShock keeps its REST tokens as the keys of an
+   * object in its config). Forms, raw text, diffs and history show each
    * as a masked string, and every save keeps what is on disk there,
    * whatever the text says: the panel never shows or changes them (so they
    * are locked too; list them in `managedKeys` for the form's lock).
