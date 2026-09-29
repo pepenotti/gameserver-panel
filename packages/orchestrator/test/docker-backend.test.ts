@@ -167,6 +167,8 @@ describe('creating a server (D3, NFR-02, NFR-03)', () => {
     const { fd, backend } = await setup();
     fd.images = new Set(['gsp/steam:s1']);
     expect(await rejection(backend.apply(spec()))).toMatchObject({ code: 'unavailable', message: expect.stringContaining('gsp/steam-fake:s1') });
+    // Before anything was made for it.
+    expect(writes(fd)).toEqual([]);
 
     const other = await dockerStack({ panel: false });
     try {
@@ -301,7 +303,7 @@ describe('running servers (SRV-03, SRV-06)', () => {
       ['b-srv', 'created'],
       ['gone', 'missing'],
     ]);
-    expect(list[2]).toEqual({ id: 'gone', state: 'missing', startedAt: null, finishedAt: null, exitCode: null, image: '', specHash: '', agentUrl: `http://${STACK}-srv-gone:8081` });
+    expect(list[2]).toEqual({ id: 'gone', state: 'missing', startedAt: null, finishedAt: null, exitCode: null, image: '', specHash: '', agentUrl: `http://${STACK}-srv-gone:8081`, imageId: '', latestImageId: '' });
   });
 
   it('reports stats as one sample: CPU in percent of one core, memory without page cache', async () => {
@@ -319,6 +321,125 @@ describe('running servers (SRV-03, SRV-06)', () => {
     expect((await backend.host()).arch).toBe('arm64');
     fd.info.Architecture = 's390x';
     expect(await rejection(backend.host())).toMatchObject({ code: 'unavailable' });
+  });
+});
+
+describe('runtime image upgrades (HST-01, SRV-05, SRV-06, NFR-02)', () => {
+  const IMAGE = 'gsp/steam-fake:s1';
+  const ours = (fd: FakeDocker) => [...fd.containers.values()].find((c) => c.Name === `/${STACK}-srv-pz`)!;
+  const imageLookups = (fd: FakeDocker) => fd.calls.filter((c) => c.path.startsWith('/images/')).map((c) => `${c.method} ${c.path}`);
+
+  it("reports the image id Docker recorded on the container and the one its tag names now, looked up, never pulled", async () => {
+    const { fd, backend } = await setup();
+    const c = await backend.apply(spec());
+    const id = fd.imageId(IMAGE);
+    expect(id).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(c).toMatchObject({ image: IMAGE, imageId: id, latestImageId: id });
+    expect(ours(fd).Image).toBe(id);
+    expect((await backend.list())[0]).toMatchObject({ id: 'pz', imageId: id, latestImageId: id });
+    expect((await backend.start('pz')).imageId).toBe(id);
+    // Only ever inspected: nothing pulls, builds or tags an image.
+    expect(new Set(imageLookups(fd))).toEqual(new Set([`GET /images/${IMAGE}/json`]));
+    expect(writes(fd).filter((w) => w.includes('/images'))).toEqual([]);
+    // The id is part of no derived field: the create body is what it was (and nothing else is set).
+    const body = fd.writes().find((x) => x.path === '/containers/create')!.body as { Image: string; Labels: Record<string, string> };
+    expect(body.Image).toBe(IMAGE);
+    expect(Object.keys(body.Labels).sort()).toEqual(['gsp.config-hash', 'gsp.server', 'gsp.spec-hash', 'gsp.stack']);
+  });
+
+  it('changes nothing for the same spec and the same image', async () => {
+    const { fd, backend } = await setup();
+    await backend.apply(spec());
+    await backend.start('pz');
+    const before = fd.writes().length;
+    for (const keepImage of [false, true]) expect(await backend.apply(spec(), { keepImage })).toMatchObject({ state: 'running', imageId: fd.imageId(IMAGE) });
+    expect(fd.writes().length).toBe(before);
+  });
+
+  it('recreates the container with a rebuilt image for the same spec: stopped first, volumes kept, config the same', async () => {
+    const { fd, backend } = await setup();
+    await backend.apply(spec());
+    await backend.start('pz');
+    const old = ours(fd);
+    const oldBody = old.createBody;
+    const newer = fd.rebuildImage(IMAGE);
+    expect(newer).not.toBe(old.Image);
+    // The listing tells: same spec, newer image.
+    expect((await backend.list())[0]).toMatchObject({ id: 'pz', state: 'running', specHash: specHash(spec()), imageId: old.Image, latestImageId: newer });
+
+    const before = fd.writes().length;
+    const c = await backend.apply(spec());
+    expect(fd.writes().slice(before).map((x) => `${x.method} ${x.path}`)).toEqual([`POST /containers/${old.Id}/stop`, `DELETE /containers/${old.Id}`, 'POST /containers/create']);
+    expect(c).toMatchObject({ state: 'created', specHash: specHash(spec()), imageId: newer, latestImageId: newer });
+    expect(ours(fd).createBody).toEqual(oldBody);
+    expect(fd.volumes.size).toBe(3);
+    // In line now: the same spec again changes nothing.
+    const after = fd.writes().length;
+    await backend.apply(spec());
+    expect(fd.writes().length).toBe(after);
+  });
+
+  it('keeps a matching container on its image when asked (its game runs), but never one whose spec changed', async () => {
+    const { fd, backend } = await setup();
+    await backend.apply(spec());
+    await backend.start('pz');
+    const old = ours(fd);
+    const newer = fd.rebuildImage(IMAGE);
+    const before = fd.writes().length;
+    expect(await backend.apply(spec(), { keepImage: true })).toMatchObject({ state: 'running', imageId: old.Image, latestImageId: newer });
+    expect(fd.writes().length).toBe(before);
+    expect(ours(fd)).toBe(old);
+
+    // A panel container recreated meanwhile is joined to the server's network all the same.
+    const panel = fd.containers.get(stack!.panelId)!;
+    fd.containers.delete(panel.Id);
+    for (const n of fd.networks.values()) delete n.Containers[panel.Id];
+    const fresh = fd.addContainer({ name: `${STACK}-panel-1`, running: true, labels: { 'com.docker.compose.project': STACK, 'com.docker.compose.service': 'panel' } });
+    await backend.apply(spec(), { keepImage: true });
+    expect(fd.writes().slice(before).map((c) => `${c.method} ${c.path} ${JSON.stringify(c.body)}`)).toEqual([`POST /networks/${STACK}-net-pz/connect {"Container":"${fresh.Id}"}`]);
+    expect(old.State.Running).toBe(true);
+
+    // keepImage keeps an image, not a spec: new limits recreate it, with the newer image.
+    expect(await backend.apply(spec({ memoryMb: 3072 }), { keepImage: true })).toMatchObject({ state: 'created', imageId: newer, specHash: specHash(spec({ memoryMb: 3072 })) });
+  });
+
+  it('refuses a missing image before touching anything, and leaves a matching container as it is', async () => {
+    const { fd, backend } = await setup();
+    await backend.apply(spec());
+    await backend.start('pz');
+    const old = ours(fd);
+    // The runtime image is removed (its container keeps what it runs).
+    fd.images = new Set();
+    const before = fd.writes().length;
+    expect(await backend.apply(spec())).toMatchObject({ state: 'running', imageId: old.Image, latestImageId: '' });
+    expect((await backend.list())[0]).toMatchObject({ imageId: old.Image, latestImageId: '' });
+    // Anything that needs the image: refused as before, but now before the old container is stopped or removed.
+    expect(await rejection(backend.apply(spec({ memoryMb: 3072 })))).toMatchObject({ code: 'unavailable', status: 503, message: expect.stringContaining(IMAGE) });
+    expect(await rejection(backend.apply(spec({ id: 'pz-2', ports: [] })))).toMatchObject({ code: 'unavailable', message: expect.stringContaining(IMAGE) });
+    expect(fd.writes().length).toBe(before);
+    expect(ours(fd)).toBe(old);
+    expect(old.State.Running).toBe(true);
+  });
+
+  it("never looks at or touches another stack's containers and images, nor a name outside the allowlist", async () => {
+    const { fd, backend } = await setup();
+    const theirs = fd.addContainer({ name: 'gsp-s2-srv-pz', image: 'gsp/steam-fake:s2', running: true, labels: { 'gsp.stack': 'gsp-s2', 'gsp.server': 'pz' } });
+    const theirImage = theirs.Image;
+    await backend.apply(spec({ ports: [] }));
+    fd.rebuildImage(IMAGE);
+    fd.rebuildImage('gsp/steam-fake:s2');
+    await backend.apply(spec({ ports: [] }));
+    expect(theirs.State.Running).toBe(true);
+    expect(theirs.Image).toBe(theirImage);
+    expect(fd.containers.get(theirs.Id)).toBe(theirs);
+    // A container of this stack's name and labels whose image name isn't one it derives: not looked up.
+    fd.addContainer({ name: `${STACK}-srv-odd`, image: '../../containers/json', labels: { 'gsp.stack': STACK, 'gsp.server': 'odd' } });
+    expect((await backend.list()).map((c) => [c.id, c.latestImageId === '' ? 'unknown' : 'known'])).toEqual([
+      ['odd', 'unknown'],
+      ['pz', 'known'],
+    ]);
+    expect(new Set(imageLookups(fd))).toEqual(new Set([`GET /images/${IMAGE}/json`]));
+    expect(writes(fd).filter((w) => w.includes(theirs.Id))).toEqual([]);
   });
 });
 

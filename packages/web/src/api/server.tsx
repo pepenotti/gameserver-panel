@@ -9,6 +9,9 @@ import { api, serverApi, type ServerApi } from './http';
 import type { I18n } from './meta';
 import { SessionContext, useSession } from './session';
 
+/** Why a server's container waits for its game's next start (mirrors packages/panel/src/servers/registry.ts). */
+export type ContainerPendingReason = 'settings' | 'image';
+
 /** A server in `GET /api/servers` (mirrors packages/panel/src/routes/servers.ts). */
 export interface ServerSummary {
   id: string;
@@ -31,6 +34,8 @@ export interface ServerSummary {
   cpus: number | null;
   /** Its container waits to be recreated with changed limits at the game's next start. */
   containerPending: boolean;
+  /** Why: changed `settings` (new limits) and/or a newer runtime `image`; empty when nothing waits. */
+  containerPendingReasons: ContainerPendingReason[];
   /** False for the server the install's environment describes: only the stack itself removes it. */
   managed: boolean;
   /** The signed-in user's role there, and what it lets them do. */

@@ -1,4 +1,4 @@
-import type { DeleteResponse, HealthResponse, HostInfo, OrchestratorErrorCode, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
+import type { ApplyOptions, DeleteResponse, HealthResponse, HostInfo, OrchestratorErrorCode, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
 
 /** A refused or failed orchestrator call: its `OrchestratorError` code, and `field` for refusals. */
 export class OrchestratorCallError extends Error {
@@ -22,8 +22,11 @@ export interface OrchestratorClient {
   host(): Promise<HostInfo>;
   /** This stack's server containers. */
   list(): Promise<ServerContainer[]>;
-  /** Create or recreate (volumes kept); the same spec again changes nothing. */
-  apply(spec: ServerSpec): Promise<ServerContainer>;
+  /**
+   * Create or recreate (volumes kept); the same spec again changes nothing,
+   * unless its runtime image was rebuilt since and `keepImage` isn't asked.
+   */
+  apply(spec: ServerSpec, o?: ApplyOptions): Promise<ServerContainer>;
   start(id: string): Promise<ServerContainer>;
   stop(id: string, o?: { timeoutSec?: number }): Promise<ServerContainer>;
   restart(id: string, o?: { timeoutSec?: number }): Promise<ServerContainer>;
@@ -39,7 +42,7 @@ export class NoOrchestrator implements OrchestratorClient {
   health = () => this.fail();
   host = () => this.fail();
   list = () => this.fail();
-  apply = (_spec: ServerSpec) => this.fail();
+  apply = (_spec: ServerSpec, _o?: ApplyOptions) => this.fail();
   start = (_id: string) => this.fail();
   stop = (_id: string) => this.fail();
   restart = (_id: string) => this.fail();

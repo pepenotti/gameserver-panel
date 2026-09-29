@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import type { ModSource, PanelAdapter } from '@gsp/adapter-api';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
-import { ORCHESTRATOR_API_VERSION, type AgentStatus, type CpuArch, type GrantRole, type PortRangeInfo, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
+import { ORCHESTRATOR_API_VERSION, type AgentStatus, type ApplyOptions, type CpuArch, type GrantRole, type PortRangeInfo, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { bootstrapOwner } from '../src/auth/bootstrap';
@@ -100,10 +100,12 @@ export function fakeAgent(feed: FakeFeed): AgentApi & { calls: string[] } {
 
 export const noNetwork = (() => Promise.reject(new Error('no network in tests'))) as unknown as typeof fetch;
 
+type FakeContainer = ServerContainer & { spec: ServerSpec; volumes: boolean; imageId: string };
+
 /**
  * The orchestrator in memory (D3's API, `@gsp/shared` orchestrator-api):
  * containers by id with the spec each was created from, every call made,
- * and failures on demand.
+ * failures on demand, and runtime images a test can rebuild (`rebuildImage`).
  */
 export class FakeOrchestrator implements OrchestratorClient {
   arch: CpuArch = 'amd64';
@@ -112,7 +114,10 @@ export class FakeOrchestrator implements OrchestratorClient {
   hostPorts: PortRangeInfo[] | undefined = undefined;
   /** `ORCH_MAX_MEM_MB`; undefined: an orchestrator that doesn't say. */
   maxMemMb: number | undefined = undefined;
-  readonly containers = new Map<string, ServerContainer & { spec: ServerSpec; volumes: boolean }>();
+  readonly containers = new Map<string, FakeContainer>();
+  /** Image name → the content id it names now. */
+  readonly images = new Map<string, string>();
+  private builds = 0;
   /** Volumes left behind by removals that kept them, by server id. */
   readonly keptVolumes = new Set<string>();
   readonly calls: string[] = [];
@@ -137,9 +142,30 @@ export class FakeOrchestrator implements OrchestratorClient {
     return c;
   }
 
-  private view(c: ServerContainer & { spec: ServerSpec; volumes: boolean }): ServerContainer {
+  private view(c: FakeContainer): ServerContainer {
     const { spec: _spec, volumes: _volumes, ...rest } = c;
-    return rest;
+    return { ...rest, latestImageId: this.imageId(c.image) };
+  }
+
+  /** The image a spec runs here. */
+  imageOf(spec: Pick<ServerSpec, 'runtime'>): string {
+    return `gsp/${spec.runtime}:fake`;
+  }
+
+  /** The content id an image name resolves to now. */
+  imageId(name: string): string {
+    let id = this.images.get(name);
+    if (!id) {
+      id = `sha256:${createHash('sha256').update(`${name}#${++this.builds}`).digest('hex')}`;
+      this.images.set(name, id);
+    }
+    return id;
+  }
+
+  /** A rebuild under the same tag (a product upgrade): the name resolves to a new id, which it returns. */
+  rebuildImage(name = 'gsp/steam:fake'): string {
+    this.images.delete(name);
+    return this.imageId(name);
   }
 
   async health() {
@@ -162,12 +188,15 @@ export class FakeOrchestrator implements OrchestratorClient {
     this.check('list');
     return [...this.containers.values()].map((c) => this.view(c));
   }
-  async apply(spec: ServerSpec) {
-    this.check('apply', spec.id);
+  /** Recorded as `apply <id>`, or `apply <id> keepImage`. */
+  async apply(spec: ServerSpec, o: ApplyOptions = {}) {
+    this.check('apply', o.keepImage ? `${spec.id} keepImage` : spec.id);
     const specHash = createHash('sha256').update(JSON.stringify(spec)).digest('hex');
     const cur = this.containers.get(spec.id);
-    if (cur?.specHash === specHash) return this.view(cur);
-    const c = { id: spec.id, state: 'created' as const, startedAt: null, finishedAt: null, exitCode: null, image: `gsp/${spec.runtime}:fake`, specHash, agentUrl: `http://gsp-${spec.id}:8081`, spec, volumes: true };
+    // The same spec on the image its tag names now, or kept on its own (a newer image waits).
+    if (cur?.specHash === specHash && (o.keepImage || cur.imageId === this.imageId(cur.image))) return this.view(cur);
+    const image = this.imageOf(spec);
+    const c: FakeContainer = { id: spec.id, state: 'created', startedAt: null, finishedAt: null, exitCode: null, image, specHash, agentUrl: `http://gsp-${spec.id}:8081`, imageId: this.imageId(image), spec, volumes: true };
     this.containers.set(spec.id, c);
     return this.view(c);
   }

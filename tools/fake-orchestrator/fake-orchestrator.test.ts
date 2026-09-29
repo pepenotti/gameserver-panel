@@ -192,6 +192,31 @@ describe('the fake orchestrator (dev loop, M2)', () => {
   });
 });
 
+describe('runtime image upgrades in the fake orchestrator (HST-01, SRV-05, SRV-06)', () => {
+  it('keeps a running server on its image when asked, recreates it otherwise, and remembers image ids across restarts', { timeout: 60_000 * SCALE }, async () => {
+    const r = await rig();
+    const [game] = await freeUdpPorts(1);
+    const put = await request(r.socket, 'PUT', '/v1/servers/pz', { body: spec('pz', game!) });
+    const first = put.body as ServerContainer;
+    expect(first).toMatchObject({ imageId: expect.stringMatching(/^sha256:[0-9a-f]{64}$/) });
+    expect(first.latestImageId).toBe(first.imageId);
+    const started = (await request(r.socket, 'POST', '/v1/servers/pz/start')).body as ServerContainer;
+    // The same spec and image: nothing changes, the agent keeps running.
+    expect(await request(r.socket, 'PUT', '/v1/servers/pz', { body: spec('pz', game!) })).toMatchObject({ status: 200, body: { state: 'running', startedAt: started.startedAt } });
+
+    const newer = r.backend.rebuildImage('gsp/steam:dev');
+    expect(await request(r.socket, 'GET', '/v1/servers')).toMatchObject({ body: [{ id: 'pz', state: 'running', imageId: first.imageId, latestImageId: newer }] });
+    expect(await request(r.socket, 'PUT', '/v1/servers/pz?keepImage=true', { body: spec('pz', game!) })).toMatchObject({ status: 200, body: { state: 'running', startedAt: started.startedAt, imageId: first.imageId } });
+
+    // The ids survive the fake orchestrator going away: still an older image, still waiting.
+    await close(r);
+    const again = await rig({ dir: r.dir, agentPorts: r.agentPorts, controlPorts: r.controlPorts });
+    expect(await request(again.socket, 'GET', '/v1/servers')).toMatchObject({ body: [{ id: 'pz', imageId: first.imageId, latestImageId: newer }] });
+    // Not kept: stopped, recreated on the newer image.
+    expect(await request(again.socket, 'PUT', '/v1/servers/pz', { body: spec('pz', game!) })).toMatchObject({ status: 200, body: { state: 'created', imageId: newer, latestImageId: newer } });
+  });
+});
+
 describe('what the fake orchestrator passes its agents (dev loop, M3)', () => {
   it("gives them the fake games' knobs and Minecraft's download services, nothing of its own (UPD-01)", () => {
     const env = {

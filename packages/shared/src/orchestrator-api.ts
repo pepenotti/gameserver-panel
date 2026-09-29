@@ -17,7 +17,7 @@
  *   GET    /v1/health                     → HealthResponse
  *   GET    /v1/host                       → HostInfo
  *   GET    /v1/servers                    → ServerContainer[]   (only this stack's containers)
- *   PUT    /v1/servers/:id                ServerSpec → ServerContainer   (idempotent create or recreate; volumes kept)
+ *   PUT    /v1/servers/:id?keepImage=false ServerSpec → ServerContainer   (idempotent create or recreate; volumes kept; `ApplyOptions`)
  *   POST   /v1/servers/:id/start          → ServerContainer
  *   POST   /v1/servers/:id/stop           StopRequest → ServerContainer
  *   POST   /v1/servers/:id/restart        StopRequest → ServerContainer
@@ -117,7 +117,11 @@ export interface PortMapping {
  * `PUT /v1/servers/:id`: the whole wanted state of one server container.
  * Sending the same spec again changes nothing; a different one recreates the
  * container (stopping it first, with the default stop timeout) and keeps its
- * volumes.
+ * volumes. The runtime image is part of that state: once it was rebuilt under
+ * its tag (a product upgrade), the same spec recreates the container with the
+ * newer image too, unless the request keeps it (`ApplyOptions.keepImage`).
+ * The orchestrator never pulls: an image that isn't built on the host is
+ * refused (`unavailable`) before anything changes.
  */
 export interface ServerSpec {
   /** Must equal the `:id` in the path. */
@@ -133,6 +137,18 @@ export interface ServerSpec {
   cpus?: number;
 }
 
+/** `PUT /v1/servers/:id` query parameters. */
+export interface ApplyOptions {
+  /**
+   * `keepImage=true`: a container that already matches the spec is kept even
+   * when its runtime image was rebuilt since (`newerImage`). The panel asks
+   * this while the server's game runs, so a newer image waits for the game's
+   * next start (SRV-05, SRV-06). It never keeps a container whose spec
+   * differs. Default false: the image the tag names now.
+   */
+  keepImage?: boolean;
+}
+
 /** Docker's container states, plus `missing` for a server whose container is gone. */
 export type ContainerState = 'created' | 'running' | 'paused' | 'restarting' | 'exited' | 'dead' | 'missing';
 
@@ -144,10 +160,35 @@ export interface ServerContainer {
   exitCode: number | null;
   /** The image it runs (from the allowlist). */
   image: string;
-  /** sha256 of the canonical JSON of the spec it was created from: equal means a PUT of that spec is a no-op. */
+  /**
+   * sha256 of the canonical JSON of the spec it was created from: equal (and
+   * no `newerImage`) means a PUT of that spec is a no-op.
+   */
   specHash: string;
   /** Where the panel reaches the server's agent (on the server's own network). */
   agentUrl: string;
+  /**
+   * Content id (`sha256:…`) of the image it was created from, as Docker
+   * recorded it; '' when `missing`. An orchestrator older than this field
+   * leaves it out.
+   */
+  imageId?: string;
+  /**
+   * Content id `image` names on the host now; '' when it names none (the
+   * image was removed). It differs from `imageId` once the runtime image was
+   * rebuilt under its tag: see `newerImage`.
+   */
+  latestImageId?: string;
+}
+
+/**
+ * Whether a container's image tag names another image than the one it runs:
+ * the runtime image was rebuilt since (a product upgrade). A PUT without
+ * `keepImage` recreates it with the newer one. False when either id is
+ * unknown or the image is gone (nothing to move to).
+ */
+export function newerImage(c: Pick<ServerContainer, 'imageId' | 'latestImageId'>): boolean {
+  return !!c.imageId && !!c.latestImageId && c.imageId !== c.latestImageId;
 }
 
 /** `POST /v1/servers/:id/stop` and `/restart`. */

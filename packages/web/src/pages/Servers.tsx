@@ -11,6 +11,7 @@ import { useLiveServers, type LiveServer } from '../api/live';
 import { localize } from '../api/meta';
 import { serverHref, useServers, type ServerSummary } from '../api/server';
 import { useSession } from '../api/session';
+import { PendingBadge } from '../components/PendingBadge';
 import { DeleteServerModal, RenameServerModal } from '../components/ServerAdmin';
 import { StateBadge } from '../components/StateBadge';
 import { formatDateTime, useErrorText } from '../lib/format';
@@ -82,13 +83,7 @@ function ServerCard({ s, live, open }: { s: ServerSummary; live: LiveServer | un
               {t(`ops.kind.${now.op.kind}`, { defaultValue: now.op.kind })}
             </Badge>
           )}
-          {s.containerPending && (
-            <Tooltip label={t('servers.pendingStartHelp')} multiline w={240}>
-              <Badge size="sm" variant="light" color="orange" tt="none">
-                {t('servers.pendingStart')}
-              </Badge>
-            </Tooltip>
-          )}
+          {s.containerPending && <PendingBadge reasons={s.containerPendingReasons} size="sm" />}
         </Group>
         <Text size="sm">{now.players === null ? t('servers.notRunning') : t('servers.players', { n: now.players })}</Text>
         <Text size="xs" c="dimmed">

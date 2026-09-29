@@ -92,6 +92,9 @@ describe('the orchestrator API (D3, NFR-02, NFR-03)', () => {
     expect(await call('PUT', '/v1/servers/pz', { raw: JSON.stringify({ ...spec(), env: { ...spec().env, GSP_BIG: 'x'.repeat(70_000) } }) })).toMatchObject({ status: 413, body: { code: 'bad-request' } });
     expect(await call('PUT', '/v1/servers/pz')).toMatchObject({ status: 400, body: { code: 'bad-request' } });
     expect(await call('PUT', '/v1/servers/pz?image=alpine', { body: spec() })).toMatchObject({ status: 400, body: { code: 'bad-request' } });
+    expect(await call('PUT', '/v1/servers/pz?keepImage=yes', { body: spec() })).toMatchObject({ status: 400, body: { code: 'bad-request', field: 'keepImage' } });
+    expect(await call('PUT', '/v1/servers/pz?keepImage=true&keepImage=true', { body: spec() })).toMatchObject({ status: 400, body: { field: 'keepImage' } });
+    expect(await call('PUT', '/v1/servers/pz?keepImage=true&image=alpine', { body: spec() })).toMatchObject({ status: 400, body: { code: 'bad-request' } });
     expect(await call('GET', '/v1/servers?all=1')).toMatchObject({ status: 400 });
     expect(await call('GET', '/v1/health', { body: {} })).toMatchObject({ status: 400 });
     expect(await call('POST', '/v1/servers/pz/start', { body: { image: 'x' } })).toMatchObject({ status: 400 });
@@ -119,6 +122,20 @@ describe('the orchestrator API (D3, NFR-02, NFR-03)', () => {
     expect(await call('DELETE', '/v1/servers/pz')).toEqual({ status: 200, body: { removed: true, volumesRemoved: false } });
     expect(await call('DELETE', '/v1/servers/pz?removeVolumes=true')).toEqual({ status: 200, body: { removed: false, volumesRemoved: true } });
     expect(await call('POST', '/v1/servers/pz/start')).toMatchObject({ status: 404, body: { code: 'not-found' } });
+  });
+
+  it('moves a server to a rebuilt runtime image, unless the panel keeps its image (HST-01, SRV-05, D3)', async () => {
+    const put = await call('PUT', '/v1/servers/pz', { body: spec() });
+    const first = put.body as { imageId: string; latestImageId: string };
+    expect(put).toMatchObject({ status: 200, body: { id: 'pz', imageId: expect.stringMatching(/^sha256:/) } });
+    expect(first.latestImageId).toBe(first.imageId);
+    const newer = stack.fd.rebuildImage('gsp/steam-fake:s1');
+    expect(await call('GET', '/v1/servers')).toMatchObject({ status: 200, body: [{ id: 'pz', imageId: first.imageId, latestImageId: newer }] });
+    // Kept while its game runs: the same container, still on its image.
+    expect(await call('PUT', '/v1/servers/pz?keepImage=true', { body: spec() })).toEqual({ status: 200, body: { ...first, latestImageId: newer } });
+    // Not kept: the same spec is no longer a no-op.
+    expect(await call('PUT', '/v1/servers/pz?keepImage=false', { body: spec() })).toMatchObject({ status: 200, body: { state: 'created', imageId: newer, latestImageId: newer } });
+    expect(await call('DELETE', '/v1/servers/pz?removeVolumes=true')).toMatchObject({ status: 200 });
   });
 
   it('logs one line per request, never a body or a token', () => {
