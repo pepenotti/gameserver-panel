@@ -10,9 +10,13 @@
 //
 // Paths: /api/get/dedicated-servers-names, /api/download/pc-dedicated-server/terraria-server-<id>.zip
 // (terraria.org); /repos/<owner>/<repo>/releases[/latest|/tags/<tag>] (GitHub API);
-// /<owner>/<repo>/releases/download/<tag>/<asset> (GitHub assets). GET /__requests lists what was
-// asked, with each request's User-Agent. GitHub answers carry x-ratelimit-* headers: 60 an hour,
-// every request counts, a conditional one answered 304 too (measured).
+// /<owner>/<repo>/releases/download/<tag>/<asset> (GitHub assets); a fake TShock plugin's release,
+// /gspff/HelloPlugin/releases/{download/v1.0.0,latest/download}/<file>, redirected to the asset
+// host like github.com's (HelloPlugin.dll, HelloPlugins.zip, NotAPlugin.dll, Escape.zip with a path
+// outside its folder, Huge.dll one byte over 16 MiB, Notes.txt, Elsewhere.dll sent on to another
+// host). GET /__requests lists what was asked, with each request's User-Agent. GitHub answers carry
+// x-ratelimit-* headers: 60 an hour, every request counts, a conditional one answered 304 too
+// (measured).
 // Failures (FAKE_TERRARIA_DOWNLOAD_FAIL, or the `fail` option): bad-checksum (assets don't match the
 // published digest; terraria.org publishes none, so its zips come truncated) | not-found (every
 // file is a 404) | rate-limit (every GitHub API call is a 403 "API rate limit exceeded", the shape
@@ -172,6 +176,42 @@ function tmlZip(tag) {
   );
 }
 
+// ------------------------------------------------------------------ TShock plugins (MOD-06)
+/**
+ * A fake TShock plugin: it starts like every .NET assembly (`MZ`), and
+ * `server.mjs` loads it from `ServerPlugins/` by its marker line, printing
+ * the line TShock prints for a plugin it initialised. Without the marker
+ * (`fakeAssembly`) it is an assembly that isn't a plugin: TShock ignores it
+ * without a word (measured).
+ */
+export function fakePlugin(name, version = '1.0.0', author = 'gspff') {
+  return Buffer.from(`MZ\u0090\u0000 FAKE .NET assembly\nFAKE-TSHOCK-PLUGIN name=${name} version=${version} author=${author}\n`, 'latin1');
+}
+export function fakeAssembly(name) {
+  return Buffer.from(`MZ\u0090\u0000 FAKE .NET assembly ${name}, not a plugin\n`, 'latin1');
+}
+
+/** Largest plugin the panel takes (16 MiB): `Huge.dll` is one byte more. */
+const PLUGIN_MAX_BYTES = 16 * 1024 * 1024;
+
+/**
+ * Release assets of a fake plugin repository (`gspff/HelloPlugin`), served
+ * the way github.com serves release downloads: a 302 to the asset host
+ * (measured: `release-assets.githubusercontent.com`), here `/__release-assets/`
+ * on the same server. `latest/download/<file>` redirects to the tag first.
+ */
+const PLUGIN_REPO = { owner: 'gspff', repo: 'HelloPlugin', tag: 'v1.0.0' };
+function pluginAssets() {
+  return new Map([
+    ['HelloPlugin.dll', () => fakePlugin('HelloPlugin')],
+    ['HelloPlugins.zip', () => makeZip([{ name: 'ServerPlugins/', data: '' }, { name: 'ServerPlugins/HelloPlugin.dll', data: fakePlugin('HelloPlugin', '1.1.0') }, { name: 'ServerPlugins/HelloLib.dll', data: fakeAssembly('HelloLib') }, { name: 'README.md', data: '# HelloPlugin (FAKE)\n' }])],
+    ['NotAPlugin.dll', () => Buffer.from('just some text\n')],
+    ['Escape.zip', () => makeZip([{ name: '../Escape.dll', data: fakePlugin('Escape') }])],
+    ['Huge.dll', () => Buffer.concat([Buffer.from('MZ'), Buffer.alloc(PLUGIN_MAX_BYTES - 1)])],
+    ['Notes.txt', () => Buffer.from('not a plugin\n')],
+  ]);
+}
+
 // ------------------------------------------------------------------ catalogue (as measured on 2026-09-29)
 const VANILLA = [
   { id: '1458', lastModified: 'Sun, 23 Aug 2026 18:39:51 GMT' },
@@ -220,6 +260,7 @@ export async function startFakeDownloads({ port = 0, host = '127.0.0.1', fail = 
     return () => ({ tag_name: r.tag, name: r.name, prerelease: r.prerelease, draft: false, published_at: r.published, html_url: `https://github.com/tModLoader/tModLoader/releases/tag/${r.tag}`, body: 'FAKE', assets: assets.map((x) => x()) });
   });
 
+  const pluginFiles = pluginAssets();
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://x');
     const p = url.pathname;
@@ -259,6 +300,23 @@ export async function startFakeDownloads({ port = 0, host = '127.0.0.1', fail = 
         return res.end();
       }
       return send(200, body, headers);
+    }
+    // ---- a plugin's GitHub release assets: github.com redirects to the asset host
+    const pr = `/${PLUGIN_REPO.owner}/${PLUGIN_REPO.repo}/releases/`;
+    if (p.startsWith(pr)) {
+      if (fail === 'not-found') return send(404, 'Not Found');
+      const rest = p.slice(pr.length);
+      if (rest.startsWith('latest/download/')) return send(302, '', { location: `${pr}download/${PLUGIN_REPO.tag}/${rest.slice('latest/download/'.length)}` });
+      const file = rest.startsWith(`download/${PLUGIN_REPO.tag}/`) ? decodeURIComponent(rest.slice(`download/${PLUGIN_REPO.tag}/`.length)) : null;
+      // Sent on to another host than the one the link names (localhost for 127.0.0.1): a download must refuse it.
+      if (file === 'Elsewhere.dll') return send(302, '', { location: `http://localhost:${server.address().port}/__release-assets/HelloPlugin.dll` });
+      if (file !== null && pluginFiles.has(file)) return send(302, '', { location: `${base}/__release-assets/${encodeURIComponent(file)}` });
+      return send(404, 'Not Found');
+    }
+    if (p.startsWith('/__release-assets/')) {
+      const make = pluginFiles.get(decodeURIComponent(p.slice('/__release-assets/'.length)));
+      if (!make) return send(404, 'Not Found');
+      return send(200, make(), { 'content-type': 'application/octet-stream' });
     }
     // ---- GitHub assets
     if (/^\/[^/]+\/[^/]+\/releases\/download\//.test(p)) {

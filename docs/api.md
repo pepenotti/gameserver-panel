@@ -51,7 +51,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | POST | `/api/servers` | `servers.create` | `body { id: string, name: string, adapter: string, flavour?: string \| null, launch?: object, ports?: { [key]: integer }, memLimitMb?: integer, cpus?: number \| null, eulaAccepted?: boolean }` |
 | GET | `/api/ws` | session | — |
 
-## One server: `/api/servers/:sid` (63 routes)
+## One server: `/api/servers/:sid` (68 routes)
 
 `:sid` is the server's id. The permission is checked on that server; the capability is what its game must support.
 
@@ -115,6 +115,11 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | POST | `/api/servers/:sid/mods/check` | `mods.manage` | — | — |
 | POST | `/api/servers/:sid/mods/download` | `mods.manage` | — | `body { ids?: string[] }` |
 | DELETE | `/api/servers/:sid/mods/:id` | `mods.manage` | — | `params { id: string }` |
+| GET | `/api/servers/:sid/plugins` | `mods.manage` | — | — |
+| POST | `/api/servers/:sid/plugins/upload` | `mods.manage` | — | — |
+| POST | `/api/servers/:sid/plugins` | `mods.manage` | — | `body { url: string }` |
+| PUT | `/api/servers/:sid/plugins/:name` | `mods.manage` | — | `params { name: string }`<br>`body { enabled: boolean }` |
+| DELETE | `/api/servers/:sid/plugins/:name` | `mods.manage` | — | `params { name: string }` |
 | GET | `/api/servers/:sid/schedules` | `schedules.view` | — | — |
 | PUT | `/api/servers/:sid/schedules` | `schedules.manage` | — | `body { timezone: string, lang: "en" \| "es", restarts: { enabled: boolean, times: string[], countdownSec: 0 \| 60 \| 300 \| 600 \| 900, backupWhileStopped: boolean }, backups: { enabled: boolean, everyHours: 1 \| 2 \| 3 \| 4 \| 6 \| 8 \| 12 \| 24 }, gameUpdates: { enabled: boolean, checkEveryMinutes: integer, apply: "when-empty" \| "restart-countdown" \| "notify-only" }, modUpdates: { enabled: boolean, checkEveryMinutes: integer, apply: "when-empty" \| "restart-countdown" \| "notify-only" } }` |
 | GET | `/api/servers/:sid/notifications` | `notifications.manage` | — | — |

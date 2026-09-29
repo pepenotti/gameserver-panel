@@ -12,3 +12,7 @@ export function startFakeDownloads(o?: { port?: number; host?: string; fail?: ''
 
 export function makeZip(entries: { name: string; data: Buffer | string; mode?: number }[], o?: { unix?: boolean }): Buffer;
 export function makeTar(entries: { name: string; data?: Buffer | string; mode?: number }[]): Buffer;
+/** A fake TShock plugin (`MZ` and a marker line `server.mjs` loads it by). */
+export function fakePlugin(name: string, version?: string, author?: string): Buffer;
+/** A fake .NET assembly that isn't a plugin (TShock ignores it without a word). */
+export function fakeAssembly(name: string): Buffer;

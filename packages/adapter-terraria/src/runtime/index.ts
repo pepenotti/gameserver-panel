@@ -6,21 +6,47 @@
  * hot-copied with `save`. Every fact comes from
  * docs/verification/terraria-1.4.5.8.md and fixtures/terraria/1.4.5.8.
  */
-import type { ControlHandle, FileRoots, LaunchCommand, LineSignal, PlayerList, RuntimeAdapter, RuntimeCtx } from '@gsp/adapter-api';
+import type { ControlHandle, FileRoots, LaunchCommand, LineSignal, PlayerList, RuntimeAction, RuntimeAdapter, RuntimeCtx } from '@gsp/adapter-api';
+import { WORKSHOP_DOWNLOAD, workshopDownloadAction } from '@gsp/source-workshop/runtime';
 import { DATA } from '../shared/install';
 import { parseTerrariaLaunch, type TerrariaLaunch } from '../shared/launch';
 import { bare, display, FATAL, parsePlaying, playingDone, TR_PATTERNS } from '../shared/log';
-import { TERRARIA_META } from '../shared/meta';
-import { dataPath, port, prepare, worldFile } from './files';
+import { TERRARIA_META, TML_WORKSHOP_APP_ID } from '../shared/meta';
+import { dataPath, port, prepare as prepareFiles, worldFile } from './files';
 import { install, installedEntry, installedInfo, installNeeded, listVersions } from './install';
+import { PLUGIN_RUNTIME_ACTIONS, syncServerPlugins } from './plugins';
 import { progressOf } from './progress';
 import { restPlayerList, TSHOCK_ACTIONS } from './rest';
 
 export type { TerrariaLaunch };
 export { managedServerConfig, setServerConfig, tshockConfig } from './files';
 export { readMarker } from './install';
+export { addPlugins, listPlugins, PLUGIN_RUNTIME_ACTIONS, removePlugin, setPlugin, syncServerPlugins } from './plugins';
 export { clearSourceCache } from './sources';
 export { restBans, restPlayers, TSHOCK_ACTIONS, type RestBan, type RestPlayer } from './rest';
+
+/**
+ * Before every start: the data folders and the files the agent owns, and
+ * for TShock its enabled plugins copied into `ServerPlugins` (MOD-06: an
+ * update replaces the install folder, and TShock loads plugins at start
+ * only).
+ */
+export async function prepare(ctx: RuntimeCtx, p: TerrariaLaunch): Promise<void> {
+  await prepareFiles(ctx, p);
+  if (p.flavour === 'tshock') syncServerPlugins(ctx);
+}
+
+/**
+ * The runtime's actions: TShock's REST API (players, moderation, messages)
+ * and its plugins (MOD-06); tModLoader's Workshop downloads with the steam
+ * image's steamcmd, into the Workshop folder it reads its mods from
+ * (MOD-03, `@gsp/source-workshop`). Each refuses on the other flavours.
+ */
+export const TERRARIA_ACTIONS: Record<string, RuntimeAction> = {
+  ...TSHOCK_ACTIONS,
+  ...PLUGIN_RUNTIME_ACTIONS,
+  [WORKSHOP_DOWNLOAD]: workshopDownloadAction(String(TML_WORKSHOP_APP_ID)),
+};
 
 /** The orchestrator's mounts for the native and steam families: the server's data and install volumes. */
 export const TERRARIA_ROOTS: FileRoots = { data: '/data', install: '/opt/game' };
@@ -185,5 +211,5 @@ export const terrariaRuntimeAdapter: RuntimeAdapter<TerrariaLaunch> = {
   },
 
   roots: () => ({ ...TERRARIA_ROOTS }),
-  actions: TSHOCK_ACTIONS,
+  actions: TERRARIA_ACTIONS,
 };

@@ -96,7 +96,21 @@ function files(srv: ServerRef): ConfigFileDecl[] {
     });
   }
   if (tml) {
-    list.push({ id: 'tml-mods', label: { en: 'Enabled mods (Mods/enabled.json)', es: 'Mods activados (Mods/enabled.json)' }, root: 'data', rel: DATA.tmlEnabled, format: 'json', managedKeys: [], secretKeys: [], restartKeys: ALL });
+    list.push({
+      id: 'tml-mods',
+      label: { en: 'Enabled mods (Mods/enabled.json)', es: 'Mods activados (Mods/enabled.json)' },
+      root: 'data',
+      rel: DATA.tmlEnabled,
+      format: 'json',
+      managedKeys: [],
+      secretKeys: [],
+      restartKeys: ALL,
+      // MOD-03: the Mods page writes this list (the names of the enabled mods, in load order).
+      note: {
+        en: 'The Mods page writes this file whenever the enabled mods change: the names of the mods tModLoader loads, in order. Enable and disable mods there; an edit here is replaced at the next change on that page.',
+        es: 'La página de Mods escribe este archivo cada vez que cambian los mods activados: los nombres de los mods que carga tModLoader, en orden. Activá y desactivá mods ahí; una edición acá se reemplaza con el próximo cambio en esa página.',
+      },
+    });
   }
   return list;
 }
@@ -121,7 +135,7 @@ function roots(srv: ServerRef): EditableRoot[] {
   }
   if (srv.flavour === 'tmodloader') {
     // Where tModLoader keeps the settings of mods that have server-side ones (not seen with the mod measured).
-    out.push({ id: 'mod-configs', root: 'data', rel: 'ModConfigs', include: ['**/*.json'], exclude: [], label: { en: 'Mod settings', es: 'Ajustes de mods' } });
+    out.push({ id: 'mod-configs', root: 'data', rel: DATA.tmlModConfigs, include: ['**/*.json'], exclude: [], label: { en: 'Mod settings', es: 'Ajustes de mods' } });
   }
   return out;
 }

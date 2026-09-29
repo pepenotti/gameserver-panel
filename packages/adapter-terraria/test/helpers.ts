@@ -12,7 +12,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { InstallCtx } from '@gsp/adapter-api';
 import { afterAll } from 'vitest';
-import { extractArchive } from '@gsp/archive';
+import { open } from 'node:fs/promises';
+import { extractArchive, readZipDirectory } from '@gsp/archive';
 
 export const TOOLS = fileURLToPath(new URL('../../../tools/fake-terraria/', import.meta.url));
 export const FIXTURES = fileURLToPath(new URL('../../../fixtures/terraria/1.4.5.8/', import.meta.url));
@@ -77,15 +78,39 @@ export function testCtx(o: { env?: Record<string, string>; ports?: Record<string
     progress: () => undefined,
     fetch: get,
     async download(req) {
-      const res = await get(req.url);
+      // As the agent's: with `allowUrl`, each address (redirects too) is checked before it is asked; `maxBytes` caps the file.
+      let res: Response;
+      if (req.allowUrl) {
+        let u = new URL(req.url);
+        for (;;) {
+          if (!req.allowUrl(u)) throw Object.assign(new Error(`Refusing to download ${req.what} from ${u.origin}`), { code: 'download-refused' });
+          res = await fetch(u, { headers: { 'user-agent': 'gameserver-panel/test' }, redirect: 'manual' });
+          if (res.status < 300 || res.status > 399) break;
+          u = new URL(res.headers.get('location')!, u);
+        }
+      } else res = await get(req.url);
       if (!res.ok) throw new Error(`Could not download ${req.what}: HTTP ${res.status}`);
       const body = Buffer.from(await res.arrayBuffer());
+      if (req.maxBytes !== undefined && body.length > req.maxBytes) throw Object.assign(new Error(`${req.what} is more than the ${req.maxBytes} bytes allowed`), { code: 'download-too-large' });
       const bad = (req.size !== undefined && body.length !== req.size) || (req.sha256 !== undefined && createHash('sha256').update(body).digest('hex') !== req.sha256);
       if (bad) throw new Error(`The download of ${req.what} is not what was published`);
       mkdirSync(path.dirname(req.dest), { recursive: true });
       writeFileSync(req.dest, body);
     },
-    extract: extractArchive,
+    // The archive package's extraction; the agent checks `limits` first (from a zip's directory), as here.
+    async extract(req) {
+      if (req.limits?.bytes !== undefined && req.format === 'zip') {
+        const fh = await open(req.file, 'r');
+        try {
+          const list = await readZipDirectory(fh);
+          const bytes = list.reduce((n, e) => n + e.size, 0);
+          if (bytes > req.limits.bytes || (req.limits.entries !== undefined && list.length > req.limits.entries)) throw Object.assign(new Error('The archive is bigger than allowed'), { code: 'extract-too-large' });
+        } finally {
+          await fh.close();
+        }
+      }
+      return extractArchive(req);
+    },
     cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }),
   };
 }

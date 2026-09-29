@@ -845,8 +845,8 @@ export interface ModSource<M extends ModEntry = ModEntry> {
   scan(ctx: ServerCtx, id: string, gameVersion: string): Promise<M[] | null>;
   /**
    * The config values the enabled list (in load order) turns into; `entries`
-   * by mod id. A game whose mod list isn't key/values (tModLoader's JSON
-   * array of names) gives the whole file as `text`: it is written as it is,
+   * by mod id. A game whose mod list isn't key/values (a JSON array of mod
+   * names) gives the whole file as `text`: it is written as it is,
    * created when missing, and `values` only describe it (they may be empty).
    */
   toConfig(enabled: EnabledMod[], entries: ReadonlyMap<string, M>): { fileId: string; values: Record<string, Scalar>; text?: string };
@@ -854,9 +854,9 @@ export interface ModSource<M extends ModEntry = ModEntry> {
   fromConfig?(values: Record<string, Scalar>): { items: string[]; enabled: string[] };
   /**
    * Whether the game server fetches its items, and their updates, itself
-   * when it starts (Project Zomboid does, from the Workshop), so a restart
-   * applies an update. False: the game reads only what is on disk
-   * (tModLoader, run without Steam), so before every start the panel makes,
+   * when it starts (some Steam games do, from the Workshop), so a restart
+   * applies an update. False: the game reads only what is on disk (a game
+   * server run without Steam), so before every start the panel makes,
    * it downloads through the agent the enabled items missing on the server
    * or known to have a newer version at the source. Absent: true.
    */

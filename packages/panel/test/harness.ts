@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import type { ModSource, PanelAdapter } from '@gsp/adapter-api';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
+import { createTmlWorkshopSource } from '@gsp/adapter-terraria/panel';
 import { ORCHESTRATOR_API_VERSION, type AgentStatus, type ApplyOptions, type CpuArch, type DerivationState, type GrantRole, type PortRangeInfo, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
@@ -303,7 +304,7 @@ if (process.env.VITEST) {
 
 export async function makePanel(
   envOver: Partial<PanelEnv> = {},
-  opts: { mods?: ModSource[]; fetch?: typeof fetch; db?: Db; orch?: FakeOrchestrator; adapters?: readonly PanelAdapter[]; downloads?: { fetch?: typeof fetch; env?: Record<string, string | undefined> } } = {},
+  opts: { mods?: ModSource[] | Record<string, ModSource[]>; fetch?: typeof fetch; db?: Db; orch?: FakeOrchestrator; adapters?: readonly PanelAdapter[]; downloads?: { fetch?: typeof fetch; env?: Record<string, string | undefined> } } = {},
 ): Promise<TestPanel> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'gsp-panel-'));
   made.push(tmp);
@@ -352,7 +353,8 @@ export async function makePanel(
     fetch: opts.fetch ?? noNetwork,
     // The games' download services only when a test brings its fakes.
     downloads: opts.downloads ?? { fetch: noNetwork, env: {} },
-    mods: opts.mods ?? [createWorkshopSource({ fetch: noNetwork })],
+    // Each game's Workshop source without the network (a list given applies to every game).
+    mods: opts.mods ?? { pz: [createWorkshopSource({ fetch: noNetwork })], terraria: [createTmlWorkshopSource({ fetch: noNetwork })] },
     orchestrator: orch,
     adapters: opts.adapters,
     // Fake agents for orchestrator-run servers; every server's files (its agent's, in production) on the test's

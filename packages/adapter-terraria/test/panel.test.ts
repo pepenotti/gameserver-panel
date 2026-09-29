@@ -443,22 +443,22 @@ describe('messages to players (CON-03, CON-04)', () => {
 describe('backups and resets (BAK-01…04)', () => {
   const paths = (f: Flavour) => Object.fromEntries(adapter.backups.parts.map((p) => [p.id, p.paths(srv(f))]));
 
-  it('copies the world without the game’s own .bak files, the settings, and TShock’s database through SQLite', () => {
-    expect(paths('vanilla')).toEqual({ world: ['Worlds/friends.wld'], settings: ['serverconfig.txt', 'banlist.txt'], database: [] });
-    expect(paths('tmodloader')).toEqual({ world: ['Worlds/friends.wld', 'Worlds/friends.twld'], settings: ['serverconfig.txt', 'banlist.txt', 'Mods/enabled.json'], database: [] });
-    expect(paths('tshock')).toMatchObject({ world: ['Worlds/friends.wld'], database: [DATA.tshockDb] });
+  it('copies the world without the game’s own .bak files, the settings, TShock’s database through SQLite and its plugins, tModLoader’s mod list (MOD-03, MOD-06)', () => {
+    expect(paths('vanilla')).toEqual({ world: ['Worlds/friends.wld'], settings: ['serverconfig.txt', 'banlist.txt'], database: [], plugins: [], mods: [] });
+    expect(paths('tmodloader')).toEqual({ world: ['Worlds/friends.wld', 'Worlds/friends.twld'], settings: ['serverconfig.txt', 'banlist.txt'], database: [], plugins: [], mods: ['Mods/enabled.json', 'ModConfigs'] });
+    expect(paths('tshock')).toMatchObject({ world: ['Worlds/friends.wld'], database: [DATA.tshockDb], plugins: ['tshock/plugins'], mods: [] });
     expect(paths('tshock').settings).toEqual(expect.arrayContaining([DATA.tshockConfig, DATA.tshockSetupLock, 'tshock/whitelist.txt']));
     expect(adapter.backups.parts.find((p) => p.id === 'database')!.sqlite).toEqual([DATA.tshockDb]);
-    // Never the Workshop cache, logs, or tModLoader's own world zips.
+    // Never the Workshop cache, logs, tModLoader's own world zips, or uploads on their way in.
     const all = FLAVOURS.flatMap((f) => Object.values(paths(f)).flat());
-    for (const p of all) expect(p).not.toMatch(/^(\.workshop|Worlds\/Backups|tshock\/logs)|ServerLog|\.bak/);
+    for (const p of all) expect(p).not.toMatch(/^(\.workshop|\.gsp-uploads|Worlds\/Backups|tshock\/logs)|ServerLog|\.bak/);
   });
 
-  it('resets the world for every flavour, TShock’s players too, or everything', async () => {
+  it('resets the world for every flavour, TShock’s players too, or everything, plugins and the mod list included', async () => {
     expect(adapter.resets.map((r) => [r.id, r.permission, r.removeParts, r.flavours ?? null])).toEqual([
       ['world', 'reset.world', ['world'], null],
       ['players', 'reset.full', ['world', 'database'], ['tshock']],
-      ['factory', 'reset.factory', ['world', 'settings', 'database'], null],
+      ['factory', 'reset.factory', ['world', 'settings', 'database', 'plugins', 'mods'], null],
     ]);
     // A new seed: a fresh random one in serverconfig.txt; otherwise the one set stays.
     const ctx = ctxFor('vanilla');

@@ -211,7 +211,7 @@ async function join(id: string, name: string): Promise<void> {
 const FLAVOURS = [
   { flavour: 'vanilla', version: '1.4.5.8', parts: ['world', 'settings'], saved: 'Backing up world file' },
   { flavour: 'tshock', version: '1.4.5.8', parts: ['world', 'settings', 'database'], saved: 'Backing up world file' },
-  { flavour: 'tmodloader', version: '1.4.4.9', parts: ['world', 'settings'], saved: 'Saving modded world data' },
+  { flavour: 'tmodloader', version: '1.4.4.9', parts: ['world', 'settings', 'mods'], saved: 'Saving modded world data' },
 ] as const;
 
 describe('Terraria end to end, through the fake orchestrator and the fake server (M5)', () => {

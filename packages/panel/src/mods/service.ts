@@ -58,7 +58,7 @@ export interface ModsDeps {
   settings: KeyValueSettings;
   config: ConfigStore;
   server: ServerHandle;
-  /** The adapter's mod sources; the first one serves the (single) mod list until servers can have several. */
+  /** The server's mod sources (those its flavour has the capability of); the first one serves the (single) mod list until servers can have several. */
   sources: readonly ModSource[];
 }
 
@@ -101,6 +101,11 @@ export class ModsService {
 
   get available(): boolean {
     return this.d.sources.length > 0;
+  }
+
+  /** The server's mod sources (the first one serves its mod list). */
+  get sources(): readonly ModSource[] {
+    return this.d.sources;
   }
 
   private get serverId(): string {
@@ -260,8 +265,8 @@ export class ModsService {
     return this.writeConfig(by);
   }
 
-  /** The config file and values the enabled list turns into (the source decides both). */
-  configValues(): { fileId: string; values: Record<string, Scalar> } {
+  /** The config file and values the enabled list turns into (the source decides both), or the whole file for a list that isn't key/values. */
+  configValues(): { fileId: string; values: Record<string, Scalar>; text?: string } {
     const known = this.knownMods();
     const entries = new Map([...known].map(([id, k]) => [id, k.mod]));
     const enabled: SourceEnabledMod[] = this.enabled().map((e) => ({ modId: e.modId, itemId: e.workshopId }));
@@ -270,9 +275,10 @@ export class ModsService {
 
   /** Write the list into the source's config file (first-run files are created first); a running server needs a restart. */
   private async writeConfig(by: string | null): Promise<{ restartNeeded: boolean }> {
-    const { fileId, values } = this.configValues();
+    const { fileId, values, text } = this.configValues();
     await this.d.config.seedIfMissing();
-    await this.d.config.setDirect(fileId, values, by, 'mod list');
+    if (text !== undefined) await this.d.config.writeDirect(fileId, text, by, 'mod list');
+    else await this.d.config.setDirect(fileId, values, by, 'mod list');
     const running = ['running', 'starting'].includes(this.d.feed.status_?.state ?? '');
     if (running) this.d.config.markPendingPublic(['Mods']);
     return { restartNeeded: running };
@@ -299,6 +305,36 @@ export class ModsService {
       'mods.enabled',
       enabled.filter((m) => known.has(m)).map((m) => ({ modId: m, workshopId: known.get(m)!.workshopId })),
     );
+  }
+
+  /**
+   * Before every start the panel makes. A source whose game server fetches
+   * its items itself needs nothing. One whose game reads only what is on
+   * disk (`serverFetches: false`) gets the
+   * enabled items that are missing on the server, or known to have a newer
+   * version at the source (the last update check), downloaded through the
+   * agent first: an update policy's restart then applies them, and a server
+   * restored onto an empty volume gets its mods back. A failure doesn't hold
+   * the start up; the item keeps its error and the Mods page says what is
+   * missing.
+   */
+  async beforeStart(by: string | null = null): Promise<void> {
+    const source = this.d.sources[0];
+    if (!source || source.serverFetches !== false) return;
+    const enabled = new Set(this.enabled().map((e) => e.workshopId));
+    if (enabled.size === 0) return;
+    const ctx = this.d.server.ctx(by);
+    const version = this.gameVersion();
+    const ids: string[] = [];
+    for (const r of this.rows()) {
+      if (!enabled.has(r.item_id)) continue;
+      const updated = r.scanned_updated > 0 && r.time_updated > r.scanned_updated;
+      if (updated || (await source.scan(ctx, r.item_id, version).catch(() => null)) === null) ids.push(r.item_id);
+    }
+    if (ids.length === 0) return;
+    const r = await source.download(ctx, ids).catch((e: unknown) => ({ ok: false, error: (e as Error).message }));
+    if (r.ok) return this.rescan(ids).catch(() => undefined);
+    for (const id of ids) this.d.db.prepare('UPDATE server_mods SET error = ? WHERE server_id = ? AND source = ? AND item_id = ?').run(r.error ?? 'download failed', this.serverId, source.id, id);
   }
 
   // ------------------------------------------------------------- health
