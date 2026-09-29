@@ -15,7 +15,8 @@ export interface Backend {
   /**
    * Create or recreate (volumes kept); never starts the container. A
    * container that matches the spec is recreated only for a newer runtime
-   * image, and not even then with `keepImage`.
+   * image (not with `keepImage`), or when this release derives it
+   * differently (not with `keepDerivation`, unless for a security fix).
    */
   apply(spec: ServerSpec, o?: ApplyOptions): Promise<ServerContainer>;
   start(id: string): Promise<ServerContainer>;
