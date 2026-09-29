@@ -255,7 +255,8 @@ export interface ExtractRequest {
    * For archives people bring (a plugin upload): the whole archive is
    * refused before anything is written when its entries add up to more
    * than `bytes` unpacked, or number more than `entries` (a zip's directory
-   * says both; a tar's size bounds its bytes). Not for gzipped tars.
+   * says both; a tar's size bounds its bytes), with an error whose `code`
+   * is `extract-too-large`. Not for gzipped tars.
    */
   limits?: { bytes?: number; entries?: number };
 }
@@ -905,9 +906,10 @@ export interface PluginFile {
   name: string;
   enabled: boolean;
   /**
-   * The game loaded this very file at its last start (the one enabled now,
-   * unchanged since). False for a plugin added, replaced, enabled or
-   * disabled since then: a restart is needed for it (MOD-06's badge).
+   * The server runs with this very file: it was put in place for the
+   * game's last start and hasn't changed since, whatever `enabled` says
+   * now. A plugin whose `active` differs from `enabled` (added, replaced,
+   * enabled or disabled since) waits for a restart: MOD-06's badge.
    */
   active: boolean;
   size: number;

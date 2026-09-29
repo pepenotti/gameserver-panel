@@ -370,7 +370,9 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
             expect(await m.setEnabled(ctx, bad, true), `${m.id} setEnabled(${JSON.stringify(bad)})`).toMatchObject({ ok: false, reason: 'bad-name' });
             expect(await m.remove(ctx, bad), `${m.id} remove(${JSON.stringify(bad)})`).toMatchObject({ ok: false, reason: 'bad-name' });
           }
-          expect(await m.add(ctx, { url: 'http://example.com/a.dll' }), `${m.id} add of a junk link`).toMatchObject({ ok: false });
+          // (Which hosts are allowed is `checkLink`'s, asked first with the panel's environment; the agent asks again.)
+          expect(await m.add(ctx, { url: 'not a link' }), `${m.id} add of a junk link`).toMatchObject({ ok: false });
+          expect(await m.add(ctx, { url: 'javascript:alert(1)' }), `${m.id} add of a script link`).toMatchObject({ ok: false });
           expect(await m.add(ctx, { upload: '../escape.dll', name: 'escape.dll' }), `${m.id} add of an upload outside its folder`).toMatchObject({ ok: false });
           expect(ctx.actions, `${m.id} reached the server`).toEqual([]);
           // A server that answers nothing did nothing.

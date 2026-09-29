@@ -195,8 +195,9 @@ async function checkLimits(req: ExtractRequest): Promise<void> {
     // A tar holds its files uncompressed: its size bounds what it unpacks to.
     bytes = (await stat(req.file)).size;
   }
-  if (l.bytes !== undefined && bytes > l.bytes) throw new Error(`The archive unpacks to ${bytes} bytes, more than the ${l.bytes} allowed`);
-  if (l.entries !== undefined && entries !== null && entries > l.entries) throw new Error(`The archive has ${entries} entries, more than the ${l.entries} allowed`);
+  const tooLarge = (message: string) => Object.assign(new Error(message), { code: 'extract-too-large' });
+  if (l.bytes !== undefined && bytes > l.bytes) throw tooLarge(`The archive unpacks to ${bytes} bytes, more than the ${l.bytes} allowed`);
+  if (l.entries !== undefined && entries !== null && entries > l.entries) throw tooLarge(`The archive has ${entries} entries, more than the ${l.entries} allowed`);
 }
 
 /**
