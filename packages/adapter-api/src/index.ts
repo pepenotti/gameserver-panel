@@ -360,6 +360,14 @@ export interface RuntimeAdapter<P = unknown> {
   prepare(ctx: RuntimeCtx, p: P): Promise<void>;
   command(ctx: RuntimeCtx, p: P): LaunchCommand;
   classify(line: string): LineSignal;
+  /**
+   * What people see of the game's output (CON-01, CON-02): a log line or a
+   * control-channel reply without the game's own formatting codes
+   * (Minecraft's `§` colour codes). The agent shows and serves only this,
+   * redacted; `classify` and the adapter's own commands get the raw text.
+   * Absent: shown as it is.
+   */
+  display?(text: string): string;
   channel(ctx: RuntimeCtx, p: P): ChannelSpec;
   /** Ask the game to stop cleanly; the agent waits `budgetMs` for the exit, then escalates to signals. */
   stop(ctl: ControlHandle, o: { budgetMs: number }): Promise<void>;

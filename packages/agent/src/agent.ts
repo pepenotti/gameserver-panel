@@ -492,8 +492,23 @@ export class Agent {
     void run.exited.then((exit) => this.onExit(run, exit));
   }
 
+  /**
+   * The game's text as people see it (CON-01, CON-02): the adapter's
+   * `display` (its formatting codes out), then redacted. A `display` that
+   * throws leaves the text as it is.
+   */
+  private shown(text: string): string {
+    let out = text;
+    try {
+      out = this.adapter.display?.(text) ?? text;
+    } catch {
+      // The raw text, still redacted.
+    }
+    return this.redact(out);
+  }
+
   private onGameLine(run: GameRun, raw: string, stream: 'out' | 'err', sig: LineSignal): void {
-    const line = this.redact(raw);
+    const line = this.shown(raw);
     this.hub.emit({ type: 'log', stream, line });
     if (sig.version && sig.version !== this.store.get().gameVersion) {
       this.store.update({ gameVersion: sig.version });
@@ -673,7 +688,8 @@ export class Agent {
     const v: CommandVia | undefined = via === 'stdin' || !running ? 'stdin' : via === 'rcon' ? 'channel' : undefined;
     try {
       const output = await run.command(c, v);
-      return { via: output === null ? 'stdin' : 'rcon', output };
+      // The reply as people see it, like the log (the panel shows it, and its adapter code reads it).
+      return { via: output === null ? 'stdin' : 'rcon', output: output === null ? null : this.shown(output) };
     } catch (e) {
       throw new AgentError('unavailable', (e as Error).message);
     }
