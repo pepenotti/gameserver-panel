@@ -324,6 +324,16 @@ export interface LineSignal {
   leave?: string;
   /** A save finished. */
   saved?: boolean;
+  /**
+   * The line is one step of a run of progress lines (a world being generated
+   * can print a percentage per step: tens of thousands of lines). The live
+   * log shows a run as its latest line (CON-01): each line of the same `key`
+   * replaces the one before it in place, until the game prints a line that
+   * is not progress (blank lines aside) or exits; lines of other keys run
+   * alongside. `text`: what the log shows instead of the line. Everything
+   * else about the line still counts (readiness, fatal lines, `waitForLine`).
+   */
+  progress?: { key: string; text?: string };
 }
 
 export type ChannelSpec =
@@ -425,6 +435,15 @@ export interface RuntimeAdapter<P = unknown> {
    * Null when the reply wasn't understood. The agent also passes the
    * server's context and launch params, for an adapter that asks some
    * flavours another way than its channel (TShock's REST API).
+   *
+   * The agent asks on its own, every few seconds, through a quiet `ctl`
+   * (PLY-01): a line it writes to the console, and the reply the adapter
+   * waits for with `waitForLine` or `waitForLines` (registered before the
+   * line is written), stay out of the live log. A reply line with a meaning
+   * (any `LineSignal` field besides `message`) is still shown, and so is
+   * every line of a reply that never completed. People's console commands
+   * never share that reply: the agent holds them until it is complete, and
+   * doesn't ask while a person's command may still be answering.
    */
   listPlayers?(ctl: ControlHandle, ctx?: RuntimeCtx, p?: P): Promise<PlayerList | null>;
   /** Default roots (absolute, in-container); the agent may relocate them (see `RuntimeCtx.roots`). */

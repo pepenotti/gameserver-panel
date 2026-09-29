@@ -106,7 +106,18 @@ export type AlertKind =
 
 export type AgentEvent =
   | { type: 'state'; status: AgentStatus }
-  | { type: 'log'; stream: 'out' | 'err' | 'agent'; line: string }
+  | {
+      type: 'log';
+      stream: 'out' | 'err' | 'agent';
+      line: string;
+      /**
+       * A run of progress lines (a runtime adapter's `LineSignal.progress`,
+       * CON-01): the seq of the run's first line. A later log event of the
+       * same `run` (a new seq: the run's latest line) replaces this one where
+       * it is shown, and in the agent's backlog. Absent on ordinary lines.
+       */
+      run?: number;
+    }
   | { type: 'players'; count: number; names: string[] }
   | { type: 'job'; job: JobInfo; result?: JobResult }
   | { type: 'alert'; kind: AlertKind; message: string };
