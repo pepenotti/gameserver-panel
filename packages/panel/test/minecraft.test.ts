@@ -243,6 +243,31 @@ describe('Minecraft config files through the API (CFG-04, CFG-05, D6)', () => {
     expect(readFileSync(path.join(data, 'eula.txt'), 'utf8')).toMatch(/^eula=false$/m);
   });
 
+  it('refuses lists the game could not load, a whitelist of bare names first, and says to use the Players page (CFG-02, CFG-08)', async () => {
+    const { owner, data, propose } = await withFiles();
+    const listed = fixture('vanilla', 'files', 'whitelist.json');
+    writeFileSync(path.join(data, 'whitelist.json'), listed);
+    writeFileSync(path.join(data, 'banned-ips.json'), '[]');
+    // What the owner saved in the acceptance run: the game would run with an empty whitelist.
+    for (const fileId of ['whitelist', 'path:data/whitelist.json']) {
+      const r = await propose(fileId, { text: '["gspffAlice"]' });
+      expect(r.statusCode, fileId).toBe(400);
+      expect(r.json()).toEqual({
+        error: 'invalid-file',
+        issues: [{ line: 1, col: 2, message: expect.stringMatching(/Players page/), localized: { en: expect.stringMatching(/Players page/), es: expect.stringMatching(/página Jugadores/) } }],
+      });
+    }
+    expect(readFileSync(path.join(data, 'whitelist.json'), 'utf8')).toBe(listed);
+    expect((await propose('ops', { text: '[{"name": "gspffAlice", "level": 4}]' })).json()).toMatchObject({ error: 'invalid-file', issues: [{ line: 1 }] });
+    expect((await propose('banned-ips', { text: '[{"ip": "gspffAlice"}]' })).json()).toMatchObject({ error: 'invalid-file' });
+    // A list as the game writes it is taken.
+    expect((await propose('whitelist', { text: fixture('paper', 'files', 'whitelist.json') })).statusCode).toBe(200);
+    // One already broken on disk opens with what is wrong with it.
+    writeFileSync(path.join(data, 'whitelist.json'), '[\n  "gspffAlice"\n]');
+    const content = (await owner.get('/api/servers/mc-vanilla/config/files/content?id=whitelist')).json() as { issues: { line: number; localized?: unknown }[] };
+    expect(content.issues).toEqual([expect.objectContaining({ line: 2, col: 3, localized: expect.objectContaining({ es: expect.stringMatching(/entrada 1/) }) })]);
+  });
+
   it('checks the difficulty and game mode against their words (CFG-01)', async () => {
     const { data, propose } = await withFiles();
     expect((await propose('properties', { changes: { difficulty: 'hard', gamemode: 'creative' } })).statusCode).toBe(200);

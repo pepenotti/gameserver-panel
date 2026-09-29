@@ -272,6 +272,23 @@ describe('config files and editable folders (CFG-02, CFG-05, CFG-07, CFG-08, D6)
     expect(c.commands).toEqual(['whitelist reload']);
   });
 
+  it('says so when the game could not read the whitelist it was told to reload (CFG-02, CFG-05)', async () => {
+    for (const header of ['[19:32:53] [Server thread/WARN]:', '[19:43:29 WARN]:']) {
+      const listeners = new Set<(l: string) => void>();
+      const c = ctxFor('vanilla', {}, (cmd) => {
+        // The game logs the failure (the exception's message on a line of its own), then answers.
+        for (const l of [`${header} Failed to load white-list: `, 'com.google.gson.JsonSyntaxException: Expected entry to be a JsonObject', `${header} Reloaded the whitelist`]) for (const f of listeners) f(l);
+        return cmd === 'whitelist reload' ? 'Reloaded the whitelist' : '';
+      });
+      c.onLog = (f) => (listeners.add(f), () => listeners.delete(f));
+      expect(await minecraftPanelAdapter.config.afterWrite!(c, 'whitelist', [])).toEqual({
+        applied: 'live',
+        warnings: ['Failed to load white-list: com.google.gson.JsonSyntaxException: Expected entry to be a JsonObject'],
+      });
+      expect(listeners.size).toBe(0);
+    }
+  });
+
   it('has game-mode and difficulty presets the form accepts (CFG-06)', async () => {
     const p = minecraftPanelAdapter.config.presets!;
     expect(p.fileId).toBe('properties');
@@ -285,6 +302,64 @@ describe('config files and editable folders (CFG-02, CFG-05, CFG-07, CFG-08, D6)
       }
     }
     await expect(p.load(c, 'constructor')).rejects.toThrow(/Unknown preset/);
+  });
+});
+
+describe('the game’s lists, only as it can load them (CFG-02, CFG-08)', () => {
+  const check = (id: string, text: string) => minecraftPanelAdapter.config.files(srv('vanilla')).find((f) => f.id === id)!.check!(text);
+  const LISTS = { whitelist: 'whitelist.json', ops: 'ops.json', 'banned-players': 'banned-players.json', 'banned-ips': 'banned-ips.json' } as const;
+
+  it('takes every list the three loaders wrote, and an empty one', () => {
+    for (const l of LOADERS) {
+      for (const [id, file] of Object.entries(LISTS)) {
+        expect(check(id, fixture(l, 'files', file)), `${l} ${file}`).toEqual([]);
+        expect(check(id, '[]')).toEqual([]);
+      }
+    }
+  });
+
+  it('refuses a whitelist of bare names, as the owner saved one, and says to use the Players page', () => {
+    const issues = check('whitelist', '["gspffAlice"]');
+    expect(issues).toEqual([{ line: 1, col: 2, message: { en: expect.any(String), es: expect.any(String) } }]);
+    expect(issues[0]!.message.en).toMatch(/^The game can’t load entry 1: each entry is an object with the player’s "uuid" and "name".*Players page.*look up each player’s id/);
+    expect(issues[0]!.message.es).toMatch(/entrada 1.*página Jugadores/);
+    // One issue per entry, where it is.
+    expect(check('whitelist', '[\n  {"uuid": "ffcc114b-0550-393e-a2da-7e8930eb7054", "name": "gspffAlice"},\n  "gspffBob",\n  {"name": "gspffCarol"}\n]').map((i) => [i.line, i.col])).toEqual([
+      [3, 3],
+      [4, 3],
+    ]);
+  });
+
+  it('wants what the game writes in each entry', () => {
+    const alice = { uuid: 'ffcc114b-0550-393e-a2da-7e8930eb7054', name: 'gspffAlice' };
+    const one = (id: string, entry: unknown) => check(id, JSON.stringify([entry])).length;
+    // The whitelist: a player's id and name.
+    expect(one('whitelist', alice)).toBe(0);
+    expect(one('whitelist', { ...alice, uuid: 'not-an-id' })).toBe(1);
+    expect(one('whitelist', { uuid: alice.uuid })).toBe(1);
+    expect(one('whitelist', { ...alice, name: 7 })).toBe(1);
+    expect(one('whitelist', { ...alice, name: ' ' })).toBe(1);
+    // Operators: a level the game reads, and a true or false.
+    expect(one('ops', { ...alice, level: 4, bypassesPlayerLimit: false })).toBe(0);
+    expect(one('ops', { ...alice, level: 4 })).toBe(0);
+    expect(one('ops', alice)).toBe(1);
+    expect(one('ops', { ...alice, level: 5 })).toBe(1);
+    expect(one('ops', { ...alice, level: '4' })).toBe(1);
+    expect(one('ops', { ...alice, level: 4, bypassesPlayerLimit: 'no' })).toBe(1);
+    // Bans: a player's id and name, or an address; what the game adds is text.
+    expect(one('banned-players', { ...alice, created: '2026-09-25 19:47:43 +0000', source: 'Rcon', expires: 'forever', reason: 'griefing' })).toBe(0);
+    expect(one('banned-players', alice)).toBe(0);
+    expect(one('banned-players', { ...alice, reason: null })).toBe(1);
+    expect(one('banned-players', { name: 'gspffAlice' })).toBe(1);
+    expect(one('banned-ips', { ip: '203.0.113.7', reason: 'spam' })).toBe(0);
+    expect(one('banned-ips', { ip: '2001:db8::1' })).toBe(0);
+    expect(one('banned-ips', { ip: 'gspffAlice' })).toBe(1);
+    expect(one('banned-ips', alice)).toBe(1);
+    for (const id of Object.keys(LISTS)) {
+      const top = check(id, '{"uuid": "x"}');
+      expect(top, id).toHaveLength(1);
+      expect(top[0]!.message.en).toMatch(/^The game expects a list here/);
+    }
   });
 });
 

@@ -57,6 +57,12 @@ export const MC_PATTERNS = {
   wrongJava: /UnsupportedClassVersionError/,
   badJar: /^Error: (?:Invalid or corrupt jarfile|Unable to access jarfile) /,
   fabricNoGameJar: /^The Minecraft server \.JAR is missing /,
+  /**
+   * The game couldn't read its whitelist (a WARN; it runs on with an empty
+   * one): seen at a start in the owner's acceptance run, after a whitelist
+   * of bare names, with "Expected entry to be a JsonObject" in its exception.
+   */
+  whitelistLoadFailed: /^Failed to load white-list\b/,
   /** `list` (trimmed): `There are 2 of a max of 20 players online: a, b`; nothing after the colon when empty. */
   list: /^There are (\d+) of a max of \d+ players online:(.*)$/s,
 } as const;
