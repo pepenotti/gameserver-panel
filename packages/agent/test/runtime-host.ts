@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { InstallCtx, LineSignal, RuntimeAdapter } from '@gsp/adapter-api';
 import type { LiveGame, RuntimeHost } from '@gsp/adapter-api/testing/runtime-suite';
 import { GameRun } from '../src/game';
-import { makeDownload, makeExec, makeFetch } from '../src/install-tools';
+import { makeDownload, makeExec, makeExtract, makeFetch } from '../src/install-tools';
 import { SteamcmdDriver } from '../src/steamcmd';
 import { freePort } from './helpers';
 
@@ -19,6 +19,8 @@ export interface AgentHostOptions {
   env?: Record<string, string>;
   /** The owner accepted the game's agreement (D6), as a panel's launch would say. */
   eulaAccepted?: boolean;
+  /** The server's flavour (`GAME_FLAVOUR`): its own image family, when it names one, picks the install tools. */
+  flavour?: string;
 }
 
 /**
@@ -30,7 +32,8 @@ export interface AgentHostOptions {
 export function agentHost(tools: { launcher: string[]; steamcmd: string[] }, o: AgentHostOptions = {}): RuntimeHost {
   const dirs: string[] = [];
   const runs: GameRun[] = [];
-  const env = () => ({ ...baseEnv(), ...o.env });
+  // A server's container carries its flavour in its environment, as the agent's does.
+  const env = () => ({ ...baseEnv(), ...(o.flavour ? { GAME_FLAVOUR: o.flavour } : {}), ...o.env });
   return {
     async context(adapter: RuntimeAdapter): Promise<InstallCtx> {
       const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-contract-'));
@@ -56,11 +59,12 @@ export function agentHost(tools: { launcher: string[]; steamcmd: string[] }, o: 
         onLine: noop,
         progress: noop,
         steam:
-          adapter.meta.runtime === 'steam'
+          (adapter.meta.flavours.find((f) => f.id === o.flavour)?.runtime ?? adapter.meta.runtime) === 'steam'
             ? new SteamcmdDriver({ steamcmd: tools.steamcmd, home, installDir: roots.install, workshopDir: path.join(roots.data, '.workshop') })
             : undefined,
         fetch: get,
         download: makeDownload({ fetch: get }),
+        extract: makeExtract(() => [roots.install, roots.data]),
         exec: makeExec({ env: env(), onLine: noop, cwd: roots.install }),
       };
     },

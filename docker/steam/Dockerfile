@@ -7,6 +7,10 @@
 #   /opt/game   the game install                         <stack>-srv-<id>-install
 #   /home/node  steamcmd and its state                   <stack>-srv-<id>-steam (seeded from this image)
 # The game adapter (GAME_ADAPTER) and its settings come from the server's spec.
+# tModLoader (a Terraria flavour that runs here, PRD §10) comes from GitHub,
+# not Steam, and runs on Microsoft's .NET 8 runtime with ICU; steamcmd fetches
+# its Workshop mods. It writes its logs into its install folder, which is the
+# server's install volume (/opt/game), so the read-only root is not touched.
 #
 # Targets:
 #   runtime  gsp/steam       Valve's steamcmd (the default)
@@ -18,6 +22,9 @@
 #   node scripts/stack.mjs build steam steam-fake        (a development worktree)
 # The agent's file and archive routes need nothing beyond Node 24: tar is
 # JavaScript, zstd is node:zlib, SQLite snapshots are node:sqlite.
+
+# Microsoft's .NET 8 runtime, copied whole into the base below (tModLoader: net8.0, run as `dotnet tModLoader.dll`).
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS dotnet8
 
 FROM node:24-trixie-slim AS build
 WORKDIR /src
@@ -34,13 +41,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     HOME=/home/node \
     GAME_INSTALL_DIR=/opt/game \
-    GAME_DATA_DIR=/data
-# steamcmd is 32-bit: it needs the multilib gcc/stdc++ runtimes.
+    GAME_DATA_DIR=/data \
+    DOTNET_ROOT=/usr/share/dotnet \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1
+# steamcmd is 32-bit: it needs the multilib gcc/stdc++ runtimes. libicu is
+# .NET's globalization, for tModLoader.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl lib32gcc-s1 lib32stdc++6 tini procps tzdata \
+ && apt-get install -y --no-install-recommends ca-certificates curl lib32gcc-s1 lib32stdc++6 tini procps tzdata libicu76 \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /opt/game /data /app \
  && chown -R node:node /opt/game /data /home/node /app
+COPY --from=dotnet8 /usr/share/dotnet /usr/share/dotnet
 COPY --from=build --chown=node:node /src/packages/agent/dist/ /app/
 COPY --chown=node:node tools/agentctl.mjs /app/agentctl.mjs
 USER node
@@ -54,6 +65,7 @@ CMD ["node", "/app/agent.mjs"]
 FROM base AS fake
 COPY --chown=node:node tools/fake-orchestrator/fake-game.mjs /app/fake/fake-orchestrator/fake-game.mjs
 COPY --chown=node:node tools/fake-pz/ /app/fake/fake-pz/
+COPY --chown=node:node tools/fake-terraria/ /app/fake/fake-terraria/
 ENV STEAMCMD_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","steamcmd"]' \
     GAME_START_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","server"]'
 

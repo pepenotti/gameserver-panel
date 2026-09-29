@@ -274,3 +274,59 @@ Every key takes effect at the next start (`restartKeys: '*'`) except what TShock
 - A real TShock plugin loading and failing; a tModLoader mod with server-side ModConfigs.
 - arm64 hosts (TShock publishes arm64 builds; vanilla has none; tModLoader says it has none).
 - Real client addresses on a Linux host (Docker Engine keeps them; Docker Desktop doesn't).
+
+## Runtime adapter check — 2026-09-29 (M5 phase 2)
+
+**Setup.** The product's own pieces this time: the Terraria runtime adapter in the agent (0.3.7),
+in the runtime images built from this branch with `node scripts/stack.mjs build native steam`:
+`gsp/native` (511 MB: .NET 9.0.20 copied from `mcr.microsoft.com/dotnet/runtime:9.0`, `libicu76`)
+for vanilla and TShock, `gsp/steam` (852 MB: .NET 8.0.31 from `…/runtime:8.0`, `libicu76`) for
+tModLoader. One server at a time, in a `docker run --rm` hardened as the orchestrator does it: user
+1000:1000, read-only root, a 256 MB `/tmp` tmpfs (exec), all capabilities dropped,
+`no-new-privileges`, 3 GiB memory (no swap), 4096 pids, named volumes for `/data` and `/opt/game`,
+only the game port published (127.0.0.1:30550–30552 → 7777); `GAME_ADAPTER=terraria` and
+`GAME_FLAVOUR=<flavour>` as a server's spec sets them. The agent was driven through its HTTP API,
+from inside the container, with its token: `PUT /v1/launch` (world `check`, size 1, 8 players, a
+password, 2048 MiB; the measured version of each flavour pinned), `POST /v1/versions`,
+`/v1/install`, `/v1/start`, `GET /v1/status`, `POST /v1/command version`, the players poll,
+TShock's REST actions, `/v1/save`, a hot backup through `POST /v1/archive/pack` (the world folder
+and the flavour's config files, while running), `/v1/stop`. Everything was removed afterwards.
+
+| | vanilla | TShock | tModLoader |
+|---|---|---|---|
+| `versions()` | 20 versions, newest `1.4.5.8` (terraria.org's name API plus the measured list), 0.8 s | 18 releases with a Linux x86-64 build, newest `v6.2.1` "for Terraria 1.4.5.8", pre-releases flagged, 1.8 s | 93 stable and preview releases, newest preview `v2026.08.2.2`, newest stable `v2026.07.3.0`, 1.7 s |
+| Install | 5.1 s: terraria.org's zip checked against the pinned size and SHA-256 (`verified: true`), only `1458/Linux/` unpacked, `TerrariaServer.bin.x86_64` made 0755 | 4.9 s: the `linux-x64` zip checked against GitHub's digest, its tar unpacked, `TShock.Server` 0755 as the tar says | 9.5 s: `tModLoader.zip` checked against GitHub's digest |
+| GitHub calls | — | one list call served `versions()` and the install (cached) | the same |
+| Start → `running` (a new small world) | 37.6 s | 93.8 s | 35.4 s |
+| `installedInfo` | `1.4.5.8`, channel `vanilla` | `1.4.5.8`, channel `tshock`, build `v6.2.1` | `1.4.4.9` (from the game's line), channel `tmodloader`, build `v2026.07.3.0` |
+| Control | stdin | stdin (players and moderation over REST) | stdin |
+| `version` on the console | `Terraria Server v1.4.5.8` | `TShock: 6.2.1.0 Profoundly Collaborative (3.11).` | `Terraria Server v1.4.4.9 - tModLoader v2026.7.3.0` |
+| Players poll | `playing` → `No players connected.` → count 0 | REST `/v2/players/list` → count 0, nothing typed on the console | `playing` → count 0 |
+| Memory idle (`docker stats`) | 641 MiB | 350 MiB | 1012 MiB |
+| `POST /v1/save` | ok, 0.66 s | ok, 0.69 s | ok, 0.58 s |
+| Hot backup (`/v1/archive/pack`, running) | 8.9 MB tar in 0.8 s: `Worlds/check.wld` (+ the game's `.bak`, `.bak2`), `serverconfig.txt` | 9.1 MB in 0.8 s, with `tshock/` and `tshock.sqlite` snapshotted through SQLite | 8.8 MB in 1.4 s, with `check.twld` and `Mods/enabled.json` |
+| `POST /v1/stop` (`exit`) | 1.1 s, exit 0, expected | 1.1 s, exit 0 | 1.6 s, exit 0 |
+| Game process | the binary, working directory `/data` | the app host, working directory `/data`, bundle in `/tmp` | `dotnet tModLoader.dll`, working directory its install folder |
+| Writes outside the volumes and `/tmp` (`docker diff`) | none | none | none (its logs went to `/opt/game/tmodloader-v2026.07.3.0/tModLoader-Logs/`: `server.log` 298 KB after one boot) |
+
+**What else it showed.**
+- **The password never left `serverconfig.txt`:** not on any command line (`ps`), not in the 274 to
+  5 500 log lines each run kept; neither was the control secret. TShock's `config.json` held the REST
+  API on 7878 with one application token (user `gameserver-panel`, `superadmin`) and TShock's 145
+  keys after its own rewrite; `setup.lock` kept the setup code from ever being printed.
+- **TShock's REST actions** worked as measured: players (none), a broadcast (`The message was
+  broadcasted successfully`), a kick of nobody (`player-not-found`), a ban of `ip:192.0.2.77`
+  (ticket 1, read back from the list), the bans list, the unban (deleted, the list empty again).
+- **World generation floods the live log.** Vanilla and tModLoader print one line per progress step
+  (about 30 000 for a small world); the agent keeps the last 5 000 events, so by the time the server
+  was up the install and `Starting:` lines had already left the log (TShock prints about 270 lines
+  for the same world). Showing a run of progress lines as its latest one would keep them (CON-01).
+- **The players poll shows in the live log** of vanilla and tModLoader: `playing` every 15 s prints
+  `No players connected.` there (their console is the only way to ask). TShock is asked over REST.
+- **tModLoader's first boot took 1012 MiB idle**, against the 1280 MiB container the minimum launch
+  (1024 MiB plus 256 overhead) gives: it fits, with little room for mods or players.
+- The steam image's `/home/node` was the image's own (read-only) here, not the orchestrator's steam
+  volume; tModLoader needed nothing there.
+
+**Not covered here:** players joining (no client), bans on vanilla, tModLoader's Workshop mods and
+TShock's plugins (phase 3), crashes through the watchdog, medium and large worlds.

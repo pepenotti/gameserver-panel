@@ -9,6 +9,12 @@ export interface AgentConfig {
   /** Runtime adapter id (`GAME_ADAPTER`). */
   adapter: string;
   /**
+   * The server's flavour (`GAME_FLAVOUR`, from its spec); null for adapters
+   * without flavours. A flavour may run in another image family than its
+   * adapter (`Flavour.runtime`), and installs get that family's tools.
+   */
+  flavour: string | null;
+  /**
    * Relocate the adapter's install and data roots (`GAME_INSTALL_DIR`,
    * `GAME_DATA_DIR`; the image, the dev loop and tests set them). Null: the
    * adapter's own `roots()` once a launch is stored.
@@ -101,6 +107,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentConfig {
   const token = env.AGENT_TOKEN ?? '';
   if (token.length < 32) throw new Error('AGENT_TOKEN must be set (at least 32 characters)');
   const adapter = pick(env, 'GAME_ADAPTER')?.value ?? 'pz';
+  const flavour = pick(env, 'GAME_FLAVOUR')?.value ?? null;
+  if (flavour !== null && !/^[a-z0-9][a-z0-9._-]{0,39}$/.test(flavour)) throw new Error('GAME_FLAVOUR must be a flavour id');
   const installDir = pick(env, 'GAME_INSTALL_DIR', 'PZ_INSTALL_DIR')?.value ?? null;
   const dataDir = pick(env, 'GAME_DATA_DIR', 'PZ_DATA_DIR')?.value ?? null;
   const stop = pick(env, 'GAME_STOP_TIMEOUT_MS', 'PZ_STOP_TIMEOUT_MS');
@@ -110,6 +118,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentConfig {
     host: env.AGENT_HOST ?? '0.0.0.0',
     port: num(env, ['AGENT_PORT'], 8081),
     adapter,
+    flavour,
     installDir,
     dataDir,
     stateDir: env.AGENT_STATE_DIR ?? path.join(dataDir ?? '/data', '.agent'),

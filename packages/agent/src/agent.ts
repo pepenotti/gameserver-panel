@@ -11,6 +11,7 @@ import type {
   LineSignal,
   RuntimeAdapter,
   RuntimeCtx,
+  RuntimeFamily,
   RuntimeState,
   VersionsResponse,
 } from '@gsp/adapter-api';
@@ -20,7 +21,7 @@ import type { AgentStatus, AlertKind, CommandResponse, ControlKind, JobInfo, Job
 import type { AgentConfig } from './config';
 import type { EventHub } from './events';
 import { GameRun } from './game';
-import { makeDownload, makeExec, makeFetch } from './install-tools';
+import { makeDownload, makeExec, makeExtract, makeFetch } from './install-tools';
 import type { StateStore } from './state-store';
 import { diskStats, ProcessSampler } from './stats';
 import { SteamcmdDriver } from './steamcmd';
@@ -190,8 +191,8 @@ export class Agent {
 
   /**
    * A job's context: tool lines to the log, progress to the job, the
-   * steamcmd driver for Steam games, and downloads and tool runs for games
-   * installed from the web.
+   * steamcmd driver for Steam games, and downloads, unpacking and tool runs
+   * for games installed from the web.
    */
   private installCtx(job: JobInfo | null): InstallCtx {
     const ctx = this.runtimeCtx();
@@ -207,7 +208,7 @@ export class Agent {
       }
     };
     const steam =
-      this.adapter.meta.runtime === 'steam'
+      this.runtimeFamily() === 'steam'
         ? new SteamcmdDriver({
             steamcmd: this.cfg.steamcmd,
             home: this.cfg.home,
@@ -221,7 +222,18 @@ export class Agent {
     const get = makeFetch({ userAgent: `gameserver-panel/${this.cfg.version}`, log: ctx.log });
     const download = makeDownload({ fetch: get, progress });
     const exec = makeExec({ env: agentEnv(), onLine, cwd: ctx.roots.install });
-    return { ...ctx, onLine, progress, steam, fetch: get, download, exec };
+    const extract = makeExtract(() => [ctx.roots.install, ctx.roots.data]);
+    return { ...ctx, onLine, progress, steam, fetch: get, download, extract, exec };
+  }
+
+  /**
+   * The image family this server runs in (PRD §10): its flavour's
+   * (`GAME_FLAVOUR`) when that flavour names one, else the adapter's. Picks
+   * the tools installs get (the steamcmd driver for `steam`).
+   */
+  runtimeFamily(): RuntimeFamily {
+    const f = this.cfg.flavour === null ? undefined : this.adapter.meta.flavours.find((x) => x.id === this.cfg.flavour);
+    return f?.runtime ?? this.adapter.meta.runtime;
   }
 
   private channelOf(p: unknown): ControlKind {
@@ -705,7 +717,7 @@ export class Agent {
     const run = this.run;
     if (this.state !== 'running' || !run || !this.adapter.listPlayers) return;
     try {
-      const p = await this.adapter.listPlayers(run.handle());
+      const p = await this.adapter.listPlayers(run.handle(), this.runtimeCtx(), this.params ?? undefined);
       this.controlError = null;
       this.failedPolls = 0;
       if (this.unresponsiveAlerted) {

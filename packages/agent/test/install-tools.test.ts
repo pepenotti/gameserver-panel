@@ -3,14 +3,15 @@
 // (progress, size and digests checked before the file is kept) and `exec`
 // (argument arrays, output lines to the job's log).
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import type net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { InstallCtx, JobResult } from '@gsp/adapter-api';
-import { makeDownload, makeExec, makeFetch, retryAfterMs } from '../src/install-tools';
+import { makeZip } from '../../../tools/fake-terraria/downloads.mjs';
+import { makeDownload, makeExec, makeExtract, makeFetch, retryAfterMs } from '../src/install-tools';
 import { envelope, freePort, makeHarness, type Harness } from './helpers';
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse, n: number) => void;
@@ -148,6 +149,28 @@ describe('InstallCtx.exec (UPD-01, NFR-01)', () => {
   });
 });
 
+describe('InstallCtx.extract (UPD-01)', () => {
+  it("unpacks an archive in the server's folders, and refuses archives and destinations anywhere else", async () => {
+    const dir = tmp();
+    const install = path.join(dir, 'install');
+    const data = path.join(dir, 'data');
+    mkdirSync(install);
+    mkdirSync(data);
+    const extract = makeExtract(() => [install, data]);
+    const file = path.join(install, 'dl.zip');
+    writeFileSync(file, makeZip([{ name: 'game/run', data: 'x' }]));
+    expect(await extract({ file, dest: path.join(install, 'game-1'), format: 'zip', only: 'game', strip: 1 })).toEqual({ files: 1, dirs: 0 });
+    expect(readFileSync(path.join(install, 'game-1', 'run'), 'utf8')).toBe('x');
+
+    const elsewhere = path.join(dir, 'elsewhere');
+    await expect(extract({ file, dest: elsewhere, format: 'zip' })).rejects.toThrow(/install or data folder/);
+    await expect(extract({ file, dest: path.join(install, '..', 'elsewhere'), format: 'zip' })).rejects.toThrow(/install or data folder/);
+    await expect(extract({ file: path.join(dir, 'x.zip'), dest: data, format: 'zip' })).rejects.toThrow(/install or data folder/);
+    await expect(extract({ file: 'dl.zip', dest: data, format: 'zip' })).rejects.toThrow(/absolute/);
+    expect(existsSync(elsewhere)).toBe(false);
+  });
+});
+
 describe("the agent's install jobs get the helpers (UPD-01)", () => {
   let h: Harness | undefined;
   afterEach(async () => {
@@ -167,6 +190,8 @@ describe("the agent's install jobs get the helpers (UPD-01)", () => {
           async install(ctx: InstallCtx): Promise<JobResult> {
             await ctx.download!({ url: `${s.url}/game.jar`, dest: path.join(ctx.roots.install, 'game.jar'), what: 'game.jar', size: body.length });
             const r = await ctx.exec!([process.execPath, '-e', 'console.log("installer says hi " + (process.env.AGENT_TOKEN ?? "no token"))']);
+            writeFileSync(path.join(ctx.roots.install, 'game.zip'), makeZip([{ name: 'lib/a.txt', data: 'a' }]));
+            await ctx.extract!({ file: path.join(ctx.roots.install, 'game.zip'), dest: path.join(ctx.roots.install, 'game'), format: 'zip' });
             ran = { ok: r.code === 0 };
             return ran;
           },
@@ -184,5 +209,6 @@ describe("the agent's install jobs get the helpers (UPD-01)", () => {
     expect(h.logs()).toContain('installer says hi no token');
     expect(h.events.some((e) => e.event.type === 'job' && e.event.job.message === 'Downloading game.jar')).toBe(true);
     expect(existsSync(path.join(h.cfg.installDir!, 'game.jar'))).toBe(true);
+    expect(readFileSync(path.join(h.cfg.installDir!, 'game', 'lib', 'a.txt'), 'utf8')).toBe('a');
   });
 });

@@ -268,7 +268,8 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
     );
 
     it.runIf(adapter.listPlayers !== undefined)('lists who is online', async () => {
-      const r = await adapter.listPlayers!(game!.ctl);
+      // As the agent asks: with the server's context and launch.
+      const r = await adapter.listPlayers!(game!.ctl, ctx, p);
       expect(r, 'a reply it understands').not.toBeNull();
       expect(Number.isInteger(r!.count) && r!.count >= 0).toBe(true);
       for (const n of r!.names) expect(n.trim()).not.toBe('');

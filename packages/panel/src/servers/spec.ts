@@ -1,4 +1,4 @@
-import type { PanelAdapter, PortDecl } from '@gsp/adapter-api';
+import type { PanelAdapter, PortDecl, RuntimeFamily } from '@gsp/adapter-api';
 import { AGENT_CONTAINER_PORT, type PortMapping, type PortProto, type PortRangeInfo, type ServerSpec } from '@gsp/shared';
 import { HttpError } from '../http/context';
 import type { ServerRow } from './store';
@@ -15,8 +15,17 @@ export function publishedPorts(adapter: PanelAdapter): PortDecl[] {
 }
 
 /**
+ * The image family a server of `flavour` runs in (PRD §10): the flavour's
+ * own when it names one (`Flavour.runtime`), else its adapter's.
+ */
+export function runtimeOf(adapter: PanelAdapter, flavour: string | null): RuntimeFamily {
+  const f = flavour === null ? undefined : adapter.meta.flavours.find((x) => x.id === flavour);
+  return f?.runtime ?? adapter.meta.runtime;
+}
+
+/**
  * The container a server runs in, as the orchestrator is asked for it
- * (D3, `ServerSpec`): its adapter's image family, the agent's token, the
+ * (D3, `ServerSpec`): its flavour's or adapter's image family, the agent's token, the
  * adapter and flavour it loads, the time zone, and each published port
  * (`GAME_PORT_<ID>`: the number the game listens on — the host's, for
  * ports that must be the same inside and out). Everything that makes the
@@ -33,7 +42,7 @@ export function buildSpec(row: ServerRow, adapter: PanelAdapter, o: { agentToken
     ports.push({ container, host, proto: p.proto });
     env[`GAME_PORT_${p.id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`] = String(container);
   }
-  const spec: ServerSpec = { id: row.id, runtime: adapter.meta.runtime, env, ports, memoryMb: row.memLimitMb };
+  const spec: ServerSpec = { id: row.id, runtime: runtimeOf(adapter, row.flavour), env, ports, memoryMb: row.memLimitMb };
   // The install's image variant (`SERVER_IMAGE_VARIANT`: the fake game images in dev and test slots).
   if (o.variant) spec.variant = o.variant;
   if (row.cpus !== null) spec.cpus = row.cpus;

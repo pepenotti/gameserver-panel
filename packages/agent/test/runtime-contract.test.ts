@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import { runtimeAdapterSuite } from '@gsp/adapter-api/testing/runtime-suite';
 import { runtimeAdapter } from '@gsp/adapters/runtime';
 import { startFakeDownloads, type FakeDownloads } from '../../../tools/fake-minecraft/downloads.mjs';
+import { startFakeDownloads as startTerrariaDownloads, type FakeDownloads as TerrariaDownloads } from '../../../tools/fake-terraria/downloads.mjs';
 import { fakeServer, fakeSteamcmd, launch, tools } from './helpers';
 import { agentHost } from './runtime-host';
 
@@ -37,6 +38,30 @@ for (const [loader, version] of [
     runtimeAdapterSuite(runtimeAdapter('minecraft'), {
       validLaunch: () => ({ version, loader, memoryMb: 1024 }),
       live: agentHost({ launcher: fakeJava, steamcmd: fakeSteamcmd }, { env, eulaAccepted: true }),
+    });
+  });
+}
+
+// Terraria, per flavour (M5): installed from the fake terraria.org and GitHub (unpacked with the
+// agent's extract), run by the fake server in the game's place (and dotnet's, for tModLoader, whose
+// flavour runs in the steam image: its installs get the steamcmd driver). TShock's players come
+// over its REST API, set up by prepare with the agent's token.
+const fakeTerraria = [process.execPath, path.join(tools, '..', 'fake-terraria', 'server.mjs')];
+const terrariaEnvs: Record<string, string>[] = [];
+let terrariaDownloads: TerrariaDownloads;
+beforeAll(async () => {
+  terrariaDownloads = await startTerrariaDownloads({ fail: '' });
+  for (const env of terrariaEnvs) for (const k of ['GAME_TERRARIA_ORG_URL', 'GAME_TERRARIA_GITHUB_URL']) env[k] = terrariaDownloads.url;
+});
+afterAll(() => terrariaDownloads.close());
+
+for (const flavour of ['vanilla', 'tshock', 'tmodloader'] as const) {
+  const env: Record<string, string> = { FAKE_TERRARIA_BOOT_MS: '50' };
+  terrariaEnvs.push(env);
+  describe(`terraria ${flavour}`, () => {
+    runtimeAdapterSuite(runtimeAdapter('terraria'), {
+      validLaunch: () => ({ flavour, world: 'world', worldSize: 1, maxPlayers: 8, memoryMb: 2048 }),
+      live: agentHost({ launcher: fakeTerraria, steamcmd: fakeSteamcmd }, { env, flavour }),
     });
   });
 }

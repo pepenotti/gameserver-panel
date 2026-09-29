@@ -29,6 +29,8 @@ export function metaTests(meta: AdapterMeta): void {
     for (const f of meta.flavours) {
       expectI18n(f.name, `flavour ${f.id}`);
       if (f.capabilities) expectUnique(f.capabilities, `capabilities of flavour ${f.id}`);
+      // PRD §10: a flavour may name another image family than its adapter's, never an unknown one.
+      if (f.runtime !== undefined) expect(['steam', 'java', 'native'], `runtime of flavour ${f.id}`).toContain(f.runtime);
     }
   });
 

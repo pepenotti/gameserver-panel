@@ -87,6 +87,14 @@ export interface Flavour {
   name: I18n;
   /** Replaces the adapter's capabilities for servers of this flavour. */
   capabilities?: Capability[];
+  /**
+   * The image family servers of this flavour run in, when it isn't the
+   * adapter's `AdapterMeta.runtime` (PRD §10: a flavour may name another
+   * image). The panel's server spec asks the orchestrator for it, and the
+   * agent (told the flavour by `GAME_FLAVOUR`) gives installs that family's
+   * tools (the steamcmd driver for `steam`).
+   */
+  runtime?: RuntimeFamily;
 }
 
 /** A license the owner must accept before a game may run (D6): what the `eula` capability means. */
@@ -220,6 +228,35 @@ export interface InstallCtx extends RuntimeCtx {
    * line goes to the job's log like steamcmd's. Resolves when it exits.
    */
   exec?(argv: string[], o?: ExecOptions): Promise<ExecResult>;
+  /**
+   * Unpacks an archive an install downloaded (UPD-01; the images have no
+   * `unzip`): plain files and folders into `dest`, which must lie in the
+   * install or data root. The whole archive is refused when an entry is a
+   * link or any other special file, is absolute, climbs out with `..`, or
+   * would land outside `dest`, and when it is corrupt (a size or CRC that
+   * doesn't match). Files keep an exec bit the archive records (tar, zips
+   * made on Unix) as 0755; the rest are 0644.
+   */
+  extract?(req: ExtractRequest): Promise<ExtractResult>;
+}
+
+/** What `InstallCtx.extract` unpacks, and where. */
+export interface ExtractRequest {
+  /** Absolute path of the archive, in the install or data root. */
+  file: string;
+  /** Absolute folder, in the install or data root, the entries land in; made when missing. */
+  dest: string;
+  format: 'zip' | 'tar' | 'tar.gz';
+  /** Only entries under this folder of the archive (`1458/Linux`); the others are skipped. */
+  only?: string;
+  /** Leading folders dropped from each entry's path (after `only`); entries left without a name are skipped. */
+  strip?: number;
+}
+
+export interface ExtractResult {
+  /** Files and folders written. */
+  files: number;
+  dirs: number;
 }
 
 /** What `InstallCtx.download` fetches and where it keeps it. */
@@ -314,6 +351,15 @@ export interface ControlHandle {
   signal(sig: NodeJS.Signals): void;
   /** The first line whose `LineSignal.message` matches, or null after `timeoutMs`. Call it before sending what triggers the line. */
   waitForLine(re: RegExp, timeoutMs: number): Promise<RegExpExecArray | null>;
+  /**
+   * Every line (its `LineSignal.message`) the game prints from the call on,
+   * until `until` says the reply is complete: a RegExp the latest line
+   * matches, or a test of all the lines so far. Null after `timeoutMs`, or
+   * when the game exits first. For a console reply spread over several
+   * lines (a player list over stdin); other output printed meanwhile is in
+   * the lines too. Call it before sending what triggers the reply.
+   */
+  waitForLines?(until: RegExp | ((lines: readonly string[]) => boolean), timeoutMs: number): Promise<string[] | null>;
 }
 
 export interface LaunchCommand {
@@ -375,8 +421,12 @@ export interface RuntimeAdapter<P = unknown> {
   save?(ctl: ControlHandle, o: { budgetMs: number }): Promise<void>;
   /** Running-server backups: `before` makes the files consistent, `after` always runs. */
   hotCopy?: { before(ctl: ControlHandle): Promise<void>; after(ctl: ControlHandle): Promise<void>; sqlite?: string[] };
-  /** Null when the reply wasn't understood. */
-  listPlayers?(ctl: ControlHandle): Promise<PlayerList | null>;
+  /**
+   * Null when the reply wasn't understood. The agent also passes the
+   * server's context and launch params, for an adapter that asks some
+   * flavours another way than its channel (TShock's REST API).
+   */
+  listPlayers?(ctl: ControlHandle, ctx?: RuntimeCtx, p?: P): Promise<PlayerList | null>;
   /** Default roots (absolute, in-container); the agent may relocate them (see `RuntimeCtx.roots`). */
   roots(p: P): FileRoots;
   actions?: Record<string, RuntimeAction>;

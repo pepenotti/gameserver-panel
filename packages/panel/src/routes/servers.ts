@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { can, permissionsOn, roleOn, SERVER_ID_PATTERN, type CpuArch, type Permission, type PortProto, type PortRangeInfo, type Role } from '@gsp/shared';
-import type { Agreement, I18n, LaunchChoices, LaunchOption, OptionMeta, PortDecl } from '@gsp/adapter-api';
+import type { Agreement, I18n, LaunchChoices, LaunchOption, OptionMeta, PortDecl, RuntimeFamily } from '@gsp/adapter-api';
 import type { UserRow } from '../auth/users';
 import { actor, HttpError, principal, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
@@ -85,7 +85,8 @@ export interface AdapterSummary {
   arch: CpuArch[];
   /** Whether this host runs it natively (HST-05); null when the host can't be asked. */
   supported: boolean | null;
-  flavours: { id: string; name: I18n }[];
+  /** `runtime`: the image family servers of that flavour run in, when it isn't the adapter's (PRD §10). */
+  flavours: { id: string; name: I18n; runtime?: RuntimeFamily }[];
   /** Every port it uses; only `publish` ones get a host port. */
   ports: PortDecl[];
   memory: { minMb: number; defaultMb: number; overheadMb: number };
@@ -179,7 +180,7 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
         runtime: a.meta.runtime,
         arch: a.meta.arch,
         supported: host ? a.meta.arch.includes(host.arch) : null,
-        flavours: a.meta.flavours.map((f) => ({ id: f.id, name: f.name })),
+        flavours: a.meta.flavours.map((f) => ({ id: f.id, name: f.name, ...(f.runtime ? { runtime: f.runtime } : {}) })),
         ports: a.meta.ports,
         memory: a.meta.memory,
         capabilities: a.meta.capabilities,

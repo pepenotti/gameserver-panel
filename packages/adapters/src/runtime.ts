@@ -10,14 +10,14 @@ import { enabledOf, type AdapterEntry } from './entry';
 
 /**
  * Every runtime adapter, and whether an agent runs it (the skeletons don't
- * yet: see `panelAdapterEntries`). Minecraft's runtime half is measured and
- * built (M3): agents run it, while the panel offers it only once its panel
- * half exists.
+ * yet: see `panelAdapterEntries`). A game's runtime half is enabled once it
+ * is measured and built, before the panel offers the game (its panel half
+ * comes next): Minecraft since M3, Terraria since M5 phase 2.
  */
 export const runtimeAdapterEntries: readonly AdapterEntry<RuntimeAdapter>[] = [
   { adapter: pzRuntimeAdapter, enabled: true },
   { adapter: minecraftRuntimeAdapter, enabled: true },
-  { adapter: terrariaRuntimeAdapter, enabled: false },
+  { adapter: terrariaRuntimeAdapter, enabled: true },
   { adapter: valheimRuntimeAdapter, enabled: false },
   { adapter: manifestRuntimeAdapter, enabled: false },
 ];

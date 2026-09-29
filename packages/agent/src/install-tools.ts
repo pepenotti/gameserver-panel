@@ -1,7 +1,8 @@
 /**
- * The agent's download and tool-running helpers for installs from the web
- * (`InstallCtx.fetch`, `download`, `exec`; UPD-01): the adapter says what to
- * fetch and run, the agent does it the same way for every game.
+ * The agent's download, unpacking and tool-running helpers for installs from
+ * the web (`InstallCtx.fetch`, `download`, `extract`, `exec`; UPD-01): the
+ * adapter says what to fetch, unpack and run, the agent does it the same way
+ * for every game.
  */
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -11,7 +12,8 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
-import type { DownloadRequest, ExecOptions, ExecResult } from '@gsp/adapter-api';
+import type { DownloadRequest, ExecOptions, ExecResult, ExtractRequest, ExtractResult } from '@gsp/adapter-api';
+import { extractArchive } from '@gsp/archive';
 import { lineSplitter } from './process';
 
 export interface FetchOptions {
@@ -112,6 +114,31 @@ export function makeDownload(o: DownloadOptions): (req: DownloadRequest) => Prom
       await rm(part, { force: true });
       throw e;
     }
+  };
+}
+
+/** `inner` is `outer` or inside it (absolute paths). */
+function within(outer: string, inner: string): boolean {
+  const rel = path.relative(outer, inner);
+  return rel === '' || !(rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel));
+}
+
+/**
+ * `InstallCtx.extract`: `@gsp/archive`'s extraction, for archives and
+ * destinations in the server's install or data root only (`roots()`: the
+ * adapter's, as the agent relocated them).
+ */
+export function makeExtract(roots: () => string[]): (req: ExtractRequest) => Promise<ExtractResult> {
+  return async (req) => {
+    const allowed = roots().map((r) => path.resolve(r));
+    for (const [what, p] of [
+      ['archive', req.file],
+      ['destination', req.dest],
+    ] as const) {
+      if (typeof p !== 'string' || !path.isAbsolute(p)) throw new Error(`The ${what} to unpack must be an absolute path`);
+      if (!allowed.some((r) => within(r, path.resolve(p)))) throw new Error(`The ${what} to unpack must be in the server's install or data folder: ${p}`);
+    }
+    return extractArchive(req);
   };
 }
 
