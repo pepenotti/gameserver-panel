@@ -241,6 +241,36 @@ docker exec $S-panel-1 node -e "fetch('http://$S-srv-pz-a:8081/v1/health').then(
 - [ ] Above the host's limit (`memLimitMb: 7000`): 409 `orchestrator-refused`,
       `maxMb: 6144`, nothing changed.
 
+### 8b. A newer runtime image (HST-01, SRV-05)
+
+What a product upgrade does to existing servers: the runtime image is rebuilt
+under the same tag, and each server moves to it at its game's next start,
+never while its game runs.
+
+- [ ] pz-a's game running, pz-b's stopped (`await api('POST', '/api/servers/pz-b/server/stop', {})`).
+      `docker inspect $S-srv-pz-a $S-srv-pz-b --format '{{.Name}} {{.Image}}'`
+      shows both on the id of `docker image inspect gsp/steam:$T --format '{{.Id}}'`.
+- [ ] Rebuild the runtime image so that its id changes (a fully cached build
+      keeps the same id, and then nothing waits), and recreate the panel as an
+      upgrade does:
+      `node scripts/stack.mjs build --no-cache steam`, then
+      `node scripts/stack.mjs up -d --force-recreate panel`.
+      `docker image inspect gsp/steam:$T --format '{{.Id}}'` is a new id.
+- [ ] Once the panel booted: pz-b has a new container (`{{.Created}}`) on the
+      new id, and the audit log has its `server.reconcile` "container recreated
+      on a newer runtime image". pz-a keeps its container on the old id and
+      its game keeps running (uptime not reset); `await api('GET', '/api/servers')`
+      shows it with `containerPending: true`, `containerPendingReasons: ['image']`,
+      and the server list's "Applies at next start" says why in its tooltip.
+      The orchestrator's log has a `PUT /v1/servers/pz-a` but no stop of pz-a.
+- [ ] Restart pz-a from the panel: its container is new, on the new id;
+      `containerPending: false`; the game runs again with its world; the audit
+      log says "container recreated on a newer runtime image before the game
+      started". Start pz-b's game again.
+- [ ] Nothing was pulled. The old image is left dangling:
+      `docker image ls --filter dangling=true` lists it; remove it by its id
+      (`docker image rm <old id>`), never by pruning.
+
 ## 9. Docker restart (SRV-06): only with the owner's go-ahead
 
 - [ ] Both games running. Restart Docker (Docker Desktop: tray → Restart;
@@ -301,6 +331,7 @@ docker ps -a --filter label=gsp.stack=$S; docker volume ls --filter label=gsp.st
 | 6 Reachability | pass | Both directions: panel refused, orchestrator and the other server unresolvable, the other server's IP times out, no Docker socket, internet answers (HTTP 404 from the Steam API root), the panel reaches each agent (200). `host.docker.internal:30143` from a server: no connection (`000`). |
 | 7 Backups | pass | Hot backup `pz-pz-a-<time>-manual.tar.zst` (847 KB, fresh world) and its sidecar in `.tmp/backups/pz-a/`; pz-b's list empty. Restore while running: stopped, swapped, running again in about 65 s; audit `backup.restore` with the parts. Undo after that answered `nothing-to-undo` (by design, checklist reworded); restore while stopped then undo brought the changed `pz-a.ini` line back; a second undo 409. |
 | 8 Memory | pass | PATCH 5632 while running: `containerPending: true`, container untouched, game running. Restart: new container, 5905580032, pending cleared. Stopped + launch memory 2560: recreated at once at 6442450944. 7000: 409 `orchestrator-refused`, `maxMb: 6144`. |
+| 8b Runtime image | not run | Added after this run (M2-H): the check for the fix of runtime images that never reached existing servers. |
 | 9 Docker restart | pass | Panel recreated first (`--force-recreate panel`): back on both networks, games kept running. Then, with the owner's go-ahead, Docker Desktop restarted: every container back within a minute (this stack and the host's other stacks), both games `running` again about 90 s after the engine, agents connected, networks still hold the panel. The panel booted before the orchestrator's socket existed: its first reconcile failed (audited `server.reconcile` ok=false, ENOENT) and the 15 s retry succeeded silently (no-op PUTs in the orchestrator log). Overnight before this step the schedules ran on their own server only: hot backups at 06:00 and 12:00, pz-a's restart at 11:00 and pz-b's at 12:30, each with its cold backup. |
 | 10 Removal | pass | pz-a: 409 `server-running`, then after stopping 200 with its final backup (848 KB, named with the `manual` trigger); no container, volume or network left. pz-b with its container stopped: without `force` 409 `server-running`; with `force` 200, `forced: true`, `finalBackup: null`, `finalBackupError: "Game server agent unreachable: fetch failed"`, the same in the audit entry; nothing left. |
 | 11 Clean up | pass | `stack.mjs clean` removed the stack and its three service images; `docker image rm` the two runtime images. No container, volume, network or `:s1` image left; the host's other stacks untouched. `.tmp/backups/` (9 MB) deleted. |
