@@ -36,11 +36,12 @@ const NOT_INHERITED = /^(ORCH_|FAKE_ORCH_|AGENT_|GAME_|GSP_|DEV_|PANEL_|PZ_|STEA
 /**
  * What of the fake orchestrator's own environment every agent gets
  * (`FakeBackendOptions.env`): the fake games' knobs (`FAKE_*`) and where
- * Minecraft downloads from (`GAME_MC_*_URL`: the fake download services
- * in the dev loop, which a real server spec would set as `GAME_*` keys).
+ * Minecraft and Terraria download from (`GAME_MC_*_URL`,
+ * `GAME_TERRARIA_*_URL`: the fake download services in the dev loop, which
+ * a real server spec would set as `GAME_*` keys).
  */
 export function agentEnvFrom(env: NodeJS.ProcessEnv): Record<string, string> {
-  return Object.fromEntries(Object.entries(env).filter((e): e is [string, string] => /^(?:FAKE_(?!ORCH_)|GAME_MC_[A-Z]+_URL$)/.test(e[0]) && e[1] !== undefined));
+  return Object.fromEntries(Object.entries(env).filter((e): e is [string, string] => /^(?:FAKE_(?!ORCH_)|GAME_(?:MC|TERRARIA)_[A-Z]+_URL$)/.test(e[0]) && e[1] !== undefined));
 }
 
 export interface FakeBackendOptions {
