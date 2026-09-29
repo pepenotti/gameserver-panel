@@ -7,13 +7,13 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir, rename, rm } from 'node:fs/promises';
+import { mkdir, open, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import type { DownloadRequest, ExecOptions, ExecResult, ExtractRequest, ExtractResult } from '@gsp/adapter-api';
-import { extractArchive } from '@gsp/archive';
+import { extractArchive, readZipDirectory } from '@gsp/archive';
 import { lineSplitter } from './process';
 
 export interface FetchOptions {
@@ -43,20 +43,25 @@ export function retryAfterMs(value: string | null, now = Date.now()): number | n
 /** Whether a response is worth asking again: rate limits and server errors. */
 const retryable = (status: number) => status === 429 || status >= 500;
 
+/** How a GET treats redirects: followed (the default), or answered as they are for the caller to check. */
+export interface GetInit {
+  redirect?: 'follow' | 'manual';
+}
+
 /** `InstallCtx.fetch`: a GET that names the panel and retries 429, 5xx and network failures. */
-export function makeFetch(o: FetchOptions): (url: string) => Promise<Response> {
+export function makeFetch(o: FetchOptions): (url: string, init?: GetInit) => Promise<Response> {
   const attempts = Math.max(1, o.attempts ?? 5);
   const base = o.baseDelayMs ?? 1_000;
   const max = o.maxDelayMs ?? 30_000;
   const timeout = o.requestTimeoutMs ?? 60_000;
-  return async (url) => {
+  return async (url, init = {}) => {
     const u = new URL(url);
     if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error(`Only http(s) downloads are allowed: ${u.protocol}`);
     let lastError: Error | null = null;
     for (let i = 1; i <= attempts; i++) {
       let res: Response | null = null;
       try {
-        res = await fetch(u, { headers: { 'user-agent': o.userAgent }, redirect: 'follow', signal: AbortSignal.timeout(timeout) });
+        res = await fetch(u, { headers: { 'user-agent': o.userAgent }, redirect: init.redirect ?? 'follow', signal: AbortSignal.timeout(timeout) });
       } catch (e) {
         lastError = e as Error;
       }
@@ -73,18 +78,59 @@ export function makeFetch(o: FetchOptions): (url: string) => Promise<Response> {
 }
 
 export interface DownloadOptions {
-  fetch: (url: string) => Promise<Response>;
+  fetch: (url: string, init?: GetInit) => Promise<Response>;
   /** Job progress (percent null when the size is unknown). */
   progress?: (percent: number | null, message: string) => void;
+}
+
+/** An error with the `code` a `DownloadRequest` documents. */
+function codedError(code: 'download-refused' | 'download-too-large', message: string): Error {
+  return Object.assign(new Error(message), { code });
+}
+
+/** Redirects a download with `allowUrl` follows, each checked. */
+const MAX_REDIRECTS = 5;
+
+/**
+ * GET `url` following redirects one by one, each address checked by
+ * `allow` before it is asked (a link people gave may go only where its
+ * source allows, redirects included).
+ */
+async function getAllowed(o: DownloadOptions, url: string, allow: (u: URL) => boolean, what: string): Promise<Response> {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    throw codedError('download-refused', `Not a web address for ${what}`);
+  }
+  for (let hop = 0; ; hop++) {
+    if (!allow(u)) throw codedError('download-refused', hop === 0 ? `Refusing to download ${what} from ${u.origin}` : `The download of ${what} was sent on to ${u.origin}, which is not allowed`);
+    const res = await o.fetch(u.href, { redirect: 'manual' });
+    if (![301, 302, 303, 307, 308].includes(res.status)) return res;
+    await res.body?.cancel().catch(() => undefined);
+    const next = res.headers.get('location');
+    if (!next) throw new Error(`Could not download ${what}: a redirect without a location`);
+    if (hop >= MAX_REDIRECTS) throw new Error(`Could not download ${what}: more than ${MAX_REDIRECTS} redirects`);
+    u = new URL(next, u);
+  }
 }
 
 /** `InstallCtx.download`: fetch to `dest.part`, check size and digests, then rename. */
 export function makeDownload(o: DownloadOptions): (req: DownloadRequest) => Promise<void> {
   return async (req) => {
     if (!path.isAbsolute(req.dest)) throw new Error(`Download destination must be absolute: ${req.dest}`);
-    const res = await o.fetch(req.url);
-    if (!res.ok || !res.body) throw new Error(`Could not download ${req.what}: HTTP ${res.status}`);
-    const total = req.size ?? (Number(res.headers.get('content-length')) || null);
+    const res = req.allowUrl ? await getAllowed(o, req.url, (u) => req.allowUrl!(u), req.what) : await o.fetch(req.url);
+    if (!res.ok || !res.body) {
+      await res.body?.cancel().catch(() => undefined);
+      throw new Error(`Could not download ${req.what}: HTTP ${res.status}`);
+    }
+    const max = req.maxBytes;
+    const announced = Number(res.headers.get('content-length')) || null;
+    if (max !== undefined && announced !== null && announced > max) {
+      await res.body.cancel().catch(() => undefined);
+      throw codedError('download-too-large', `${req.what} is ${announced} bytes, more than the ${max} allowed`);
+    }
+    const total = req.size ?? announced;
     const part = `${req.dest}.part`;
     await mkdir(path.dirname(req.dest), { recursive: true });
     const sha1 = createHash('sha1');
@@ -94,6 +140,10 @@ export function makeDownload(o: DownloadOptions): (req: DownloadRequest) => Prom
     const source = Readable.fromWeb(res.body as WebReadableStream<Uint8Array>);
     source.on('data', (chunk: Buffer) => {
       got += chunk.length;
+      if (max !== undefined && got > max) {
+        source.destroy(codedError('download-too-large', `${req.what} is more than the ${max} bytes allowed`));
+        return;
+      }
       sha1.update(chunk);
       sha256.update(chunk);
       const percent = total ? Math.min(100, Math.floor((got / total) * 100)) : null;
@@ -123,10 +173,36 @@ function within(outer: string, inner: string): boolean {
   return rel === '' || !(rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel));
 }
 
+/** An archive's size unpacked and its number of entries, checked against `ExtractRequest.limits` before anything is written. */
+async function checkLimits(req: ExtractRequest): Promise<void> {
+  const l = req.limits;
+  if (!l || (l.bytes === undefined && l.entries === undefined)) return;
+  if (req.format === 'tar.gz') throw new Error('Limits apply to zip and tar archives only');
+  let bytes: number;
+  let entries: number | null = null;
+  if (req.format === 'zip') {
+    const fh = await open(req.file, 'r');
+    try {
+      const list = await readZipDirectory(fh);
+      entries = list.length;
+      bytes = list.reduce((n, e) => n + (e.dir ? 0 : e.size), 0);
+    } catch (e) {
+      throw new Error(`${path.basename(req.file)}: ${(e as Error).message}`, { cause: e });
+    } finally {
+      await fh.close();
+    }
+  } else {
+    // A tar holds its files uncompressed: its size bounds what it unpacks to.
+    bytes = (await stat(req.file)).size;
+  }
+  if (l.bytes !== undefined && bytes > l.bytes) throw new Error(`The archive unpacks to ${bytes} bytes, more than the ${l.bytes} allowed`);
+  if (l.entries !== undefined && entries !== null && entries > l.entries) throw new Error(`The archive has ${entries} entries, more than the ${l.entries} allowed`);
+}
+
 /**
  * `InstallCtx.extract`: `@gsp/archive`'s extraction, for archives and
  * destinations in the server's install or data root only (`roots()`: the
- * adapter's, as the agent relocated them).
+ * adapter's, as the agent relocated them), within the request's limits.
  */
 export function makeExtract(roots: () => string[]): (req: ExtractRequest) => Promise<ExtractResult> {
   return async (req) => {
@@ -138,6 +214,7 @@ export function makeExtract(roots: () => string[]): (req: ExtractRequest) => Pro
       if (typeof p !== 'string' || !path.isAbsolute(p)) throw new Error(`The ${what} to unpack must be an absolute path`);
       if (!allowed.some((r) => within(r, path.resolve(p)))) throw new Error(`The ${what} to unpack must be in the server's install or data folder: ${p}`);
     }
+    await checkLimits(req);
     return extractArchive(req);
   };
 }

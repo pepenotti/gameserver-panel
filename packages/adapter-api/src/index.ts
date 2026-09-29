@@ -251,6 +251,13 @@ export interface ExtractRequest {
   only?: string;
   /** Leading folders dropped from each entry's path (after `only`); entries left without a name are skipped. */
   strip?: number;
+  /**
+   * For archives people bring (a plugin upload): the whole archive is
+   * refused before anything is written when its entries add up to more
+   * than `bytes` unpacked, or number more than `entries` (a zip's directory
+   * says both; a tar's size bounds its bytes). Not for gzipped tars.
+   */
+  limits?: { bytes?: number; entries?: number };
 }
 
 export interface ExtractResult {
@@ -271,6 +278,16 @@ export interface DownloadRequest {
   /** Hex digests, checked when given. */
   sha1?: string;
   sha256?: string;
+  /**
+   * Where the download may go, for an address people gave (a plugin's
+   * release link): `url` and every redirect it is sent on to must pass,
+   * or the download stops before asking that address (rejecting with an
+   * error whose `code` is `download-refused`). Absent: any http(s) address,
+   * redirects followed.
+   */
+  allowUrl?(url: URL): boolean;
+  /** Refused, keeping nothing, once the file proves bigger than this (error `code` `download-too-large`). */
+  maxBytes?: number;
 }
 
 export interface ExecOptions {
@@ -825,10 +842,137 @@ export interface ModSource<M extends ModEntry = ModEntry> {
   download(ctx: ServerCtx, ids: string[]): Promise<JobResult>;
   /** What a downloaded item contains, for the game version; null while it isn't downloaded. */
   scan(ctx: ServerCtx, id: string, gameVersion: string): Promise<M[] | null>;
-  /** The config values the enabled list (in load order) turns into; `entries` by mod id. */
-  toConfig(enabled: EnabledMod[], entries: ReadonlyMap<string, M>): { fileId: string; values: Record<string, Scalar> };
+  /**
+   * The config values the enabled list (in load order) turns into; `entries`
+   * by mod id. A game whose mod list isn't key/values (tModLoader's JSON
+   * array of names) gives the whole file as `text`: it is written as it is,
+   * created when missing, and `values` only describe it (they may be empty).
+   */
+  toConfig(enabled: EnabledMod[], entries: ReadonlyMap<string, M>): { fileId: string; values: Record<string, Scalar>; text?: string };
   /** The reverse: adopt mods configured by hand or restored from a backup. */
   fromConfig?(values: Record<string, Scalar>): { items: string[]; enabled: string[] };
+  /**
+   * Whether the game server fetches its items, and their updates, itself
+   * when it starts (Project Zomboid does, from the Workshop), so a restart
+   * applies an update. False: the game reads only what is on disk
+   * (tModLoader, run without Steam), so before every start the panel makes,
+   * it downloads through the agent the enabled items missing on the server
+   * or known to have a newer version at the source. Absent: true.
+   */
+  serverFetches?: boolean;
+}
+
+// ------------------------------------------------------------- plugin files
+
+/**
+ * Why a plugin was not added, changed or removed (MOD-06), as a code the UI
+ * words:
+ *   - `link-invalid`: not a web address; `link-not-https`: not HTTPS;
+ *     `link-host`: not on a host the source takes links from;
+ *     `link-not-asset`: not a release's download link (a release page, a
+ *     repository); `redirect-refused`: the download was sent on to a host
+ *     the source doesn't allow; `download-failed`: the host gave no file;
+ *   - `too-large`: bigger than the source's `maxBytes` (or, unpacked, than
+ *     it allows a zip to hold);
+ *   - `not-a-plugin`: neither a plugin file (`extensions`) nor a zip of
+ *     them, or a plugin file that isn't one inside; `no-plugins`: a zip
+ *     without any; `bad-archive`: a zip that can't be unpacked safely (a
+ *     path outside its folder, a link, a corrupt entry); `bad-name`: a file
+ *     name the server won't take; `name-taken`: the game's own install has
+ *     a plugin of that name;
+ *   - `not-found`: no such plugin on the server; `not-supported`: this
+ *     server takes no plugins (its flavour).
+ */
+export type PluginRefusal =
+  | 'link-invalid'
+  | 'link-not-https'
+  | 'link-host'
+  | 'link-not-asset'
+  | 'redirect-refused'
+  | 'download-failed'
+  | 'too-large'
+  | 'not-a-plugin'
+  | 'no-plugins'
+  | 'bad-archive'
+  | 'bad-name'
+  | 'name-taken'
+  | 'not-found'
+  | 'not-supported';
+
+/** One plugin file on a server. */
+export interface PluginFile {
+  /** Its file name (`MyPlugin.dll`): unique on the server, whatever the case. */
+  name: string;
+  enabled: boolean;
+  /**
+   * The game loaded this very file at its last start (the one enabled now,
+   * unchanged since). False for a plugin added, replaced, enabled or
+   * disabled since then: a restart is needed for it (MOD-06's badge).
+   */
+  active: boolean;
+  size: number;
+  /** Hex SHA-256 of the file. */
+  sha256: string;
+  /** Unix milliseconds of its last change. */
+  mtimeMs: number;
+}
+
+/** A plugin source's answer: what it did, or why it didn't (`PluginRefusal`, with the details in `message`). */
+export type PluginReply<T extends object = object> = ({ ok: true } & T) | { ok: false; reason: PluginRefusal; message: string };
+
+/** What an add brought: the plugin files it put on the server (new or replacing one of the same name), and what else the upload held. */
+export interface PluginAdded {
+  added: PluginFile[];
+  /** Names of `added` that replaced a plugin already there (it keeps being enabled or disabled). */
+  replaced: string[];
+  /** Files of a zip that aren't plugin files (a readme, debug symbols): left out. */
+  skipped: string[];
+}
+
+/** Where an add takes its plugins from: an upload the panel wrote into `uploadDir`, or a release link the agent downloads. */
+export type PluginOrigin = { upload: string; name: string } | { url: string };
+
+/**
+ * Plugin files people bring themselves (MOD-06: TShock's plugins). There is
+ * no catalogue, so no search, dependencies or update checks: a plugin comes
+ * as an upload (a plugin file, or a zip of them) or from a release link that
+ * the server's agent downloads, never the panel (D11), from the hosts the
+ * source allows (every redirect too) and up to `maxBytes`. Plugins are
+ * enabled, disabled and removed; each change takes effect at the next
+ * start. They run code inside the server: admins only, after `warning`.
+ * The work happens next to the files, in the runtime's actions; the panel
+ * keeps who added what (the audit log) and asks for the restart.
+ */
+export interface PluginSource {
+  id: string;
+  capability: ModCapability;
+  label: I18n;
+  /** Told to people before they add one: a plugin runs code inside the server. */
+  warning: I18n;
+  /** File name endings of a plugin, lower case (`.dll`). An upload is one of them, or a `.zip` holding them. */
+  extensions: string[];
+  /** Largest upload or download, in bytes (at most `FS_WRITE_MAX_BYTES`: an upload reaches the server through its agent's file API). */
+  maxBytes: number;
+  /** What a release link must be, in people's words; absent: only uploads are taken. */
+  linkHint?: I18n;
+  /**
+   * The data-root folder the panel writes an upload into before `add` takes
+   * it (then it is gone): nothing else lives there, and no backup part or
+   * editable folder covers it.
+   */
+  uploadDir: string;
+  /**
+   * Null when the agent would download `url`; else why not. The panel asks
+   * first, to answer at once without reaching the server; the agent checks
+   * again, and checks every redirect. `env`: the panel's environment (tests
+   * point the release host elsewhere).
+   */
+  checkLink(url: string, env: Readonly<Record<string, string | undefined>>): PluginRefusal | null;
+  list(ctx: ServerCtx): Promise<PluginReply<{ plugins: PluginFile[] }>>;
+  /** `upload`: a file name in `uploadDir`; `name`: the name people gave it. */
+  add(ctx: ServerCtx, from: PluginOrigin): Promise<PluginReply<PluginAdded>>;
+  setEnabled(ctx: ServerCtx, name: string, enabled: boolean): Promise<PluginReply<{ changed: boolean }>>;
+  remove(ctx: ServerCtx, name: string): Promise<PluginReply>;
 }
 
 export interface UpdateInfo {
@@ -963,7 +1107,10 @@ export interface PanelAdapter<S = unknown> {
    * undefined.
    */
   playersOf?(flavour: string | null): PlayerOps | undefined;
+  /** Mod sources with a catalogue; a server uses those whose capability its flavour has. */
   mods?: ModSource[];
+  /** Plugin files people bring (MOD-06); a server uses those whose capability its flavour has. */
+  plugins?: PluginSource[];
   /** Whether a newer build of what `launch` pins exists; null when it can't tell. */
   updates?: { check(ctx: ServerCtx, launch: S): Promise<UpdateInfo | null> };
   consoleCatalog?: CommandDoc[];

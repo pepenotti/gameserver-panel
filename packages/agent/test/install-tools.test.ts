@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { InstallCtx, JobResult } from '@gsp/adapter-api';
-import { makeZip } from '../../../tools/fake-terraria/downloads.mjs';
+import { makeTar, makeZip } from '../../../tools/fake-terraria/downloads.mjs';
 import { makeDownload, makeExec, makeExtract, makeFetch, retryAfterMs } from '../src/install-tools';
 import { envelope, freePort, makeHarness, type Harness } from './helpers';
 
@@ -126,6 +126,55 @@ describe('InstallCtx.download (UPD-01)', () => {
   });
 });
 
+describe('InstallCtx.download of an address people gave (MOD-06, D11)', () => {
+  const plugin = Buffer.from('MZ a fake plugin\n'.repeat(100));
+  const codeOf = (p: Promise<unknown>) => p.then(
+    () => null,
+    (e: unknown) => (e as { code?: string }).code ?? (e as Error).message,
+  );
+
+  it('follows redirects only where allowUrl lets it, checking each before it is asked', async () => {
+    const s = await serve((req, res) => {
+      const port = (req.socket.localPort ?? 0).toString();
+      if (req.url === '/release/a.dll') return res.writeHead(302, { location: '/assets/a.dll' }).end();
+      if (req.url === '/release/elsewhere.dll') return res.writeHead(302, { location: `http://localhost:${port}/assets/a.dll` }).end();
+      if (req.url === '/release/loop.dll') return res.writeHead(302, { location: '/release/loop.dll' }).end();
+      if (req.url === '/assets/a.dll') return res.writeHead(200, { 'content-length': plugin.length }).end(plugin);
+      res.writeHead(404).end();
+    });
+    const dir = tmp();
+    const dl = makeDownload({ fetch: quick() });
+    const allowUrl = (u: URL) => u.hostname === '127.0.0.1';
+    await dl({ url: `${s.url}/release/a.dll`, dest: path.join(dir, 'a.dll'), what: 'a.dll', allowUrl });
+    expect(readFileSync(path.join(dir, 'a.dll')).equals(plugin)).toBe(true);
+
+    // Sent on to another host: refused before that host is asked, nothing kept.
+    expect(await codeOf(dl({ url: `${s.url}/release/elsewhere.dll`, dest: path.join(dir, 'b.dll'), what: 'b.dll', allowUrl }))).toBe('download-refused');
+    // The first address is checked too.
+    expect(await codeOf(dl({ url: `${s.url}/release/a.dll`, dest: path.join(dir, 'c.dll'), what: 'c.dll', allowUrl: () => false }))).toBe('download-refused');
+    await expect(dl({ url: `${s.url}/release/loop.dll`, dest: path.join(dir, 'd.dll'), what: 'd.dll', allowUrl })).rejects.toThrow(/more than 5 redirects/);
+    expect(readdirSync(dir)).toEqual(['a.dll']);
+    expect(s.seen.map((x) => x.path)).toEqual(['/release/a.dll', '/assets/a.dll', '/release/elsewhere.dll', ...Array(6).fill('/release/loop.dll')]);
+  });
+
+  it('refuses a file bigger than maxBytes, whether its size is announced or not, keeping nothing', async () => {
+    const s = await serve((req, res) => {
+      if (req.url === '/announced') return res.writeHead(200, { 'content-length': plugin.length }).end(plugin);
+      // Chunked: no content-length.
+      res.writeHead(200);
+      res.write(plugin);
+      res.end(plugin);
+    });
+    const dir = tmp();
+    const dl = makeDownload({ fetch: quick() });
+    expect(await codeOf(dl({ url: `${s.url}/announced`, dest: path.join(dir, 'a.dll'), what: 'a.dll', maxBytes: plugin.length - 1 }))).toBe('download-too-large');
+    expect(await codeOf(dl({ url: `${s.url}/chunked`, dest: path.join(dir, 'b.dll'), what: 'b.dll', maxBytes: plugin.length + 10 }))).toBe('download-too-large');
+    expect(readdirSync(dir)).toEqual([]);
+    await dl({ url: `${s.url}/announced`, dest: path.join(dir, 'c.dll'), what: 'c.dll', maxBytes: plugin.length });
+    expect(readdirSync(dir)).toEqual(['c.dll']);
+  });
+});
+
 describe('InstallCtx.exec (UPD-01, NFR-01)', () => {
   it('runs an argument array without a shell, with every output line in the log and the exit code', async () => {
     const lines: string[] = [];
@@ -168,6 +217,27 @@ describe('InstallCtx.extract (UPD-01)', () => {
     await expect(extract({ file: path.join(dir, 'x.zip'), dest: data, format: 'zip' })).rejects.toThrow(/install or data folder/);
     await expect(extract({ file: 'dl.zip', dest: data, format: 'zip' })).rejects.toThrow(/absolute/);
     expect(existsSync(elsewhere)).toBe(false);
+  });
+
+  it('refuses an archive people brought that unpacks to more than its limits, before writing anything (MOD-06)', async () => {
+    const dir = tmp();
+    const data = path.join(dir, 'data');
+    mkdirSync(data);
+    const extract = makeExtract(() => [data]);
+    const file = path.join(data, 'up.zip');
+    writeFileSync(file, makeZip([{ name: 'a.dll', data: 'x'.repeat(600) }, { name: 'docs/', data: '' }, { name: 'b.dll', data: 'y'.repeat(600) }]));
+    const dest = path.join(data, 'out');
+    await expect(extract({ file, dest, format: 'zip', limits: { bytes: 1000 } })).rejects.toThrow(/unpacks to 1200 bytes, more than the 1000 allowed/);
+    await expect(extract({ file, dest, format: 'zip', limits: { entries: 2 } })).rejects.toThrow(/3 entries, more than the 2 allowed/);
+    expect(existsSync(dest)).toBe(false);
+    expect(await extract({ file, dest, format: 'zip', limits: { bytes: 1200, entries: 3 } })).toEqual({ files: 2, dirs: 1 });
+    // A tar's size bounds what it unpacks to; a gzipped one can't be bounded before it is read.
+    const tar = path.join(data, 'up.tar');
+    writeFileSync(tar, makeTar([{ name: 'a.dll', data: 'x'.repeat(600) }]));
+    await expect(extract({ file: tar, dest: path.join(data, 't'), format: 'tar', limits: { bytes: 1000 } })).rejects.toThrow(/more than the 1000 allowed/);
+    await expect(extract({ file: tar, dest: path.join(data, 't'), format: 'tar.gz', limits: { bytes: 1000 } })).rejects.toThrow(/zip and tar archives only/);
+    expect(existsSync(path.join(data, 't'))).toBe(false);
+    await expect(extract({ file: path.join(data, 'not-a.zip'), dest, format: 'zip', limits: { bytes: 1 } })).rejects.toThrow();
   });
 });
 
