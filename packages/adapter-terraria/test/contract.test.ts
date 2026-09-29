@@ -1,8 +1,8 @@
 // The Terraria adapter passes the contract suites (D4, NFR-07): the runtime
 // half (M5 phase 2) with the boots captured from each flavour (D5); the
-// panel half is still the skeleton phase 3 fills in. The live runs against
-// the fake server, through the agent's own plumbing, are in
-// packages/agent/test/runtime-contract.test.ts.
+// panel half (phase 3) for each flavour, with the files the real servers
+// wrote. The live runs against the fake server, through the agent's own
+// plumbing, are in packages/agent/test/runtime-contract.test.ts.
 import { describe, expect, it } from 'vitest';
 import { panelAdapterConfigSuite } from '@gsp/adapter-api/testing/panel-suite-config';
 import { panelAdapterCoreSuite } from '@gsp/adapter-api/testing/panel-suite-core';
@@ -10,9 +10,7 @@ import { runtimeAdapterSuite } from '@gsp/adapter-api/testing/runtime-suite';
 import { terrariaPanelAdapter } from '../src/panel';
 import { terrariaRuntimeAdapter } from '../src/runtime';
 import { TERRARIA_META } from '../src/shared';
-import { fixtureLines } from './helpers';
-
-const server = () => ({ id: 'tr', gameName: 'tr', flavour: 'vanilla' });
+import { fixture, fixtureLines } from './helpers';
 
 for (const [flavour, boot, version, prompt] of [
   ['vanilla', 'vanilla/logs/boot-savedirectory.log', '1.4.5.8', 'vanilla/logs/no-args-world-menu.log'],
@@ -32,9 +30,26 @@ for (const [flavour, boot, version, prompt] of [
   });
 }
 
-panelAdapterCoreSuite(terrariaPanelAdapter, { server, secrets: () => ({}) });
-// No config files are declared yet (phase 3), so the checks that need one are left out.
-panelAdapterConfigSuite(terrariaPanelAdapter);
+/** What each flavour's first runs wrote (fixtures/terraria/1.4.5.8), by `<root>/<rel>`. */
+const FILES: Record<string, () => Record<string, string>> = {
+  vanilla: () => ({ 'data/serverconfig.txt': fixture('vanilla', 'files', 'serverconfig.txt'), 'data/banlist.txt': fixture('vanilla', 'files', 'banlist.txt') }),
+  tshock: () => ({
+    'data/tshock/config.json': fixture('tshock', 'config', 'config.json.generated'),
+    'data/tshock/sscconfig.json': fixture('tshock', 'config', 'sscconfig.json.generated'),
+    'data/tshock/motd.txt': fixture('tshock', 'config', 'motd.txt.generated'),
+    'data/tshock/rules.txt': fixture('tshock', 'config', 'rules.txt.generated'),
+    'data/tshock/whitelist.txt': fixture('tshock', 'config', 'whitelist.txt.generated'),
+  }),
+  tmodloader: () => ({ 'data/Mods/enabled.json': fixture('tmodloader', 'files', 'enabled.json') }),
+};
+
+for (const flavour of ['vanilla', 'tshock', 'tmodloader'] as const) {
+  describe(`panel half, ${flavour}`, () => {
+    const server = () => ({ id: 'tr', gameName: 'tr', flavour });
+    panelAdapterCoreSuite(terrariaPanelAdapter, { server, secrets: () => ({}) });
+    panelAdapterConfigSuite(terrariaPanelAdapter, { server, files: FILES[flavour] });
+  });
+}
 
 describe('the Terraria adapter (D4, D5, PRD §7, §10)', () => {
   it('shares one meta: the native image, tModLoader in the steam one, x86-64, the game port published and the REST port not', () => {
@@ -54,8 +69,12 @@ describe('the Terraria adapter (D4, D5, PRD §7, §10)', () => {
     expect(TERRARIA_META.eula).toBeUndefined();
   });
 
-  it("declares what the runtime half implements; the panel half's come with phase 3", () => {
-    expect(TERRARIA_META.capabilities).toEqual(['stdinConsole', 'save', 'hotBackup', 'players', 'playerHistory', 'versionPin', 'worldCreate']);
+  it('declares what both halves implement, the same list for each flavour (their mods come with MOD-03 and MOD-06)', () => {
+    const caps = ['stdinConsole', 'broadcast', 'save', 'hotBackup', 'players', 'playerHistory', 'kick', 'ban', 'settingsForms', 'versionPin', 'updateCheck', 'worldCreate'];
+    expect(TERRARIA_META.capabilities).toEqual(caps);
+    for (const f of TERRARIA_META.flavours) expect(f.capabilities, f.id).toEqual(caps);
+    // TShock's REST API is reached through the runtime's actions, not as a control channel.
+    expect(TERRARIA_META.flavours.flatMap((f) => f.capabilities ?? [])).not.toContain('restApi');
     expect(terrariaRuntimeAdapter.channel(undefined as never, undefined as never)).toEqual({ kind: 'stdin' });
     expect(Object.keys(terrariaRuntimeAdapter.actions ?? {})).toEqual(['tshock-players', 'tshock-kick', 'tshock-ban', 'tshock-unban', 'tshock-bans', 'tshock-broadcast']);
   });
