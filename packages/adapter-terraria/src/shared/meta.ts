@@ -1,34 +1,44 @@
 import type { AdapterMeta } from '@gsp/adapter-api';
 
 /**
- * Terraria, shared by the runtime and panel halves.
+ * Terraria, shared by the runtime and panel halves. Every value is measured
+ * on real servers (D5, docs/verification/terraria-1.4.5.8.md): vanilla
+ * 1.4.5.8, TShock 6.2.1 and tModLoader v2026.07.3.0.
  *
- * A skeleton (M3 contract step, for M5): what the PRD settles is filled in
- * (the runtime family of vanilla Terraria, the flavours); everything about
- * how the game behaves comes from the M5 fact-finding captures (D5,
- * `fixtures/terraria/`), and every value below marked TODO is a placeholder
- * nothing relies on. The adapter is registered but not offered
- * (`packages/adapters`) until then.
+ * The capabilities are the runtime half's (M5 phase 2): the console on
+ * stdin, saves and running backups, who is online and their history,
+ * pinned versions and worlds created on the first start. The panel half
+ * (phase 3) adds its own (broadcasts, kick and ban, settings forms, update
+ * checks, TShock's plugins and accounts, tModLoader's Workshop mods), per
+ * flavour where they differ. TShock's REST API is reached through the
+ * runtime's actions, not as a control channel, so `restApi` (which the
+ * contract reads as a REST channel) is not declared.
  */
 export const TERRARIA_META: AdapterMeta = {
   id: 'terraria',
   name: { en: 'Terraria', es: 'Terraria' },
-  // PRD §10: vanilla Terraria is a self-contained server (docker/native).
-  // TODO(M5): tModLoader installs with steamcmd (the steam family): a flavour may need its own runtime.
+  // PRD §10: vanilla and TShock run in the native image (with .NET 9 for TShock); tModLoader needs
+  // .NET 8 and steamcmd for its Workshop mods, so it runs in the steam image.
   runtime: 'native',
-  // TODO(M5 fact-finding): the architectures the server builds exist for (HST-05).
+  // Vanilla's server is an x86-64 build only; TShock's ARM64 builds are unverified and tModLoader
+  // says it doesn't support ARM (PRD §7, HST-05).
   arch: ['amd64'],
-  // PRD §7: vanilla, TShock and tModLoader. TODO(M5 fact-finding): each flavour's capabilities.
   flavours: [
     { id: 'vanilla', name: { en: 'Vanilla', es: 'Vanilla' } },
     { id: 'tshock', name: { en: 'TShock', es: 'TShock' } },
-    { id: 'tmodloader', name: { en: 'tModLoader', es: 'tModLoader' } },
+    { id: 'tmodloader', name: { en: 'tModLoader', es: 'tModLoader' }, runtime: 'steam' },
   ],
-  // TODO(M5 fact-finding): the game port (PRD §7 expects TCP 7777) and TShock's REST port, as the captures show them.
-  ports: [],
-  // TODO(M5 fact-finding): placeholders until the server's memory use is measured.
-  memory: { minMb: 512, defaultMb: 2048, overheadMb: 256 },
-  capabilities: [],
-  // TODO(M5 fact-finding): placeholder until a clean stop is timed.
+  ports: [
+    // A client joined through a different published port (30550 → 7777): the port inside need not match.
+    { id: 'game', proto: 'tcp', default: 7777, publish: true, sameInsideOut: false, label: { en: 'Game port', es: 'Puerto del juego' } },
+    // TShock's REST API (CON-04): only the agent talks to it, so it is never published.
+    { id: 'rest', proto: 'tcp', default: 7878, publish: false, sameInsideOut: false, label: { en: 'TShock REST API (agent only)', es: 'API REST de TShock (solo el agente)' } },
+  ],
+  // No heap flag: the container limit is the knob. Idle, a small world took 0.53 GiB (vanilla),
+  // 0.39 GiB (TShock) and up to 1 GiB (tModLoader's first boot); a large vanilla world 1.14 GiB,
+  // peaking at 1.23 GiB (so large worlds need 2048, see `parseTerrariaLaunch`).
+  memory: { minMb: 1024, defaultMb: 2048, overheadMb: 256 },
+  capabilities: ['stdinConsole', 'save', 'hotBackup', 'players', 'playerHistory', 'versionPin', 'worldCreate'],
+  // `exit` saved and stopped in 1–2.2 s (a large world the slowest); players and slow disks add.
   stopBudgetMs: 60_000,
 };
