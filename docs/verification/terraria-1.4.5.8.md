@@ -330,3 +330,65 @@ and the flavour's config files, while running), `/v1/stop`. Everything was remov
 
 **Not covered here:** players joining (no client), bans on vanilla, tModLoader's Workshop mods and
 TShock's plugins (phase 3), crashes through the watchdog, medium and large worlds.
+
+## Mods and plugins check — 2026-09-29 (M5 phase 4)
+
+**Setup.** As the runtime adapter check: the agent (0.3.10) and the Terraria adapter from this
+branch, in the runtime images built from it with `node scripts/stack.mjs build native steam`
+(`gsp/native:s5` 511 MB for TShock, `gsp/steam:s5` 852 MB for tModLoader). One server at a time,
+in a `docker run` hardened as the orchestrator does it: user 1000:1000, read-only root, a 256 MB
+`/tmp` tmpfs (exec), all capabilities dropped, `no-new-privileges`, 3 GiB memory (no swap), 4096
+pids, private IPC, named volumes for `/data` and `/opt/game` (tModLoader also `/home/node`, the
+steam volume steamcmd keeps its state in) labelled `gsp.factfinding=terraria`, only
+127.0.0.1:30551 (TShock) and 127.0.0.1:30552 (tModLoader) → 7777 published; `GAME_ADAPTER`,
+`GAME_FLAVOUR`, `GAME_DATA_DIR`, `GAME_INSTALL_DIR` as a server's spec sets them. The agent was
+driven through its HTTP API from inside the container with its token, the way the panel drives it:
+`PUT /v1/launch`, `/v1/install`, the plugin and Workshop actions, `PUT /v1/fs/write` for the mod
+list (as the panel's Mods page writes it), `/v1/start`, `/v1/restart`, `/v1/stop`, the event
+stream for the log.
+
+**What was picked.**
+- TShock plugin: **Bagger v1.3.1** (`LiteralSoofa/Bagger`, MIT, 16 896 bytes): a small, maintained
+  plugin built against TShock 6.1.0 on .NET 9 whose source was read first (it hands boss bags to
+  players who missed a fight, keeps its own SQLite file in TShock's folder, and makes no network
+  calls). Added from its release link
+  `https://github.com/LiteralSoofa/Bagger/releases/latest/download/Bagger.dll`.
+- tModLoader mod: **Recipe Browser** (Workshop item `2619954303`, 1.4 MB, one of the most
+  subscribed tModLoader mods and loaded on a server in the fact-finding).
+
+| | TShock 6.2.1 + Bagger | tModLoader v2026.07.3.0 + Recipe Browser |
+|---|---|---|
+| Install | 5.8 s | 10.4 s |
+| Links refused before anything was asked | `http://github.com/…` → `link-not-https`; `https://example.com/…/releases/download/…` → `link-host`; a release page (`…/releases/tag/v1.3.1`) → `link-not-asset`; 0.1 s each | — |
+| Adding it | `tshock-plugin-add` with the `latest` link, 1.0 s: github.com answered 302 to the tag's link, which answered 302 to `release-assets.githubusercontent.com` (both hops measured with a `HEAD` from the host); 16 896 bytes, SHA-256 `e1dfa6d0…e7c`, the digest GitHub publishes for the asset | `workshop-download` with the steam image's steamcmd, anonymous: 15.7 s the first time (1 356 461 bytes, folders `2022.9`, `2025.6`, `2025.9`, `2026.7`, each with `RecipeBrowser.tmod`), 5.4 s again while the server ran |
+| Listed before the start | enabled, not active | — |
+| Mod list | — | `Mods/enabled.json` = `["RecipeBrowser"]` (two-space indent, no final newline), through the agent's file API |
+| Start → `running` (a new small world) | 87.4 s; the agent: `Plugins in ServerPlugins: Bagger.dll.` | 35.2 s |
+| The load line | `[Server API] Info Plugin Bagger v1.3.1 (by Soofa) initiated.`, right after TShock's own `… Plugin TShock v6.2.1.0 (by The TShock Team) initiated.` (`fixtures/terraria/1.4.5.8/tshock/logs/boot-with-plugin.log`) | `Sandboxing: Recipe Browser v0.12.0.3`, then `Adding Content`, `Configuring Content`, `Finalizing Content: Recipe Browser v0.12.0.3`; tModLoader's `server.log`: `Skipped … 2022.9.47.50 … different Terraria version/LTS release stream`, `Skipped … 2025.9.3.3` and `… 2025.6.3.0 … a newer version exists`, `Selected RecipeBrowser 0.12.0.3 for tML 2026.7.3.0`: the folder the adapter's rule picks from those four for tModLoader 2026.7 |
+| Listed after the start | enabled, active | — |
+| Disabled | enabled false, still active (the restart badge); restart 7.8 s; the agent: `Plugins in ServerPlugins: none of the panel’s (no longer: Bagger.dll).`; only TShock's own load line; listed disabled and not active; the file kept in `tshock/plugins/disabled/`, gone from `ServerPlugins` | `Mods/enabled.json` = `[]`; after a restart no `Sandboxing:` line |
+| Memory idle (`docker stats`) | 324 MiB | 1.01 GiB |
+| Writes outside the volumes and `/tmp` (`docker diff`) | none | none |
+
+**What else it showed.**
+- **TShock's own files in `ServerPlugins`** (`TShockAPI.dll`, `.deps.json`, `.pdb`, `.xml`) were left
+  as the install put them; the agent's record there (`.gsp-plugins.json`) named only Bagger, then
+  nothing.
+- **GitHub's release links, measured**: a tag's download link redirects to
+  `release-assets.githubusercontent.com`; a `latest/download` link first to the tag's link on
+  github.com. Those are the only places the agent lets a plugin download go.
+- **Bagger wrote nothing of its own at start** (its database file appears on first use, by its
+  source); TShock kept loading its own plugin first.
+- The upload path (the panel writing the file through the agent's file API, the agent taking it)
+  and the refusals only an upload has (a zip with a path outside its folder, a file over 16 MiB, a
+  `.dll` that is no .NET assembly) ran against the real agent and the fake server
+  (`packages/panel/test/terraria-e2e.test.ts`), not here.
+
+**Not covered here:** players using the plugin or the mod (no client); a plugin that fails to load
+(the fact-finding measured that TShock skips a broken `.dll` without a word); a mod with
+server-side ModConfigs; a Workshop item updated between two starts (the panel's download before a
+start is tested against the fakes).
+
+**Cleaned up:** after the runs, `docker ps -a`, `docker volume ls`, `docker network ls` filtered by
+`label=gsp.factfinding=terraria` and by the `gsp-ff-terraria` name, and `docker images` for `:s5`,
+listed nothing (`gsp/native:s5` and `gsp/steam:s5` removed).
