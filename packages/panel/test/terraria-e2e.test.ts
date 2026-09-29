@@ -7,8 +7,11 @@
 // created), running with its version, a settings change (a managed key
 // refused, a restart pending), moderation against the game (TShock through
 // its REST API, vanilla's and tModLoader's IP bans on the console), a hot
-// backup, a restore of the world, a world reset. Then a Terraria and a
-// Project Zomboid server side by side, each with its own schedule.
+// backup, a restore of the world, a world reset. TShock's plugins (uploaded
+// and from a release link the agent downloads, loaded, disabled, gone) and
+// tModLoader's Workshop mods (downloaded with the agent's steamcmd, loaded).
+// Then a Terraria and a Project Zomboid server side by side, each with its
+// own schedule.
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import dgram from 'node:dgram';
 import type http from 'node:http';
@@ -18,10 +21,11 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
+import { createTmlWorkshopSource } from '@gsp/adapter-terraria/panel';
 import { createOrchestratorServer, listenOnSocket, type Policy } from '@gsp/orchestrator';
 import type { FastifyInstance } from 'fastify';
 import { agentEnvFrom, FakeBackend } from '../../../tools/fake-orchestrator/backend';
-import { startFakeDownloads, type FakeDownloads } from '../../../tools/fake-terraria/downloads.mjs';
+import { fakeAssembly, fakePlugin, makeZip, startFakeDownloads, type FakeDownloads } from '../../../tools/fake-terraria/downloads.mjs';
 import type { AgentClient } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { bootstrapOwner } from '../src/auth/bootstrap';
@@ -36,6 +40,12 @@ import { FakeFeed, fakeAgent, noNetwork, ORIGIN, OWNER, ownerReady, type Client,
 const SCALE = Number(process.env.TEST_TIME_SCALE) || 1;
 const WAIT_MS = 60_000 * SCALE;
 const ORCH_TOKEN = `e2e-orch-${randomBytes(16).toString('hex')}`;
+
+/** Steam's Workshop API for tModLoader's items (the panel asks it for titles and update times; the agent downloads with steamcmd). */
+const steamWorkshop = (async (_url: string, init?: { body?: URLSearchParams }) => {
+  const ids = [...(init!.body as URLSearchParams).entries()].filter(([k]) => k.startsWith('publishedfileids')).map(([, v]) => v);
+  return new Response(JSON.stringify({ response: { publishedfiledetails: ids.map((id) => ({ publishedfileid: id, result: 1, title: `Item ${id}`, consumer_app_id: 1281930, time_updated: 1788581217, file_size: 1356461, hcontent_file: 'x' })) } }));
+}) as unknown as typeof fetch;
 
 function freeTcp(n: number): Promise<number[]> {
   return Promise.all(
@@ -90,7 +100,8 @@ let rig: Rig;
 beforeAll(async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-tr-e2e-'));
   const downloads = await startFakeDownloads({ fail: '' });
-  const downloadEnv = { GAME_TERRARIA_ORG_URL: downloads.url, GAME_TERRARIA_GITHUB_URL: downloads.url };
+  // The release host plugin links may point at is the fake too (MOD-06).
+  const downloadEnv = { GAME_TERRARIA_ORG_URL: downloads.url, GAME_TERRARIA_GITHUB_URL: downloads.url, GAME_TERRARIA_RELEASES_URL: downloads.url };
   const policy: Policy = { hostPorts: [[1024, 65535]], maxMemMb: 16_384, maxServers: 5, allowFake: true };
   const backend = new FakeBackend({
     stateDir: path.join(dir, 'orch'),
@@ -99,7 +110,7 @@ beforeAll(async () => {
     controlPorts: await freeTcp(10),
     // What the dev loop's fake orchestrator gives its agents (tools/fake-orchestrator/main.ts, scripts/dev.mjs):
     // the download services and the fakes' knobs; quick player polls on top.
-    env: { ...agentEnvFrom({ ...downloadEnv, FAKE_TERRARIA_BOOT_MS: '200', FAKE_PZ_BOOT_MS: '200' }), GAME_PLAYERS_POLL_MS: '300', GAME_RESTART_DELAY_MS: '60000' },
+    env: { ...agentEnvFrom({ ...downloadEnv, FAKE_TERRARIA_BOOT_MS: '200', FAKE_PZ_BOOT_MS: '200', FAKE_TML_MOD_NAMES: '2619954303=RecipeBrowser' }), GAME_PLAYERS_POLL_MS: '300', GAME_RESTART_DELAY_MS: '60000' },
     restartDelayMs: 60_000,
   });
   const socket = socketPath();
@@ -131,7 +142,7 @@ beforeAll(async () => {
   const db = openDb(':memory:');
   // `default` (the environment's server) stays a fake; every created server is the orchestrator's, reached for real.
   const feed = new FakeFeed();
-  const deps = createPanelDeps({ env, db, agent: fakeAgent(feed), feed, fetch: noNetwork, mods: [createWorkshopSource({ fetch: noNetwork })], downloads: { fetch, env: downloadEnv } });
+  const deps = createPanelDeps({ env, db, agent: fakeAgent(feed), feed, fetch: noNetwork, mods: { pz: [createWorkshopSource({ fetch: noNetwork })], terraria: [createTmlWorkshopSource({ fetch: steamWorkshop })] }, downloads: { fetch, env: downloadEnv } });
   await bootstrapOwner(deps);
   const app = await buildApp(deps);
   await deps.servers.start();
@@ -343,6 +354,123 @@ describe('Terraria end to end, through the fake orchestrator and the fake server
       300_000 * SCALE,
     );
   }
+
+  it(
+    "TShock's plugins: uploaded and from a release link, downloaded by the server's agent, loaded at the start, disabled and gone after a restart (MOD-06, D11)",
+    async () => {
+      const id = 'tr-tshock';
+      const { owner, app } = rig;
+      const upload = (filename: string, data: Buffer) => {
+        const boundary = '----gspe2e';
+        return app.inject({
+          method: 'POST',
+          url: url(id, '/plugins/upload'),
+          headers: { origin: ORIGIN, cookie: `__Host-gspsid=${owner.cookie}`, 'x-gsp-csrf': owner.csrf!, 'content-type': `multipart/form-data; boundary=${boundary}` },
+          payload: Buffer.concat([Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\n\r\n`), data, Buffer.from(`\r\n--${boundary}--\r\n`)]),
+        });
+      };
+      const release = `${rig.downloads.url}/gspff/HelloPlugin/releases/download/v1.0.0`;
+      const listed = async () => ((await owner.get(url(id, '/plugins'))).json() as { plugins: { name: string; enabled: boolean; active: boolean }[] }).plugins.map((p) => [p.name, p.enabled, p.active]);
+
+      // A zip upload (a plugin, an assembly that is none, a readme), then the plugin again from its release link.
+      const zip = makeZip([{ name: 'ServerPlugins/HelloPlugin.dll', data: fakePlugin('HelloPlugin', '1.1.0') }, { name: 'ServerPlugins/HelloLib.dll', data: fakeAssembly('HelloLib') }, { name: 'README.md', data: '# hi' }]);
+      const up = await upload('hello-1.1.zip', zip);
+      expect(up.statusCode, up.body).toBe(200);
+      expect(up.json()).toMatchObject({ skipped: ['README.md'], restartNeeded: false });
+      const linked = await owner.post(url(id, '/plugins'), { url: `${release}/HelloPlugin.dll` });
+      expect(linked.statusCode, linked.body).toBe(200);
+      expect(linked.json()).toMatchObject({ added: [{ name: 'HelloPlugin.dll', origin: { from: { url: `${release}/HelloPlugin.dll` } } }], replaced: ['HelloPlugin.dll'] });
+      // The agent refuses what the panel can't see: a redirect elsewhere, a zip with a path outside its folder.
+      expect((await owner.post(url(id, '/plugins'), { url: `${release}/Elsewhere.dll` })).json()).toMatchObject({ error: 'plugin-refused', reason: 'redirect-refused' });
+      expect((await owner.post(url(id, '/plugins'), { url: `${release}/Escape.zip` })).json()).toMatchObject({ error: 'plugin-refused', reason: 'bad-archive' });
+      expect(existsSync(path.join(dataDir(id), '..', 'Escape.dll'))).toBe(false);
+      expect(await listed()).toEqual([
+        ['HelloLib.dll', true, false],
+        ['HelloPlugin.dll', true, false],
+      ]);
+
+      // Loaded at the start: TShock says so for the plugin, nothing for the assembly that is none.
+      const before = logs(id).length;
+      await ok(await owner.post(url(id, '/server/start')), 'start');
+      expect(await opDone(id)).toEqual({ ok: true, error: null });
+      await running(id);
+      const initiated = () => logs(id).filter((l) => l.startsWith('[Server API] Info Plugin '));
+      expect(logs(id).slice(before).filter((l) => l.startsWith('[Server API] Info Plugin '))).toEqual(['[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.', '[Server API] Info Plugin HelloPlugin v1.0.0 (by gspff) initiated.']);
+      expect(await listed()).toEqual([
+        ['HelloLib.dll', true, true],
+        ['HelloPlugin.dll', true, true],
+      ]);
+      // A backup holds them.
+      await ok(await owner.post(url(id, '/backups')), 'backup');
+      expect(await opDone(id)).toEqual({ ok: true, error: null });
+      const newest = ((await owner.get(url(id, '/backups'))).json() as { backups: { manifest: { parts: string[]; createdAt: string } }[] }).backups.sort((a, b) => b.manifest.createdAt.localeCompare(a.manifest.createdAt))[0]!;
+      expect(newest.manifest.parts).toContain('plugins');
+
+      // Disabled: the badge until the restart, then TShock no longer loads it.
+      expect((await owner.req('PUT', url(id, '/plugins/HelloPlugin.dll'), { enabled: false })).json()).toEqual({ changed: true, restartNeeded: true });
+      expect((await owner.get(url(id, '/config/pending'))).json()).toMatchObject({ reasons: expect.arrayContaining(['Plugins']) });
+      expect(await listed()).toContainEqual(['HelloPlugin.dll', false, true]);
+      const beforeRestart = initiated().length;
+      await ok(await owner.post(url(id, '/server/restart'), {}), 'restart');
+      expect(await opDone(id)).toEqual({ ok: true, error: null });
+      await running(id);
+      expect(initiated().slice(beforeRestart)).toEqual(['[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.']);
+      expect(await listed()).toEqual([
+        ['HelloLib.dll', true, true],
+        ['HelloPlugin.dll', false, false],
+      ]);
+      expect((await owner.req('DELETE', url(id, '/plugins/HelloPlugin.dll'))).statusCode).toBe(200);
+      expect(await listed()).toEqual([['HelloLib.dll', true, true]]);
+      // Who added what, and what was refused.
+      const added = rig.deps.audit.list({ action: 'plugins.add', serverId: id });
+      expect(added.map((e) => [e.username, e.ok])).toEqual([
+        [OWNER.username, false],
+        [OWNER.username, false],
+        [OWNER.username, true],
+        [OWNER.username, true],
+      ]);
+      expect(JSON.parse(added[2]!.detail!)).toMatchObject({ from: { url: `${release}/HelloPlugin.dll` }, added: [{ name: 'HelloPlugin.dll', size: fakePlugin('HelloPlugin').length, sha256: expect.stringMatching(/^[0-9a-f]{64}$/) }] });
+
+      await ok(await owner.post(url(id, '/server/stop'), {}), 'stop');
+      expect(await opDone(id)).toEqual({ ok: true, error: null });
+    },
+    180_000 * SCALE,
+  );
+
+  it(
+    "tModLoader's Workshop mods: added by link, downloaded with the agent's steamcmd, enabled, loaded at the start (MOD-03)",
+    async () => {
+      const id = 'tr-tmodloader';
+      const { owner } = rig;
+      const add = await owner.post(url(id, '/mods'), { refs: ['https://steamcommunity.com/sharedfiles/filedetails/?id=2619954303'] });
+      expect(add.json()).toMatchObject({ added: ['2619954303'] });
+      expect(await opDone(id)).toEqual({ ok: true, error: null });
+      const mods = (await owner.get(url(id, '/mods'))).json() as { items: { downloaded: boolean; mods: { modId: string; versionFolder: string; compatible: boolean }[] }[]; enabled: unknown[]; issues: unknown[] };
+      expect(mods.items).toEqual([expect.objectContaining({ downloaded: true, mods: [expect.objectContaining({ modId: 'RecipeBrowser', versionFolder: '2026.7', compatible: true })] })]);
+      expect(mods.enabled).toEqual([{ modId: 'RecipeBrowser', workshopId: '2619954303' }]);
+      expect(mods.issues).toEqual([]);
+      // Where steamcmd put it, and the list tModLoader reads.
+      expect(existsSync(path.join(dataDir(id), '.workshop', 'steamapps', 'workshop', 'content', '1281930', '2619954303', '2026.7', 'RecipeBrowser.tmod'))).toBe(true);
+      expect(readFileSync(path.join(dataDir(id), 'Mods', 'enabled.json'), 'utf8')).toBe('[\n  "RecipeBrowser"\n]');
+
+      const before = logs(id).length;
+      await ok(await owner.post(url(id, '/server/start')), 'start');
+      expect(await opDone(id)).toEqual({ ok: true, error: null });
+      await running(id);
+      expect(logs(id).slice(before)).toContain('Sandboxing: RecipeBrowser v1.0');
+      // Disabled: gone at the next start.
+      await ok(await owner.req('PUT', url(id, '/mods/enabled'), { enabled: [] }), 'disable');
+      expect(readFileSync(path.join(dataDir(id), 'Mods', 'enabled.json'), 'utf8')).toBe('[]');
+      const beforeRestart = logs(id).length;
+      await ok(await owner.post(url(id, '/server/restart'), {}), 'restart');
+      expect(await opDone(id)).toEqual({ ok: true, error: null });
+      await running(id);
+      expect(logs(id).slice(beforeRestart).some((l) => l.startsWith('Sandboxing:'))).toBe(false);
+      await ok(await owner.post(url(id, '/server/stop'), {}), 'stop');
+      expect(await opDone(id)).toEqual({ ok: true, error: null });
+    },
+    180_000 * SCALE,
+  );
 
   it(
     'runs a Terraria and a Project Zomboid server side by side, each with its own schedule (G1, SCH-01)',
