@@ -117,6 +117,16 @@ describe('the panel’s orchestrator client (D3, NFR-03), against the fake orche
     expect(await client.remove('pz', { removeVolumes: true })).toEqual({ removed: false, volumesRemoved: true });
   });
 
+  it('keeps a container on its image when asked, and moves it to a rebuilt one otherwise (HST-01, SRV-05)', async () => {
+    const created = await client.apply(spec());
+    expect(created.imageId).toMatch(/^sha256:/);
+    const newer = backend.rebuildImage('gsp/steam:dev');
+    expect(await client.list()).toEqual([{ ...created, latestImageId: newer }]);
+    expect(await client.apply(spec(), { keepImage: true })).toEqual({ ...created, latestImageId: newer });
+    expect(await client.apply(spec(), { keepImage: false })).toMatchObject({ state: 'created', imageId: newer, latestImageId: newer });
+    expect(await client.remove('pz', { removeVolumes: true })).toEqual({ removed: true, volumesRemoved: true });
+  });
+
   it("passes the orchestrator's refusals on with their code and field", async () => {
     // What a compromised panel might try: the type says no, the orchestrator says no too.
     const injected = { ...spec().env, LD_PRELOAD: '/tmp/x.so' } as unknown as ServerSpec['env'];

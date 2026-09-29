@@ -5,6 +5,7 @@ import type { UserRow } from '../auth/users';
 import { actor, HttpError, principal, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 import type { ServerContext } from '../servers/context';
+import type { ContainerPendingReason } from '../servers/registry';
 
 /** A server in `GET /api/servers` (SRV-02). */
 export interface ServerSummary {
@@ -28,6 +29,8 @@ export interface ServerSummary {
   cpus: number | null;
   /** Its container waits to be recreated with changed settings (new limits) at the game's next start. */
   containerPending: boolean;
+  /** Why: `settings` changed, and/or a newer runtime `image` (a product upgrade); empty when nothing waits. */
+  containerPendingReasons: ContainerPendingReason[];
   /** Whether the orchestrator runs it; false: the server the install's environment describes (`default`), which only the stack itself can remove. */
   managed: boolean;
   /** The signed-in user's role there, and what it lets them do. */
@@ -129,6 +132,7 @@ function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 's
     memLimitMb: s.row.memLimitMb,
     cpus: s.row.cpus,
     containerPending: deps.servers.containerPending(s.id),
+    containerPendingReasons: deps.servers.containerPendingReasons(s.id),
     managed: s.row.spec !== null,
     role,
     permissions: permissionsOn(who, grants, s.id),

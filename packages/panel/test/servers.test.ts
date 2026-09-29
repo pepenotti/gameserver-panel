@@ -193,6 +193,21 @@ describe('memory and CPU limits through the API (SRV-05)', () => {
     expect(((await admin.get('/api/servers/pz-two/server/launch')).json() as { memoryMb: number }).memoryMb).toBe(3072);
   });
 
+  it('says why a running server’s container waits: new limits, a newer runtime image, or both (SRV-05, HST-01)', async () => {
+    const p = await makePanel();
+    const { client: owner } = await ownerReady(p);
+    await createTwo(owner, { launch: { memoryMb: 2048 } });
+    const two = async () => ((await owner.get('/api/servers')).json() as { id: string; containerPending: boolean; containerPendingReasons: string[] }[]).find((s) => s.id === 'pz-two');
+    expect(await two()).toMatchObject({ containerPending: false, containerPendingReasons: [] });
+    p.fakes('pz-two').feed.status_ = fakeStatus({ state: 'running' });
+    p.orch.rebuildImage('gsp/steam:fake');
+    await p.deps.servers.reconcile();
+    expect(await two()).toMatchObject({ containerPending: true, containerPendingReasons: ['image'] });
+    expect((await owner.req('PATCH', '/api/servers/pz-two', { memLimitMb: 6144 })).json()).toMatchObject({ containerPending: true, containerPendingReasons: ['settings', 'image'] });
+    // The default server's container is the stack's: never waiting.
+    expect(((await owner.get('/api/servers')).json() as { id: string; containerPendingReasons: string[] }[]).find((s) => s.id === 'default')).toMatchObject({ containerPendingReasons: [] });
+  });
+
   it('tells an admin of one server the most the host gives a server, before the API refuses more (SRV-05)', async () => {
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);

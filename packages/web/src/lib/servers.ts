@@ -5,6 +5,7 @@
 // import it.
 import { SERVER_ID_PATTERN } from '@gsp/shared';
 import type { PortDecl, PortRange } from '../api/meta';
+import type { ContainerPendingReason } from '../api/server';
 
 /** Ids the panel keeps for itself (`RESERVED_SERVER_IDS` in packages/panel/src/servers/registry.ts). */
 export const RESERVED_IDS: readonly string[] = ['default', 'panel'];
@@ -190,4 +191,15 @@ export function createErrorField(code: string, extra: Record<string, unknown>, d
     default:
       return { field: null };
   }
+}
+
+/**
+ * What a waiting container's "Applies at next start" says (SRV-05, HST-01),
+ * one message per reason: new limits, a newer runtime image, or both.
+ */
+export function pendingHelpKeys(reasons: readonly ContainerPendingReason[]): ('servers.pendingStartHelp' | 'servers.pendingImageHelp')[] {
+  const keys: ('servers.pendingStartHelp' | 'servers.pendingImageHelp')[] = [];
+  if (reasons.includes('settings') || !reasons.includes('image')) keys.push('servers.pendingStartHelp');
+  if (reasons.includes('image')) keys.push('servers.pendingImageHelp');
+  return keys;
 }

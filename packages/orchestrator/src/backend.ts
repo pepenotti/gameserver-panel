@@ -1,4 +1,4 @@
-import type { DeleteResponse, HostInfo, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
+import type { ApplyOptions, DeleteResponse, HostInfo, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
 import { conflict } from './errors';
 
 /**
@@ -12,8 +12,12 @@ export interface Backend {
   ping(): Promise<void>;
   host(): Promise<HostInfo>;
   list(): Promise<ServerContainer[]>;
-  /** Create or recreate (volumes kept); never starts the container. */
-  apply(spec: ServerSpec): Promise<ServerContainer>;
+  /**
+   * Create or recreate (volumes kept); never starts the container. A
+   * container that matches the spec is recreated only for a newer runtime
+   * image, and not even then with `keepImage`.
+   */
+  apply(spec: ServerSpec, o?: ApplyOptions): Promise<ServerContainer>;
   start(id: string): Promise<ServerContainer>;
   stop(id: string, timeoutSec?: number): Promise<ServerContainer>;
   restart(id: string, timeoutSec?: number): Promise<ServerContainer>;

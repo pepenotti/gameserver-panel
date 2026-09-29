@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import type { Capability, PanelAdapter } from '@gsp/adapter-api';
 import type { AgentApi } from '../agent/client';
-import { isServerId, type HostInfo, type ServerContainer, type ServerSpec } from '@gsp/shared';
+import { isServerId, newerImage, type HostInfo, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { SYSTEM, type Actor, type Audit } from '../audit';
 import { syncRoleWithGrants, type ServerGrants } from '../auth/grants';
 import type { Users } from '../auth/users';
@@ -81,6 +81,13 @@ export interface RemoveReport {
 /** Seconds a forced removal gives the game to stop before Docker kills it. */
 const FORCED_STOP_SEC = 10;
 
+/**
+ * Why a server's container waits for its game's next start (SRV-05):
+ * `settings` changed (new memory or CPU limits, and the like), or its
+ * runtime `image` was rebuilt since it was created (a product upgrade).
+ */
+export type ContainerPendingReason = 'settings' | 'image';
+
 /** What `reconcile` changed to bring containers in line with the servers table (SRV-06). */
 export interface ReconcileReport {
   /** Containers created or recreated from their row's spec. */
@@ -118,10 +125,16 @@ export interface ServerRegistry {
    * it (keeping the room it had above the game's), as `update` does.
    */
   followLaunch(id: string, launch: Record<string, unknown>, by: Actor, ip?: string | null): Promise<void>;
-  /** Before a server's game starts: a container whose settings changed is recreated first, and its agent waited for. */
+  /**
+   * Before a server's game starts: a container whose settings changed, or
+   * whose runtime image was rebuilt since, is recreated first, and its agent
+   * waited for.
+   */
   prepareStart(id: string): Promise<void>;
-  /** Whether a server's container waits to be recreated from its changed settings at its game's next start. */
+  /** Whether a server's container waits to be recreated (changed settings, a newer runtime image) at its game's next start. */
   containerPending(id: string): boolean;
+  /** Why it waits; none when it doesn't. */
+  containerPendingReasons(id: string): ContainerPendingReason[];
   /**
    * D6: the owner accepts the game's agreement (the route checks
    * `server.eula`); recorded with who and when, and audited. The server may
@@ -186,6 +199,9 @@ const GAME_ACTIVE: ReadonlySet<string> = new Set(['installing', 'starting', 'run
 
 /** How long a recreated container's agent gets to answer before the game is started (a real boot takes a few seconds). */
 const AGENT_BACK_MS = 120_000;
+
+/** How the audit log says what a container was recreated with. */
+const RECREATED_WITH: Record<ContainerPendingReason, string> = { settings: 'with its changed settings', image: 'on a newer runtime image' };
 
 /** Whether a spec is the one stored (`servers.spec`, without the agent token). */
 function sameSpec(spec: ServerSpec, stored: ServerSpec | null): boolean {
@@ -272,6 +288,8 @@ export class DbServerRegistry implements ServerRegistry {
   /** Where each orchestrator-run server's agent answers, from its container. */
   private readonly agentUrls = new Map<string, string>();
   private readonly agents = new Map<string, AgentParts>();
+  /** Servers whose container runs an older runtime image than its tag names now, as the orchestrator last said (HST-01). */
+  private readonly olderImage = new Set<string>();
   private readonly running = new Set<ServerContext>();
   private order: string[] = [];
   private live = false;
@@ -343,15 +361,32 @@ export class DbServerRegistry implements ServerRegistry {
     return !!status && GAME_ACTIVE.has(status.state);
   }
 
+  /** What the orchestrator said about a server's container; notes whether a newer runtime image waits for it. */
+  private seen(c: ServerContainer): ServerContainer {
+    if (newerImage(c)) this.olderImage.add(c.id);
+    else this.olderImage.delete(c.id);
+    return c;
+  }
+
+  /** Whether a newer runtime image waits for any server, as the orchestrator says now; when it can't say, what it said last stands. */
+  private async refreshImages(): Promise<void> {
+    try {
+      for (const c of await this.d.orchestrator.list()) this.seen(c);
+    } catch {
+      // Unreachable or not in this build: nothing new to learn.
+    }
+  }
+
   /**
-   * The row's container, created or recreated from it (volumes kept) and
-   * running; the spec is stored once both worked. Failures are the API's.
+   * The row's container, created or recreated from it (volumes kept, on the
+   * runtime image its tag names now) and running; the spec is stored once
+   * both worked. Failures are the API's.
    */
   private async applySpec(row: ServerRow): Promise<ServerContainer> {
     const spec = this.specOf(row);
     try {
-      let c = await this.d.orchestrator.apply(spec);
-      if (c.state !== 'running') c = await this.d.orchestrator.start(row.id);
+      let c = this.seen(await this.d.orchestrator.apply(spec));
+      if (c.state !== 'running') c = this.seen(await this.d.orchestrator.start(row.id));
       this.agentUrls.set(row.id, c.agentUrl);
       this.d.rows.setSpec(row.id, redactSpec(spec));
       return c;
@@ -377,29 +412,42 @@ export class DbServerRegistry implements ServerRegistry {
   }
 
   containerPending(id: string): boolean {
-    const row = this.d.rows.get(id);
-    if (!row?.spec) return false;
-    try {
-      return !sameSpec(this.specOf(row), row.spec);
-    } catch {
-      return false;
-    }
+    return this.containerPendingReasons(id).length > 0;
   }
 
-  prepareStart(id: string): Promise<void> {
-    // Nothing waits (the usual case): no queueing behind another server's creation or removal.
-    if (!this.containerPending(id)) return Promise.resolve();
-    return this.exclusive(async () => {
+  containerPendingReasons(id: string): ContainerPendingReason[] {
+    const row = this.d.rows.get(id);
+    if (!row?.spec) return [];
+    let wanted: ServerSpec;
+    try {
+      wanted = this.specOf(row);
+    } catch {
+      // Nothing to recreate it from.
+      return [];
+    }
+    const out: ContainerPendingReason[] = [];
+    if (!sameSpec(wanted, row.spec)) out.push('settings');
+    if (this.olderImage.has(id)) out.push('image');
+    return out;
+  }
+
+  async prepareStart(id: string): Promise<void> {
+    if (!this.d.rows.get(id)?.spec) return;
+    // A runtime image rebuilt since the orchestrator last said (without a panel restart) waits too. Not queued:
+    // with nothing waiting (the usual case) the start isn't held up behind another server's creation or removal.
+    await this.refreshImages();
+    if (!this.containerPending(id)) return;
+    const applied = await this.exclusive(async () => {
       const row = this.d.rows.get(id);
-      if (!row?.spec || sameSpec(this.specOf(row), row.spec)) return false;
+      const reasons = this.containerPendingReasons(id);
+      if (!row?.spec || reasons.length === 0) return false;
       // Pressed while it runs: the agent says so; the change keeps waiting.
       if (await this.gameActive(id)) return false;
       await this.applySpec(row);
-      this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: 'container recreated with its changed settings before the game started' });
+      this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: `container recreated ${reasons.map((r) => RECREATED_WITH[r]).join(' and ')} before the game started` });
       return true;
-    }).then(async (applied) => {
-      if (applied) await this.agentBack(id);
     });
+    if (applied) await this.agentBack(id);
   }
 
   private activate(ctx: ServerContext): void {
@@ -518,9 +566,9 @@ export class DbServerRegistry implements ServerRegistry {
 
     let applied = false;
     try {
-      let c = await orchestrator.apply(spec);
+      let c = this.seen(await orchestrator.apply(spec));
       applied = true;
-      if (c.state !== 'running') c = await orchestrator.start(id);
+      if (c.state !== 'running') c = this.seen(await orchestrator.start(id));
       this.agentUrls.set(id, c.agentUrl);
     } catch (e) {
       if (applied) await orchestrator.remove(id, { removeVolumes: true }).catch(() => undefined);
@@ -714,6 +762,7 @@ export class DbServerRegistry implements ServerRegistry {
     this.contexts.delete(id);
     this.agentUrls.delete(id);
     this.agents.delete(id);
+    this.olderImage.delete(id);
     const holders = this.d.grants.forServer(id).map((g) => g.userId);
     rows.purge(id);
     // Accounts that lose a grant may lose their highest role with it.
@@ -758,21 +807,36 @@ export class DbServerRegistry implements ServerRegistry {
       for (const row of managed) report.failed.push({ id: row.id, error });
       return this.reported(report);
     }
+    /** Recreated only to move to a newer runtime image (for the audit log). */
+    const upgraded = new Set<string>();
     for (const row of managed) {
       try {
-        // Rebuilt from the row, so new limits, a changed time zone or a newer panel's derivation reach the container…
+        // Rebuilt from the row, so new limits, a changed time zone or a newer panel's derivation reach the
+        // container, and so does a runtime image rebuilt since it was created (a product upgrade, HST-01)…
         const wanted = this.specOf(row);
+        const asItWas: ServerSpec = { ...row.spec!, env: { ...row.spec!.env, AGENT_TOKEN: wanted.env.AGENT_TOKEN } };
         const before = containers.find((c) => c.id === row.id);
-        if (before) this.agentUrls.set(row.id, before.agentUrl);
-        // …except while its game runs (SRV-05): the change waits for the next start, and the container
-        // it has is applied again as it was (which joins a new panel container to its network).
-        const waits = before?.state === 'running' && !sameSpec(wanted, row.spec) && (await this.gameActive(row.id));
-        const spec = waits ? { ...row.spec!, env: { ...row.spec!.env, AGENT_TOKEN: wanted.env.AGENT_TOKEN } } : wanted;
-        let c = await orchestrator.apply(spec);
-        if (!before || before.specHash !== c.specHash) report.applied.push(row.id);
+        if (before) {
+          this.agentUrls.set(row.id, before.agentUrl);
+          this.seen(before);
+        }
+        const changed = !sameSpec(wanted, row.spec);
+        const newer = before !== undefined && newerImage(before);
+        // …except while its game runs (SRV-05): then both wait for its next start. Its agent is asked once the
+        // container it has was applied again as it was, on its own image: that joins a new panel container (a
+        // product upgrade just made one) to its network, so the agent can be reached to say.
+        const kept = before?.state === 'running' && (changed || newer) ? this.seen(await orchestrator.apply(asItWas, { keepImage: true })) : null;
+        const waits = kept !== null && (await this.gameActive(row.id));
+        const spec = waits ? asItWas : wanted;
+        // A newer image is taken only when it was seen and nothing waits; otherwise a container keeps the image it
+        // runs, even one rebuilt a moment ago (the next start through the panel takes it).
+        let c = kept && waits ? kept : this.seen(await orchestrator.apply(spec, { keepImage: before !== undefined && !newer }));
+        const recreated = !before || before.specHash !== c.specHash || (before.imageId ?? '') !== (c.imageId ?? '');
+        if (recreated) report.applied.push(row.id);
+        if (recreated && newer && !changed) upgraded.add(row.id);
         if (!waits && !sameSpec(spec, row.spec)) rows.setSpec(row.id, redactSpec(spec));
         if (c.state !== 'running') {
-          c = await orchestrator.start(row.id);
+          c = this.seen(await orchestrator.start(row.id));
           report.started.push(row.id);
         }
         this.agentUrls.set(row.id, c.agentUrl);
@@ -782,7 +846,7 @@ export class DbServerRegistry implements ServerRegistry {
       }
     }
     report.orphans = containers.filter((c) => !rows.get(c.id)).map((c) => c.id);
-    for (const id of report.applied) audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: 'container created or recreated' });
+    for (const id of report.applied) audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: upgraded.has(id) ? 'container recreated on a newer runtime image' : 'container created or recreated' });
     for (const id of report.started.filter((x) => !report.applied.includes(x))) audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: 'container started' });
     return this.reported(report);
   }

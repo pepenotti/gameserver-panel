@@ -13,6 +13,7 @@ import { forFlavour, impliedBy, localize, type I18n, type LaunchChoices } from '
 import { useMeta } from '../api/useMeta';
 import { EulaNotice } from '../components/Eula';
 import { LaunchField, launchKey } from '../components/LaunchField';
+import { PendingBadge } from '../components/PendingBadge';
 import { DeleteServerModal, RenameServerModal } from '../components/ServerAdmin';
 import { UnsupportedNote } from '../components/Supported';
 import { formatBytes, useErrorText } from '../lib/format';
@@ -69,7 +70,8 @@ function NameCard() {
  * `PATCH /api/servers/:sid`, within the most the host gives one server
  * (`GET /api/servers/:sid/limits`). A stopped server's container is
  * recreated with them at once; a running one's at its game's next start
- * (the list says so until then). The stack's own server has Compose's limits.
+ * (the list says so until then), as it is when its runtime image was
+ * rebuilt (a panel update). The stack's own server has Compose's limits.
  */
 function ContainerCard({ server, needMb }: { server: ServerSummary; needMb: number | null }) {
   const { t } = useTranslation();
@@ -96,7 +98,7 @@ function ContainerCard({ server, needMb }: { server: ServerSummary; needMb: numb
     try {
       const next = await sapi<ServerSummary>('PATCH', '', { ...(mem !== server.memLimitMb && mem !== null ? { memLimitMb: mem } : {}), ...(cpus !== server.cpus ? { cpus } : {}) });
       qc.setQueryData<ServerSummary[]>(SERVERS_KEY, (list) => withServer(list, next));
-      notifications.show({ color: 'green', message: next.containerPending ? t('server.limitsNextStart') : t('server.limitsApplied') });
+      notifications.show({ color: 'green', message: next.containerPendingReasons.includes('settings') ? t('server.limitsNextStart') : t('server.limitsApplied') });
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -108,11 +110,7 @@ function ContainerCard({ server, needMb }: { server: ServerSummary; needMb: numb
     <Card withBorder>
       <Group justify="space-between" mb={4}>
         <Text fw={600}>{t('server.container')}</Text>
-        {server.containerPending && (
-          <Badge color="orange" variant="light" tt="none">
-            {t('servers.pendingStart')}
-          </Badge>
-        )}
+        {server.containerPending && <PendingBadge reasons={server.containerPendingReasons} />}
       </Group>
       {!server.managed ? (
         <Text size="sm" c="dimmed">
@@ -123,6 +121,11 @@ function ContainerCard({ server, needMb }: { server: ServerSummary; needMb: numb
           <Text size="sm" c="dimmed">
             {t('server.containerHelp')}
           </Text>
+          {server.containerPendingReasons.includes('image') && (
+            <Text size="sm" c="orange">
+              {t('server.imageNextStart')}
+            </Text>
+          )}
           <Group align="flex-start" gap="md">
             <NumberInput
               label={t('server.memLimit')}

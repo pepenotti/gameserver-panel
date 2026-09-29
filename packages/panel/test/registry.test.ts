@@ -510,6 +510,7 @@ describe('changing memory and CPU limits (SRV-05)', () => {
     expect(p.deps.serverRows.get('pz-two')!.memLimitMb).toBe(6144);
     expect(p.orch.containers.get('pz-two')!.spec.memoryMb).toBe(5120);
     expect(p.deps.servers.containerPending('pz-two')).toBe(true);
+    expect(p.deps.servers.containerPendingReasons('pz-two')).toEqual(['settings']);
     expect(detail(p, 'server.update')).toMatchObject({ container: 'at-next-start' });
 
     // A panel restart meanwhile keeps the container it has (and joins the new panel to its network).
@@ -589,8 +590,8 @@ describe('reconcile (SRV-06)', () => {
     expect(again.deps.servers.list().map((s) => s.id)).toEqual(['default', 'pz-two']);
     again.orch.calls.length = 0;
     expect(await again.deps.servers.reconcile()).toEqual({ applied: [], started: [], orphans: [], failed: [] });
-    // default is Compose's: never applied, started or removed by the panel.
-    expect(again.orch.calls).toEqual(['list', 'apply pz-two']);
+    // default is Compose's: never applied, started or removed by the panel. pz-two keeps the image it runs.
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage']);
   });
 
   it('recreates a missing container, starts a stopped one, and reports what it cannot fix', async () => {
@@ -679,5 +680,156 @@ describe('reconcile (SRV-06)', () => {
       again.deps.servers.stop();
       vi.useRealTimers();
     }
+  });
+});
+
+describe('a newer runtime image (HST-01, SRV-05, SRV-06)', () => {
+  const IMAGE = 'gsp/steam:fake';
+  const reconciled = (p: TestPanel) => p.deps.audit.list({ serverId: 'pz-two', action: 'server.reconcile' }).map((e) => e.detail);
+
+  it('changes nothing while the image is the same one', async () => {
+    const p = await makePanel();
+    await create(p);
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    again.orch.calls.length = 0;
+    expect(await again.deps.servers.reconcile()).toEqual({ applied: [], started: [], orphans: [], failed: [] });
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage']);
+    expect(again.deps.servers.containerPendingReasons('pz-two')).toEqual([]);
+  });
+
+  it("is taken at once by a stopped game's container when the panel boots: recreated, started, its agent left alone", async () => {
+    const p = await makePanel();
+    await create(p);
+    const old = p.orch.containers.get('pz-two')!;
+    const newer = p.orch.rebuildImage(IMAGE);
+    expect(old.imageId).not.toBe(newer);
+    // A product upgrade: new images, a new panel over the same database and containers.
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    again.orch.calls.length = 0;
+    expect(await again.deps.servers.reconcile()).toEqual({ applied: ['pz-two'], started: ['pz-two'], orphans: [], failed: [] });
+    // Applied as it was first (to reach its agent, which says the game is stopped), then on the newer image;
+    // recreated by the orchestrator, never removed: its volumes stay.
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage', 'apply pz-two', 'start pz-two']);
+    expect(p.orch.containers.get('pz-two')).toMatchObject({ state: 'running', imageId: newer, spec: old.spec });
+    expect(again.deps.servers.containerPending('pz-two')).toBe(false);
+    // The agent keeps its own desired state: the panel neither stopped nor started the game.
+    expect(again.fakes('pz-two').agent.calls).toEqual([]);
+    expect(reconciled(again)[0]).toBe('container recreated on a newer runtime image');
+  });
+
+  it('waits while the game runs, the container and game untouched, and is taken at the next start through the panel', async () => {
+    const p = await makePanel();
+    await create(p);
+    const old = p.orch.containers.get('pz-two')!;
+    const newer = p.orch.rebuildImage(IMAGE);
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    const fake = again.fakes('pz-two');
+    fake.feed.status_ = fakeStatus({ state: 'running' });
+    again.orch.calls.length = 0;
+    expect(await again.deps.servers.reconcile()).toEqual({ applied: [], started: [], orphans: [], failed: [] });
+    expect(again.orch.calls).toEqual(['list', 'apply pz-two keepImage']);
+    expect(p.orch.containers.get('pz-two')).toBe(old);
+    expect(old).toMatchObject({ state: 'running', imageId: expect.not.stringMatching(newer) });
+    expect(fake.agent.calls).toEqual([]);
+    expect(again.deps.servers.containerPending('pz-two')).toBe(true);
+    expect(again.deps.servers.containerPendingReasons('pz-two')).toEqual(['image']);
+    // A retry or another boot while it still runs: still kept.
+    await again.deps.servers.reconcile();
+    expect(p.orch.containers.get('pz-two')).toBe(old);
+
+    // Start pressed while it runs: the agent says so, and the image keeps waiting.
+    const ctx = again.deps.servers.get('pz-two')!;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(p.orch.containers.get('pz-two')).toBe(old);
+
+    // Stopped, then started through the panel: recreated on the newer image before the game starts.
+    fake.feed.status_ = fakeStatus({ state: 'stopped' });
+    const atStart: string[] = [];
+    fake.agent.start = async () => {
+      atStart.push(p.orch.containers.get('pz-two')!.imageId);
+      return fakeStatus({ state: 'starting' });
+    };
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(ctx.ops.last()).toMatchObject({ kind: 'start', ok: true });
+    expect(atStart).toEqual([newer]);
+    expect(p.orch.containers.get('pz-two')).toMatchObject({ state: 'running', imageId: newer, spec: old.spec });
+    expect(again.deps.servers.containerPendingReasons('pz-two')).toEqual([]);
+    expect(reconciled(again)[0]).toBe('container recreated on a newer runtime image before the game started');
+  });
+
+  it("asks a running game's agent only once the new panel can reach it (it joins the server's network by the kept apply)", async () => {
+    const p = await makePanel();
+    await create(p);
+    const old = p.orch.containers.get('pz-two')!;
+    p.orch.rebuildImage(IMAGE);
+    const again = await makePanel({}, { db: p.deps.db, orch: p.orch });
+    // A recreated panel container is on none of the servers' networks until the orchestrator joins it to one.
+    again.fakes('pz-two').agent.status = async () => {
+      if (!again.orch.calls.includes('apply pz-two keepImage')) throw new Error('getaddrinfo ENOTFOUND');
+      return fakeStatus({ state: 'running' });
+    };
+    expect(await again.deps.servers.reconcile()).toMatchObject({ applied: [], failed: [] });
+    expect(p.orch.containers.get('pz-two')).toBe(old);
+    expect(again.deps.servers.containerPendingReasons('pz-two')).toEqual(['image']);
+  });
+
+  it("is learnt at the game's next start when the image was rebuilt while the panel ran", async () => {
+    const p = await makePanel();
+    await create(p);
+    const newer = p.orch.rebuildImage(IMAGE);
+    // Nobody asked the orchestrator since: the panel doesn't know yet.
+    expect(p.deps.servers.containerPending('pz-two')).toBe(false);
+    const ctx = p.deps.servers.get('pz-two')!;
+    p.orch.calls.length = 0;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(ctx.ops.last()).toMatchObject({ ok: true });
+    expect(p.orch.calls).toEqual(['list', 'apply pz-two', 'start pz-two']);
+    expect(p.orch.containers.get('pz-two')!.imageId).toBe(newer);
+    expect(p.fakes('pz-two').agent.calls).toContain('start');
+    // In line: the next start only asks.
+    p.orch.calls.length = 0;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(p.orch.calls).toEqual(['list']);
+  });
+
+  it('takes new limits and a newer image in one recreation at the next start', async () => {
+    const p = await makePanel();
+    await create(p, { launch: { memoryMb: 2048 } });
+    const fake = p.fakes('pz-two');
+    fake.feed.status_ = fakeStatus({ state: 'running' });
+    await p.deps.servers.update('pz-two', { memLimitMb: 6144 }, OWNER_ACTOR);
+    const newer = p.orch.rebuildImage(IMAGE);
+    const ctx = p.deps.servers.get('pz-two')!;
+    // The start pressed while it runs learns of the image, and both wait.
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(p.deps.servers.containerPendingReasons('pz-two')).toEqual(['settings', 'image']);
+    fake.feed.status_ = fakeStatus({ state: 'stopped' });
+    p.orch.calls.length = 0;
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(p.orch.calls.filter((c) => c.startsWith('apply'))).toEqual(['apply pz-two']);
+    expect(p.orch.containers.get('pz-two')).toMatchObject({ imageId: newer, spec: expect.objectContaining({ memoryMb: 6144 }) });
+    expect(p.deps.servers.containerPendingReasons('pz-two')).toEqual([]);
+    expect(reconciled(p)[0]).toBe('container recreated with its changed settings and on a newer runtime image before the game started');
+  });
+
+  it("doesn't start the game when the orchestrator refuses the recreation (an image that isn't built), and keeps it waiting", async () => {
+    const p = await makePanel();
+    await create(p);
+    const old = p.orch.containers.get('pz-two')!;
+    p.orch.rebuildImage(IMAGE);
+    const ctx = p.deps.servers.get('pz-two')!;
+    p.orch.failNext.set('apply', new OrchestratorCallError(503, 'unavailable', `The image ${IMAGE} is not built on this host`));
+    ctx.control.start('alice');
+    await ctx.ops.idle();
+    expect(ctx.ops.last()).toMatchObject({ kind: 'start', ok: false });
+    expect(p.fakes('pz-two').agent.calls).not.toContain('start');
+    expect(p.orch.containers.get('pz-two')).toBe(old);
+    expect(p.deps.servers.containerPendingReasons('pz-two')).toEqual(['image']);
   });
 });

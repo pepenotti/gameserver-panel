@@ -2,7 +2,9 @@
 // does, the ports it suggests, and where it shows the API's refusals.
 import { describe, expect, it } from 'vitest';
 import type { PortDecl } from '../src/api/meta';
-import { createErrorField, formatRanges, idProblem, maxGameMemory, nameProblem, portProblem, slugify, suggestPorts } from '../src/lib/servers';
+import { en } from '../src/i18n/en';
+import { es } from '../src/i18n/es';
+import { createErrorField, formatRanges, idProblem, maxGameMemory, nameProblem, pendingHelpKeys, portProblem, slugify, suggestPorts } from '../src/lib/servers';
 
 const port = (id: string, proto: 'tcp' | 'udp', dflt: number, publish = true): PortDecl => ({ id, proto, default: dflt, publish, sameInsideOut: true, label: { en: id, es: id } });
 /** A game with a pair of UDP ports players use and a TCP port only its agent uses. */
@@ -93,5 +95,21 @@ describe('ports', () => {
     expect(createErrorField('orchestrator-refused', { field: 'env.GAME_X' }, DECLS, ports)).toEqual({ field: null });
     expect(createErrorField('invalid-port', { port: 'game', min: 30350, max: 30399, ranges: '30350-30399' }, DECLS, ports)).toEqual({ field: 'port:game' });
     expect(createErrorField('orchestrator-unavailable', {}, DECLS, ports)).toEqual({ field: null });
+  });
+});
+
+describe('a container waiting for the next start (SRV-05, HST-01)', () => {
+  it('says why: new limits, a newer runtime image, or both, in English and Spanish', () => {
+    expect(pendingHelpKeys(['settings'])).toEqual(['servers.pendingStartHelp']);
+    expect(pendingHelpKeys(['image'])).toEqual(['servers.pendingImageHelp']);
+    expect(pendingHelpKeys(['settings', 'image'])).toEqual(['servers.pendingStartHelp', 'servers.pendingImageHelp']);
+    expect(pendingHelpKeys([])).toEqual(['servers.pendingStartHelp']);
+    for (const lang of [en, es]) {
+      expect(lang.servers.pendingImageHelp).toMatch(/\S/);
+      expect(lang.server.imageNextStart).toMatch(/\S/);
+    }
+    // Game-neutral: it speaks of the runtime image, never of a game.
+    expect(en.servers.pendingImageHelp).toMatch(/runtime image/);
+    expect(es.servers.pendingImageHelp).toMatch(/imagen de ejecución/);
   });
 });
