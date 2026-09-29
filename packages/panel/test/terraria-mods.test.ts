@@ -333,6 +333,24 @@ describe("tModLoader's Workshop mods through the API (MOD-03)", () => {
     expect(p.fakes('tr-tml').agent.calls.filter((c) => c === `action:${WORKSHOP_DOWNLOAD}` || c === 'start')).toEqual([`action:${WORKSHOP_DOWNLOAD}`, 'start', `action:${WORKSHOP_DOWNLOAD}`, 'start', `action:${WORKSHOP_DOWNLOAD}`, 'start']);
   });
 
+  it('applies an update by the mod update policy like any Workshop mod: the restart downloads it first (MOD-04)', async () => {
+    const items = { '2619954303': { title: 'Recipe Browser', updated: 1000 } };
+    const { p, owner, downloaded } = await tmlPanel(items);
+    await owner.post('/api/servers/tr-tml/mods', { refs: ['2619954303'] });
+    const srv = p.deps.servers.get('tr-tml')!;
+    await srv.ops.idle();
+    // Running, nobody online: the default policy (when empty) acts at once.
+    p.fakes('tr-tml').feed.status_ = fakeStatus({ state: 'running', players: { count: 0, names: [], at: new Date().toISOString() }, installedInfo: { version: '1.4.4.9', channel: 'tmodloader', build: 'v2026.07.3.0' } });
+    await srv.scheduler.checkModUpdates();
+    await srv.ops.idle();
+    expect(downloaded).toEqual([['2619954303']]);
+    items['2619954303'].updated = 2000;
+    await srv.scheduler.checkModUpdates();
+    await srv.ops.idle();
+    expect(downloaded).toEqual([['2619954303'], ['2619954303']]);
+    expect(p.fakes('tr-tml').agent.calls.filter((c) => ['stop', 'start', `action:${WORKSHOP_DOWNLOAD}`].includes(c)).slice(-3)).toEqual(['stop', `action:${WORKSHOP_DOWNLOAD}`, 'start']);
+  });
+
   it('is for the tModLoader flavour only', async () => {
     const { owner } = await tmlPanel({});
     for (const f of ['vanilla', 'tshock']) {
