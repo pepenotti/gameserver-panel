@@ -13,6 +13,7 @@ import { bare, display, FATAL, parsePlaying, playingDone, TR_PATTERNS } from '..
 import { TERRARIA_META } from '../shared/meta';
 import { dataPath, port, prepare, worldFile } from './files';
 import { install, installedEntry, installedInfo, installNeeded, listVersions } from './install';
+import { progressOf } from './progress';
 import { restPlayerList, TSHOCK_ACTIONS } from './rest';
 
 export type { TerrariaLaunch };
@@ -45,6 +46,9 @@ export function classify(raw: string): LineSignal {
   // Every start names a world; the menu means it got none and would wait forever.
   if (TR_PATTERNS.worldMenu.test(m)) s.blockingPrompt = 'The server is showing its world menu (it was given no world it could load) and waits for a choice nobody will type';
   if (FATAL.some((re) => re.test(m))) s.fatal = true;
+  // World generation and saves print a line per step: the live log shows each run as its latest line (CON-01).
+  const progress = progressOf(m);
+  if (progress) s.progress = progress;
   return s;
 }
 
