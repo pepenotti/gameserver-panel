@@ -10,8 +10,11 @@
 //   get a free port from `controlPorts`;
 // - the agent listens on a port from `agentPorts` (`agentUrl` says which);
 // - stats are not measured (zeros, with the memory limit);
-// - `stop` asks the agent over IPC (Docker's SIGTERM), then kills the tree.
+// - `stop` asks the agent over IPC (Docker's SIGTERM), then kills the tree;
+// - images are names with made-up content ids, kept in servers.json;
+//   `rebuildImage` stands for `docker build` again under the same tag.
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import dgram from 'node:dgram';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
@@ -21,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import type { PortDecl } from '@gsp/adapter-api';
 import { runtimeAdapter } from '@gsp/adapters/runtime';
 import { conflict, DEFAULT_STOP_TIMEOUT_SEC, IdLocks, imageName, Mutex, notFound, refused, specHash, type Backend, type Policy } from '@gsp/orchestrator';
-import type { ContainerState, CpuArch, DeleteResponse, HostInfo, PortProto, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
+import type { ApplyOptions, ContainerState, CpuArch, DeleteResponse, HostInfo, PortProto, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const AGENT_ENTRY = fileURLToPath(new URL('./agent-entry.mjs', import.meta.url));
@@ -62,6 +65,8 @@ interface Stored {
   spec: ServerSpec;
   specHash: string;
   image: string;
+  /** The content id `image` named when this "container" was made. */
+  imageId: string;
   agentPort: number;
   /** Port by `PortDecl.id` for ports the spec doesn't publish. */
   internal: Record<string, number>;
@@ -125,6 +130,8 @@ export class FakeBackend implements Backend {
   private readonly creating = new Mutex();
   private readonly stored = new Map<string, Stored>();
   private readonly live = new Map<string, Live>();
+  /** Image name → the content id it names now. */
+  private readonly images = new Map<string, string>();
   private readonly file: string;
   private closing = false;
 
@@ -132,9 +139,29 @@ export class FakeBackend implements Backend {
     mkdirSync(o.stateDir, { recursive: true });
     this.file = path.join(o.stateDir, 'servers.json');
     if (existsSync(this.file)) {
-      const saved = JSON.parse(readFileSync(this.file, 'utf8')) as { servers?: Record<string, Stored> };
-      for (const [id, s] of Object.entries(saved.servers ?? {})) this.stored.set(id, s);
+      const saved = JSON.parse(readFileSync(this.file, 'utf8')) as { servers?: Record<string, Stored>; images?: Record<string, string> };
+      for (const [name, id] of Object.entries(saved.images ?? {})) this.images.set(name, id);
+      // A state file from before image ids: each server runs what its image names now.
+      for (const [id, s] of Object.entries(saved.servers ?? {})) this.stored.set(id, { ...s, imageId: s.imageId || this.imageId(s.image) });
     }
+  }
+
+  /** The content id an image name resolves to now (made up on first use, like a first build). */
+  imageId(name: string): string {
+    let id = this.images.get(name);
+    if (!id) {
+      id = `sha256:${randomBytes(32).toString('hex')}`;
+      this.images.set(name, id);
+    }
+    return id;
+  }
+
+  /** `docker build` again under the same name (a product upgrade): a new content id, which it returns. */
+  rebuildImage(name: string): string {
+    this.images.delete(name);
+    const id = this.imageId(name);
+    this.save();
+    return id;
   }
 
   /** Brings back the servers that were running, as Docker does after a restart (SRV-06). */
@@ -153,7 +180,7 @@ export class FakeBackend implements Backend {
   }
 
   private save(): void {
-    writeFileSync(this.file, JSON.stringify({ servers: Object.fromEntries(this.stored) }, null, 2), { mode: 0o600 });
+    writeFileSync(this.file, JSON.stringify({ servers: Object.fromEntries(this.stored), images: Object.fromEntries(this.images) }, null, 2), { mode: 0o600 });
   }
 
   private liveOf(id: string): Live {
@@ -182,6 +209,8 @@ export class FakeBackend implements Backend {
       image: s.image,
       specHash: s.specHash,
       agentUrl: `http://127.0.0.1:${s.agentPort}`,
+      imageId: s.imageId,
+      latestImageId: this.imageId(s.image),
     };
   }
 
@@ -195,12 +224,13 @@ export class FakeBackend implements Backend {
     return [...this.stored.keys()].sort().map((id) => this.describe(id));
   }
 
-  apply(spec: ServerSpec): Promise<ServerContainer> {
+  apply(spec: ServerSpec, o: ApplyOptions = {}): Promise<ServerContainer> {
     return this.busy.run(spec.id, async () => {
       const image = `gsp/${imageName(spec.runtime, spec.variant, true)}:${this.o.imageTag ?? 'dev'}`;
       const hash = specHash(spec);
       const old = this.stored.get(spec.id);
-      if (old && old.specHash === hash && old.image === image) return this.describe(spec.id);
+      // As the real one: a rebuilt image recreates a matching "container" unless the caller keeps it.
+      if (old && old.specHash === hash && old.image === image && (o.keepImage === true || old.imageId === this.imageId(image))) return this.describe(spec.id);
       if (spec.cpus !== undefined && spec.cpus > os.cpus().length) throw refused('cpus', `This host has ${os.cpus().length} CPUs`);
       await this.creating.run(async () => {
         if (!old && this.stored.size >= this.o.policy.maxServers) throw refused('id', `This host allows at most ${this.o.policy.maxServers} servers`);
@@ -218,7 +248,7 @@ export class FakeBackend implements Backend {
           internal[d.id] = old?.internal[d.id] ?? this.freePort(this.o.controlPorts, usedInternal, 'internal');
           usedInternal.add(internal[d.id]!);
         }
-        this.stored.set(spec.id, { spec, specHash: hash, image, agentPort, internal, running: false });
+        this.stored.set(spec.id, { spec, specHash: hash, image, imageId: this.imageId(image), agentPort, internal, running: false });
         this.save();
       });
       const l = this.liveOf(spec.id);
