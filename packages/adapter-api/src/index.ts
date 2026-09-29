@@ -599,11 +599,30 @@ export interface LevelHolder {
   level: string;
 }
 
+/** A `PlayerOps` command, as `PlayerOps.refused` is asked about its reply. */
+export type PlayerOpKind = 'kick' | 'ban' | 'unban' | 'setAccess' | 'whitelistAdd' | 'whitelistRemove' | 'setWhitelistEnabled';
+
+/**
+ * Why the game didn't do a player command (PLY-03): it knows no player by
+ * that name (`player-not-found`), the player isn't online (`player-not-online`,
+ * a kick), or it already was so (`no-change`: already banned, not an
+ * operator, the whitelist already on…).
+ */
+export type PlayerRefusal = 'player-not-found' | 'player-not-online' | 'no-change';
+
 /**
  * Moderation. Each command resolves with the game's reply; arguments the game
  * can't take are refused with `RconProtocolError` from `@gsp/formats`.
  */
 export interface PlayerOps {
+  /**
+   * What the game's reply to a command means when the game refused it
+   * (Minecraft answers a name it can't look up with "That player does not
+   * exist"): the panel then answers with an error instead of the reply.
+   * Null when the game did it, or the reply doesn't say. Absent: every reply
+   * is passed on as it is.
+   */
+  refused?(op: PlayerOpKind, reply: string): PlayerRefusal | null;
   /** Levels `setAccess` accepts, lowest first. */
   accessLevels?: readonly AccessLevel[];
   /** The `PlayerTarget` fields `ban` and `unban` accept; a UI offers only these. */

@@ -258,6 +258,17 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       }
     });
 
+    it('tells a refusal from a reply only by what the game answers, and only for the commands it has (PLY-03)', () => {
+      const p = adapter.players;
+      if (!p?.refused) return;
+      const ops = (['kick', 'ban', 'unban', 'setAccess', 'whitelistAdd', 'whitelistRemove', 'setWhitelistEnabled'] as const).filter((op) => p[op]);
+      expect(ops.length, 'players.refused without a command to refuse').toBeGreaterThan(0);
+      for (const op of ops) {
+        // An empty reply (a stdin command, a game that says nothing) and anything made up are no refusal.
+        for (const reply of ['', 'ok', 'x'.repeat(5000), '\n\n']) expect(p.refused(op, reply), `${op} ${JSON.stringify(reply.slice(0, 20))}`).toBeNull();
+      }
+    });
+
     it("reads the whitelist and who holds a level from the game's files, empty on a server without any", async () => {
       const p = adapter.players;
       if (!p) return;
