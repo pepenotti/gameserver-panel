@@ -228,7 +228,11 @@ function persist() {
 function loadDb() {
   if (!db) return;
   users = db.prepare('SELECT ID AS id, Username AS name, Usergroup AS "group" FROM Users').all();
-  bans = db.prepare('SELECT TicketNumber AS ticket, Identifier AS identifier, Reason AS reason, BanningUser AS "by", Date AS start, Expiration AS "end" FROM PlayerBans').all();
+  // .NET ticks are beyond JavaScript's safe integers: read them as BigInts (node:sqlite refuses them as numbers), then
+  // as the numbers the rest of the fake uses.
+  const read = db.prepare('SELECT TicketNumber AS ticket, Identifier AS identifier, Reason AS reason, BanningUser AS "by", Date AS start, Expiration AS "end" FROM PlayerBans');
+  read.setReadBigInts(true);
+  bans = read.all().map((b) => ({ ...b, ticket: Number(b.ticket), start: Number(b.start), end: Number(b.end) }));
   nextTicket = Math.max(0, ...bans.map((b) => b.ticket)) + 1;
 }
 const TICKS_FOREVER = 3155378976000000000;
