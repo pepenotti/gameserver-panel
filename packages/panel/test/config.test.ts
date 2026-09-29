@@ -125,7 +125,15 @@ describe('server settings (ini)', () => {
     writeFileSync(serverFile(p, '.ini'), before);
     await started();
     expect(ini(p).PublicName).toBe(iniToRecord(parseIni(before)).PublicName);
-    expect(p.agent.calls.filter((x) => x === 'start')).toHaveLength(3);
+    // A file that doesn't parse now keeps the values for the next start, and the start goes on.
+    expect((await save(c, 'ini', { PublicName: 'Saved once more' })).statusCode).toBe(200);
+    writeFileSync(serverFile(p, '.ini'), `${before}\nthis line is not a setting\n`);
+    await started();
+    expect(p.srv.settings.getRaw('config.panelEdits')).toEqual({ ini: { PublicName: 'Saved once more' } });
+    writeFileSync(serverFile(p, '.ini'), before);
+    await started();
+    expect(ini(p).PublicName).toBe('Saved once more');
+    expect(p.agent.calls.filter((x) => x === 'start')).toHaveLength(5);
   });
 
   it('leaves a file the game does not rewrite as it is at a start (CFG-05)', async () => {

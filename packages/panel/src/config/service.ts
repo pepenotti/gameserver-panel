@@ -736,7 +736,9 @@ export class ConfigService implements ConfigStore {
    * from memory gets back the values the panel saved to it since its
    * previous start, where they differ (the game dropped them), with a note
    * in its history; then they are forgotten. Other keys stay as the game
-   * wrote them. Returns the files it changed.
+   * wrote them. A file that can't be read, parsed or edited now keeps its
+   * values for the next start rather than holding this one up. Returns the
+   * files it changed.
    */
   async reapplyPanelEdits(): Promise<string[]> {
     const all = this.panelEdits();
@@ -744,17 +746,25 @@ export class ConfigService implements ConfigStore {
     if (Object.keys(all).length === 0) return changed;
     for (const [fileId, values] of Object.entries(all)) {
       const decl = this.decls().find((d) => d.id === fileId && d.reapplyAtStart);
-      if (!decl) continue;
-      const t = this.declTarget(decl);
-      const disk = await this.readText(t);
-      if (disk !== null) {
-        const flat = this.flat(t, disk);
-        const lost = Object.fromEntries(Object.entries(values).filter(([k, v]) => !same(flat[k], v ?? undefined)));
-        if (Object.keys(lost).length) {
-          await this.write(t, disk, t.format.edit(disk, lost), null, `kept the settings saved in the panel since the last start (the game rewrote the file): ${Object.keys(lost).join(', ')}`);
-          changed.push(fileId);
+      if (decl) {
+        const t = this.declTarget(decl);
+        try {
+          const disk = await this.readText(t);
+          const parsed = disk === null ? null : t.format.parse(disk);
+          if (disk !== null && parsed && !parsed.ok) continue;
+          if (disk !== null && parsed?.ok) {
+            const flat = t.format.flatten(parsed.doc);
+            const lost = Object.fromEntries(Object.entries(values).filter(([k, v]) => !same(flat[k], v ?? undefined)));
+            if (Object.keys(lost).length) {
+              await this.write(t, disk, t.format.edit(disk, lost), null, `kept the settings saved in the panel since the last start (the game rewrote the file): ${Object.keys(lost).join(', ')}`);
+              changed.push(fileId);
+            }
+          }
+        } catch {
+          continue;
         }
       }
+      // Put back, gone (a file that no longer exists starts from the game's defaults), or no longer declared.
       delete all[fileId];
     }
     this.d.settings.setRaw<PanelEdits | null>(PANEL_EDITS_KEY, Object.keys(all).length ? all : null);
