@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.16 |
+| Status | Draft 0.17 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -181,8 +181,8 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | SRV-02 | P0 | List servers with their state, players, version and next scheduled restart. Each server has its own pages. |
 | SRV-03 | P0 | Start, stop, restart and kill. Stop and restart use countdown warnings wherever the game can message players. |
 | SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. The owner may force the removal of a server that can't be stopped, won't run or whose agent can't be reached: the final backup is still taken when possible, and the result says when it wasn't and why. |
-| SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. A host view warns when the limits add up to more than the host has. |
-| SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart. |
+| SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. New limits apply at once to a stopped server and at its next start to a running one, as a newer runtime image does. A host view warns when the limits add up to more than the host has. |
+| SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart, and after a product upgrade, on the newer runtime image from its next start. |
 | SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server, and says why: the last fatal line the game printed (redacted). |
 | SRV-08 | P1 | Connection info per server (address, port, protocol, whether a password is set), plus the router forwards it needs. |
 | SRV-09 | P2 | Clone a server: settings only, or settings plus world. |
@@ -274,7 +274,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 
 | ID | P | Requirement |
 |---|---|---|
-| HST-01 | P0 | One Docker Compose stack for the panel, the orchestrator and the TLS proxy. Game servers are containers the orchestrator creates. |
+| HST-01 | P0 | One Docker Compose stack for the panel, the orchestrator and the TLS proxy. Game servers are containers the orchestrator creates. A product upgrade reaches every server: a server whose runtime image was rebuilt moves to it at its game's next start (at once when its game is stopped), never while its game runs. |
 | HST-02 | P0 | HTTPS with a self-signed certificate, or Let's Encrypt through DuckDNS, as in zomboid-server. |
 | HST-03 | P1 | Host overview: CPU, memory and disk per server and in total. |
 | HST-04 | P2 | Import an existing zomboid-server deployment: world, settings, mods, backups and panel users. (The live server stays on zomboid-server for now; Q7.) |
@@ -531,3 +531,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.14 | 2026-09-27 | M3 panel adapter: Minecraft offered in the panel with its loaders and the versions each offers (Paper's channel with the Q13 warning, Fabric's loader), the `server.properties` form, moderation by name or IP, the whitelist switched live, operator and ban lists changed only while stopped, running backups, restores and resets per loader; the contract gains name and IP bans, whitelist reads, launch choices and warnings. |
 | 0.15 | 2026-09-29 | M3 fixes from the acceptance run: Minecraft's lists are checked before saving (CFG-02, CFG-08); refused player commands answer errors, not the game's reply (PLY-03); console replies and log lines lose Minecraft's § codes (CON-02); the settings the panel saved survive an operator's whitelist switch in game (CFG-05); the contract gains a file's own check, player-command refusals, a display hook and files re-applied at start. |
 | 0.16 | 2026-09-29 | M5 fact-finding: Terraria 1.4.5.8 measured for vanilla, TShock 6.2.1 and tModLoader v2026.07.3.0 (`docs/verification/terraria-1.4.5.8.md`, `fixtures/terraria/1.4.5.8`, `tools/fake-terraria`); tModLoader installs from its GitHub releases and runs in the steam image with .NET 8, TShock in the native image with .NET 9, and a flavour may name its own image (§7, §10); no Terraria license gate (§7); CON-04's token lives in TShock's config; vanilla's IP bans and reconnect crash noted (§7, §13). |
+| 0.17 | 2026-09-29 | M2 follow-up (M2-H): a newer runtime image reaches each server at its next start, the way changed limits do (HST-01, SRV-05, SRV-06); the orchestrator only inspects images, reports image ids and takes `keepImage` on PUT (D3). |
