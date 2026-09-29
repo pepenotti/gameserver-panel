@@ -1,6 +1,7 @@
 import type { AnnounceKind, Lang, ToAgentOptions } from '@gsp/adapter-api';
 import type { AgentApi } from '../agent/client';
 import type { BackupService } from '../backups/service';
+import type { ConfigStore } from '../config/store';
 import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
 import type { OpContext, OpRunner } from '../ops/runner';
@@ -26,6 +27,8 @@ export interface ControlDeps {
   backups: Pick<BackupService, 'hasData' | 'create'>;
   /** Before the game starts: the registry recreates a container that waits for changed settings (SRV-05). */
   beforeStart?: () => Promise<void>;
+  /** The settings the panel saved to files the game rewrites from memory, put back before each start (CFG-05). */
+  config?: Pick<ConfigStore, 'reapplyPanelEdits'>;
 }
 
 export class Control {
@@ -79,12 +82,14 @@ export class Control {
 
   /**
    * Start the game: its container brought in line first (new memory or CPU
-   * limits wait for this moment), the adapter's before-start hook, then the
-   * agent with the stored launch settings.
+   * limits wait for this moment), the settings the panel saved that the
+   * game may have written over put back, the adapter's before-start hook,
+   * then the agent with the stored launch settings.
    */
   async startAgent(o: { lockId?: string; by?: string | null; hints?: ToAgentOptions } = {}): Promise<void> {
     this.assertEula();
     await this.d.beforeStart?.();
+    await this.d.config?.reapplyPanelEdits();
     const launch = this.d.server.launchEnvelope(o.hints);
     await this.d.server.adapter.hooks?.beforeStart?.(this.d.server.ctx(o.by ?? null));
     await this.d.agent.start(launch, o.lockId);

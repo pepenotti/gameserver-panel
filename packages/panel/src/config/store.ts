@@ -174,7 +174,15 @@ export interface ConfigStore {
    * while the server is stopped: declared files only, no managed-key or busy
    * checks. A file that doesn't exist is left alone.
    */
-  setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string): Promise<void>;
+  setDirect(fileId: string, values: Record<string, Scalar>, by: string | null, note: string, o?: { live?: boolean }): Promise<void>;
+  /**
+   * Before a start the panel makes (CFG-05): files the game rewrites from
+   * memory (`reapplyAtStart`) get back the values the panel saved to them
+   * since its previous start; returns the files it changed.
+   */
+  reapplyPanelEdits(): Promise<string[]>;
+  /** A restore or reset replaced these data-root paths: the panel's saved values of files there are dropped. */
+  forgetPanelEdits(rels: string[]): void;
 
   // ---------------------------------------------------------------- history
   /** A file's versions, newest first. */

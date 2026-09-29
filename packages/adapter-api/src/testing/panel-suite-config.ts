@@ -143,6 +143,8 @@ export function panelAdapterConfigSuite<S>(adapter: PanelAdapter<S>, opts: Panel
         expect(f.root, `${f.id} root`).not.toBe('install');
         // A file edited only while the game is stopped takes effect when it starts.
         if (f.stoppedOnly) expect(f.restartKeys, `${f.id} is stopped-only`).toBe('*');
+        // The panel puts back values of keys: plain text has none.
+        if (f.reapplyAtStart) expect(f.format, `${f.id} is re-applied at start`).not.toBe('text');
         const schema = f.schemaId === undefined ? undefined : cfg.schemas[f.schemaId];
         if (f.schemaId !== undefined) expect(schema, `schema ${f.schemaId} of ${f.id}`).toBeDefined();
         for (const [what, keys] of [

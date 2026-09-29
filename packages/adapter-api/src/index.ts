@@ -407,8 +407,15 @@ export type AgentCommand = CommandRequest;
  * busy checks, and the running game isn't asked to re-read anything.
  */
 export interface ConfigAccess {
-  /** Set keys of a declared config file (`ConfigFileDecl.id`); history note `note`. A file that doesn't exist yet is left alone. */
-  set(fileId: string, values: Record<string, Scalar>, note: string): Promise<void>;
+  /**
+   * Set keys of a declared config file (`ConfigFileDecl.id`); history note
+   * `note`. A file that doesn't exist yet is left alone. For a file the
+   * game rewrites from memory (`reapplyAtStart`), these become the panel's
+   * saved values, put back before the next start; with `live`, the running
+   * game already holds them (it made the change itself, as Minecraft's
+   * `whitelist on`), so there is nothing to put back for those keys.
+   */
+  set(fileId: string, values: Record<string, Scalar>, note: string, o?: { live?: boolean }): Promise<void>;
   /** Write each declared file's `seed` where that file doesn't exist yet; true if one was written. */
   seedIfMissing(): Promise<boolean>;
   /** Apply one of `config.presets` to the file it names (`presets.fileId`). */
@@ -461,6 +468,18 @@ export interface ConfigFileDecl {
    * while the game is stopped (409 `config-stopped-only` otherwise).
    */
   stoppedOnly?: boolean;
+  /**
+   * The running game may write this file back from memory whenever someone
+   * makes it (Minecraft's `server.properties` when an operator types
+   * `whitelist on|off` in game), dropping what the panel saved since the
+   * game started. The panel then puts the values it saved to the file since
+   * its previous start back before each start it makes (CFG-05): the
+   * panel's last saved values win over what the game wrote back, other keys
+   * stay as the game wrote them. Values the game took live
+   * (`ConfigAccess.set` with `live`) aren't put back, and a restore or reset
+   * that replaces the file forgets them.
+   */
+  reapplyAtStart?: boolean;
   /**
    * What the game needs of the file beyond its format (CFG-02, CFG-08),
    * given a text that parses: the entries it couldn't load (Minecraft's

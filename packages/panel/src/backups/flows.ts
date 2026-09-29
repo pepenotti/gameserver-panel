@@ -151,6 +151,8 @@ export class BackupFlows {
           });
           ctx.step('swapping', { progress: null });
           const { trashId } = await this.d.backups.swap(stagingId, rels);
+          // The restored files are what the owner chose: settings the panel saved before don't go back over them.
+          this.d.config.forgetPanelEdits(rels);
           // Only the latest restore can be undone: an older one's trash goes.
           const previous = this.lastRestore()?.trash;
           if (previous) await this.d.backups.purgeTrash(previous).catch(() => undefined);
@@ -203,6 +205,7 @@ export class BackupFlows {
 
           ctx.step('deleting');
           await this.d.backups.removeParts(decl.removeParts);
+          this.d.config.forgetPanelEdits(decl.removeParts.flatMap((p) => this.d.backups.partPaths(p)));
           await decl.after?.(this.d.server.ctx(by), { newSeed: opts.newSeed, ...(opts.preset ? { preset: opts.preset } : {}) });
           this.d.settings.setRaw('pendingRestart', null);
 

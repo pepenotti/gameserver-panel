@@ -88,6 +88,59 @@ describe('server settings (ini)', () => {
     expect(((await c.post('/api/servers/default/config/proposals', { fileId: 'ini', changes: { PauseEmpty: 'true' } })).json() as { applies: string }).applies).toBe('live');
   });
 
+  it('puts back what the panel saved to a file the game rewrote from memory, before the next start it makes; the game’s own keys stay (CFG-05)', async () => {
+    // PZ doesn't rewrite its ini: the same adapter, with the ini declared as a file the game rewrites.
+    const pz = panelAdapter('pz');
+    const rewritten: PanelAdapter = { ...pz, config: { ...pz.config, files: (srv) => pz.config.files(srv).map((f) => (f.id === 'ini' ? { ...f, reapplyAtStart: true } : f)) } };
+    const { p, c } = await setup({ withFiles: true, adapters: [rewritten, ...panelAdapters.filter((a) => a.meta.id !== 'pz')] });
+    const started = async () => {
+      expect((await c.post('/api/servers/default/server/start')).statusCode).toBe(200);
+      await p.srv.ops.idle();
+      expect(p.srv.ops.last()).toMatchObject({ kind: 'start', ok: true });
+    };
+    const before = readFileSync(serverFile(p, '.ini'), 'utf8');
+    p.feed.status_ = fakeStatus({ state: 'running' });
+    // Saved while the game runs: a form change and a raw edit (managed keys are the agent's, never recorded).
+    expect((await save(c, 'ini', { PublicName: 'Saved in the panel', PVP: 'false' })).statusCode).toBe(200);
+    expect((await c.post('/api/servers/default/config/proposals', { fileId: 'ini', text: readFileSync(serverFile(p, '.ini'), 'utf8').replace(/^MaxPlayers=.*$/m, 'MaxPlayers=12') })).statusCode).toBe(200);
+    const proposal = ((await c.get('/api/servers/default/config/proposals')).json() as { id: string }[])[0]!;
+    expect((await c.post(`/api/servers/default/config/proposals/${proposal.id}/apply`)).statusCode).toBe(200);
+    // A value the running game took itself (adapter code says so): nothing to put back for it.
+    await p.srv.handle.ctx('alice').config.set('ini', { PVP: 'false' }, 'the game took it live', { live: true });
+    // The game writes the file from what it loaded at its start, plus a change of its own.
+    writeFileSync(serverFile(p, '.ini'), before.replace(/^Public=.*$/m, 'Public=true'));
+    p.feed.status_ = fakeStatus({ state: 'stopped' });
+    await started();
+    expect(ini(p)).toMatchObject({ PublicName: 'Saved in the panel', MaxPlayers: '12', Public: 'true', PVP: 'true' });
+    const history = p.srv.config.historyOf('ini');
+    expect(history[0]).toMatchObject({ username: null, note: 'kept the settings saved in the panel since the last start (the game rewrote the file): PublicName, MaxPlayers' });
+    expect(history[1]).toMatchObject({ note: 'on disk before this change' });
+    // Put back once: what the game writes after that start is the game's.
+    writeFileSync(serverFile(p, '.ini'), before);
+    await started();
+    expect(ini(p).PublicName).toBe(iniToRecord(parseIni(before)).PublicName);
+    // A restore or reset that replaces the file forgets them.
+    expect((await save(c, 'ini', { PublicName: 'Saved again' })).statusCode).toBe(200);
+    p.srv.config.forgetPanelEdits(['Server']);
+    writeFileSync(serverFile(p, '.ini'), before);
+    await started();
+    expect(ini(p).PublicName).toBe(iniToRecord(parseIni(before)).PublicName);
+    expect(p.agent.calls.filter((x) => x === 'start')).toHaveLength(3);
+  });
+
+  it('leaves a file the game does not rewrite as it is at a start (CFG-05)', async () => {
+    const { p, c } = await setup();
+    p.feed.status_ = fakeStatus({ state: 'running' });
+    expect((await save(c, 'ini', { PublicName: 'Saved in the panel' })).statusCode).toBe(200);
+    const onDisk = readFileSync(serverFile(p, '.ini'), 'utf8').replace(/^PublicName=.*$/m, 'PublicName=Changed by hand');
+    writeFileSync(serverFile(p, '.ini'), onDisk);
+    p.feed.status_ = fakeStatus({ state: 'stopped' });
+    expect((await c.post('/api/servers/default/server/start')).statusCode).toBe(200);
+    await p.srv.ops.idle();
+    expect(readFileSync(serverFile(p, '.ini'), 'utf8')).toBe(onDisk);
+    expect(p.srv.settings.getRaw('config.panelEdits')).toBeNull();
+  });
+
   it('refuses writes while the server is booting, and the proposal waits', async () => {
     const { p, c } = await setup();
     const { id } = (await c.post('/api/servers/default/config/proposals', { fileId: 'ini', changes: { PVP: 'false' } })).json() as { id: string };
