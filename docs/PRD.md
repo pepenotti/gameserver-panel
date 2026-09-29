@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.19 |
+| Status | Draft 0.20 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -161,7 +161,10 @@ Each can move into scope later through [change control](#14-change-control).
   terraria.org publishes no checksums: the panel checks the dedicated server
   versions it measured against the checksums it recorded, and marks a newer
   version it can't check yet. Large Terraria worlds need 2 GiB; tModLoader
-  starts at about 1 GiB before any mod.
+  starts at about 1 GiB before any mod. A Terraria server's world is named
+  after the server's ID, the name the game uses for its files. Vanilla
+  Terraria and tModLoader keep their bans in memory: the panel lifts a ban
+  while the server is stopped.
 - **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts (its server
   jars are Java and carry ARM64 native libraries; the fact-finding ran x86-64
   only, so an ARM64 run is part of M7). Servers
@@ -211,12 +214,12 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | CFG-01 | P0 | Settings forms from each adapter's schema: types, ranges, choices, EN/ES descriptions, search. |
 | CFG-02 | P0 | Raw editor per file, validated by format. Files the game executes (Lua) must parse as plain data. |
 | CFG-03 | P0 | History per file, with diff and one-click revert. |
-| CFG-04 | P0 | Settings the panel manages itself (ports, RCON, paths), and keys the game writes itself (e.g. a file's format version), are locked. |
+| CFG-04 | P0 | Settings the panel manages itself (ports, RCON, paths), and keys the game writes itself (e.g. a file's format version), are locked. Secrets a game keeps as keys (TShock's REST tokens) are hidden and locked whole. |
 | CFG-05 | P0 | Each setting says when it applies (live, or after a restart), and the UI shows a pending-restart badge. |
 | CFG-06 | P1 | Presets per game (e.g. Project Zomboid sandbox presets, Minecraft difficulty and game mode). |
 | CFG-07 | P0 | **Text editor for every config file.** Admins can browse the configuration folders each adapter declares (game settings, plugin and mod configs) and edit any text file there in the browser. It has syntax highlighting for the format (properties, ini, YAML, TOML, JSON/JSON5, Lua, plain text), validation where a parser exists, a diff preview before saving, and history with revert (CFG-03). |
 | CFG-08 | P0 | **Editor safety.** Only paths inside the adapter's declared folders; no symlinks out; text files only, with a size cap. Files the game runs as code (e.g. Project Zomboid's `SandboxVars.lua`) must parse as plain data (CFG-02); scripts and binaries (`.jar`, `.dll`, `.sh`, mod code) are never editable. Panel-managed keys (CFG-04) are re-applied on save, with a note explaining why. |
-| CFG-09 | P0 | Forms and text stay in sync (principle 3): editing either updates the other; unknown keys are kept, and so are comments where the format allows. |
+| CFG-09 | P0 | Forms and text stay in sync (principle 3): editing either updates the other; unknown keys are kept, and so are comments where the format allows. A file the game itself rewrites and prunes (TShock's config) says so. |
 | CFG-10 | P1 | "Advanced" section and search in every settings form, so rare settings are reachable without cluttering the common ones (principle 1). |
 
 ### 8.4 Console and logs — CON
@@ -234,7 +237,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 |---|---|---|
 | PLY-01 | P0 | Online players, wherever the game exposes them (RCON, stdin or logs). Asking a game's console for its players stays out of the live log; the same command sent by a person shows like any other. |
 | PLY-02 | P1 | Join and leave history. |
-| PLY-03 | P0 | Kick, ban and unban, whitelist, and operator/admin levels, mapped to what each game supports. |
+| PLY-03 | P0 | Kick, ban and unban, whitelist, and operator/admin levels, mapped to what each game supports: a ban names a player, an address, a Steam account, a game client's ID or a server account, as the game takes them. |
 
 ### 8.6 Mods — MOD
 
@@ -538,3 +541,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.17 | 2026-09-29 | M2 follow-up (M2-H): a newer runtime image reaches each server at its next start, the way changed limits do (HST-01, SRV-05, SRV-06); the orchestrator only inspects images, reports image ids and takes `keepImage` on PUT (D3). |
 | 0.18 | 2026-09-29 | M5 runtime adapter: vanilla Terraria, TShock and tModLoader run on agents (installs checked against pinned or published digests, the world menu avoided, `exit` to stop, TShock's REST moderation as actions); a flavour may name its own image; installs unpack zip and tar; unchecked newer vanilla versions and memory needs noted (§7). |
 | 0.19 | 2026-09-29 | M2 follow-up (M2-I): progress runs show as one line (CON-01); the agent's player polls stay out of the live log (PLY-01); a change in how the orchestrator builds containers waits for a running game's next start, except a security fix (SRV-05, SRV-06, NFR-02); the orchestrator takes `keepDerivation` on PUT and reports each container's `derivation` (D3). |
+| 0.20 | 2026-09-29 | M5 panel adapter: Terraria offered in the panel for vanilla, TShock and tModLoader (versions with warnings, world size, a secret server password; settings forms with TShock's token hidden whole; moderation per flavour; backups, restores and resets); a Terraria world is named after the server's ID (§7); PLY-03 names the ban targets; CFG-04 hides secrets kept as keys; CFG-09 notes files the game prunes. |
