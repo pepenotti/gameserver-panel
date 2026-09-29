@@ -76,16 +76,10 @@ zips come truncated), `not-found`, `rate-limit` (GitHub's documented 403, not ca
 `FAKE_TML_MOD_NAMES=<id>=<Name>,…` names the `.tmod` files; `FAKE_STEAMCMD_FAIL` = `disk` |
 `timeout` | `missing-item`.
 
-## Registering it
-`fake-game.mjs` finds these by adapter id already. The fake runtime images copy the fakes they run
-(target `fake` of the Dockerfile of the family the Terraria adapter ends up in):
-
-```dockerfile
-COPY --chown=node:node tools/fake-terraria/ /app/fake/fake-terraria/
-ENV GAME_START_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","server"]'
-# and, where tModLoader's Workshop mods are downloaded:
-ENV STEAMCMD_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","steamcmd"]'
-```
-
+## Where it runs
+`fake-game.mjs` finds these by adapter id. Both fake runtime images copy this folder (target `fake`
+of `docker/native`, where vanilla and TShock run, and of `docker/steam`, where tModLoader runs);
 `docker/steam`'s fake target runs `fake-game.mjs steamcmd` for every adapter, so tModLoader's
-Workshop downloads reach `steamcmd.mjs` there as soon as the folder is copied.
+Workshop downloads reach `steamcmd.mjs` there. The agent's runtime contract test
+(`packages/agent/test/runtime-contract.test.ts`) runs the adapter against `server.mjs` and
+`downloads.mjs` for each flavour, and the adapter's own tests do too (`packages/adapter-terraria/test`).
