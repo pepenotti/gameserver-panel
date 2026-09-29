@@ -56,6 +56,7 @@ export default {
   'no-change': 'No cambió nada: ya estaba así.',
   'already-banned': 'Ese jugador o esa dirección ya está baneado.',
   'not-banned': 'Ese jugador o esa dirección no está baneado.',
+  'player-op-failed': 'El juego lo intentó pero no pudo. Revisá el registro del servidor.',
   'level-unchanged': 'Ese jugador ya tiene ese nivel de acceso.',
   'already-whitelisted': 'Ese jugador ya está en la lista blanca.',
   'not-whitelisted': 'Ese jugador no está en la lista blanca.',

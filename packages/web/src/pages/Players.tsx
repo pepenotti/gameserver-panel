@@ -1,7 +1,7 @@
 import { ActionIcon, Alert, Badge, Button, Card, Checkbox, CopyButton, Group, Menu, Modal, SegmentedControl, Select, Stack, Switch, Table, Text, TextInput, Title, Tooltip } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconBan, IconDots, IconUserPlus } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBan, IconDots, IconUserPlus } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +30,10 @@ interface PlayersResponse {
     ips: { ip: string; username: string | null; reason: string | null }[];
     /** Bans by player name (games that ban names, not Steam accounts). */
     usernames?: { username: string; id: string | null; reason: string | null }[];
+    /** Bans of the id a game client sends. */
+    uuids?: { uuid: string; reason: string | null }[];
+    /** Bans of accounts the game server keeps. */
+    accounts?: { account: string; reason: string | null }[];
   } | null;
   /** The game's whitelist as it stands, where it can be listed. */
   whitelist: { enabled: boolean | null; usernames: string[] } | null;
@@ -95,8 +99,18 @@ export function Players() {
   const banByAccount = banTargets.includes('steamId');
   const banByName = banTargets.includes('username');
   const banByIp = banTargets.includes('ip');
+  /** The game bans the address a player joined from, whatever the ban names: warn before, and lift by address. */
+  const byAddress = meta?.banByAddress === true;
+  /** The game keeps its bans in memory: they are lifted while it is stopped. */
+  const unbanStopped = meta?.stoppedOnly?.includes('unban') === true;
   const steamIds = !!q.data?.accounts?.some((a) => a.steamId);
-  const targetLabel: Record<BanTarget, string> = { username: t('players.byName'), steamId: t('players.steamId'), ip: t('players.byIp') };
+  const targetLabel: Record<BanTarget, string> = { username: t('players.byName'), steamId: t('players.steamId'), ip: t('players.byIp'), uuid: t('players.byUuid'), account: t('players.byAccount') };
+  /** Before a ban of an address: behind Docker Desktop (untrustworthy addresses) everyone shares one, so it is a warning. */
+  const addressWarning = byAddress && (
+    <Alert color={q.data?.ipBansTrustworthy ? 'yellow' : 'red'} variant="light" icon={<IconAlertTriangle />}>
+      {q.data?.ipBansTrustworthy ? t('players.addressBanNote') : t('players.addressBanWarning')}
+    </Alert>
+  );
 
   // Presence changes arrive over the websocket; refresh the lists when they do.
   useEffect(() => {
@@ -166,15 +180,40 @@ export function Players() {
     </Menu>
   );
 
+  // Most games lift a ban while they run; one that keeps its bans in memory, while it is stopped.
   const unbanButton = (body: Record<string, string>) =>
     can.ban && (
-      <Button size="compact-xs" variant="subtle" disabled={!running} onClick={() => void act(() => sapi('POST', '/players/unban', body))}>
+      <Button size="compact-xs" variant="subtle" disabled={unbanStopped ? running || !live.status : !running} onClick={() => void act(() => sapi('POST', '/players/unban', body))}>
         {t('players.unban')}
       </Button>
     );
 
   const bans = q.data?.bans ?? null;
   const nameBans = bans?.usernames ?? [];
+  const uuidBans = bans?.uuids ?? [];
+  const accountBans = bans?.accounts ?? [];
+  /** A simple list of bans of one kind: what it names, its reason, and the unban button. */
+  const banTable = (title: string, rows: { key: string; body: Record<string, string>; reason: string | null }[], mono = false) =>
+    rows.length > 0 && (
+      <>
+        <Text size="sm" fw={500} mt="md" mb={4}>
+          {title}
+        </Text>
+        <Table fz="sm">
+          <Table.Tbody>
+            {rows.map((r) => (
+              <Table.Tr key={r.key}>
+                <Table.Td ff={mono ? 'monospace' : undefined}>{r.key}</Table.Td>
+                <Table.Td>{r.reason ?? ''}</Table.Td>
+                <Table.Td w={100} ta="right">
+                  {unbanButton(r.body)}
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </>
+    );
   const whitelist = q.data?.whitelist ?? null;
   const holders = q.data?.levelHolders ?? null;
   const banTypes = banTargets.filter((x) => x !== 'steamId' || banByAccount);
@@ -386,7 +425,12 @@ export function Players() {
           <Text fw={600} mb="xs">
             {t('players.bans')}
           </Text>
-          {bans.steamIds.length === 0 && bans.ips.length === 0 && nameBans.length === 0 && (
+          {unbanStopped && (
+            <Text size="xs" c="dimmed" mb="xs">
+              {t('players.unbanStopped')}
+            </Text>
+          )}
+          {bans.steamIds.length === 0 && bans.ips.length === 0 && nameBans.length === 0 && uuidBans.length === 0 && accountBans.length === 0 && (
             <Text size="sm" c="dimmed">
               {t('players.noBans')}
             </Text>
@@ -436,10 +480,16 @@ export function Players() {
               <Text size="sm" fw={500} mt="md" mb={4}>
                 {t('players.ipBans')}
               </Text>
-              {!q.data!.ipBansTrustworthy && (
+              {byAddress ? (
                 <Text size="xs" c="dimmed" mb="xs">
-                  {banByAccount ? t('players.ipBansNote') : t('players.ipBansNoteNames')}
+                  {q.data!.ipBansTrustworthy ? t('players.addressBanNote') : t('players.addressBanWarning')}
                 </Text>
+              ) : (
+                !q.data!.ipBansTrustworthy && (
+                  <Text size="xs" c="dimmed" mb="xs">
+                    {banByAccount ? t('players.ipBansNote') : t('players.ipBansNoteNames')}
+                  </Text>
+                )
               )}
               <Table fz="sm">
                 <Table.Tbody>
@@ -450,13 +500,22 @@ export function Players() {
                       <Table.Td>{b.reason ?? ''}</Table.Td>
                       {/* Lifted by address only where the game bans addresses itself. */}
                       <Table.Td w={100} ta="right">
-                        {banByIp && unbanButton({ ip: b.ip })}
+                        {(banByIp || byAddress) && unbanButton({ ip: b.ip })}
                       </Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
               </Table>
             </>
+          )}
+          {banTable(
+            t('players.uuidBans'),
+            uuidBans.map((b) => ({ key: b.uuid, body: { uuid: b.uuid }, reason: b.reason })),
+            true,
+          )}
+          {banTable(
+            t('players.accountBans'),
+            accountBans.map((b) => ({ key: b.account, body: { account: b.account }, reason: b.reason })),
           )}
         </Card>
       )}
@@ -512,6 +571,7 @@ export function Players() {
         {(dialog?.kind === 'kick' || dialog?.kind === 'ban') && (
           <Stack>
             {dialog.kind === 'ban' && <Text size="sm">{t('players.banHelp')}</Text>}
+            {dialog.kind === 'ban' && addressWarning}
             <TextInput label={t('players.reason')} value={reason} onChange={(e) => setReason(e.currentTarget.value.replace(/["\r\n]/g, ''))} maxLength={200} data-autofocus />
             {/* Both targets declared: the account is the safer ban; only one: that one, no choice. */}
             {dialog.kind === 'ban' && dialog.steamId && banByAccount && banByName && <Checkbox label={t('players.banBySteam')} checked={bySteam} onChange={(e) => setBySteam(e.currentTarget.checked)} />}
@@ -531,13 +591,15 @@ export function Players() {
         )}
         {dialog?.kind === 'banAny' && (
           <Stack>
-            <Text size="sm">{t('players.banAnyHelp')}</Text>
+            <Text size="sm">{byAddress ? t('players.banAnyOnlineHelp') : t('players.banAnyHelp')}</Text>
+            {addressWarning}
             {banTypes.length > 1 && <SegmentedControl value={banBy} onChange={(v) => setBanBy(v as BanTarget)} data={banTypes.map((x) => ({ value: x, label: targetLabel[x] }))} />}
             <TextInput
               label={targetLabel[banBy]}
               value={banWho}
-              onChange={(e) => setBanWho(e.currentTarget.value.replace(/[\s"]/g, ''))}
-              maxLength={banBy === 'ip' ? 45 : 32}
+              // Names and accounts may have spaces inside (the game says whether it takes them); addresses and ids never do.
+              onChange={(e) => setBanWho(banBy === 'username' || banBy === 'account' ? e.currentTarget.value.replace(/["\r\n]/g, '') : e.currentTarget.value.replace(/[\s"]/g, ''))}
+              maxLength={banBy === 'ip' ? 45 : banBy === 'uuid' ? 64 : 32}
               data-autofocus
             />
             {banBy === 'ip' && !q.data?.ipBansTrustworthy && (
@@ -546,7 +608,7 @@ export function Players() {
               </Text>
             )}
             <TextInput label={t('players.reason')} value={reason} onChange={(e) => setReason(e.currentTarget.value.replace(/["\r\n]/g, ''))} maxLength={200} />
-            <Button color="red" disabled={!banWho} onClick={() => void act(() => sapi('POST', '/players/ban', { [banBy]: banWho, ...(reason && banBy !== 'steamId' ? { reason } : {}) }))}>
+            <Button color="red" disabled={!banWho.trim()} onClick={() => void act(() => sapi('POST', '/players/ban', { [banBy]: banWho.trim(), ...(reason && banBy !== 'steamId' ? { reason } : {}) }))}>
               {t('players.ban')}
             </Button>
           </Stack>

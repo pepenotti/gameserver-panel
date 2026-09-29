@@ -310,7 +310,8 @@ export function CreateServer() {
               <TextInput label={t('servers.name')} description={t('create.nameHelp')} value={name} onChange={(e) => onName(e.currentTarget.value)} maxLength={64} error={shown('name', nameErr && t(`errors.${nameErr}`), name !== '')} data-autofocus />
               <TextInput
                 label={t('create.id')}
-                description={t('create.idHelp')}
+                // A game that creates its world on the first start names it after the server (its game name).
+                description={adapter.capabilities.includes('worldCreate') ? `${t('create.idHelp')} ${t('create.idWorldHelp')}` : t('create.idHelp')}
                 value={id}
                 onChange={(e) => {
                   setId(e.currentTarget.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
