@@ -506,6 +506,21 @@ export interface ConfigFileDecl {
   managedKeys: string[];
   /** Shown masked in forms, raw text and history. */
   secretKeys: string[];
+  /**
+   * Dotted paths of objects in a JSON or JSON5 file that are secret whole,
+   * their keys included (TShock keeps its REST tokens as the keys of
+   * `ApplicationRestTokens`). Forms, raw text, diffs and history show each
+   * as a masked string, and every save keeps what is on disk there,
+   * whatever the text says: the panel never shows or changes them (so they
+   * are locked too; list them in `managedKeys` for the form's lock).
+   */
+  secretTrees?: string[];
+  /**
+   * What people should know about the file before they edit it, shown with
+   * its form and in the text editor (the game rewrites it at every start and
+   * drops keys it doesn't know).
+   */
+  note?: I18n;
   /** Keys that take effect only after a restart (CFG-05); `*` for every key. */
   restartKeys: string[] | '*';
   /** Written before the first start when the file is missing (the game completes the rest). */
@@ -613,6 +628,8 @@ export interface ResetDecl {
   id: string;
   label: I18n;
   permission: Permission;
+  /** The flavours this scope is for (a flavour that keeps players' accounts on the server); absent: all. */
+  flavours?: string[];
   /** `backups.parts` ids deleted by this reset (after a safety backup). */
   removeParts: string[];
   /** The `ResetOptions` this scope uses (a new seed, a preset); the others are ignored. */
@@ -625,17 +642,21 @@ export type AnnounceKind = 'restart' | 'stop' | 'update' | 'restore' | 'reset';
 
 /**
  * Who a ban names: a player's name (the game looks up its account: PZ's
- * `banuser`, Minecraft's `ban`), a SteamID, or an IP address. An adapter
- * takes the ones its `banTargets` lists.
+ * `banuser`, Minecraft's `ban`), a SteamID, an IP address, the id a game
+ * client sends (TShock's UUID), or an account the server keeps (TShock's
+ * accounts, which players log in to). An adapter takes the ones its
+ * `banTargets` lists.
  */
 export interface PlayerTarget {
   username?: string;
   steamId?: string;
   ip?: string;
+  uuid?: string;
+  account?: string;
 }
 
 /** What a ban can name: `PlayerTarget`'s fields. */
-export type BanTarget = 'username' | 'steamId' | 'ip';
+export type BanTarget = 'username' | 'steamId' | 'ip' | 'uuid' | 'account';
 
 /** An access level `setAccess` takes, with its name for people. */
 export interface AccessLevel {
@@ -660,6 +681,10 @@ export interface BanList {
    * to). Lifted with `unban({ username })`.
    */
   usernames?: { username: string; id: string | null; reason: string | null }[];
+  /** Bans of the id a game client sends (TShock's UUIDs); lifted with `unban({ uuid })`. */
+  uuids?: { uuid: string; reason: string | null }[];
+  /** Bans of accounts the server keeps (TShock's); lifted with `unban({ account })`. */
+  accounts?: { account: string; reason: string | null }[];
 }
 
 /** A game's whitelist as it stands. */
@@ -682,10 +707,11 @@ export type PlayerOpKind = 'kick' | 'ban' | 'unban' | 'setAccess' | 'whitelistAd
 /**
  * Why the game didn't do a player command (PLY-03): it knows no player by
  * that name (`player-not-found`), the player isn't online (`player-not-online`,
- * a kick), or it already was so (`no-change`: already banned, not an
- * operator, the whitelist already on…).
+ * a kick), it already was so (`no-change`: already banned, not an
+ * operator, the whitelist already on…), or it tried and failed (`failed`:
+ * TShock didn't store a ban).
  */
-export type PlayerRefusal = 'player-not-found' | 'player-not-online' | 'no-change';
+export type PlayerRefusal = 'player-not-found' | 'player-not-online' | 'no-change' | 'failed';
 
 /**
  * Moderation. Each command resolves with the game's reply; arguments the game
@@ -704,6 +730,19 @@ export interface PlayerOps {
   accessLevels?: readonly AccessLevel[];
   /** The `PlayerTarget` fields `ban` and `unban` accept; a UI offers only these. */
   banTargets?: readonly BanTarget[];
+  /**
+   * The game bans the address a player joined from, whatever the ban names
+   * (vanilla Terraria bans an online player's IP): everyone who shares that
+   * address is banned too, and behind Docker Desktop every player does. A
+   * UI warns before such a ban, and lets bans be lifted by address.
+   */
+  banByAddress?: boolean;
+  /**
+   * Commands that work only while the game is stopped (vanilla Terraria's
+   * unban edits the ban list the running game keeps in memory): the panel
+   * refuses them otherwise (409 `server-running`), and a UI offers them then.
+   */
+  stoppedOnly?: readonly PlayerOpKind[];
   /**
    * Whether `whitelistAdd` takes a password (PZ: the whitelist is accounts
    * a player joins with); absent means it does. False: a name is enough.
@@ -791,6 +830,8 @@ export interface CommandDoc {
   permission?: Permission;
   /** Its arguments can hold secrets (passwords): the audit log keeps only the command name. */
   secretArgs?: boolean;
+  /** The flavours whose console has it (TShock's console takes its own commands); absent: all. */
+  flavours?: string[];
 }
 
 /** A secret `launch.toAgent` needs in its `SecretBag` (PZ: the admin password). The panel holds it and never shows it. */
@@ -818,6 +859,13 @@ export interface LaunchOption extends OptionMeta {
    * only for those, and `toAgent` ignores it for the others. Absent: all.
    */
   flavours?: string[];
+  /**
+   * A value people choose that is kept hidden (a server password): a text
+   * setting the panel never shows again once saved. It reads back masked,
+   * a save that sends the mask keeps the stored value, and the audit log
+   * never holds it.
+   */
+  secret?: boolean;
 }
 
 /** One value a launch setting may take right now, from the game's own download services (UPD-02). */
@@ -880,8 +928,22 @@ export interface PanelAdapter<S = unknown> {
     /** Countdown text in the players' language; `cancelled` says it was called off. Null: the game can't show it. */
     announce(kind: AnnounceKind | 'cancelled', secondsLeft: number, lang: Lang): string | null;
     broadcast?(text: string): AgentCommand;
+    /**
+     * Sends `text` to every player of a running server when the adapter
+     * reaches them some other way than one console command (TShock's REST
+     * API, through a runtime action; CON-04); `broadcast` is used otherwise.
+     * Text the game can't take is refused with `RconProtocolError`.
+     */
+    send?(ctx: ServerCtx, text: string): Promise<void>;
   };
   players?: PlayerOps;
+  /**
+   * The moderation of a flavour, for adapters whose flavours moderate
+   * differently (TShock's bans by name, IP, UUID or account against vanilla
+   * Terraria's IP bans); `players` is used when this is absent or returns
+   * undefined.
+   */
+  playersOf?(flavour: string | null): PlayerOps | undefined;
   mods?: ModSource[];
   /** Whether a newer build of what `launch` pins exists; null when it can't tell. */
   updates?: { check(ctx: ServerCtx, launch: S): Promise<UpdateInfo | null> };

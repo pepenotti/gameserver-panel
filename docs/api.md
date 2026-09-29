@@ -102,8 +102,8 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | GET | `/api/servers/:sid/players` | `players.view` | `players` | — |
 | GET | `/api/servers/:sid/players/history` | `accounts.view` | `playerHistory` | `query { limit?: integer }` |
 | POST | `/api/servers/:sid/players/kick` | `players.moderate` | `kick` | `body { username: string, reason?: string }` |
-| POST | `/api/servers/:sid/players/ban` | `players.moderate` | `ban` | `body { username?: string, steamId?: string, ip?: string, reason?: string }` |
-| POST | `/api/servers/:sid/players/unban` | `players.moderate` | `ban` | `body { username?: string, steamId?: string, ip?: string, reason?: string }` |
+| POST | `/api/servers/:sid/players/ban` | `players.moderate` | `ban` | `body { username?: string, steamId?: string, ip?: string, uuid?: string, account?: string, reason?: string }` |
+| POST | `/api/servers/:sid/players/unban` | `players.moderate` | `ban` | `body { username?: string, steamId?: string, ip?: string, uuid?: string, account?: string, reason?: string }` |
 | POST | `/api/servers/:sid/players/access` | `players.accessLevel` | `accessLevels` | `body { username: string, level: string }` |
 | POST | `/api/servers/:sid/players/whitelist` | `whitelist.manage` | `whitelist` | `body { username: string, password?: string }` |
 | DELETE | `/api/servers/:sid/players/whitelist/:username` | `whitelist.manage` | `whitelist` | `params { username: string }` |

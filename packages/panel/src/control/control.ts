@@ -44,9 +44,15 @@ export class Control {
     return s?.state === 'running' ? (s.players?.count ?? 0) : 0;
   }
 
-  /** A message to every player; throws when the game can't show one (or the text is refused). */
+  /**
+   * A message to every player: the adapter's own way when it has one
+   * (`messages.send`: TShock's REST API), else its console command; throws
+   * when the game can't show one (or the text is refused).
+   */
   async broadcast(message: string): Promise<void> {
-    const cmd = this.d.server.adapter.messages.broadcast?.(message);
+    const { messages } = this.d.server.adapter;
+    if (messages.send) return messages.send(this.d.server.ctx(), message);
+    const cmd = messages.broadcast?.(message);
     if (!cmd) throw new Error('This game cannot show messages to players');
     await this.d.agent.command(cmd.command, cmd.via);
   }
@@ -54,7 +60,7 @@ export class Control {
   private async announce(kind: AnnounceKind | 'cancelled', secondsLeft: number, lang: GameLang): Promise<void> {
     const { messages } = this.d.server.adapter;
     const text = messages.announce(kind, secondsLeft, lang);
-    if (text === null || !messages.broadcast) return;
+    if (text === null || (!messages.broadcast && !messages.send)) return;
     await this.broadcast(text).catch(() => undefined);
   }
 

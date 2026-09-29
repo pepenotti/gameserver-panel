@@ -1,4 +1,4 @@
-import type { Capability, ConfigAccess, PanelAdapter, SecretBag, ServerCtx, ServerFiles, ServerRef, ToAgentOptions } from '@gsp/adapter-api';
+import type { Capability, CommandDoc, ConfigAccess, PanelAdapter, PlayerOps, ResetDecl, SecretBag, ServerCtx, ServerFiles, ServerRef, ToAgentOptions } from '@gsp/adapter-api';
 import type { LaunchEnvelope, VersionsResponse } from '@gsp/shared';
 import type { AgentApi } from '../agent/client';
 import type { ConfigStore } from '../config/store';
@@ -13,6 +13,19 @@ export function capabilitiesOf(adapter: PanelAdapter, flavour: string | null): S
   const f = flavour === null ? undefined : adapter.meta.flavours.find((x) => x.id === flavour);
   return new Set(f?.capabilities ?? adapter.meta.capabilities);
 }
+
+/** A server's moderation: its flavour's, when the adapter's flavours moderate differently, else the adapter's. */
+export function playersOf(adapter: PanelAdapter, flavour: string | null): PlayerOps | undefined {
+  return adapter.playersOf?.(flavour) ?? adapter.players;
+}
+
+/** What is for a server of `flavour`: everything without `flavours`, and what names it. */
+export function forFlavour<T extends { flavours?: string[] }>(list: readonly T[], flavour: string | null): T[] {
+  return list.filter((x) => x.flavours === undefined || (flavour !== null && x.flavours.includes(flavour)));
+}
+
+/** What secret launch settings look like when read back (`LaunchOption.secret`). */
+export const LAUNCH_MASK = '••••••••';
 
 export interface ServerHandleDeps {
   /** Which server: its id, the name its game uses for its files, its flavour. */
@@ -62,10 +75,40 @@ export class ServerHandle {
     return this.capabilities().has(cap);
   }
 
+  /** Its moderation (its flavour's, where flavours differ). */
+  players(): PlayerOps | undefined {
+    return playersOf(this.d.adapter, this.ref.flavour);
+  }
+
+  /** The reset scopes for its flavour. */
+  resets(): ResetDecl[] {
+    return forFlavour(this.d.adapter.resets, this.ref.flavour);
+  }
+
+  /** The console commands its flavour's console has. */
+  consoleCatalog(): CommandDoc[] {
+    return forFlavour(this.d.adapter.consoleCatalog ?? [], this.ref.flavour);
+  }
+
   /** Stored launch settings over the adapter's defaults (settings added later get their defaults). */
   launchSettings(): unknown {
     const stored = this.d.settings.getRaw<Record<string, unknown>>(LAUNCH_KEY);
     return { ...(this.d.adapter.launch.defaults() as object), ...(stored ?? {}) };
+  }
+
+  /** The launch settings as people read them: secret ones masked when set (`LaunchOption.secret`). */
+  publicLaunchSettings(s: unknown = this.launchSettings()): Record<string, unknown> {
+    const out = { ...(s as Record<string, unknown>) };
+    for (const o of this.d.adapter.launch.schema) if (o.secret && typeof out[o.key] === 'string' && out[o.key] !== '') out[o.key] = LAUNCH_MASK;
+    return out;
+  }
+
+  /** Settings as sent: a secret setting sent back masked keeps what is stored. */
+  withStoredSecrets(s: Record<string, unknown>): Record<string, unknown> {
+    const stored = this.launchSettings() as Record<string, unknown>;
+    const out = { ...s };
+    for (const o of this.d.adapter.launch.schema) if (o.secret && out[o.key] === LAUNCH_MASK) out[o.key] = stored[o.key];
+    return out;
   }
 
   setLaunchSettings(s: unknown): void {

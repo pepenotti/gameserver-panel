@@ -92,8 +92,9 @@ export class PlayersService {
 
   // --------------------------------------------------- the game's accounts
 
+  /** The game's moderation for this server's flavour. */
   private get ops(): PlayerOps | undefined {
-    return this.d.server.adapter.players;
+    return this.d.server.players();
   }
 
   /** Access levels `setAccess` takes (empty when the game has none). */
@@ -136,10 +137,17 @@ export class PlayersService {
 
   // ------------------------------------------------------------ moderation
 
-  /** The adapter's moderation, or 409 when the game has no such command. */
-  private need(op: 'kick' | 'ban' | 'unban' | 'setAccess' | 'whitelistAdd' | 'whitelistRemove' | 'setWhitelistEnabled'): PlayerOps {
+  /**
+   * The adapter's moderation, or 409 when the game has no such command, or
+   * when it works only while the game is stopped (`stoppedOnly`) and it isn't.
+   */
+  private need(op: PlayerOpKind): PlayerOps {
     const ops = this.ops;
     if (!ops?.[op]) throw new HttpError(409, 'capability-unsupported');
+    if (ops.stoppedOnly?.includes(op)) {
+      const st = this.d.feed.status_?.state;
+      if (st !== 'stopped' && st !== 'failed') throw new HttpError(409, 'server-running');
+    }
     return ops;
   }
 
@@ -210,12 +218,14 @@ const NO_CHANGE: Record<PlayerOpKind, string> = {
 
 /**
  * The game's refusal as an HTTP error: 404 `player-not-found` for a name it
- * knows no player by, 409 `player-not-online`, or 409 with what already was
- * so; `output` keeps the game's reply.
+ * knows no player by, 409 `player-not-online`, 502 `player-op-failed` when
+ * it tried and failed, or 409 with what already was so; `output` keeps the
+ * game's reply.
  */
 function refusalError(op: PlayerOpKind, refusal: PlayerRefusal, reply: string): HttpError {
   const output = reply.slice(0, 500);
   if (refusal === 'player-not-found') return new HttpError(404, 'player-not-found', output, { output });
   if (refusal === 'player-not-online') return new HttpError(409, 'player-not-online', output, { output });
+  if (refusal === 'failed') return new HttpError(502, 'player-op-failed', output, { output });
   return new HttpError(409, NO_CHANGE[op], output, { output });
 }
