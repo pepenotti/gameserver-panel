@@ -57,15 +57,34 @@ describe('GameRun', () => {
     expect(failures).toHaveLength(2);
   });
 
+  it('collects a console reply spread over several lines until it is complete (PLY-01)', async () => {
+    const { run } = start();
+    const ctl = run.handle();
+    await ctl.waitForLine(/^up$/, 5_000 * TIME_SCALE);
+    // Until a line matches…
+    const reply = ctl.waitForLines!(/^\d+ players? connected\.$/, 5_000 * TIME_SCALE);
+    for (const l of ['alice (192.0.2.1:1)', 'bob (192.0.2.1:2)', '2 players connected.', 'later']) ctl.stdin(l);
+    expect(await reply).toEqual(['alice (192.0.2.1:1)', 'bob (192.0.2.1:2)', '2 players connected.']);
+    await ctl.waitForLine(/^later$/, 5_000 * TIME_SCALE);
+    // …or until a test of every line so far says so (a header, then the line after it).
+    const two = ctl.waitForLines!((lines) => lines.length >= 2 && lines[lines.length - 2] === 'Online Players (1/8)', 5_000 * TIME_SCALE);
+    for (const l of ['Server executed: /playing.', 'Online Players (1/8)', 'alice']) ctl.stdin(l);
+    expect(await two).toEqual(['Server executed: /playing.', 'Online Players (1/8)', 'alice']);
+    expect(await ctl.waitForLines!(/never/, 50)).toBeNull();
+  });
+
   it('wakes every waiter when the game exits', async () => {
     const { run } = start();
     const ctl = run.handle();
     await ctl.waitForLine(/^up$/, 5_000 * TIME_SCALE);
     const pending = ctl.waitForLine(/never/, 60_000);
+    const collecting = ctl.waitForLines!(/never/, 60_000);
     expect(ctl.stdin('quit')).toBe(true);
     expect(await pending).toBeNull();
+    expect(await collecting).toBeNull();
     expect(await run.exited).toMatchObject({ code: 0 });
     expect(ctl.ready).toBe(false);
     expect(await ctl.waitForLine(/x/, 60_000)).toBeNull();
+    expect(await ctl.waitForLines!(/x/, 60_000)).toBeNull();
   });
 });

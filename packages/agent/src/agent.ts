@@ -717,7 +717,7 @@ export class Agent {
     const run = this.run;
     if (this.state !== 'running' || !run || !this.adapter.listPlayers) return;
     try {
-      const p = await this.adapter.listPlayers(run.handle());
+      const p = await this.adapter.listPlayers(run.handle(), this.runtimeCtx(), this.params ?? undefined);
       this.controlError = null;
       this.failedPolls = 0;
       if (this.unresponsiveAlerted) {

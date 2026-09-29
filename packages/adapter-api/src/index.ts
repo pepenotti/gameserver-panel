@@ -351,6 +351,15 @@ export interface ControlHandle {
   signal(sig: NodeJS.Signals): void;
   /** The first line whose `LineSignal.message` matches, or null after `timeoutMs`. Call it before sending what triggers the line. */
   waitForLine(re: RegExp, timeoutMs: number): Promise<RegExpExecArray | null>;
+  /**
+   * Every line (its `LineSignal.message`) the game prints from the call on,
+   * until `until` says the reply is complete: a RegExp the latest line
+   * matches, or a test of all the lines so far. Null after `timeoutMs`, or
+   * when the game exits first. For a console reply spread over several
+   * lines (a player list over stdin); other output printed meanwhile is in
+   * the lines too. Call it before sending what triggers the reply.
+   */
+  waitForLines?(until: RegExp | ((lines: readonly string[]) => boolean), timeoutMs: number): Promise<string[] | null>;
 }
 
 export interface LaunchCommand {
@@ -412,8 +421,12 @@ export interface RuntimeAdapter<P = unknown> {
   save?(ctl: ControlHandle, o: { budgetMs: number }): Promise<void>;
   /** Running-server backups: `before` makes the files consistent, `after` always runs. */
   hotCopy?: { before(ctl: ControlHandle): Promise<void>; after(ctl: ControlHandle): Promise<void>; sqlite?: string[] };
-  /** Null when the reply wasn't understood. */
-  listPlayers?(ctl: ControlHandle): Promise<PlayerList | null>;
+  /**
+   * Null when the reply wasn't understood. The agent also passes the
+   * server's context and launch params, for an adapter that asks some
+   * flavours another way than its channel (TShock's REST API).
+   */
+  listPlayers?(ctl: ControlHandle, ctx?: RuntimeCtx, p?: P): Promise<PlayerList | null>;
   /** Default roots (absolute, in-container); the agent may relocate them (see `RuntimeCtx.roots`). */
   roots(p: P): FileRoots;
   actions?: Record<string, RuntimeAction>;

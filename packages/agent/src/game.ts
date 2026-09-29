@@ -47,6 +47,14 @@ interface Waiter {
   timer: NodeJS.Timeout;
 }
 
+/** A `waitForLines` in progress: the lines so far, until `done` says the reply is complete. */
+interface Collector {
+  lines: string[];
+  done(lines: readonly string[]): boolean;
+  resolve(lines: string[] | null): void;
+  timer: NodeJS.Timeout;
+}
+
 /**
  * One run of the game: the process, its classified output, its control
  * channel, and the `ControlHandle` adapters drive it with. Readiness is the
@@ -60,6 +68,7 @@ export class GameRun {
   ready = false;
   private closed = false;
   private readonly waiters = new Set<Waiter>();
+  private readonly collectors = new Set<Collector>();
 
   /** Spawns the game; throws when it can't be started. */
   constructor(private readonly o: GameRunOptions) {
@@ -99,6 +108,19 @@ export class GameRun {
       this.waiters.delete(w);
       clearTimeout(w.timer);
       w.resolve(m);
+    }
+    for (const c of this.collectors) {
+      c.lines.push(signal.message);
+      let done: boolean;
+      try {
+        done = c.done(c.lines);
+      } catch {
+        done = false;
+      }
+      if (!done) continue;
+      this.collectors.delete(c);
+      clearTimeout(c.timer);
+      c.resolve(c.lines);
     }
   }
 
@@ -140,6 +162,31 @@ export class GameRun {
     });
   }
 
+  /** See `ControlHandle.waitForLines`: a reply spread over several lines. */
+  waitForLines(until: RegExp | ((lines: readonly string[]) => boolean), timeoutMs: number): Promise<string[] | null> {
+    if (this.closed) return Promise.resolve(null);
+    const done =
+      typeof until === 'function'
+        ? until
+        : (lines: readonly string[]) => {
+            until.lastIndex = 0;
+            return until.test(lines[lines.length - 1] ?? '');
+          };
+    return new Promise((resolve) => {
+      const c: Collector = {
+        lines: [],
+        done,
+        resolve,
+        timer: setTimeout(() => {
+          this.collectors.delete(c);
+          resolve(null);
+        }, timeoutMs),
+      };
+      c.timer.unref();
+      this.collectors.add(c);
+    });
+  }
+
   /** What adapters get. `onChannelError` hears channel failures of commands sent through this handle. */
   handle(onChannelError?: (e: Error) => void): ControlHandle {
     const isReady = () => this.ready && !this.closed;
@@ -151,6 +198,7 @@ export class GameRun {
       stdin: (line) => this.proc.writeLine(line),
       signal: (sig) => this.proc.signal(sig),
       waitForLine: (re, timeoutMs) => this.waitForLine(re, timeoutMs),
+      waitForLines: (until, timeoutMs) => this.waitForLines(until, timeoutMs),
     };
   }
 
@@ -164,5 +212,10 @@ export class GameRun {
       w.resolve(null);
     }
     this.waiters.clear();
+    for (const c of this.collectors) {
+      clearTimeout(c.timer);
+      c.resolve(null);
+    }
+    this.collectors.clear();
   }
 }

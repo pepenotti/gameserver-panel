@@ -186,6 +186,26 @@ describe('commands', () => {
     await h.agent.command('fake-leave carol', 'rcon');
     await h.waitEvent((e) => e.event.type === 'players' && e.event.count === 0);
   });
+
+  it("asks the adapter who is online with the server's context and launch (PLY-01)", async () => {
+    const seen: { ctx: RuntimeCtx | undefined; p: unknown }[] = [];
+    h = await makeHarness(
+      {},
+      {
+        adapter: (a) => ({
+          ...a,
+          listPlayers: (ctl, ctx, p) => {
+            seen.push({ ctx, p });
+            return a.listPlayers!.call(a, ctl);
+          },
+        }),
+      },
+    );
+    await h.agent.start(launch, undefined);
+    await h.waitFor((x) => x.state === 'running' && x.players !== null);
+    expect(seen[0]!.p).toEqual(launch);
+    expect(seen[0]!.ctx).toMatchObject({ ports: { rcon: h.cfg.ports.rcon }, state: { controlSecret: h.store.controlSecret }, roots: { data: h.cfg.dataDir } });
+  });
 });
 
 describe('stopping', () => {
