@@ -1,0 +1,92 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+Loading world data: 1%
+Loading world data: 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Loading world data: 100%
+Settling liquids 1%
+Settling liquids 2%
+# … 47 more progress lines like these, dropped from the fixture …
+Settling liquids 50%
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+# client: connected
+192.0.2.1:60688 is connecting...
+# client: slot 0 (packet 3, 2 bytes)
+# client: world data (170 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+gspffalice has joined.
+# client: packet 129: finished connecting
+> playing
+gspffalice (192.0.2.1:60688)
+1 player connected.
+: 
+192.0.2.1:55634 is connecting...
+# client: connected
+# client: slot 1 (packet 3, 2 bytes)
+# client: world data (170 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+gspffbob has joined.
+# client: packet 129: finished connecting
+> playing
+gspffalice (192.0.2.1:60688)
+gspffbob (192.0.2.1:55634)
+2 players connected.
+: 
+> kick gspffbob
+192.0.2.1:55634 was booted: Kicked from server.
+# client: KICKED: CLI.KickMessage
+: gspffbob has left.
+# client: connection closed
+> playing
+gspffalice (192.0.2.1:60688)
+1 player connected.
+: 
+192.0.2.1:55646 is connecting...
+# client: connected
+# client: slot 1 (packet 3, 2 bytes)
+# client: world data (170 bytes)
+# client: status: LegacyInterface.44
+# client: packet 49: spawning
+gspffcarol has joined.
+# client: packet 129: finished connecting
+> ban gspffcarol
+192.0.2.1:55646 was booted: Banned from server.
+# client: KICKED: CLI.BanMessage
+: gspffcarol has left.
+# client: connection closed
+192.0.2.1:44944 is connecting...
+# client: connected
+192.0.2.1:44944 was booted: You are banned from this server.
+# client: KICKED: LegacyMultiplayer.3
+# client: connection closed
+> say Adiós ☃
+<Server> Adiós ☃
+: 
+# client: leaving
+gspffalice has left.
+> playing
+# client: connection closed
+No players connected.
+: Saving world data: 10%
+Saving world data: 18%
+Saving world data: 28%
+# … 8 more progress lines like these, dropped from the fixture …
+Saving world data: 100%
+Validating world save: 22%
+Validating world save: 49%
+Backing up world file
+> exit
+Saving before exit...

@@ -1,0 +1,62 @@
+Error Logging Enabled.
+[OTAPI] Starting up (PC Server,3.3.14+ca9c239,ModFw:1.1.15+a2c0c70).
+TerrariaAPI Version: 2.1.0.0 (Protocol v1.4.5.8 (326), OTAPI 3.3.14+ca9c239)
+Port overridden by startup argument. Set to 7777
+Using ConstileationProvider for tile implementation
+TShock 6.2.1.0 (Profoundly Collaborative (3.11)) now running.
+AutoSave Enabled
+Backups Enabled
+Welcome to TShock for Terraria!
+TShock comes with no warranty & is free software.
+You can modify & distribute it under the terms of the GNU GPLv3.
+[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.
+Terraria Server v1.4.5.8
+
+Failed to create the file: "\home\node\.local\share\Terraria\favorites.json"!
+
+Suggestions:
+1. If you are using an Anti-virus, please make sure it does not block Terraria in any way.
+2. Try making sure your `Documents/My Games/Terraria` folder is not set to 'read-only'.
+3. Try to verify/repair the game installation.
+
+The original Error below
+System.IO.DirectoryNotFoundException: Could not find a part of the path '/home/node/.local/share/Terraria/favorites.json'.
+   at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirError) in System.Private.CoreLib.dll:token 0x6000002+0x0
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException) in System.Private.CoreLib.dll:token 0x6000139+0x6f
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, UnixFileMode openPermissions, Int64& fileLength, UnixFileMode& filePermissions, Boolean failForSymlink, Boolean& wasSymlink, Func`4 createOpenException) in System.Private.CoreLib.dll:token 0x600013e+0xf
+   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode) in System.Private.CoreLib.dll:token 0x6008aa3+0x14
+   at System.IO.File.Open(String path, FileMode mode) in System.Private.CoreLib.dll:token 0x6008466+0x0
+   at Terraria.Utilities.FileUtilities.Write(String path, Byte[] data, Int32 length, Boolean cloud) in OTAPI:token 0x6002521+0x3c
+   at Terraria.Utilities.FileUtilities.WriteAllBytes(String path, Byte[] data, Boolean cloud) in OTAPI:token 0x6002520+0x0
+   at Terraria.IO.FavoritesFile.Save() in OTAPI:token 0x6003062+0x1a
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+Login before join enabled. Users may be prompted for an account specific password instead of a server password on connect.
+Login using UUID enabled. Users automatically login via UUID.
+A malicious server can easily steal a user's UUID. You may consider turning this option off if you run a public server.
+: To setup the server, join the game and type /setup <redacted>
+This token will display until disabled by verification. (/setup)
+Server started
+> exit
+Server executed: /exit.
+Server shutting down!
+Saving before exit...
+System.NullReferenceException: Object reference not set to an instance of an object.
+   at Terraria.IO.WorldFile.mfwh_SaveFileFormatHeader(BinaryWriter writer) in OTAPI:token 0x60030ea+0x14
+   at Terraria.IO.WorldFile.SaveFileFormatHeader(BinaryWriter writer) in OTAPI:token 0x60030b0+0x28
+   at Terraria.IO.WorldFile.mfwh_SaveWorld_Version2(BinaryWriter writer) in OTAPI:token 0x60030e9+0x8
+   at Terraria.IO.WorldFile.SaveWorld_Version2(BinaryWriter writer) in OTAPI:token 0x60030af+0x28
+   at Terraria.IO.WorldFile.mfwh_InternalSaveWorld(Boolean useCloudSaving, Boolean resetTime, Boolean useTemps) in OTAPI:token 0x60030e4+0x42
+   at Terraria.IO.WorldFile.InternalSaveWorld(Boolean useCloudSaving, Boolean resetTime, Boolean useTemps) in OTAPI:token 0x60030aa+0x30
+   at Terraria.IO.WorldFile.<>c__DisplayClass37_0.<_SaveWorld>b__0() in OTAPI:token 0x6003112+0x0
+   at Terraria.Utilities.FileUtilities.ProtectedInvoke(Action action) in OTAPI:token 0x6002529+0x16
+   at Terraria.IO.WorldFile.mfwh__SaveWorld(Boolean useCloudSaving, Boolean resetTime, Boolean useTemps, Boolean canBeSkipped) in OTAPI:token 0x60030e3+0x79
+   at Terraria.IO.WorldFile._SaveWorld(Boolean useCloudSaving, Boolean resetTime, Boolean useTemps, Boolean canBeSkipped) in OTAPI:token 0x60030a9+0x34
+   at Terraria.IO.WorldFile.mfwh_SaveWorld(Boolean resetTime, Boolean useTemps, Boolean canBeSkipped) in OTAPI:token 0x60030e2+0x0
+   at Terraria.IO.WorldFile.SaveWorld(Boolean resetTime, Boolean useTemps, Boolean canBeSkipped) in OTAPI:token 0x60030a8+0x30
+   at Terraria.Main.mfwh_DedServ() in OTAPI:token 0x60008be+0xe80
+   at Terraria.Main.DedServ() in OTAPI:token 0x6000562+0x24
+   at Terraria.Program.mfwh_orig_RunGame() in OTAPI:token 0x6000222+0xa4

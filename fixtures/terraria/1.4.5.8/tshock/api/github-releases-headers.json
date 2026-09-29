@@ -1,0 +1,15 @@
+{
+ "url": "https://api.github.com/repos/Pryaxis/TShock/releases?per_page=10",
+ "status": 200,
+ "headers": {
+  "content-type": "application/json; charset=utf-8",
+  "cache-control": "public, max-age=60, s-maxage=60",
+  "etag": "W/\"4a27932d9fe29e2bbd9f6989f90e197f175cf69d1e9413325cd788887e40cca2\"",
+  "x-ratelimit-limit": "60",
+  "x-ratelimit-remaining": "59",
+  "x-ratelimit-used": "1",
+  "x-ratelimit-reset": "1790692257",
+  "x-ratelimit-resource": "core",
+  "link": "<https://api.github.com/repositories/1841284/releases?per_page=10&page=2>; rel=\"next\", <https://api.github.com/repositories/1841284/releases?per_page=10&page=12>; rel=\"last\""
+ }
+}

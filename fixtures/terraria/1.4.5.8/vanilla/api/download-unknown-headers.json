@@ -1,0 +1,9 @@
+{
+ "method": "HEAD",
+ "url": "https://terraria.org/api/download/pc-dedicated-server/terraria-server-9999.zip",
+ "status": 404,
+ "headers": {
+  "content-length": "9",
+  "content-type": "text/plain; charset=utf-8"
+ }
+}

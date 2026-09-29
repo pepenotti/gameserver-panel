@@ -1,0 +1,278 @@
+[
+ {
+  "tag_name": "v6.2.1",
+  "name": "TShock 6.2.1 for Terraria 1.4.5.8",
+  "prerelease": false,
+  "draft": false,
+  "published_at": "2026-09-27T14:57:16Z",
+  "html_url": "https://github.com/Pryaxis/TShock/releases/tag/v6.2.1",
+  "body": "This version adds support for Terraria 1.4.5.8. Thank you so much for all of the hard work that went into this release!\r … (trimmed)",
+  "assets": [
+   {
+    "name": "TShock-6.2.1-for-Terraria-1.4.5.8-linux-arm-Release.zip",
+    "size": 33140179,
+    "content_type": "application/zip",
+    "digest": "sha256:3ff969b06d9e47f17fe909ed9d8c33d68277cf77c97cd26897ebfeb8c16018a3",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.2.1/TShock-6.2.1-for-Terraria-1.4.5.8-linux-arm-Release.zip"
+   },
+   {
+    "name": "TShock-6.2.1-for-Terraria-1.4.5.8-linux-arm64-Release.zip",
+    "size": 34203285,
+    "content_type": "application/zip",
+    "digest": "sha256:bc97babbff40e4291757b000486a82f9bbc2a0bc1360ec2a4213a84b1b772b98",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.2.1/TShock-6.2.1-for-Terraria-1.4.5.8-linux-arm64-Release.zip"
+   },
+   {
+    "name": "TShock-6.2.1-for-Terraria-1.4.5.8-linux-x64-Release.zip",
+    "size": 34419595,
+    "content_type": "application/zip",
+    "digest": "sha256:deb9189acbdbd2ee0f0a06fffe15358033859a4ba842b22f79a84bda68600105",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.2.1/TShock-6.2.1-for-Terraria-1.4.5.8-linux-x64-Release.zip"
+   },
+   {
+    "name": "TShock-6.2.1-for-Terraria-1.4.5.8-osx-x64-Release.zip",
+    "size": 34670807,
+    "content_type": "application/zip",
+    "digest": "sha256:c654f00d87e6c591b03aaaf26a5aa6ca48d3f8bc9c2c95a6be8953571b1aceff",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.2.1/TShock-6.2.1-for-Terraria-1.4.5.8-osx-x64-Release.zip"
+   },
+   {
+    "name": "TShock-6.2.1-for-Terraria-1.4.5.8-win-x64-Release.zip",
+    "size": 35183375,
+    "content_type": "application/zip",
+    "digest": "sha256:5f57eda7f0bda8305b1fdc23b0ca5ffbce8b2cfaa63c3935fd94708c5a9ece40",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.2.1/TShock-6.2.1-for-Terraria-1.4.5.8-win-x64-Release.zip"
+   }
+  ]
+ },
+ {
+  "tag_name": "v6.1.0",
+  "name": "TShock 6.1 for Terraria 1.4.5.6",
+  "prerelease": false,
+  "draft": false,
+  "published_at": "2026-03-11T18:42:52Z",
+  "html_url": "https://github.com/Pryaxis/TShock/releases/tag/v6.1.0",
+  "body": "This version adds support for Terraria 1.4.5.6.\r … (trimmed)",
+  "assets": [
+   {
+    "name": "TShock-6.1.0-for-Terraria-1.4.5.6-linux-arm-Release.zip",
+    "size": 32734155,
+    "content_type": "application/zip",
+    "digest": "sha256:e2ba46a24f854be332aee74e190287a9c6d0a8ebc05ee3583e71d0ea1e23f8df",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.1.0/TShock-6.1.0-for-Terraria-1.4.5.6-linux-arm-Release.zip"
+   },
+   {
+    "name": "TShock-6.1.0-for-Terraria-1.4.5.6-linux-arm64-Release.zip",
+    "size": 33800146,
+    "content_type": "application/zip",
+    "digest": "sha256:aacc48ed04937ca0a0cee3a66a83ecf4bb3142f389db597d184242b035786775",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.1.0/TShock-6.1.0-for-Terraria-1.4.5.6-linux-arm64-Release.zip"
+   },
+   {
+    "name": "TShock-6.1.0-for-Terraria-1.4.5.6-linux-x64-Release.zip",
+    "size": 34002037,
+    "content_type": "application/zip",
+    "digest": "sha256:c4a63624e49422e46967c4cb6a72b698acb96dcc645e5b1daaa0f00e2cb98db9",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.1.0/TShock-6.1.0-for-Terraria-1.4.5.6-linux-x64-Release.zip"
+   },
+   {
+    "name": "TShock-6.1.0-for-Terraria-1.4.5.6-osx-x64-Release.zip",
+    "size": 34265280,
+    "content_type": "application/zip",
+    "digest": "sha256:d1a12bfe372319d52feb4905fe3cf3f27434da138afced8dafd5837e1186c607",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.1.0/TShock-6.1.0-for-Terraria-1.4.5.6-osx-x64-Release.zip"
+   },
+   {
+    "name": "TShock-6.1.0-for-Terraria-1.4.5.6-win-x64-Release.zip",
+    "size": 34775980,
+    "content_type": "application/zip",
+    "digest": "sha256:69eeaa65ad5dbd4ace3d9d0856d774f6fc64bff13c7d084e8fa95bd137b500ee",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.1.0/TShock-6.1.0-for-Terraria-1.4.5.6-win-x64-Release.zip"
+   }
+  ]
+ },
+ {
+  "tag_name": "v6.0.0",
+  "name": "TShock 6 for Terraria 1.4.5.5",
+  "prerelease": false,
+  "draft": false,
+  "published_at": "2026-03-08T07:53:30Z",
+  "html_url": "https://github.com/Pryaxis/TShock/releases/tag/v6.0.0",
+  "body": "Welcome to TShock 6 for Terraria 1.4.5.5! This version adds support for .NET 9 and the Terraria 1.4.5 series! Thank you  … (trimmed)",
+  "assets": [
+   {
+    "name": "TShock-6.0.0-for-Terraria-1.4.5.5-linux-arm-Release.zip",
+    "size": 32706384,
+    "content_type": "application/zip",
+    "digest": "sha256:2c26288a73633893701327df184afd09385214564ebf7e517097084f710308aa",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0/TShock-6.0.0-for-Terraria-1.4.5.5-linux-arm-Release.zip"
+   },
+   {
+    "name": "TShock-6.0.0-for-Terraria-1.4.5.5-linux-arm64-Release.zip",
+    "size": 33772147,
+    "content_type": "application/zip",
+    "digest": "sha256:3454e81f7061c1c9f827dfd2d54438feb9c2b523029b717a0d5fe0f4f1b9b999",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0/TShock-6.0.0-for-Terraria-1.4.5.5-linux-arm64-Release.zip"
+   },
+   {
+    "name": "TShock-6.0.0-for-Terraria-1.4.5.5-linux-x64-Release.zip",
+    "size": 33982074,
+    "content_type": "application/zip",
+    "digest": "sha256:79a56522c64e06439c8ad9dee8ef2a2bf6ddd0cbcc49a130dabe7a195dc82874",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0/TShock-6.0.0-for-Terraria-1.4.5.5-linux-x64-Release.zip"
+   },
+   {
+    "name": "TShock-6.0.0-for-Terraria-1.4.5.5-osx-x64-Release.zip",
+    "size": 34240370,
+    "content_type": "application/zip",
+    "digest": "sha256:451b274aaa29f28d2ab4a2aa62103a15922b3bfa2141c489cb6ca7d21a8cfa57",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0/TShock-6.0.0-for-Terraria-1.4.5.5-osx-x64-Release.zip"
+   },
+   {
+    "name": "TShock-6.0.0-for-Terraria-1.4.5.5-win-x64-Release.zip",
+    "size": 34756546,
+    "content_type": "application/zip",
+    "digest": "sha256:4bfcb56c94ea0de8d3c3ba75ba7fe6498c422d7feb24b6dbcc02d02d7f202b90",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0/TShock-6.0.0-for-Terraria-1.4.5.5-win-x64-Release.zip"
+   }
+  ]
+ },
+ {
+  "tag_name": "v6.0.0-pre3",
+  "name": "TShock 6 for Terraria 1.4.5.5 Pre-release 2 (B) (.NET 9)",
+  "prerelease": true,
+  "draft": false,
+  "published_at": "2026-03-07T06:49:18Z",
+  "html_url": "https://github.com/Pryaxis/TShock/releases/tag/v6.0.0-pre3",
+  "body": "This pre-release version of TShock is for use in testing TShock's stability and support for Terraria 1.4.5.5. Because of … (trimmed)",
+  "assets": [
+   {
+    "name": "TShock-Beta-linux-arm-Release.zip",
+    "size": 32702309,
+    "content_type": "application/zip",
+    "digest": "sha256:de9d65b686cbc2c76dbc2ab85c40e3269ed7e410c50514622fa5ac2b5b28b491",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre3/TShock-Beta-linux-arm-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-linux-arm64-Release.zip",
+    "size": 33767026,
+    "content_type": "application/zip",
+    "digest": "sha256:2403908cb483f3e2bb8b01d4607d3a2fef213dc8bdc8987f6bc49152beaea147",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre3/TShock-Beta-linux-arm64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-linux-x64-Release.zip",
+    "size": 33977838,
+    "content_type": "application/zip",
+    "digest": "sha256:0acb962c7a84dbe22a3699c1df98fe3ba0aa937d63e8633f8c949c89e8209dde",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre3/TShock-Beta-linux-x64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-osx-x64-Release.zip",
+    "size": 34238787,
+    "content_type": "application/zip",
+    "digest": "sha256:7c97d53f5b120421b0493700a55e43cd16613fb503a9755e593c9ea85a7379c0",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre3/TShock-Beta-osx-x64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-win-x64-Release.zip",
+    "size": 34754243,
+    "content_type": "application/zip",
+    "digest": "sha256:040a3c1609ad61652e59c69eb0b25ca96f952d1e1797cfdeee874c0976b2621f",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre3/TShock-Beta-win-x64-Release.zip"
+   }
+  ]
+ },
+ {
+  "tag_name": "v6.0.0-pre2",
+  "name": "TShock 6 for Terraria 1.4.5.5 Pre-release 2 (A) (.NET 9)",
+  "prerelease": true,
+  "draft": false,
+  "published_at": "2026-03-06T13:59:19Z",
+  "html_url": "https://github.com/Pryaxis/TShock/releases/tag/v6.0.0-pre2",
+  "body": "This pre-release version of TShock is for use in testing TShock's stability and support for Terraria 1.4.5.5. Because of … (trimmed)",
+  "assets": [
+   {
+    "name": "TShock-Beta-linux-arm-Release.zip",
+    "size": 32680694,
+    "content_type": "application/zip",
+    "digest": "sha256:d5915e98586af7794e8443499d491f15a8db8134e63b2c29bb36b3000ebfa041",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre2/TShock-Beta-linux-arm-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-linux-arm64-Release.zip",
+    "size": 33743316,
+    "content_type": "application/zip",
+    "digest": "sha256:b424c3d01d89bc24573e976bc9366e1d4278aff1f50b6c72b1c2dfa812db312f",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre2/TShock-Beta-linux-arm64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-linux-x64-Release.zip",
+    "size": 33950872,
+    "content_type": "application/zip",
+    "digest": "sha256:b4120a60972f405f794496924e271dab2234979765cf34523ab9584ad665ed6b",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre2/TShock-Beta-linux-x64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-osx-x64-Release.zip",
+    "size": 34212434,
+    "content_type": "application/zip",
+    "digest": "sha256:27e8bd99b4a4f822606306edef10092ce90d0282beb69ad062af4611b33bb7e8",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre2/TShock-Beta-osx-x64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-win-x64-Release.zip",
+    "size": 34725459,
+    "content_type": "application/zip",
+    "digest": "sha256:7c2a907e647ff68d66030f6b830d7e320d8f91e90ca21f0d6ba07cdd5c1c7ee2",
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre2/TShock-Beta-win-x64-Release.zip"
+   }
+  ]
+ },
+ {
+  "tag_name": "v6.0.0-pre1",
+  "name": "TShock 6 for Terraria 1.4.4.9 Pre-release 1",
+  "prerelease": true,
+  "draft": false,
+  "published_at": "2025-05-15T07:34:03Z",
+  "html_url": "https://github.com/Pryaxis/TShock/releases/tag/v6.0.0-pre1",
+  "body": "This pre-release is the first pre-release based on .NET 9. Please report problems and other issues to us so we can remed … (trimmed)",
+  "assets": [
+   {
+    "name": "TShock-Beta-linux-arm-Release.zip",
+    "size": 28258688,
+    "content_type": "application/zip",
+    "digest": null,
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre1/TShock-Beta-linux-arm-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-linux-arm64-Release.zip",
+    "size": 29310638,
+    "content_type": "application/zip",
+    "digest": null,
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre1/TShock-Beta-linux-arm64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-linux-x64-Release.zip",
+    "size": 29531468,
+    "content_type": "application/zip",
+    "digest": null,
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre1/TShock-Beta-linux-x64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-osx-x64-Release.zip",
+    "size": 29479081,
+    "content_type": "application/zip",
+    "digest": null,
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre1/TShock-Beta-osx-x64-Release.zip"
+   },
+   {
+    "name": "TShock-Beta-win-x64-Release.zip",
+    "size": 30302602,
+    "content_type": "application/zip",
+    "digest": null,
+    "browser_download_url": "https://github.com/Pryaxis/TShock/releases/download/v6.0.0-pre1/TShock-Beta-win-x64-Release.zip"
+   }
+  ]
+ }
+]

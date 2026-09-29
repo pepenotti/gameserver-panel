@@ -1,0 +1,531 @@
+[
+ {
+  "t": 0,
+  "dir": "out",
+  "text": "﻿﻿Error Logging Enabled."
+ },
+ {
+  "t": 0.4,
+  "dir": "err",
+  "text": "﻿﻿",
+  "partial": true
+ },
+ {
+  "t": 2.262,
+  "dir": "out",
+  "text": "Terraria Server v1.4.5.8"
+ },
+ {
+  "t": 2.262,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 4.976,
+  "dir": "out",
+  "text": "Terraria Server v1.4.5.8"
+ },
+ {
+  "t": 4.976,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 4.977,
+  "dir": "out",
+  "text": "Listening on port 7777"
+ },
+ {
+  "t": 4.977,
+  "dir": "out",
+  "text": "Type 'help' for a list of commands."
+ },
+ {
+  "t": 4.977,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 5.076,
+  "dir": "out",
+  "text": ": Server started"
+ },
+ {
+  "t": 6.091,
+  "dir": "in",
+  "text": "help"
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "Available commands:"
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "help\t\tDisplays a list of commands."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "playing\t\tShows the list of players."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "clear\t\tClear the console window."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "exit\t\tShutdown the server and save."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "exit-nosave\tShutdown the server without saving."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "save\t\tSave the game world."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "kick <player>\tKicks a player from the server."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "ban <player>\tBans a player from the server."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "password\tShow password."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "password <pass>\tChange password."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "version\t\tPrint version number."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "time\t\tDisplay game time."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "port\t\tPrint the listening port."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "maxplayers\tPrint the max number of players."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "say <words>\tSend a message."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "motd\t\tPrint MOTD."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "motd <words>\tChange MOTD."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "dawn\t\tChange time to dawn."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "noon\t\tChange time to noon."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "dusk\t\tChange time to dusk."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "midnight\tChange time to midnight."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "settle\t\tSettle all water."
+ },
+ {
+  "t": 6.096,
+  "dir": "out",
+  "text": "seed\t\tDisplays the world seed."
+ },
+ {
+  "t": 6.503,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 7.607,
+  "dir": "in",
+  "text": "playing"
+ },
+ {
+  "t": 7.61,
+  "dir": "out",
+  "text": "No players connected."
+ },
+ {
+  "t": 8.018,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 8.414,
+  "dir": "in",
+  "text": "version"
+ },
+ {
+  "t": 8.417,
+  "dir": "out",
+  "text": "Terraria Server v1.4.5.8"
+ },
+ {
+  "t": 8.824,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 9.22,
+  "dir": "in",
+  "text": "time"
+ },
+ {
+  "t": 9.226,
+  "dir": "out",
+  "text": "Time: 8:15 AM"
+ },
+ {
+  "t": 9.631,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 10.028,
+  "dir": "in",
+  "text": "port"
+ },
+ {
+  "t": 10.03,
+  "dir": "out",
+  "text": "Port: 7777"
+ },
+ {
+  "t": 10.44,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 10.834,
+  "dir": "in",
+  "text": "maxplayers"
+ },
+ {
+  "t": 10.837,
+  "dir": "out",
+  "text": "Player limit: 8"
+ },
+ {
+  "t": 11.248,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 11.64,
+  "dir": "in",
+  "text": "motd"
+ },
+ {
+  "t": 11.643,
+  "dir": "out",
+  "text": "MOTD: Hola Ñandú ☃"
+ },
+ {
+  "t": 12.052,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 12.446,
+  "dir": "in",
+  "text": "motd Nuevo motd ☃"
+ },
+ {
+  "t": 12.856,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 13.254,
+  "dir": "in",
+  "text": "motd"
+ },
+ {
+  "t": 13.257,
+  "dir": "out",
+  "text": "MOTD: Nuevo motd ☃"
+ },
+ {
+  "t": 13.666,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 14.062,
+  "dir": "in",
+  "text": "password"
+ },
+ {
+  "t": 14.065,
+  "dir": "out",
+  "text": "No password set."
+ },
+ {
+  "t": 14.472,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 14.867,
+  "dir": "in",
+  "text": "password <redacted>"
+ },
+ {
+  "t": 14.871,
+  "dir": "out",
+  "text": "Password: <redacted>"
+ },
+ {
+  "t": 15.279,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 15.674,
+  "dir": "in",
+  "text": "password"
+ },
+ {
+  "t": 15.677,
+  "dir": "out",
+  "text": "Password: <redacted>"
+ },
+ {
+  "t": 16.087,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 16.482,
+  "dir": "in",
+  "text": "password"
+ },
+ {
+  "t": 16.485,
+  "dir": "out",
+  "text": "Password: <redacted>"
+ },
+ {
+  "t": 16.89,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 17.284,
+  "dir": "in",
+  "text": "say Hola a todos ☃"
+ },
+ {
+  "t": 17.287,
+  "dir": "out",
+  "text": "<Server> Hola a todos ☃"
+ },
+ {
+  "t": 17.695,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 18.091,
+  "dir": "in",
+  "text": "kick nobody"
+ },
+ {
+  "t": 18.504,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 18.9,
+  "dir": "in",
+  "text": "ban nobody"
+ },
+ {
+  "t": 19.312,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 19.706,
+  "dir": "in",
+  "text": "seed"
+ },
+ {
+  "t": 19.709,
+  "dir": "out",
+  "text": "World Seed: 1.1.2.0.2035260465"
+ },
+ {
+  "t": 20.117,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 20.513,
+  "dir": "in",
+  "text": "dawn"
+ },
+ {
+  "t": 20.94,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 21.32,
+  "dir": "in",
+  "text": "noon"
+ },
+ {
+  "t": 21.733,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 22.127,
+  "dir": "in",
+  "text": "settle"
+ },
+ {
+  "t": 22.13,
+  "dir": "out",
+  "text": "Forcing water to settle."
+ },
+ {
+  "t": 22.537,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 23.628,
+  "dir": "in",
+  "text": "notacommand"
+ },
+ {
+  "t": 23.632,
+  "dir": "out",
+  "text": "Invalid command."
+ },
+ {
+  "t": 24.042,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 24.439,
+  "dir": "in",
+  "text": ""
+ },
+ {
+  "t": 24.849,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 25.245,
+  "dir": "in",
+  "text": "clear"
+ },
+ {
+  "t": 25.658,
+  "dir": "out",
+  "text": ": ",
+  "partial": true
+ },
+ {
+  "t": 26.056,
+  "dir": "in",
+  "text": "save"
+ },
+ {
+  "t": 26.332,
+  "dir": "out",
+  "text": ": Backing up world file"
+ },
+ {
+  "t": 30.401,
+  "dir": "in",
+  "text": "exit"
+ },
+ {
+  "t": 30.416,
+  "dir": "out",
+  "text": "Saving before exit..."
+ },
+ {
+  "t": 31.424,
+  "dir": "exit",
+  "text": "exit code=0 signal=null"
+ }
+]

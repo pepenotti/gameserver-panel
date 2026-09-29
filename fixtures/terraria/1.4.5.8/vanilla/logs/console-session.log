@@ -1,0 +1,118 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+Loading world data: 1%
+Loading world data: 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Loading world data: 100%
+Settling liquids 1%
+Settling liquids 2%
+# … 47 more progress lines like these, dropped from the fixture …
+Settling liquids 50%
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+> help
+Available commands:
+
+help		Displays a list of commands.
+playing		Shows the list of players.
+clear		Clear the console window.
+exit		Shutdown the server and save.
+exit-nosave	Shutdown the server without saving.
+save		Save the game world.
+kick <player>	Kicks a player from the server.
+ban <player>	Bans a player from the server.
+password	Show password.
+password <pass>	Change password.
+version		Print version number.
+time		Display game time.
+port		Print the listening port.
+maxplayers	Print the max number of players.
+say <words>	Send a message.
+motd		Print MOTD.
+motd <words>	Change MOTD.
+dawn		Change time to dawn.
+noon		Change time to noon.
+dusk		Change time to dusk.
+midnight	Change time to midnight.
+settle		Settle all water.
+seed		Displays the world seed.
+: 
+> playing
+No players connected.
+: 
+> version
+Terraria Server v1.4.5.8
+: 
+> time
+Time: 8:15 AM
+: 
+> port
+Port: 7777
+: 
+> maxplayers
+Player limit: 8
+: 
+> motd
+MOTD: Hola Ñandú ☃
+: 
+> motd Nuevo motd ☃
+: 
+> motd
+MOTD: Nuevo motd ☃
+: 
+> password
+No password set.
+: 
+> password <redacted>
+Password: <redacted>
+: 
+> password
+Password: <redacted>
+: 
+> password
+Password: <redacted>
+: 
+> say Hola a todos ☃
+<Server> Hola a todos ☃
+: 
+> kick nobody
+: 
+> ban nobody
+: 
+> seed
+World Seed: 1.1.2.0.2035260465
+: 
+> dawn
+: 
+> noon
+: 
+> settle
+Forcing water to settle.
+: 
+> notacommand
+Invalid command.
+: 
+> 
+: 
+> clear
+: 
+> save
+Saving world data: 6%
+Saving world data: 17%
+# … 6 more progress lines like these, dropped from the fixture …
+Saving world data: 100%
+Validating world save: 38%
+Validating world save: 84%
+: Backing up world file
+> exit
+Saving before exit...

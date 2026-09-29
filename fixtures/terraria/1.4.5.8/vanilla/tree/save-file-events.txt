@@ -1,0 +1,39 @@
+# inotifywait -m -r on the worlds folder during `save` then `exit` (event path), in order; repeats folded
+OPEN /data/worlds/small1.wld
+CLOSE_WRITE,CLOSE /data/worlds/small1.wld
+OPEN /data/worlds/small1.wld
+CLOSE_NOWRITE,CLOSE /data/worlds/small1.wld
+OPEN /data/worlds/small1.wld
+CLOSE_NOWRITE,CLOSE /data/worlds/small1.wld
+OPEN /data/worlds/small1.wld
+MODIFY /data/worlds/small1.wld
+#   … the same event 474 more times
+CLOSE_WRITE,CLOSE /data/worlds/small1.wld
+OPEN /data/worlds/small1.wld
+CLOSE_NOWRITE,CLOSE /data/worlds/small1.wld
+DELETE /data/worlds/small1.wld.bak2
+CREATE /data/worlds/small1.wld.bak2
+DELETE /data/worlds/small1.wld.bak
+CREATE /data/worlds/small1.wld.bak
+OPEN /data/worlds/small1.wld.bak
+MODIFY /data/worlds/small1.wld.bak
+#   … the same event 499 more times
+CLOSE_WRITE,CLOSE /data/worlds/small1.wld.bak
+OPEN,ISDIR /data/worlds/
+CLOSE_NOWRITE,CLOSE,ISDIR /data/worlds/
+OPEN /data/worlds/small1.wld
+CLOSE_NOWRITE,CLOSE /data/worlds/small1.wld
+OPEN /data/worlds/small1.wld
+MODIFY /data/worlds/small1.wld
+#   … the same event 410 more times
+CLOSE_WRITE,CLOSE /data/worlds/small1.wld
+OPEN /data/worlds/small1.wld
+CLOSE_NOWRITE,CLOSE /data/worlds/small1.wld
+DELETE /data/worlds/small1.wld.bak2
+CREATE /data/worlds/small1.wld.bak2
+DELETE /data/worlds/small1.wld.bak
+CREATE /data/worlds/small1.wld.bak
+OPEN /data/worlds/small1.wld.bak
+MODIFY /data/worlds/small1.wld.bak
+#   … the same event 545 more times
+CLOSE_WRITE,CLOSE /data/worlds/small1.wld.bak

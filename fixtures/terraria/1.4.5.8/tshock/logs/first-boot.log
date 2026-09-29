@@ -1,0 +1,300 @@
+Error Logging Enabled.
+[OTAPI] Starting up (PC Server,3.3.14+ca9c239,ModFw:1.1.15+a2c0c70).
+TerrariaAPI Version: 2.1.0.0 (Protocol v1.4.5.8 (326), OTAPI 3.3.14+ca9c239)
+[TShock] Info Config path has been set to /data/tshock
+[TShock] Info Log path has been set to /data/tshock/logs
+Port overridden by startup argument. Set to 7777
+Startup parameter overrode maximum player slot configuration value.
+Using ConstileationProvider for tile implementation
+TShock 6.2.1.0 (Profoundly Collaborative (3.11)) now running.
+AutoSave Enabled
+Backups Enabled
+Welcome to TShock for Terraria!
+TShock comes with no warranty & is free software.
+You can modify & distribute it under the terms of the GNU GPLv3.
+[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.
+Terraria Server v1.4.5.8
+
+Creating world - Seed: 832987615, Width: 4200, Height: 1200, Evil: -1, Difficulty: 0
+Resetting game objects
+Generating world terrain
+Adding sand
+Generating ocean sand
+Generating sand patches
+Generating surface tunnels
+Generating hills
+Putting dirt behind dirt
+Placing rocks in the dirt
+Placing dirt in the rocks
+Adding clay
+Making random holes
+Generating small caves
+Generating large caves
+Generating surface caves
+Adding snow
+Generating jungle
+Adding more grass
+Desertification
+Adding mushroom patches
+Chiseling marble
+Growing granite
+Generating floating islands
+Placing mud in the dirt
+Adding silt
+Adding shinies
+Adding webs
+Creating underworld
+Creating underworld 1%
+
+Creating underworld 2%
+
+Creating underworld 3%
+
+Creating underworld 5%
+
+Creating underworld 6%
+
+Creating underworld 7%
+
+Creating underworld 7%
+
+Creating underworld 9%
+
+Creating underworld 12%
+
+Creating underworld 12%
+
+Creating underworld 14%
+
+Creating underworld 15%
+
+Creating underworld 15%
+
+Creating underworld 16%
+
+Creating underworld 18%
+
+Creating underworld 18%
+
+Creating underworld 20%
+
+Creating underworld 21%
+
+Creating underworld 22%
+
+Creating underworld 23%
+
+Creating underworld 23%
+
+Creating underworld 24%
+
+Creating underworld 24%
+
+Creating underworld 26%
+
+Creating underworld 28%
+
+Creating underworld 29%
+
+Creating underworld 30%
+
+Creating underworld 31%
+
+Creating underworld 32%
+
+Creating underworld 33%
+
+Creating underworld 33%
+
+Creating underworld 33%
+
+Creating underworld 34%
+
+Creating underworld 36%
+
+Creating underworld 38%
+
+Creating underworld 38%
+
+Creating underworld 38%
+
+Creating underworld 38%
+
+Creating underworld 39%
+
+Creating underworld 40%
+
+Creating underworld 40%
+
+Creating underworld 40%
+
+Creating underworld 43%
+
+Creating underworld 46%
+
+Creating underworld 48%
+
+Creating underworld 48%
+
+Creating underworld 48%
+
+Creating underworld 50%
+
+Creating underworld 50%
+
+Making the world bloody
+Adding water bodies
+Creating dungeon - preparing
+Creating dungeon - placing rooms and hallways
+Creating dungeon - placing rooms and hallways
+
+Creating dungeon - placing hallway to surface and entrance
+Creating dungeon - finding doors and platforms
+Creating dungeon - early features
+Creating dungeon - placing spikes
+Creating dungeon - placing doors
+Creating dungeon - placing wall variants
+Creating dungeon - placing platforms
+Creating dungeon - placing biome chests
+Creating dungeon - placing bookshelves
+Creating dungeon - placing chests
+Creating dungeon - expanding area
+Creating dungeon - placing lights
+Creating dungeon - placing traps
+Creating dungeon - placing furniture
+Creating dungeon - placing pictures
+Creating dungeon - placing banners
+Creating dungeon - placing late features
+Creating dungeon - finishing up
+Generating mountain caves
+Creating beaches
+Adding gems
+Gravitating sand
+Forming the depths
+Cleaning up dirt backgrounds
+Generating giant trees
+Placing altars
+Creating jungle ruins
+Creating hornet nests
+Settling liquids
+Generating oasis
+Generating shell piles
+Smoothing the world
+Creating waterfalls
+Weathering caverns
+Placing life crystals
+Placing statues
+Hiding treasure
+Hiding more treasure
+Hiding jungle treasure
+Hiding water treasure
+Growing spider caves
+Mossification
+Making cave walls
+Growing rich mahogany
+Generating sky island houses
+Quick cleanup
+Placing breakables
+Placing hellforges
+Spreading grass
+Felling trees
+Placing traps
+Placing objects
+Planting sunflowers
+Planting trees
+Planting herbs
+Planting weeds
+Growing vines
+Planting flowers
+Planting mushrooms
+Growing long moss
+Generating structures
+Settling liquids
+Growing cacti
+Clean up
+Growing water plants
+Growing speleothems and gem trees
+Disarming broken traps
+Final clean up
+Saving world data:
+Validating world save:
+Resetting game objects
+Loading world data:
+Settling liquids
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+Login before join enabled. Users may be prompted for an account specific password instead of a server password on connect.
+Login using UUID enabled. Users automatically login via UUID.
+A malicious server can easily steal a user's UUID. You may consider turning this option off if you run a public server.
+: To setup the server, join the game and type /setup <redacted>
+This token will display until disabled by verification. (/setup)
+Server started
+> help
+Server executed: /help.
+Commands (1/4):
+/setup, /user, /login, /logout, /password, /register, /accountinfo, /ban, 
+/broadcast, /displaylogs, /group, /itemban, /projban, /tileban, /region, 
+/kick, /mute, /overridessc, /savessc, /uploadssc, /tempgroup, /su, /sudo, 
+/userinfo, /annoy, /rocket, /firework, /checkupdates, /off, /off-nosave, 
+Type /help 2 for more.
+: 
+> help 2
+Server executed: /help 2.
+Commands (2/4):
+/reload, /serverpassword, /version, /whitelist, /give, /item, /butcher, 
+/renamenpc, /maxspawns, /spawnboss, /spawnmob, /spawnrate, /clearangler, 
+/home, /spawn, /tp, /tphere, /tpnpc, /tppos, /pos, /tpallow, /worldmode, 
+/antibuild, /grow, /forcehalloween, /forcexmas, /worldevent, /hardmode, /evil, 
+Type /help 3 for more.
+: 
+> playing
+Server executed: /playing.
+There are currently no players online.
+: 
+> who
+Server executed: /who.
+There are currently no players online.
+: 
+> version
+Server executed: /version.
+TShock: 6.2.1.0 Profoundly Collaborative (3.11).
+: 
+> time
+Server executed: /time.
+The current time is 8:15.
+: 
+> motd
+Server executed: /motd.
+Welcome to tsh1 on TShock for Terraria.
+Online players (0/8): [c/FFFF00:]
+Type /help for a list of commands.
+: 
+> say Hola ☃
+Server executed: /say Hola ☃.
+(Server Broadcast) Hola ☃
+: 
+> broadcast Aviso ☃
+Server executed: /broadcast Aviso ☃.
+(Server Broadcast) Aviso ☃
+: 
+> kick nobody
+Server executed: /kick nobody.
+Player not found. Unable to kick the player.
+: 
+> ban add nobody
+Server executed: /ban add nobody.
+Could not find the target specified. Check that you have the correct spelling.
+: 
+> notacommand
+Invalid command entered. Type /help for a list of valid commands.
+: 
+> serverpassword
+Server executed: /serverpassword.
+Invalid syntax. Proper syntax: /serverpassword "<new password>".
+: 
+> setup
+You must use this command in-game.
+: 

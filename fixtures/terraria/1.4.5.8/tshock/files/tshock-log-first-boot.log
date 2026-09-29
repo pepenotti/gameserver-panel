@@ -1,0 +1,30 @@
+2026-09-29 15:56:48 - <>c: INFO: Port overridden by startup argument. Set to 7777
+2026-09-29 15:56:48 - TextLog: INFO: Using ConstileationProvider for tile implementation
+2026-09-29 15:56:48 - TShock: INFO: TShock 6.2.1.0 (Profoundly Collaborative (3.11)) now running.
+2026-09-29 15:56:48 - TShock: INFO: AutoSave Enabled
+2026-09-29 15:56:48 - TShock: INFO: Backups Enabled
+2026-09-29 15:56:48 - TShock: INFO: Welcome to TShock for Terraria!
+2026-09-29 15:56:48 - TShock: INFO: TShock comes with no warranty & is free software.
+2026-09-29 15:56:48 - TShock: INFO: You can modify & distribute it under the terms of the GNU GPLv3.
+2026-09-29 15:58:25 - TShock: INFO: Login before join enabled. Users may be prompted for an account specific password instead of a server password on connect.
+2026-09-29 15:58:25 - TShock: INFO: Login using UUID enabled. Users automatically login via UUID.
+2026-09-29 15:58:25 - TShock: INFO: A malicious server can easily steal a user's UUID. You may consider turning this option off if you run a public server.
+2026-09-29 15:58:29 - Utils: INFO: Server executed: /help.
+2026-09-29 15:58:31 - Utils: INFO: Server executed: /help 2.
+2026-09-29 15:58:32 - Utils: INFO: Server executed: /playing.
+2026-09-29 15:58:33 - Utils: INFO: Server executed: /who.
+2026-09-29 15:58:33 - Utils: INFO: Server executed: /version.
+2026-09-29 15:58:34 - Utils: INFO: Server executed: /time.
+2026-09-29 15:58:35 - Utils: INFO: Server executed: /motd.
+2026-09-29 15:58:36 - Utils: INFO: Server executed: /say Hola ☃.
+2026-09-29 15:58:36 - Utils: INFO: Broadcast: (Server Broadcast) Hola ☃
+2026-09-29 15:58:37 - Utils: INFO: Server executed: /broadcast Aviso ☃.
+2026-09-29 15:58:37 - Utils: INFO: Broadcast: (Server Broadcast) Aviso ☃
+2026-09-29 15:58:38 - Utils: INFO: Server executed: /kick nobody.
+2026-09-29 15:58:38 - Utils: INFO: Server executed: /ban add nobody.
+2026-09-29 15:58:40 - Utils: INFO: Server executed: /serverpassword.
+2026-09-29 15:58:42 - Utils: INFO: Server executed: /save.
+2026-09-29 15:58:42 - SaveManager: INFO: World saved at (/data/worlds/tsh1.wld)
+2026-09-29 15:58:45 - Utils: INFO: Server executed: /exit.
+2026-09-29 15:58:45 - SaveManager: INFO: World saved at (/data/worlds/tsh1.wld)
+2026-09-29 15:58:45 - Utils: INFO: Broadcast: Server shutting down!

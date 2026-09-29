@@ -1,0 +1,161 @@
+{
+ "note": "HEAD https://terraria.org/api/download/pc-dedicated-server/terraria-server-<id>.zip on 2026-09-29",
+ "results": [
+  {
+   "id": "1450",
+   "status": 200,
+   "size": 45040481,
+   "lastModified": "Tue, 27 Jan 2026 15:13:02 GMT"
+  },
+  {
+   "id": "1451",
+   "status": 200,
+   "size": 45468795,
+   "lastModified": "Wed, 28 Jan 2026 15:29:43 GMT"
+  },
+  {
+   "id": "1452",
+   "status": 200,
+   "size": 45467839,
+   "lastModified": "Wed, 28 Jan 2026 23:50:46 GMT"
+  },
+  {
+   "id": "1453",
+   "status": 200,
+   "size": 45480893,
+   "lastModified": "Sat, 31 Jan 2026 01:42:09 GMT"
+  },
+  {
+   "id": "1454",
+   "status": 200,
+   "size": 45563610,
+   "lastModified": "Wed, 04 Feb 2026 22:27:11 GMT"
+  },
+  {
+   "id": "1455",
+   "status": 200,
+   "size": 45585009,
+   "lastModified": "Tue, 10 Feb 2026 23:54:15 GMT"
+  },
+  {
+   "id": "1456",
+   "status": 200,
+   "size": 45635619,
+   "lastModified": "Mon, 09 Mar 2026 18:30:10 GMT"
+  },
+  {
+   "id": "1457",
+   "status": 200,
+   "size": 46412675,
+   "lastModified": "Wed, 19 Aug 2026 20:34:33 GMT"
+  },
+  {
+   "id": "1458",
+   "status": 200,
+   "size": 46415317,
+   "lastModified": "Sun, 23 Aug 2026 18:39:51 GMT"
+  },
+  {
+   "id": "1459",
+   "status": 404,
+   "size": 9,
+   "lastModified": null
+  },
+  {
+   "id": "1440",
+   "status": 404,
+   "size": 9,
+   "lastModified": null
+  },
+  {
+   "id": "1441",
+   "status": 200,
+   "size": 44533079,
+   "lastModified": "Wed, 28 Sep 2022 19:30:48 GMT"
+  },
+  {
+   "id": "1442",
+   "status": 502,
+   "size": 6398,
+   "lastModified": null
+  },
+  {
+   "id": "1443",
+   "status": 200,
+   "size": 44546306,
+   "lastModified": "Tue, 04 Oct 2022 00:04:51 GMT"
+  },
+  {
+   "id": "1444",
+   "status": 200,
+   "size": 44556715,
+   "lastModified": "Tue, 04 Oct 2022 21:20:25 GMT"
+  },
+  {
+   "id": "1445",
+   "status": 200,
+   "size": 44565771,
+   "lastModified": "Fri, 07 Oct 2022 14:55:17 GMT"
+  },
+  {
+   "id": "1446",
+   "status": 502,
+   "size": 6398,
+   "lastModified": null
+  },
+  {
+   "id": "1447",
+   "status": 200,
+   "size": 44579553,
+   "lastModified": "Mon, 24 Oct 2022 16:09:57 GMT"
+  },
+  {
+   "id": "1448",
+   "status": 200,
+   "size": 44557993,
+   "lastModified": "Wed, 09 Nov 2022 20:28:23 GMT"
+  },
+  {
+   "id": "1449",
+   "status": 200,
+   "size": 44628067,
+   "lastModified": "Thu, 17 Nov 2022 16:30:15 GMT"
+  },
+  {
+   "id": "1436",
+   "status": 200,
+   "size": 43392536,
+   "lastModified": "Tue, 01 Mar 2022 14:15:48 GMT"
+  },
+  {
+   "id": "1435",
+   "status": 200,
+   "size": 42503400,
+   "lastModified": "Mon, 28 Feb 2022 20:10:53 GMT"
+  },
+  {
+   "id": "1423",
+   "status": 200,
+   "size": 42109253,
+   "lastModified": "Tue, 06 Jul 2021 08:55:13 GMT"
+  },
+  {
+   "id": "1412",
+   "status": 200,
+   "size": 41871820,
+   "lastModified": "Thu, 28 Jan 2021 23:19:40 GMT"
+  },
+  {
+   "id": "1405",
+   "status": 404,
+   "size": 9,
+   "lastModified": null
+  },
+  {
+   "id": "1353",
+   "status": 404,
+   "size": 9,
+   "lastModified": null
+  }
+ ]
+}

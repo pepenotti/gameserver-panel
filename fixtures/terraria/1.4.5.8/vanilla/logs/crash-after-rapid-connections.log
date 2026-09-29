@@ -1,0 +1,389 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Creating world - Seed: 1749852911, Width: 6400, Height: 1800, Evil: -1, Difficulty: 0
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+0.0% - Generating world terrain - 0.1%
+0.0% - Generating world terrain - 2.8%
+# … 969 more progress lines like these, dropped from the fixture …
+0.4% - Generating world terrain - 0.0%
+0.4% - Adding sand - 0.0%
+0.6% - Adding sand - 0.0%
+0.6% - Generating ocean sand - 0.0%
+0.6% - Generating ocean sand - 33.3%
+# … 1 more progress lines like these, dropped from the fixture …
+0.6% - Generating ocean sand - 0.0%
+0.6% - Generating sand patches - 0.0%
+0.6% - Generating sand patches - 1.2%
+# … 81 more progress lines like these, dropped from the fixture …
+1.0% - Generating sand patches - 0.0%
+1.0% - Generating surface tunnels - 0.0%
+1.0% - Generating surface tunnels - 11.1%
+# … 8 more progress lines like these, dropped from the fixture …
+1.0% - Generating surface tunnels - 0.0%
+1.0% - Generating hills - 0.0%
+1.0% - Generating hills - 16.7%
+# … 4 more progress lines like these, dropped from the fixture …
+1.1% - Generating hills - 0.0%
+1.1% - Putting dirt behind dirt - 0.0%
+1.1% - Putting dirt behind dirt - 0.1%
+# … 779 more progress lines like these, dropped from the fixture …
+1.4% - Putting dirt behind dirt - 0.0%
+1.4% - Placing rocks in the dirt - 0.0%
+1.8% - Placing rocks in the dirt - 34.0%
+# … 1 more progress lines like these, dropped from the fixture …
+2.7% - Placing rocks in the dirt - 0.0%
+2.7% - Placing dirt in the rocks - 0.0%
+2.7% - Placing dirt in the rocks - 0.1%
+# … 1008 more progress lines like these, dropped from the fixture …
+4.0% - Placing dirt in the rocks - 0.0%
+4.0% - Adding clay - 0.0%
+4.1% - Adding clay - 25.0%
+# … 2 more progress lines like these, dropped from the fixture …
+4.3% - Adding clay - 0.0%
+4.3% - Making random holes - 0.0%
+4.3% - Making random holes - 0.1%
+# … 1024 more progress lines like these, dropped from the fixture …
+6.9% - Making random holes - 0.0%
+6.9% - Generating small caves - 0.0%
+6.9% - Generating small caves - 0.3%
+# … 322 more progress lines like these, dropped from the fixture …
+7.1% - Generating small caves - 0.0%
+7.1% - Generating large caves - 0.0%
+7.1% - Generating large caves - 0.1%
+# … 1001 more progress lines like these, dropped from the fixture …
+9.5% - Generating large caves - 0.0%
+9.5% - Generating surface caves - 0.0%
+9.5% - Generating surface caves - 1.7%
+# … 21 more progress lines like these, dropped from the fixture …
+9.6% - Generating surface caves - 0.0%
+9.6% - Adding snow - 0.0%
+9.6% - Adding snow - 0.1%
+# … 1597 more progress lines like these, dropped from the fixture …
+9.7% - Adding snow - 0.0%
+9.7% - Generating jungle - 0.0%
+11.0% - Generating jungle - 15.0%
+# … 71 more progress lines like these, dropped from the fixture …
+18.6% - Generating jungle - 0.0%
+18.6% - Adding more grass - 0.0%
+18.6% - Adding more grass - 0.1%
+# … 1026 more progress lines like these, dropped from the fixture …
+21.6% - Adding more grass - 0.0%
+21.6% - Desertification - 0.0%
+21.6% - Desertification - 0.1%
+# … 891 more progress lines like these, dropped from the fixture …
+30.2% - Desertification - 0.0%
+30.2% - Adding mushroom patches - 0.0%
+30.2% - Adding mushroom patches - 3.6%
+# … 683 more progress lines like these, dropped from the fixture …
+30.8% - Adding mushroom patches - 0.0%
+30.8% - Chiseling marble - 0.0%
+31.1% - Chiseling marble - 7.1%
+# … 12 more progress lines like these, dropped from the fixture …
+35.5% - Chiseling marble - 0.0%
+35.5% - Growing granite - 0.0%
+35.6% - Growing granite - 2.2%
+# … 16 more progress lines like these, dropped from the fixture …
+37.4% - Growing granite - 0.0%
+37.4% - Generating floating islands - 0.0%
+37.6% - Generating floating islands - 14.3%
+# … 5 more progress lines like these, dropped from the fixture …
+38.6% - Generating floating islands - 0.0%
+38.6% - Placing mud in the dirt - 0.0%
+38.6% - Placing mud in the dirt - 0.1%
+# … 999 more progress lines like these, dropped from the fixture …
+38.9% - Placing mud in the dirt - 0.0%
+38.9% - Adding silt - 0.0%
+38.9% - Adding silt - 0.1%
+# … 877 more progress lines like these, dropped from the fixture …
+39.1% - Adding silt - 0.0%
+39.1% - Adding shinies - 0.0%
+39.1% - Adding shinies - 8.3%
+# … 10 more progress lines like these, dropped from the fixture …
+39.3% - Adding shinies - 0.0%
+39.3% - Adding webs - 0.0%
+39.4% - Adding webs - 0.0%
+39.4% - Creating underworld - 0.0%
+39.4% - Creating underworld - 0.1%
+# … 826 more progress lines like these, dropped from the fixture …
+47.3% - Creating underworld - 0.0%
+47.3% - Making the world bloody - 0.0%
+47.6% - Making the world bloody - 34.7%
+# … 1 more progress lines like these, dropped from the fixture …
+48.2% - Making the world bloody - 0.0%
+48.2% - Adding water bodies - 0.0%
+48.2% - Adding water bodies - 16.7%
+# … 5 more progress lines like these, dropped from the fixture …
+48.3% - Adding water bodies - 0.0%
+48.3% - Creating dungeon - preparing - 0.0%
+48.3% - Creating dungeon - placing rooms and hallways - 0.0%
+48.5% - Creating dungeon - placing rooms and hallways - 60.0%
+48.6% - Creating dungeon - placing hallway to surface and entrance - 65.0%
+48.6% - Creating dungeon - placing hallway to surface and entrance - 67.5%
+48.6% - Creating dungeon - finding doors and platforms - 67.5%
+48.6% - Creating dungeon - early features - 70.0%
+48.6% - Creating dungeon - early features - 75.0%
+48.6% - Creating dungeon - placing spikes - 75.0%
+48.6% - Creating dungeon - placing doors - 80.0%
+48.6% - Creating dungeon - placing wall variants - 82.5%
+48.6% - Creating dungeon - placing platforms - 85.0%
+48.7% - Creating dungeon - placing biome chests - 87.5%
+48.7% - Creating dungeon - placing biome chests - 90.0%
+48.7% - Creating dungeon - placing bookshelves - 90.0%
+48.7% - Creating dungeon - placing chests - 92.0%
+48.7% - Creating dungeon - expanding area - 93.5%
+48.7% - Creating dungeon - placing lights - 94.0%
+48.7% - Creating dungeon - placing traps - 95.0%
+48.7% - Creating dungeon - placing furniture - 96.0%
+48.7% - Creating dungeon - placing furniture - 97.0%
+48.7% - Creating dungeon - placing pictures - 97.0%
+48.7% - Creating dungeon - placing banners - 98.0%
+48.7% - Creating dungeon - placing late features - 99.0%
+48.7% - Creating dungeon - finishing up - 100.0%
+48.7% - Creating dungeon - finishing up - 0.0%
+48.7% - Generating mountain caves - 0.0%
+48.7% - Generating mountain caves - 16.7%
+# … 4 more progress lines like these, dropped from the fixture …
+48.7% - Generating mountain caves - 0.0%
+48.7% - Creating beaches - 0.0%
+48.7% - Creating beaches - 0.2%
+# … 319 more progress lines like these, dropped from the fixture …
+48.7% - Creating beaches - 0.0%
+48.7% - Adding gems - 0.0%
+48.9% - Adding gems - 16.7%
+# … 4 more progress lines like these, dropped from the fixture …
+49.5% - Adding gems - 0.0%
+49.5% - Gravitating sand - 0.0%
+49.5% - Gravitating sand - 0.1%
+# … 1005 more progress lines like these, dropped from the fixture …
+50.3% - Gravitating sand - 0.0%
+50.3% - Cleaning up dirt backgrounds - 0.0%
+50.3% - Cleaning up dirt backgrounds - 0.1%
+# … 1005 more progress lines like these, dropped from the fixture …
+51.0% - Cleaning up dirt backgrounds - 0.0%
+51.0% - Generating giant trees - 0.0%
+51.0% - Generating giant trees - 25.0%
+# … 496 more progress lines like these, dropped from the fixture …
+51.1% - Generating giant trees - 0.0%
+51.1% - Placing altars - 0.0%
+51.1% - Placing altars - 2.6%
+# … 38 more progress lines like these, dropped from the fixture …
+51.1% - Placing altars - 0.0%
+51.1% - Creating jungle ruins - 0.0%
+51.1% - Creating jungle ruins - 0.5%
+# … 122 more progress lines like these, dropped from the fixture …
+51.7% - Creating jungle ruins - 0.0%
+51.7% - Creating hornet nests - 0.0%
+51.7% - Creating hornet nests - 10.0%
+# … 8 more progress lines like these, dropped from the fixture …
+52.0% - Creating hornet nests - 0.0%
+52.0% - Settling liquids - 0.0%
+54.7% - Settling liquids - 33.0%
+# … 86 more progress lines like these, dropped from the fixture …
+60.3% - Settling liquids - 0.0%
+60.3% - Generating oasis - 0.0%
+60.3% - Generating oasis - 25.0%
+# … 2 more progress lines like these, dropped from the fixture …
+60.3% - Generating oasis - 0.0%
+60.3% - Generating shell piles - 0.0%
+60.3% - Smoothing the world - 0.0%
+60.3% - Smoothing the world - 0.2%
+# … 1040 more progress lines like these, dropped from the fixture …
+65.5% - Smoothing the world - 0.0%
+65.5% - Creating waterfalls - 0.0%
+65.5% - Creating waterfalls - 0.2%
+# … 1027 more progress lines like these, dropped from the fixture …
+69.2% - Creating waterfalls - 0.0%
+69.2% - Weathering caverns - 0.0%
+69.2% - Weathering caverns - 0.1%
+# … 683 more progress lines like these, dropped from the fixture …
+73.9% - Weathering caverns - 0.0%
+73.9% - Placing life crystals - 0.0%
+73.9% - Placing life crystals - 0.4%
+# … 130 more progress lines like these, dropped from the fixture …
+73.9% - Placing life crystals - 0.0%
+73.9% - Placing statues - 0.0%
+73.9% - Hiding treasure - 0.0%
+73.9% - Hiding treasure - 0.5%
+# … 197 more progress lines like these, dropped from the fixture …
+74.9% - Hiding treasure - 0.0%
+74.9% - Hiding more treasure - 0.0%
+74.9% - Hiding more treasure - 3.1%
+# … 30 more progress lines like these, dropped from the fixture …
+74.9% - Hiding more treasure - 0.0%
+74.9% - Hiding jungle treasure - 0.0%
+74.9% - Hiding jungle treasure - 6.3%
+# … 14 more progress lines like these, dropped from the fixture …
+74.9% - Hiding jungle treasure - 0.0%
+74.9% - Hiding water treasure - 0.0%
+74.9% - Hiding water treasure - 7.3%
+# … 12 more progress lines like these, dropped from the fixture …
+74.9% - Hiding water treasure - 0.0%
+74.9% - Growing spider caves - 0.0%
+75.0% - Growing spider caves - 3.1%
+# … 50 more progress lines like these, dropped from the fixture …
+75.4% - Growing spider caves - 0.0%
+75.4% - Mossification - 0.0%
+75.4% - Mossification - 1.6%
+# … 60 more progress lines like these, dropped from the fixture …
+76.0% - Mossification - 0.0%
+76.0% - Making cave walls - 0.0%
+76.0% - Making cave walls - 0.3%
+# … 382 more progress lines like these, dropped from the fixture …
+76.0% - Making cave walls - 0.0%
+76.0% - Growing rich mahogany - 0.0%
+76.0% - Growing rich mahogany - 0.1%
+# … 1002 more progress lines like these, dropped from the fixture …
+76.7% - Growing rich mahogany - 0.0%
+76.7% - Generating sky island houses - 0.0%
+76.7% - Generating sky island houses - 14.3%
+# … 3 more progress lines like these, dropped from the fixture …
+76.7% - Generating sky island houses - 0.0%
+76.7% - Quick cleanup - 0.0%
+76.7% - Quick cleanup - 0.1%
+# … 1008 more progress lines like these, dropped from the fixture …
+77.9% - Quick cleanup - 0.0%
+77.9% - Placing breakables - 0.0%
+77.9% - Placing breakables - 0.1%
+# … 1009 more progress lines like these, dropped from the fixture …
+79.4% - Placing breakables - 0.0%
+79.4% - Placing hellforges - 0.0%
+79.4% - Placing hellforges - 3.1%
+# … 30 more progress lines like these, dropped from the fixture …
+79.4% - Placing hellforges - 0.0%
+79.4% - Spreading grass - 0.0%
+79.4% - Spreading grass - 0.1%
+# … 549 more progress lines like these, dropped from the fixture …
+79.5% - Spreading grass - 0.0%
+79.5% - Felling trees - 0.0%
+79.5% - Felling trees - 33.3%
+# … 1 more progress lines like these, dropped from the fixture …
+79.5% - Felling trees - 0.0%
+79.5% - Placing traps - 0.0%
+79.5% - Placing traps - 0.2%
+# … 338 more progress lines like these, dropped from the fixture …
+80.0% - Placing traps - 0.0%
+80.0% - Placing objects - 0.0%
+80.0% - Placing objects - 0.1%
+# … 702 more progress lines like these, dropped from the fixture …
+80.8% - Placing objects - 0.0%
+80.8% - Planting sunflowers - 0.0%
+80.8% - Planting sunflowers - 7.8%
+# … 11 more progress lines like these, dropped from the fixture …
+80.8% - Planting sunflowers - 0.0%
+80.8% - Planting trees - 0.0%
+80.8% - Planting trees - 5.2%
+# … 18 more progress lines like these, dropped from the fixture …
+81.1% - Planting trees - 0.0%
+81.1% - Planting herbs - 0.0%
+81.1% - Planting herbs - 0.1%
+# … 977 more progress lines like these, dropped from the fixture …
+81.9% - Planting herbs - 0.0%
+81.9% - Planting weeds - 0.0%
+81.9% - Planting weeds - 0.1%
+# … 1002 more progress lines like these, dropped from the fixture …
+83.2% - Planting weeds - 0.0%
+83.2% - Growing vines - 0.1%
+83.2% - Growing vines - 0.2%
+# … 1007 more progress lines like these, dropped from the fixture …
+84.2% - Growing vines - 0.0%
+84.2% - Planting flowers - 0.0%
+84.2% - Planting flowers - 4.0%
+# … 23 more progress lines like these, dropped from the fixture …
+84.2% - Planting flowers - 0.0%
+84.2% - Planting mushrooms - 8.3%
+84.2% - Planting mushrooms - 33.3%
+# … 6 more progress lines like these, dropped from the fixture …
+84.3% - Planting mushrooms - 0.0%
+84.3% - Growing long moss - 0.0%
+84.3% - Growing long moss - 0.1%
+# … 1006 more progress lines like these, dropped from the fixture …
+84.9% - Growing long moss - 0.0%
+84.9% - Generating structures - 0.0%
+85.0% - Generating structures - 0.6%
+# … 219 more progress lines like these, dropped from the fixture …
+88.1% - Generating structures - 0.0%
+88.1% - Settling liquids - 0.0%
+90.1% - Settling liquids - 33.0%
+# … 87 more progress lines like these, dropped from the fixture …
+94.3% - Settling liquids - 0.0%
+94.3% - Growing cacti - 0.0%
+94.3% - Growing cacti - 33.3%
+# … 1 more progress lines like these, dropped from the fixture …
+94.3% - Growing cacti - 0.0%
+94.3% - Clean up - 0.0%
+94.3% - Clean up - 0.1%
+# … 1014 more progress lines like these, dropped from the fixture …
+96.0% - Clean up - 0.0%
+96.0% - Growing water plants - 0.3%
+96.0% - Growing water plants - 0.4%
+# … 985 more progress lines like these, dropped from the fixture …
+96.0% - Growing water plants - 0.0%
+96.0% - Growing speleothems and gem trees - 0.3%
+96.0% - Growing speleothems and gem trees - 0.4%
+# … 1005 more progress lines like these, dropped from the fixture …
+97.0% - Growing speleothems and gem trees - 0.0%
+97.0% - Disarming broken traps - 0.0%
+97.0% - Disarming broken traps - 0.1%
+# … 1006 more progress lines like these, dropped from the fixture …
+98.2% - Disarming broken traps - 0.0%
+98.2% - Final clean up - 0.0%
+98.2% - Final clean up - 0.1%
+# … 1016 more progress lines like these, dropped from the fixture …
+100.0% - Final clean up - 100.0%
+100.0% - Finalizing world - 0.0%
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+192.0.2.1:58964 is connecting...
+192.0.2.1:58964 was booted: You are not using the same version as this server.
+172.17.0.1:58970 is connecting...
+192.0.2.1:58970 was booted: You are not using the same version as this server.
+172.17.0.1:58982 is connecting...
+192.0.2.1:58982 was booted: You are not using the same version as this server.
+172.17.0.1:58998 is connecting...
+192.0.2.1:58998 was booted: You are not using the same version as this server.
+172.17.0.1:59004 is connecting...
+192.0.2.1:59004 was booted: You are not using the same version as this server.
+172.17.0.1:59008 is connecting...
+192.0.2.1:59008 was booted: You are not using the same version as this server.
+172.17.0.1:59024 is connecting...
+================
+09/29/2026 14:39:12: Unhandled Exception
+Thread: 20 [Server Loop Thread]
+Culture: 
+Exception: System.ObjectDisposedException: Cannot access a disposed object.
+Object name: 'System.Net.Sockets.NetworkStream'.
+  at System.Net.Sockets.NetworkStream.get_DataAvailable () [0x00015] in <32fc020d7373456995b3d44fa885e01a>:0 
+  at Terraria.Net.Sockets.DebugNetworkStream.get_HasBufferedData () [0x0001f] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Net.Sockets.TcpSocket.Terraria.Net.Sockets.ISocket.IsConnected () [0x0002c] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.RemoteClient.IsConnected () [0x00008] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Netplay.UpdateConnectedClients () [0x00078] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Netplay.ServerLoop () [0x00009] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at System.Threading.ThreadHelper.ThreadStart_Context (System.Object state) [0x00014] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.RunInternal (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state, System.Boolean preserveSyncCtx) [0x00071] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.Run (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state, System.Boolean preserveSyncCtx) [0x00000] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.Run (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state) [0x0002b] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ThreadHelper.ThreadStart () [0x00008] in <d1664be62cd44600bbd25f7afa292479>:0 
+HResult: -2146232798
+================
+[ERROR] FATAL UNHANDLED EXCEPTION: System.ObjectDisposedException: Cannot access a disposed object.
+Object name: 'System.Net.Sockets.NetworkStream'.
+  at System.Net.Sockets.NetworkStream.get_DataAvailable () [0x00015] in <32fc020d7373456995b3d44fa885e01a>:0 
+  at Terraria.Net.Sockets.DebugNetworkStream.get_HasBufferedData () [0x0001f] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Net.Sockets.TcpSocket.Terraria.Net.Sockets.ISocket.IsConnected () [0x0002c] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.RemoteClient.IsConnected () [0x00008] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Netplay.UpdateConnectedClients () [0x00078] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at Terraria.Netplay.ServerLoop () [0x00009] in <2112d06ce89d4f6a9f6500cde02e2815>:0 
+  at System.Threading.ThreadHelper.ThreadStart_Context (System.Object state) [0x00014] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.RunInternal (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state, System.Boolean preserveSyncCtx) [0x00071] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.Run (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state, System.Boolean preserveSyncCtx) [0x00000] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ExecutionContext.Run (System.Threading.ExecutionContext executionContext, System.Threading.ContextCallback callback, System.Object state) [0x0002b] in <d1664be62cd44600bbd25f7afa292479>:0 
+  at System.Threading.ThreadHelper.ThreadStart () [0x00008] in <d1664be62cd44600bbd25f7afa292479>:0 

@@ -1,0 +1,13 @@
+You must install .NET to run this application.
+
+App: /opt/tsh/621/TShock.Server
+Architecture: x64
+App host version: 9.0.20
+.NET location: Not found
+
+Learn more:
+https://aka.ms/dotnet/app-launch-failed
+
+Download the .NET runtime:
+https://aka.ms/dotnet-core-applaunch?missing_runtime=true&arch=x64&rid=linux-x64&os=debian.13&apphost_version=9.0.20
+Failed to resolve libhostfxr.so [not found]. Error code: 0x80008083

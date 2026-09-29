@@ -1,0 +1,213 @@
+[
+ {
+  "t": 0,
+  "ms": 106,
+  "method": "GET",
+  "path": "/tokentest?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "119",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Token is valid and was passed through correctly.",
+   "associateduser": "gspagent"
+  }
+ },
+ {
+  "t": 0.106,
+  "ms": 81,
+  "method": "GET",
+  "path": "/v2/users/create?user=gspffadmin&password=gsp-test-pw-1&group=superadmin&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "68",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "User was successfully created"
+  }
+ },
+ {
+  "t": 0.187,
+  "ms": 7,
+  "method": "GET",
+  "path": "/v2/users/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "122",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "users": [
+    {
+     "name": "gspffadmin",
+     "id": 1,
+     "group": "superadmin"
+    }
+   ]
+  }
+ },
+ {
+  "t": 0.195,
+  "ms": 48,
+  "method": "GET",
+  "path": "/v2/users/read?user=gspffadmin&type=name&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "83",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "group": "superadmin",
+   "id": "1",
+   "name": "gspffadmin"
+  }
+ },
+ {
+  "t": 0.243,
+  "ms": 18,
+  "method": "GET",
+  "path": "/v2/users/update?user=gspffadmin&type=name&group=admin&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "71",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "group-response": "Group updated successfully"
+  }
+ },
+ {
+  "t": 0.261,
+  "ms": 49,
+  "method": "GET",
+  "path": "/v2/users/read?user=gspffadmin&type=name&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "78",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "group": "admin",
+   "id": "1",
+   "name": "gspffadmin"
+  }
+ },
+ {
+  "t": 0.311,
+  "ms": 25,
+  "method": "GET",
+  "path": "/v2/users/destroy?user=gspffadmin&type=name&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "64",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "User deleted successfully"
+  }
+ },
+ {
+  "t": 0.336,
+  "ms": 50,
+  "method": "GET",
+  "path": "/v2/groups/read?group=superadmin&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "177",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "name": "superadmin",
+   "parent": "",
+   "chatcolor": "255,255,255",
+   "permissions": [],
+   "negatedpermissions": [],
+   "totalpermissions": [
+    "*"
+   ]
+  }
+ },
+ {
+  "t": 0.387,
+  "ms": 6,
+  "method": "GET",
+  "path": "/v2/token/create?username=gspffadmin&password=gsp-test-pw-1",
+  "status": 403,
+  "headers": {
+   "content-length": "125",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "403",
+   "error": "Username or password may be incorrect or this account may not have sufficient privileges."
+  }
+ },
+ {
+  "t": 0.393,
+  "ms": 50,
+  "method": "GET",
+  "path": "/v3/bans/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "971",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "bans": [
+    {
+     "ticket_number": 8,
+     "identifier": "acc:nobody",
+     "reason": "Banned",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587826700,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 7,
+     "identifier": "uuid:00000000-0000-0000-0000-000000000000",
+     "reason": "Banned",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587210200,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 6,
+     "identifier": "ip:192.0.2.77",
+     "reason": "Test ip",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587054200,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 5,
+     "identifier": "name:gspffcarol",
+     "reason": "Test ban",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951556944500,
+     "end_date_ticks": 3155378976000000000
+    }
+   ]
+  }
+ }
+]

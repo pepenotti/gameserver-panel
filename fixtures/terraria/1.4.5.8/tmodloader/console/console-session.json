@@ -1,0 +1,277 @@
+[
+ {
+  "t": 0,
+  "dir": "out",
+  "text": "Finding Mods..."
+ },
+ {
+  "t": 0.02,
+  "dir": "out",
+  "text": "Constructing Mods..."
+ },
+ {
+  "t": 0.029,
+  "dir": "out",
+  "text": "Adding Content: tModLoader v2026.7.3.0"
+ },
+ {
+  "t": 0.144,
+  "dir": "out",
+  "text": "Resizing..."
+ },
+ {
+  "t": 0.275,
+  "dir": "out",
+  "text": "Configuring Content: tModLoader v2026.7.3.0"
+ },
+ {
+  "t": 0.384,
+  "dir": "out",
+  "text": "Finalizing Content: tModLoader v2026.7.3.0"
+ },
+ {
+  "t": 0.637,
+  "dir": "out",
+  "text": "Adding Recipes..."
+ },
+ {
+  "t": 0.88,
+  "dir": "out",
+  "text": "Terraria Server v1.4.4.9"
+ },
+ {
+  "t": 0.88,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 0.92,
+  "dir": "out",
+  "text": "Creating world - Seed: 1821851134, Width: 4200, Height: 1200, Evil: -1, IsExpert: False"
+ },
+ {
+  "t": 30.601,
+  "dir": "out",
+  "text": "Running engine preload..."
+ },
+ {
+  "t": 30.602,
+  "dir": "out",
+  "text": "Terraria Server v1.4.4.9"
+ },
+ {
+  "t": 30.602,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 30.602,
+  "dir": "out",
+  "text": "Listening on port 7777"
+ },
+ {
+  "t": 30.602,
+  "dir": "out",
+  "text": "Type 'help' for a list of commands."
+ },
+ {
+  "t": 30.602,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 41.57,
+  "dir": "out",
+  "text": "Server started"
+ },
+ {
+  "t": 48.361,
+  "dir": "in",
+  "text": "help"
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": ": Available commands:"
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": ""
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "help\t\tDisplays a list of commands."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "playing\t\tShows the list of players."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "clear\t\tClear the console window."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "exit\t\tShutdown the server and save."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "exit-nosave\tShutdown the server without saving."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "save\t\tSave the game world."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "kick <player>\tKicks a player from the server."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "ban <player>\tBans a player from the server."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "password\tShow password."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "password <pass>\tChange password."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "version\t\tPrint version number."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "time\t\tDisplay game time."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "port\t\tPrint the listening port."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "maxplayers\tPrint the max number of players."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "say <words>\tSend a message."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "motd\t\tPrint MOTD."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "motd <words>\tChange MOTD."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "dawn\t\tChange time to dawn."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "noon\t\tChange time to noon."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "dusk\t\tChange time to dusk."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "midnight\tChange time to midnight."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "settle\t\tSettle all water."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "seed\t\tDisplays the world seed."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "customsets\tDisplays a list of named ID sets."
+ },
+ {
+  "t": 48.365,
+  "dir": "out",
+  "text": "modlist\t\tDisplays a list of loaded mods."
+ },
+ {
+  "t": 49.867,
+  "dir": "in",
+  "text": "playing"
+ },
+ {
+  "t": 49.869,
+  "dir": "out",
+  "text": ": No players connected."
+ },
+ {
+  "t": 50.678,
+  "dir": "in",
+  "text": "version"
+ },
+ {
+  "t": 50.681,
+  "dir": "out",
+  "text": ": Terraria Server v1.4.4.9 - tModLoader v2026.7.3.0"
+ },
+ {
+  "t": 51.484,
+  "dir": "in",
+  "text": "save"
+ },
+ {
+  "t": 51.502,
+  "dir": "out",
+  "text": ": Saving world data: 20%"
+ },
+ {
+  "t": 51.635,
+  "dir": "out",
+  "text": "Saving modded world data"
+ },
+ {
+  "t": 114.81,
+  "dir": "in",
+  "text": "exit"
+ },
+ {
+  "t": 114.824,
+  "dir": "out",
+  "text": ": Saving before exit..."
+ },
+ {
+  "t": 116.232,
+  "dir": "exit",
+  "text": "exit code=0 signal=null"
+ }
+]

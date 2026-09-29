@@ -1,0 +1,495 @@
+[
+ {
+  "t": 0,
+  "ms": 72,
+  "method": "GET",
+  "path": "/v2/server/status?token=<token>&players=true",
+  "status": 200,
+  "headers": {
+   "content-length": "684",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "name": "",
+   "serverversion": "v1.4.5.8",
+   "tshockversion": "6.2.1.0",
+   "port": 7777,
+   "playercount": 3,
+   "maxplayers": 8,
+   "world": "tsh1",
+   "uptime": "0.00:00:14",
+   "serverpassword": false,
+   "players": [
+    {
+     "nickname": "gspffalice",
+     "username": "",
+     "group": "guest",
+     "active": true,
+     "state": 10,
+     "team": 1
+    },
+    {
+     "nickname": "gspffbob",
+     "username": "",
+     "group": "guest",
+     "active": true,
+     "state": 10,
+     "team": 1
+    },
+    {
+     "nickname": "gspffcarol",
+     "username": "",
+     "group": "guest",
+     "active": true,
+     "state": 10,
+     "team": 1
+    }
+   ]
+  }
+ },
+ {
+  "t": 0.073,
+  "ms": 7,
+  "method": "GET",
+  "path": "/v2/players/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "482",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "players": [
+    {
+     "nickname": "gspffalice",
+     "username": "",
+     "group": "guest",
+     "active": true,
+     "state": 10,
+     "team": 1
+    },
+    {
+     "nickname": "gspffbob",
+     "username": "",
+     "group": "guest",
+     "active": true,
+     "state": 10,
+     "team": 1
+    },
+    {
+     "nickname": "gspffcarol",
+     "username": "",
+     "group": "guest",
+     "active": true,
+     "state": 10,
+     "team": 1
+    }
+   ]
+  }
+ },
+ {
+  "t": 0.08,
+  "ms": 52,
+  "method": "GET",
+  "path": "/v3/players/read?player=gspffalice&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "370",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "nickname": "gspffalice",
+   "username": null,
+   "ip": "192.0.2.1",
+   "group": "guest",
+   "registered": null,
+   "muted": false,
+   "position": "2096,245",
+   "inventory": "",
+   "armor": "",
+   "dyes": "",
+   "buffs": "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+  }
+ },
+ {
+  "t": 0.132,
+  "ms": 18,
+  "method": "GET",
+  "path": "/v4/players/read?player=gspffalice&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "447",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "nickname": "gspffalice",
+   "username": null,
+   "ip": "192.0.2.1",
+   "group": "guest",
+   "registered": null,
+   "muted": false,
+   "position": "2096,245",
+   "items": {
+    "inventory": [],
+    "equipment": [],
+    "dyes": [],
+    "piggy": [],
+    "safe": [],
+    "forge": []
+   },
+   "buffs": "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
+  }
+ },
+ {
+  "t": 0.15,
+  "ms": 49,
+  "method": "GET",
+  "path": "/v2/players/kick?player=gspffbob&reason=Bye%20from%20the%20panel&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "65",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Player gspffbob was kicked"
+  }
+ },
+ {
+  "t": 1.207,
+  "ms": 1871,
+  "method": "GET",
+  "path": "/v2/players/kick?player=nobody&token=<token>",
+  "status": 400,
+  "headers": {
+   "content-length": "63",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "400",
+   "error": "Player nobody was not found"
+  }
+ },
+ {
+  "t": 3.079,
+  "ms": 31,
+  "method": "GET",
+  "path": "/v3/bans/create?identifier=name:gspffcarol&reason=Test%20ban&token=<token>",
+  "status": 500,
+  "headers": {
+   "content-length": "1114",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "500",
+   "error": "Internal server error.",
+   "errormsg": "Object reference not set to an instance of an object.",
+   "stacktrace": "   at TShockAPI.RestManager.<>c__DisplayClass17_0.<BanCreateV3>b__3(TSPlayer p) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 650\n   at System.Linq.Enumerable.ArrayWhereIterator`1.MoveNext() in System.Linq.dll:token 0x60002fb+0x2c\n   at TShockAPI.RestManager.BanCreateV3(RestRequestArgs args) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 650\n   … (trimmed by the fact-finding)"
+  }
+ },
+ {
+  "t": 4.11,
+  "ms": 1980,
+  "method": "GET",
+  "path": "/v2/players/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "336",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "players": [
+    {
+     "nickname": "gspffalice",
+     "username": "",
+     "group": "guest",
+     "active": true,
+     "state": 10,
+     "team": 1
+    },
+    {
+     "nickname": "gspffcarol",
+     "username": "",
+     "group": "guest",
+     "active": true,
+     "state": 10,
+     "team": 1
+    }
+   ]
+  }
+ },
+ {
+  "t": 6.09,
+  "ms": 15,
+  "method": "GET",
+  "path": "/v3/bans/create?identifier=ip:192.0.2.77&reason=Test%20ip&token=<token>",
+  "status": 500,
+  "headers": {
+   "content-length": "1292",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "500",
+   "error": "Internal server error.",
+   "errormsg": "Object reference not set to an instance of an object.",
+   "stacktrace": "   at TShockAPI.RestManager.<>c__DisplayClass17_0.<BanCreateV3>b__0(TSPlayer p) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 645\n   at System.Linq.Enumerable.TryGetFirst[TSource](IEnumerable`1 source, Func`2 predicate, Boolean& found) in System.Linq.dll:token 0x6000072+0x32\n   at System.Linq.Enumerable.FirstOrDefault[TSource](IEnumerable`1 source, Func`2 predicate) in System.Linq.dll:token 0x600006e+0x0\n   … (trimmed by the fact-finding)"
+  }
+ },
+ {
+  "t": 6.105,
+  "ms": 62,
+  "method": "GET",
+  "path": "/v3/bans/create?identifier=uuid:00000000-0000-0000-0000-000000000000&token=<token>",
+  "status": 500,
+  "headers": {
+   "content-length": "1292",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "500",
+   "error": "Internal server error.",
+   "errormsg": "Object reference not set to an instance of an object.",
+   "stacktrace": "   at TShockAPI.RestManager.<>c__DisplayClass17_0.<BanCreateV3>b__2(TSPlayer p) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 661\n   at System.Linq.Enumerable.TryGetFirst[TSource](IEnumerable`1 source, Func`2 predicate, Boolean& found) in System.Linq.dll:token 0x6000072+0x32\n   at System.Linq.Enumerable.FirstOrDefault[TSource](IEnumerable`1 source, Func`2 predicate) in System.Linq.dll:token 0x600006e+0x0\n   … (trimmed by the fact-finding)"
+  }
+ },
+ {
+  "t": 6.167,
+  "ms": 14,
+  "method": "GET",
+  "path": "/v3/bans/create?identifier=acc:nobody&token=<token>",
+  "status": 500,
+  "headers": {
+   "content-length": "1292",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "500",
+   "error": "Internal server error.",
+   "errormsg": "Object reference not set to an instance of an object.",
+   "stacktrace": "   at TShockAPI.RestManager.<>c__DisplayClass17_0.<BanCreateV3>b__1(TSPlayer p) in <upstream CI build dir>/TShock/TShockAPI/Rest/RestManager.cs:line 657\n   at System.Linq.Enumerable.TryGetFirst[TSource](IEnumerable`1 source, Func`2 predicate, Boolean& found) in System.Linq.dll:token 0x6000072+0x32\n   at System.Linq.Enumerable.FirstOrDefault[TSource](IEnumerable`1 source, Func`2 predicate) in System.Linq.dll:token 0x600006e+0x0\n   … (trimmed by the fact-finding)"
+  }
+ },
+ {
+  "t": 6.182,
+  "ms": 49,
+  "method": "GET",
+  "path": "/v3/bans/create?token=<token>",
+  "status": 400,
+  "headers": {
+   "content-length": "73",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "400",
+   "error": "Missing or empty identifier parameter"
+  }
+ },
+ {
+  "t": 6.231,
+  "ms": 4,
+  "method": "GET",
+  "path": "/v3/bans/list?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "1197",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "bans": [
+    {
+     "ticket_number": 5,
+     "identifier": "name:gspffcarol",
+     "reason": "Test ban",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951556944500,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 6,
+     "identifier": "ip:192.0.2.77",
+     "reason": "Test ip",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587054200,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 2,
+     "identifier": "ip:192.0.2.77",
+     "reason": "Test ip",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262945154118400,
+     "end_date_ticks": 639262951471085800
+    },
+    {
+     "ticket_number": 7,
+     "identifier": "uuid:00000000-0000-0000-0000-000000000000",
+     "reason": "Banned",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587210200,
+     "end_date_ticks": 3155378976000000000
+    },
+    {
+     "ticket_number": 8,
+     "identifier": "acc:nobody",
+     "reason": "Banned",
+     "banning_user": "gspagent",
+     "start_date_ticks": 639262951587826700,
+     "end_date_ticks": 3155378976000000000
+    }
+   ]
+  }
+ },
+ {
+  "t": 6.235,
+  "ms": 48,
+  "method": "GET",
+  "path": "/v3/bans/read?ticketNumber=1&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "62",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "No matching bans found."
+  }
+ },
+ {
+  "t": 6.283,
+  "ms": 4,
+  "method": "GET",
+  "path": "/v3/bans/read?ticketNumber=999&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "62",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "No matching bans found."
+  }
+ },
+ {
+  "t": 6.287,
+  "ms": 52,
+  "method": "GET",
+  "path": "/v2/server/broadcast?msg=Hola%20%E2%98%83&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "79",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "The message was broadcasted successfully"
+  }
+ },
+ {
+  "t": 6.339,
+  "ms": 6,
+  "method": "GET",
+  "path": "/v3/server/rawcmd?cmd=/who&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "110",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": [
+    "Online Players ([c/AAFFAA:2]/8)",
+    "gspffalice, gspffcarol"
+   ]
+  }
+ },
+ {
+  "t": 6.346,
+  "ms": 45,
+  "method": "GET",
+  "path": "/v3/server/rawcmd?cmd=who&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "114",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": [
+    "Invalid command entered. Type /help for a list of valid commands."
+   ]
+  }
+ },
+ {
+  "t": 6.391,
+  "ms": 6,
+  "method": "GET",
+  "path": "/v3/server/rawcmd?cmd=/kick%20nobody&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "93",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": [
+    "Player not found. Unable to kick the player."
+   ]
+  }
+ },
+ {
+  "t": 6.397,
+  "ms": 750,
+  "method": "GET",
+  "path": "/v2/world/save?token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "50",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "World saved"
+  }
+ },
+ {
+  "t": 7.147,
+  "ms": 4,
+  "method": "GET",
+  "path": "/v2/players/mute?player=gspffalice&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "71",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "Player gspffalice has been muted"
+  }
+ }
+]

@@ -1,0 +1,36 @@
+== workshop_download_item 1281930 2619954303
+steamcmd.sh[9]: Starting  /home/node/steamcmd/linux32/steamcmd
+WARNING: setlocale('en_US.UTF-8') failed, using locale: 'C'. International characters may not work.
+Redirecting stderr to '/home/node/Steam/logs/stderr.txt'
+Logging directory: '/home/node/Steam/logs'
+[  0%] Checking for available updates...
+[----] Verifying installation...
+UpdateUI: skip show logo
+Steam Console Client (c) Valve Corporation - version 1788292693
+-- type 'quit' to exit --
+Loading Steam API...OK
+Connecting anonymously to Steam Public...OK
+Waiting for client config...OK
+Waiting for user info...OK
+Downloading item 2619954303 ...PosixFileOpen: RESOLVE_BENEATH unsupported, falling back to plain open()
+Success. Downloaded item 2619954303 to "/data/.workshop/steamapps/workshop/content/1281930/2619954303" (1356461 bytes) Unloading Steam API...OK
+exit=0 seconds=7
+== tree
+d       4096 /data/.workshop
+d       4096 /data/.workshop/steamapps
+d       4096 /data/.workshop/steamapps/workshop
+d       4096 /data/.workshop/steamapps/workshop/downloads
+f        575 /data/.workshop/steamapps/workshop/appworkshop_1281930.acf
+d       4096 /data/.workshop/steamapps/workshop/content
+d       4096 /data/.workshop/steamapps/workshop/content/1281930
+d       4096 /data/.workshop/steamapps/workshop/content/1281930/2619954303
+d       4096 /data/.workshop/steamapps/workshop/content/1281930/2619954303/2025.6
+f     356612 /data/.workshop/steamapps/workshop/content/1281930/2619954303/2025.6/RecipeBrowser.tmod
+d       4096 /data/.workshop/steamapps/workshop/content/1281930/2619954303/2026.7
+f     426146 /data/.workshop/steamapps/workshop/content/1281930/2619954303/2026.7/RecipeBrowser.tmod
+d       4096 /data/.workshop/steamapps/workshop/content/1281930/2619954303/2025.9
+f     367520 /data/.workshop/steamapps/workshop/content/1281930/2619954303/2025.9/RecipeBrowser.tmod
+d       4096 /data/.workshop/steamapps/workshop/content/1281930/2619954303/2022.9
+f     205906 /data/.workshop/steamapps/workshop/content/1281930/2619954303/2022.9/RecipeBrowser.tmod
+f        277 /data/.workshop/steamapps/workshop/content/1281930/2619954303/workshop.json
+d       4096 /data/.workshop/steamapps/workshop/temp

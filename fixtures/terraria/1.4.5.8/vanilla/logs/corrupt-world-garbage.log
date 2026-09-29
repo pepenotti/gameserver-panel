@@ -1,0 +1,8 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Load failed!  No backup found.
+
+System.Exception: LoadWorld failed with status: UnknownError
+  at Terraria.IO.WorldFile.LoadWorld () [0x002a4] in <2112d06ce89d4f6a9f6500cde02e2815>:0 

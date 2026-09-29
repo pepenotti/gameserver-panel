@@ -1,0 +1,34 @@
+[
+ {
+  "t": 0,
+  "ms": 70,
+  "method": "GET",
+  "path": "/v2/server/off?token=<token>",
+  "status": 400,
+  "headers": {
+   "content-length": "72",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "400",
+   "error": "Missing or invalid confirm parameter"
+  }
+ },
+ {
+  "t": 0.071,
+  "ms": 309,
+  "method": "GET",
+  "path": "/v2/server/off?confirm=true&nosave=false&message=Bye&token=<token>",
+  "status": 200,
+  "headers": {
+   "content-length": "66",
+   "content-type": "application/json; charset=utf-8",
+   "server": "TShockAPI/6.2.1.0"
+  },
+  "body": {
+   "status": "200",
+   "response": "The server is shutting down"
+  }
+ }
+]

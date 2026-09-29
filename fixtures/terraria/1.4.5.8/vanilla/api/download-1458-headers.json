@@ -1,0 +1,15 @@
+{
+ "method": "HEAD",
+ "url": "https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip",
+ "status": 200,
+ "headers": {
+  "accept-ranges": "bytes",
+  "cache-control": "public, max-age=0",
+  "content-disposition": "attachment; filename=\"terraria-server-1458.zip\"",
+  "content-length": "46415317",
+  "content-type": "application/zip",
+  "etag": "W/\"2c43dd5-1a02fec040a\"",
+  "last-modified": "Sun, 23 Aug 2026 18:39:51 GMT",
+  "server": "cloudflare"
+ }
+}

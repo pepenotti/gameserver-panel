@@ -1,0 +1,63 @@
+﻿﻿Error Logging Enabled.
+﻿﻿
+Terraria Server v1.4.5.8
+
+Resetting game objects 1%
+Resetting game objects 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Resetting game objects 100%
+Loading world data: 1%
+Loading world data: 2%
+# … 97 more progress lines like these, dropped from the fixture …
+Loading world data: 100%
+Settling liquids 1%
+Settling liquids 2%
+# … 47 more progress lines like these, dropped from the fixture …
+Settling liquids 50%
+Terraria Server v1.4.5.8
+
+Listening on port 7777
+Type 'help' for a list of commands.
+
+: Server started
+192.0.2.1:41542 is connecting...
+192.0.2.1:41542 was booted: You are not using the same version as this server.
+# client: {"r":315,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41544 is connecting...
+192.0.2.1:41544 was booted: You are not using the same version as this server.
+# client: {"r":316,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41560 is connecting...
+192.0.2.1:41560 was booted: You are not using the same version as this server.
+# client: {"r":317,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41570 is connecting...
+192.0.2.1:41570 was booted: You are not using the same version as this server.
+# client: {"r":318,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41582 is connecting...
+192.0.2.1:41582 was booted: You are not using the same version as this server.
+# client: {"r":319,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41594 is connecting...
+192.0.2.1:41594 was booted: You are not using the same version as this server.
+# client: {"r":320,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41604 is connecting...
+192.0.2.1:41604 was booted: You are not using the same version as this server.
+# client: {"r":321,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41612 is connecting...
+192.0.2.1:41612 was booted: You are not using the same version as this server.
+# client: {"r":322,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41618 is connecting...
+192.0.2.1:41618 was booted: You are not using the same version as this server.
+# client: {"r":323,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:41620 is connecting...
+192.0.2.1:41620 was booted: You are not using the same version as this server.
+# client: {"r":324,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:37740 is connecting...
+192.0.2.1:37740 was booted: You are not using the same version as this server.
+# client: {"r":325,"kick":"LegacyMultiplayer.4"}
+192.0.2.1:37742 is connecting...
+# client: {"r":326,"type":3}
+192.0.2.1:37742 lost connection...
+> playing
+No players connected.
+: 
+> exit
+Saving before exit...
