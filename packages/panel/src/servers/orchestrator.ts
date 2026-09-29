@@ -24,7 +24,9 @@ export interface OrchestratorClient {
   list(): Promise<ServerContainer[]>;
   /**
    * Create or recreate (volumes kept); the same spec again changes nothing,
-   * unless its runtime image was rebuilt since and `keepImage` isn't asked.
+   * unless its runtime image was rebuilt since and `keepImage` isn't asked,
+   * or the orchestrator now derives it another way and `keepDerivation`
+   * isn't asked (or the change is a security fix).
    */
   apply(spec: ServerSpec, o?: ApplyOptions): Promise<ServerContainer>;
   start(id: string): Promise<ServerContainer>;
