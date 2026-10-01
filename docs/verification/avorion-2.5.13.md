@@ -164,3 +164,62 @@ only, with managed and secret keys), the galaxy folder as the backup, the player
   hold afterwards; A2S's count with a player.
 - Memory, CPU and save times with players and explored sectors.
 - The hourly backups.
+
+## Manifest adapter check — 2026-10-01
+
+M6 phase 3 (D5): the adapter the manifest engine makes from
+`packages/adapter-manifest/manifests/avorion.json`, run against the real server by the product's
+own agent, driven only through the agent's HTTP API (as the panel drives it). Two runs on fresh
+volumes; the second, with the manifest as committed, is the one recorded below, and the capture
+of its first start is `fixtures/avorion/2.5.13/logs/manifest-adapter-check.log`.
+
+**Setup.** Docker Desktop 29.7.2 (Linux engine, amd64). The product's `gsp/steam` image built from
+this branch (`node scripts/stack.mjs build steam`, tag `s5`; the agent bundle with the manifest
+inside, and Valheim's crossplay libraries now in the image: 887 MB). One container shaped as the
+orchestrator makes them: user 1000:1000, read-only root, all capabilities dropped,
+`no-new-privileges`, a 256 MB `/tmp` tmpfs (exec), a 3 GiB memory limit (no swap), 4096 pids, the
+install (`/opt/game`), data (`/data`) and steamcmd HOME (`/home/node`) volumes read-write as the
+orchestrator mounts them (labelled `gsp.factfinding=avorion`), `GAME_ADAPTER=avorion` and the
+ports in the environment as the panel's spec sets them (`GAME_PORT_GAME=30550`, `GAMETCP=30550`,
+`QUERY=30553`, `STEAMQUERY=30570`), published on 127.0.0.1 at the same numbers inside and out,
+and the agent's port on 127.0.0.1. Launch params as the panel sends them (`name gspffcheck`,
+public branch, 4 slots, not listed, autosave 300 s).
+
+| Step (agent API) | Result |
+|---|---|
+| `PUT /v1/launch` | Accepted (the manifest's checks ran in the agent). |
+| `POST /v1/install` | `{ ok: true }` in 59.5 s on a fresh steamcmd HOME (28 s in the first run): `Success! App '565060' fully installed.` at the first try, both runs (the fact-finding's first-try `Missing configuration` didn't come back; the driver still retries it). Installed: branch `public`, build `22295362`. |
+| `POST /v1/start` | Running 4.2 s after the start (4.7 s on the second start); version `2.5.13` from the banner. Command line: `/opt/game/bin/AvorionServer --galaxy-name gspffcheck --datapath /data --server-name "gspff check" --max-players 4 --port 30550 --query-port 30553 --steam-query-port 30570 --steam-master-port 27021 --listed false --save-interval 300 --send-crash-reports false`, working folder `/opt/game`. `send crash reports: no`; `--listed false` taken (`listed: no`). |
+| Players | The agent's quiet `/players` poll: `{ count: 0 }`, its reply kept out of the live log; `players` typed through `POST /v1/command` went to the game as `/players`, and its reply (`online players (0):`) showed. |
+| `POST /v1/save` | `{ ok: true }` in 2.1 s (`/save` … `All sectors saved successfully.`). |
+| `POST /v1/archive/pack` (hot) | 200, `application/x-tar`, 52 KB, 24 entries in 2.1 s, after the agent's `/save` and its done line: the whole galaxy folder (`server.ini`, its readme copy, `admin.xml`, the four lists, `server.dat.0-1`, `sectors/meta.db.0-2`, `index`, `globals`, `galaxyscripts.dat`, `groups.dat`, the empty `alliances/ factions/ moddata/ players/`, `serverlog <date>.txt`, `server-stats <date>.csv`). Nothing of `avorion-backups` (outside the part). |
+| `POST /v1/stop` | `/stop`; `Server shutdown successful.`, exit 0, in 1.9 s. |
+| Second start, stop | `server.ini` now holds the agent's keys (`backupsPath=/data/avorion-backups`, `sendCrashReports=false`; the port, name, slots, listing and autosave as before): `Backup creation enabled. Path: "/data/avorion-backups"`; the same seed; stop in 1.9 s, exit 0. |
+
+Memory with nobody online: 240 MiB RSS for the game, 419 MiB for the whole container (agent and
+game, page cache included); 0.28 of a core.
+
+**What it found** (the manifest and the fake follow it):
+1. **A `server.ini` written before a new galaxy's first start fixes its seed.** The first run
+   seeded a partial `server.ini` (the agent's keys in their sections): the game took it, but gave
+   the galaxy seed `0` (`Seed=0` written back); with an empty `Seed=` it ran with an empty seed. A
+   start without a `server.ini` picks a random one (as in the fact-finding). So the manifest seeds
+   nothing: the game writes `server.ini` on a galaxy's first start, crash reports are off from it
+   through the command line, and the agent's other keys (the backup folder) apply from the next
+   start. Until then the game's hourly backups would go to `/home/node/.avorion/backups`
+   (`Backup creation enabled. Path: "/home/node/.avorion/backups"` on the first start).
+2. **A query port other than 27003 on a server that isn't listed makes the game warn** at every
+   start: `WARNING: Query port change detected and server is not listed publicly.`, `Players may
+   not be able to connect to the server.`, `Change this port only when using steam networking and
+   when listing the server publicly.`, then `If you're running multiple servers, you may want to
+   look at binding the server to an ip with the --ip option.` The manifest declares it as a
+   warning (the agent says it once per run in the log) and its ports note asks for 27003 on
+   unlisted servers. Whether players really can't join is still *expected* (no client).
+3. Everything else ran as the fact-finding measured: the ready and version lines, `/players`,
+   `/save` and its done line, `/stop`, the galaxy's files.
+
+**Left behind:** nothing. The container ran with `--rm`; its three volumes, the image
+`gsp/steam:s5` and the throwaway token were removed afterwards; `docker ps -a`, `docker volume
+ls`, `docker network ls` and `docker images`, filtered by `label=gsp.factfinding=avorion`, by the
+name `gsp-ff` and by the tag `s5`, were empty. Docker's build cache was left alone (never
+pruned); the other stacks' containers were not touched.

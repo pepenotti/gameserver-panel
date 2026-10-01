@@ -47,6 +47,11 @@ describe('reading the game (CON-01, SRV-07)', () => {
     expect(fallback.find((s) => s.warning)!.warning!.en).toMatch(/^The server runs without Steam's networking/);
     // The same when Steam's query port is taken.
     expect(fixtureLines('logs', 'fail-ports-in-use.log').some((l) => a.classify(l).warning)).toBe(true);
+    // Started by the agent from this manifest on other ports than Avorion's, not listed (the manifest adapter check).
+    const check = fixtureLines('logs', 'manifest-adapter-check.log').map((l) => a.classify(l));
+    expect(check.filter((s) => s.ready)).toHaveLength(1);
+    expect(check.filter((s) => s.warning).map((s) => [s.message, s.warning!.en.slice(0, 40)])).toEqual([['WARNING: Query port change detected and server is not listed publicly.', 'Avorion warns that players may not be ab']]);
+    expect(check.some((s) => s.fatal)).toBe(false);
     for (const f of ['fail-ports-in-use.log', 'fail-readonly-datapath.log', 'fail-wrong-working-directory.log']) {
       expect(fixtureLines('logs', f).some((l) => a.classify(l).fatal), f).toBe(true);
       expect(fixtureLines('logs', f).some((l) => a.classify(l).ready), f).toBe(false);
