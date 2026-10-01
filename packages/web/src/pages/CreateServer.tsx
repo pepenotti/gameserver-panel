@@ -12,7 +12,8 @@ import { useSession } from '../api/session';
 import { AgreementLink } from '../components/Eula';
 import { LaunchField, launchDefault, launchKey } from '../components/LaunchField';
 import { useErrorText } from '../lib/format';
-import { createErrorField, formatRanges, idProblem, MAX_PORT, maxGameMemory, MIN_PORT, nameProblem, portProblem, publishedPorts, slugify, suggestPorts, type CreateField } from '../lib/servers';
+import { GameNotes } from '../components/GameNotes';
+import { choosablePorts, createErrorField, followersOf, formatRanges, idProblem, MAX_PORT, maxGameMemory, MIN_PORT, nameProblem, portProblem, publishedPorts, slugify, suggestPorts, type CreateField } from '../lib/servers';
 
 type Launch = Record<string, unknown>;
 
@@ -74,7 +75,8 @@ export function CreateServer() {
 
   const list = useMemo(() => servers.data ?? [], [servers.data]);
   const adapter = adapters.data?.adapters.find((a) => a.id === adapterId) ?? null;
-  const published = useMemo(() => (adapter ? publishedPorts(adapter.ports) : []), [adapter]);
+  // The ports people choose; those that follow one of them come along (PortDecl.follows).
+  const published = useMemo(() => (adapter ? choosablePorts(adapter.ports) : []), [adapter]);
   const taken = useMemo(() => list.flatMap((s) => s.ports.map((p) => ({ port: p.port, proto: p.proto, by: s.name }))), [list]);
   const host = adapters.data?.host ?? null;
   const ranges = host?.hostPorts ?? null;
@@ -164,7 +166,7 @@ export function CreateServer() {
       case 'twice':
         return t('create.portTwice');
       case 'taken':
-        return t('create.portTaken', { port: ports[pid], server: p.by });
+        return t('create.portTaken', { port: p.port, server: p.by });
     }
   };
   const gameMemory = memoryKey && typeof launch[memoryKey] === 'number' ? (launch[memoryKey] as number) : null;
@@ -300,6 +302,8 @@ export function CreateServer() {
         )}
       </Card>
 
+      {adapter && <GameNotes game={adapter.name} notes={adapter.notes} />}
+
       {adapter && (
         <>
           <Card withBorder>
@@ -344,6 +348,16 @@ export function CreateServer() {
                   <NumberInput
                     key={d.id}
                     label={`${l(d.label)} (${d.proto.toUpperCase()})`}
+                    // The ports that follow this one, on their numbers (Valheim's query port, a TCP twin).
+                    description={
+                      followersOf(adapter.ports, d.id).length
+                        ? t('create.portFollows', {
+                            list: followersOf(adapter.ports, d.id)
+                              .map((f) => `${typeof ports[d.id] === 'number' ? ports[d.id]! + f.follows!.offset : '…'}/${f.proto.toUpperCase()} (${l(f.label)})`)
+                              .join(', '),
+                          })
+                        : undefined
+                    }
                     value={ports[d.id] ?? ''}
                     onChange={(v) => {
                       setPorts({ ...ports, [d.id]: v === '' ? null : Number(v) });

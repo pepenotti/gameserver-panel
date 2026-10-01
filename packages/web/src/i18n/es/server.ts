@@ -33,4 +33,6 @@ export default {
   limitsApplied: 'Límites guardados y aplicados.',
   limitsNextStart: 'Límites guardados; se aplican la próxima vez que prenda el servidor.',
   imageNextStart: 'Una actualización del panel trajo una imagen de ejecución más nueva: el contenedor pasa a ella la próxima vez que prenda el servidor.',
+  notesTitle: 'Para tener en cuenta sobre {{game}}',
+  notesDoc: 'Más en {{doc}}.',
 } satisfies Translations['server'];

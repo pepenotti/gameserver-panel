@@ -52,6 +52,21 @@ export function publishedPorts(ports: readonly PortDecl[]): PortDecl[] {
   return ports.filter((p) => p.publish);
 }
 
+/** The published ports people choose (or leave to the panel): those that follow no other. */
+export function choosablePorts(ports: readonly PortDecl[]): PortDecl[] {
+  return publishedPorts(ports).filter((p) => !p.follows);
+}
+
+/** The published ports that come with port `id` (its number plus their offset), as the panel allocates them. */
+export function followersOf(ports: readonly PortDecl[], id: string): PortDecl[] {
+  return publishedPorts(ports).filter((p) => p.follows?.id === id);
+}
+
+/** Port `id` at `port`, and the ports that follow it, each on its number and protocol. */
+function withFollowers(ports: readonly PortDecl[], d: PortDecl, port: number): TakenPort[] {
+  return [{ port, proto: d.proto }, ...followersOf(ports, d.id).map((f) => ({ port: port + f.follows!.offset, proto: f.proto }))];
+}
+
 export interface TakenPort {
   port: number;
   proto: 'tcp' | 'udp';
@@ -73,10 +88,13 @@ export function inRanges(port: number, ranges: readonly PortRange[] | null | und
  * defaults, shifted together past the ports other servers publish, while
  * the host allows them; else as low as they fit in the host's ranges. Null
  * when nothing fits. The panel's own ports and other programs' aren't known
- * here: the API still refuses a clash.
+ * here: the API still refuses a clash. Ports that follow another are placed
+ * with it (they must be free too), but only the ports people choose are
+ * returned.
  */
 export function suggestPorts(decls: readonly PortDecl[], taken: readonly TakenPort[], ranges?: readonly PortRange[] | null): Record<string, number> | null {
   const published = publishedPorts(decls);
+  const choosable = choosablePorts(decls);
   if (published.length === 0) return {};
   const allowed = ranges?.length ? [...ranges].sort((x, y) => x.from - y.from) : null;
   const lo = Math.min(...published.map((d) => d.default));
@@ -88,7 +106,7 @@ export function suggestPorts(decls: readonly PortDecl[], taken: readonly TakenPo
       if (port < MIN_PORT || port > MAX_PORT || !inRanges(port, allowed) || [...taken, ...mine].some((t) => t.port === port && t.proto === d.proto)) return null;
       mine.push({ port, proto: d.proto });
     }
-    return Object.fromEntries(published.map((d) => [d.id, base + d.default - lo]));
+    return Object.fromEntries(choosable.map((d) => [d.id, base + d.default - lo]));
   };
   for (let base = lo; base + span - 1 <= MAX_PORT; base += span) {
     if (allowed && !published.every((d) => inRanges(base + d.default - lo, allowed))) break;
@@ -104,12 +122,13 @@ export function suggestPorts(decls: readonly PortDecl[], taken: readonly TakenPo
   return null;
 }
 
-export type PortProblem = { kind: 'invalid' } | { kind: 'outside' } | { kind: 'twice' } | { kind: 'taken'; by: string };
+/** `taken`: `port` is the number another server has (the one asked for, or a port that follows it). */
+export type PortProblem = { kind: 'invalid' } | { kind: 'outside' } | { kind: 'twice' } | { kind: 'taken'; by: string; port: number };
 
 /**
- * What's wrong with one port of the form: out of range, outside what the
- * host allows, used twice, or another server's. An empty port is fine: the
- * panel picks one.
+ * What's wrong with one port of the form, or with a port that follows it:
+ * out of range, outside what the host allows, used twice, or another
+ * server's. An empty port is fine: the panel picks one.
  */
 export function portProblem(
   id: string,
@@ -118,15 +137,21 @@ export function portProblem(
   taken: readonly (TakenPort & { by: string })[],
   ranges?: readonly PortRange[] | null,
 ): PortProblem | null {
-  const published = publishedPorts(decls);
-  const d = published.find((x) => x.id === id);
+  const choosable = choosablePorts(decls);
+  const d = choosable.find((x) => x.id === id);
   const v = ports[id];
   if (!d || v === null || v === undefined) return null;
   if (!Number.isInteger(v) || v < MIN_PORT || v > MAX_PORT) return { kind: 'invalid' };
-  if (!inRanges(v, ranges)) return { kind: 'outside' };
-  if (published.some((o) => o.id !== id && o.proto === d.proto && ports[o.id] === v)) return { kind: 'twice' };
-  const other = taken.find((x) => x.port === v && x.proto === d.proto);
-  return other ? { kind: 'taken', by: other.by } : null;
+  const mine = withFollowers(decls, d, v);
+  if (mine.some((m) => m.port < MIN_PORT || m.port > MAX_PORT)) return { kind: 'invalid' };
+  if (mine.some((m) => !inRanges(m.port, ranges))) return { kind: 'outside' };
+  const others = choosable.flatMap((o) => (o.id === id || typeof ports[o.id] !== 'number' ? [] : withFollowers(decls, o, ports[o.id]!)));
+  if (mine.some((m) => others.some((o) => o.port === m.port && o.proto === m.proto))) return { kind: 'twice' };
+  for (const m of mine) {
+    const other = taken.find((x) => x.port === m.port && x.proto === m.proto);
+    if (other) return { kind: 'taken', by: other.by, port: m.port };
+  }
+  return null;
 }
 
 /**
@@ -152,10 +177,18 @@ export type CreateField = 'game' | 'name' | 'id' | 'memory' | 'launch' | `port:$
  */
 export function createErrorField(code: string, extra: Record<string, unknown>, decls: readonly PortDecl[], ports: Readonly<Record<string, number | null>>): { field: CreateField | null; port?: number } {
   const published = publishedPorts(decls);
+  /** A published port's number as sent: its own, or (a port that follows another) its base's plus the offset. */
+  const numberOf = (d: PortDecl): number | undefined => {
+    if (!d.follows) return ports[d.id] ?? undefined;
+    const base = ports[d.follows.id];
+    return typeof base === 'number' ? base + d.follows.offset : undefined;
+  };
+  /** The form's field for a published port: its own, or the one it follows. */
+  const fieldOf = (d: PortDecl) => `port:${d.follows?.id ?? d.id}` as const;
   const byField = (field: unknown) => {
     const i = typeof field === 'string' ? /^ports\[(\d+)\]/.exec(field)?.[1] : undefined;
     const d = i === undefined ? undefined : published[Number(i)];
-    return d ? { field: `port:${d.id}` as const, port: ports[d.id] ?? undefined } : null;
+    return d ? { field: fieldOf(d), port: numberOf(d) } : null;
   };
   switch (code) {
     case 'invalid-server-id':
@@ -179,8 +212,8 @@ export function createErrorField(code: string, extra: Record<string, unknown>, d
       return typeof extra.port === 'string' ? { field: `port:${extra.port}` } : { field: null };
     case 'port-conflict': {
       if (typeof extra.port === 'number') {
-        const d = published.find((x) => ports[x.id] === extra.port && (extra.proto === undefined || x.proto === extra.proto));
-        return { field: d ? `port:${d.id}` : null, port: extra.port };
+        const d = published.find((x) => numberOf(x) === extra.port && (extra.proto === undefined || x.proto === extra.proto));
+        return { field: d ? fieldOf(d) : null, port: extra.port };
       }
       return byField(extra.field) ?? { field: null };
     }

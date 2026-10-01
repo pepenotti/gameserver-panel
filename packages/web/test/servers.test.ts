@@ -1,10 +1,10 @@
 // Creating a server in the web (SRV-01): what the form checks before the API
 // does, the ports it suggests, and where it shows the API's refusals.
 import { describe, expect, it } from 'vitest';
-import type { PortDecl } from '../src/api/meta';
+import { launchRefusalOf, type PortDecl } from '../src/api/meta';
 import { en } from '../src/i18n/en';
 import { es } from '../src/i18n/es';
-import { createErrorField, formatRanges, idProblem, maxGameMemory, nameProblem, pendingHelpKeys, portProblem, slugify, suggestPorts } from '../src/lib/servers';
+import { choosablePorts, createErrorField, followersOf, formatRanges, idProblem, maxGameMemory, nameProblem, pendingHelpKeys, portProblem, slugify, suggestPorts } from '../src/lib/servers';
 
 const port = (id: string, proto: 'tcp' | 'udp', dflt: number, publish = true): PortDecl => ({ id, proto, default: dflt, publish, sameInsideOut: true, label: { en: id, es: id } });
 /** A game with a pair of UDP ports players use and a TCP port only its agent uses. */
@@ -66,7 +66,38 @@ describe('ports', () => {
     expect(portProblem('game', { game: 80, direct: 20011 }, DECLS, taken)).toEqual({ kind: 'invalid' });
     expect(portProblem('game', { game: 20010, direct: 20011 }, DECLS, taken, [{ from: 30350, to: 30399 }])).toEqual({ kind: 'outside' });
     expect(portProblem('game', { game: 20011, direct: 20011 }, DECLS, taken)).toEqual({ kind: 'twice' });
-    expect(portProblem('game', { game: 20002, direct: 20011 }, DECLS, taken)).toEqual({ kind: 'taken', by: 'Other' });
+    expect(portProblem('game', { game: 20002, direct: 20011 }, DECLS, taken)).toEqual({ kind: 'taken', by: 'Other', port: 20002 });
+  });
+
+  describe('that follow another (PortDecl.follows, SRV-01)', () => {
+    /** A game port on UDP and TCP, and a query port always one above it. */
+    const FOLLOWING: PortDecl[] = [port('game', 'udp', 2456), { ...port('gametcp', 'tcp', 2456), follows: { id: 'game', offset: 0 } }, { ...port('query', 'udp', 2457), follows: { id: 'game', offset: 1 } }];
+
+    it('are never asked for: only the ports people choose are suggested, placed with the ones that follow them', () => {
+      expect(choosablePorts(FOLLOWING).map((p) => p.id)).toEqual(['game']);
+      expect(followersOf(FOLLOWING, 'game').map((p) => p.id)).toEqual(['gametcp', 'query']);
+      expect(suggestPorts(FOLLOWING, [])).toEqual({ game: 2456 });
+      // The block moves when a following port is taken, on its own protocol.
+      expect(suggestPorts(FOLLOWING, [{ port: 2457, proto: 'udp' }])).toEqual({ game: 2458 });
+      expect(suggestPorts(FOLLOWING, [{ port: 2456, proto: 'tcp' }])).toEqual({ game: 2458 });
+      expect(suggestPorts(FOLLOWING, [{ port: 2457, proto: 'tcp' }])).toEqual({ game: 2456 });
+    });
+
+    it('make their port wrong when they can not be had, naming the number another server has', () => {
+      const taken = [{ port: 30551, proto: 'udp' as const, by: 'Other' }];
+      expect(portProblem('game', { game: 30550 }, FOLLOWING, taken)).toEqual({ kind: 'taken', by: 'Other', port: 30551 });
+      expect(portProblem('game', { game: 30552 }, FOLLOWING, taken)).toBeNull();
+      expect(portProblem('game', { game: 30599 }, FOLLOWING, [], [{ from: 30550, to: 30599 }])).toEqual({ kind: 'outside' });
+      expect(portProblem('game', { game: 65535 }, FOLLOWING, [])).toEqual({ kind: 'invalid' });
+      expect(portProblem('query', { game: 30550 }, FOLLOWING, [])).toBeNull();
+    });
+
+    it('put a refusal about them on the port they follow', () => {
+      const ports = { game: 30550 };
+      expect(createErrorField('port-conflict', { port: 30551, proto: 'udp', with: 'other' }, FOLLOWING, ports)).toEqual({ field: 'port:game', port: 30551 });
+      expect(createErrorField('port-conflict', { field: 'ports[1].host', message: 'taken' }, FOLLOWING, ports)).toEqual({ field: 'port:game', port: 30550 });
+      expect(createErrorField('port-conflict', { field: 'ports[2].host', message: 'taken' }, FOLLOWING, ports)).toEqual({ field: 'port:game', port: 30551 });
+    });
   });
 
   it('caps a game’s memory at what the host gives one server, less the container’s own needs', () => {
@@ -95,6 +126,13 @@ describe('ports', () => {
     expect(createErrorField('orchestrator-refused', { field: 'env.GAME_X' }, DECLS, ports)).toEqual({ field: null });
     expect(createErrorField('invalid-port', { port: 'game', min: 30350, max: 30399, ranges: '30350-30399' }, DECLS, ports)).toEqual({ field: 'port:game' });
     expect(createErrorField('orchestrator-unavailable', {}, DECLS, ports)).toEqual({ field: null });
+  });
+});
+
+describe("a launch setting the game's adapter refused (CFG-01, UX-01)", () => {
+  it('is read from the refusal, setting and words in both languages; nothing else is', () => {
+    expect(launchRefusalOf({ field: 'password', text: { en: 'Too short.', es: 'Muy corta.' }, message: 'x' })).toEqual({ field: 'password', text: { en: 'Too short.', es: 'Muy corta.' } });
+    for (const extra of [{}, { message: 'x' }, { field: 'password' }, { field: 'password', text: 'Too short.' }, { field: 3, text: { en: 'a', es: 'b' } }]) expect(launchRefusalOf(extra)).toBeNull();
   });
 });
 

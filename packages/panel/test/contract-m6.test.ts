@@ -124,6 +124,20 @@ describe('ports that follow another (SRV-01, PortDecl.follows)', () => {
   });
 });
 
+describe("a game's notes (UX-04, AdapterMeta.notes)", () => {
+  it('reach the create form and the pages of each server of it', async () => {
+    const noted: PanelAdapter = { ...following, meta: { ...following.meta, notes: [{ id: 'no-console', text: { en: 'No console.', es: 'Sin consola.' }, doc: 'limitations.md#host' }] } };
+    const p = await makePanel({}, { adapters: [pzPanelAdapter, noted] });
+    const { client } = await ownerReady(p);
+    const games = ((await client.get('/api/adapters')).json() as { adapters: { id: string; notes: unknown[] }[] }).adapters;
+    expect(games.find((a) => a.id === 'following')!.notes).toEqual([{ id: 'no-console', text: { en: 'No console.', es: 'Sin consola.' }, doc: 'limitations.md#host' }]);
+    expect(games.find((a) => a.id === 'pz')!.notes).toEqual([]);
+    await create(p);
+    const meta = (await client.get('/api/servers/vh-one/meta')).json() as { adapter: { notes: unknown[] } };
+    expect(meta.adapter.notes).toEqual([{ id: 'no-console', text: { en: 'No console.', es: 'Sin consola.' }, doc: 'limitations.md#host' }]);
+  });
+});
+
 describe('launch settings an adapter refuses in its own words (CFG-01, UX-01)', () => {
   it('reads a worded refusal, and nothing else, as one', () => {
     expect(launchRefusal(Object.assign(new Error('x'), { field: 'password', text: { en: 'Too short.', es: 'Muy corta.' } }))).toEqual({ field: 'password', text: { en: 'Too short.', es: 'Muy corta.' } });
