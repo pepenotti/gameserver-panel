@@ -241,3 +241,81 @@ launcher hook that sets the preload variables, and the same plugin warnings as T
   players.
 - The game's own backups after a long session.
 - Real client addresses on a Linux host (Docker Engine keeps them; Docker Desktop doesn't).
+
+## Adapter check — 2026-10-01
+
+M6 (D5): the Valheim adapter (`packages/adapter-valheim`: the manifest `manifest/valheim.json` plus
+its two hooks) run against the real server by the product's own agent, driven only through the
+agent's HTTP API, as the panel drives it. No crossplay (it was measured once in the fact-finding;
+it registers the host's public address with an outside service) and no public listing. Two
+attempts on fresh volumes: the first found the chunk versions below and changed the running
+backup's selection; the second, with the code as committed, is the one recorded here, and the live
+log of its first run is `fixtures/valheim/1.0.16/logs/adapter-check.log`. The world folder after
+every save of both attempts is `fixtures/valheim/1.0.16/tree/adapter-check-sets.txt`.
+
+**Setup.** Docker Desktop 29.7.2 (Linux engine, amd64, 12 cores). The product's `gsp/steam` image
+built from this branch (`node scripts/stack.mjs build steam`, tag `s5`, 887 MB: the agent bundle
+with Valheim enabled, PlayFab's libraries in the image). One container shaped as the orchestrator
+makes them: user 1000:1000, read-only root, all capabilities dropped, `no-new-privileges`, a
+256 MB `/tmp` tmpfs (exec), 3328 MiB of memory (the default 3072 for the game plus 256), no swap,
+4096 pids; the install (`/opt/game`), data (`/data`) and steamcmd HOME (`/home/node`) volumes
+labelled `gsp.factfinding=valheim`; `GAME_ADAPTER=valheim`, `GAME_PORT_GAME=30556` and
+`GAME_PORT_QUERY=30557` (the query port following the game port, as the panel's spec sets it),
+both published on 127.0.0.1 over UDP at the same numbers inside and out, the agent's port on
+127.0.0.1. Launch params as the panel sends them: game name `gsp-vh-check` (an ID with dashes, as
+the panel's are), public branch, 3072 MiB, server name `gspff check`, a random 8-character
+password, not listed, no crossplay, autosave every 60 s (the shortest the panel offers, to see
+several saves; its default is 300 s).
+
+| Step (agent API) | Result |
+|---|---|
+| `PUT /v1/launch` | Accepted. The same with `public: true` and a 4-character password: 400, `password: A server in the public list needs a password of at least 5 characters: Valheim refuses to start otherwise.` (the agent checks the manifest's rules too; the panel refuses first). |
+| `POST /v1/install` | `{ ok: true }` in 122.5 s on a fresh steamcmd HOME (115.4 s in the first attempt), first try both times: `Success! App '896660' fully installed.` Installed: branch `public`, build `25527701`. |
+| `POST /v1/start` | Running 85.0 s after the start: a new world (`Load world: gsp-vh-check (gsp-vh-check)`, 33.5 s placing locations, shown as one progress line), then `Opened Steam server`; version `1.0.16`. Command line: `/opt/game/valheim_server.x86_64 -nographics -batchmode -name gspff check -port 30556 -world gsp-vh-check -password <redacted> -public 0 -savedir /data -saveinterval 60`, working folder `/opt/game`; the password was in no log line. No warning and no alert: with PlayFab's libraries in the image, the `DllNotFoundException: libParty.so` of the fact-finding's image is gone. |
+| Players | The agent's poll from the join and leave lines: `{ count: 0 }`. An A2S_INFO to the published query port: no answer in 3 s (a private server, as measured). |
+| Autosaves | Every 60 s: the five `World save (n/5)` lines, a numbered set in `worlds_local/gsp-vh-check/`. |
+| `POST /v1/archive/pack` (hot, the world and the three lists) | 200, `application/x-tar`, 156 672 bytes, 45 ms: exactly one complete set, `00_00__0_1.chunk`, `_main.1.chunks`, `.db2`, `.fwl2`, `.ok`, and `adminlist.txt`, `bannedlist.txt`, `permittedlist.txt`. |
+| The same, fired at the next autosave | Sent 1 ms after that save's first line (`Sending message to save player profiles`), done in 38 ms, just before the save wrote its first file: set 1, complete, and the lists. A copy that overlaps a save's writing wasn't caught on the real server (a save takes 0.1 s here); the end-to-end test holds a fake save half written for that. |
+| The same after that save | Set 2 with `00_00__0_2.chunk` (its save changed the chunk). |
+| `POST /v1/stop` | SIGINT: `Game - OnApplicationQuit`, save 3, exit 0 in 3.7 s. Save 3 changed no chunk: set 3 is `_main.3.*` with `00_00__0_2.chunk`. A stopped copy: those five files and the lists. |
+| Second start, stop | Running in 48.5 s on the same world (`ZNet.LoadWorld: gsp-vh-check (gsp-vh-check), save number 3`, nothing generated); stopped in 3.8 s, exit 0 (save 4, no chunk changed). |
+| Third start (a new container, the same volumes) | Running in 46.6 s on save 4; autosave 5 changed the chunk (`00_00__0_3.chunk`); a hot pack held `00_00__0_3.chunk`, `_main.5.*` and the lists; stop 3.7 s, exit 0 (save 6). |
+
+Memory with nobody online: 1.48 GB RSS for the game, 1.97 GiB for the whole container in
+`docker stats`; the container's cgroup counted 3.2 GB of its 3.25 GiB, the page cache of the
+install included (reclaimable: nothing was killed). CPU 0.24-0.33 of a core.
+
+**What it found** (the hook, the fake and the tests follow it):
+1. **A chunk file is named by the chunk's own version, not the save number.** The version goes up
+   only when a save finds the chunk changed (`Number of dirty chunks to save: 1`); a save that
+   changed nothing (`… 0`) writes no chunk file, its set uses the older one, and that one stays.
+   First attempt: saves 2 to 4 used `00_00__0_1.chunk`, save 5 wrote `00_00__0_2.chunk`; second:
+   saves 1 and 2 changed it, 3 and 4 didn't, 5 did (version 3). In the fact-finding every save
+   changed it, which made the version look like the save number. The set's index
+   `_main.<n>.chunks` (21 bytes) names the version (bytes 13-16: 1, 2, 3 above; bytes 2-5 the
+   world's object count, 85 and 81, as `Starting to load 85 zdos from 1 Chunks` says); how it
+   names the chunks of a bigger world, with more than one chunk file, wasn't measured. So a running
+   backup takes, for each chunk, its newest file written no later than the newest complete set's
+   `.ok`: the one that set uses, never one a save in progress is writing, never a leftover the game
+   is deleting. Taking only chunk files numbered like the set (the fact-finding's reading) would
+   have left the world's chunk out of the backups after save 2 of the first attempt.
+2. Which saves change a chunk with nobody online isn't predictable from outside (the first
+   autosave did in both attempts; later ones sometimes did); the fake models both ways
+   (`FAKE_VALHEIM_DIRTY_SAVES`).
+3. **A world named like a panel ID (with dashes) works**: `worlds_local/gsp-vh-check/`.
+4. Everything else ran as the fact-finding measured: install, readiness, version, the command
+   line, SIGINT saves and exits 0 in under 4 s, an existing world loads by its newest complete set,
+   the lists and the private server's silent query port.
+
+**The tests that need signals, on Linux.** Windows can't deliver SIGINT to a child that handles it,
+so the agent's live contract for Valheim skips there. They ran in the same `gsp/steam:s5` image
+(Node 24, Linux; a copy of the branch, `npm ci`): the agent's live runtime contract against
+`tools/fake-valheim` (23 checks), then the fake's tests (signals included), the adapter's and the
+engine's tests and the end-to-end test (276 passed, 2 skipped: the console checks of games without
+a console), all green.
+
+**Left behind:** nothing. The containers ran with `--rm`; the three `gsp-ff-valheim-*` volumes, the
+Linux test run's volume and the image `gsp/steam:s5` were removed afterwards; `docker ps -a`,
+`docker volume ls` and `docker images`, filtered by `label=gsp.factfinding=valheim`, by the name
+`gsp-ff` and by the tag `s5`, were empty. Docker's build cache was left alone (never pruned); the
+other stacks' containers were not touched.

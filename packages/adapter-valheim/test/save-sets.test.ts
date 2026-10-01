@@ -68,7 +68,8 @@ describe('the newest complete save set of each world, with the chunk files it us
         const [title, ...rest] = s.trim().split('\n');
         return { title: title!, files: rest.filter((l) => !l.startsWith('= ')).map((l) => W('gsp-vh-check', l.split(' ')[0]!)), index: rest.find((l) => l.startsWith('= '))?.split(' ')[2] };
       });
-    expect(sections.map((s) => s.files.filter((f) => f.endsWith('.chunk')).map((f) => f.split('/').pop()))).toEqual([['00_00__0_1.chunk'], ['00_00__0_1.chunk'], ['00_00__0_1.chunk'], ['00_00__0_2.chunk'], ['00_00__0_2.chunk']]);
+    // The chunk version each set used: it went up only with a save that changed the chunk.
+    expect(sections.map((s) => [/save (\d+)/.exec(s.title)![1], /_(\d+)\.chunk$/.exec(s.files.find((f) => f.endsWith('.chunk'))!)![1]].join(':'))).toEqual(['1:1', '3:1', '4:1', '5:2', '6:2', '1:1', '2:2', '3:2', '4:2', '5:3', '6:3']);
     for (const s of sections) {
       // The chunk file was written before the set's other files.
       const w = written(...s.files.filter((f) => f.endsWith('.chunk')), ...s.files.filter((f) => !f.endsWith('.chunk')));

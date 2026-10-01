@@ -1,34 +1,75 @@
-# The adapter check (M6): world gsp-vh-check as the agent's file API listed it after each save, with
-# "Number of dirty chunks to save" from that save's log and the bytes of the set's index (hex).
-## save 1: the first autosave of a new world; dirty chunks 1
+# The adapter check (M6), two attempts on fresh worlds named gsp-vh-check: the world folder as the
+# agent's file API listed it after each save, with "Number of dirty chunks to save" from that save's log
+# and the bytes of the set's index (_main.<n>.chunks, hex) where a backup held it.
+## attempt 1, save 1: the first autosave of a new world; dirty chunks 1
 00_00__0_1.chunk 1544
 _main.1.chunks 21
 _main.1.db2 145784
 _main.1.fwl2 57
 _main.1.ok 4
 = _main.1.chunks 290055000000010000000000000100000055000000
-## save 3: the stop, after autosave 2; dirty chunks 0 and 0
+## attempt 1, save 3: the stop, after autosave 2; dirty chunks 0 and 0
 00_00__0_1.chunk 1544
 _main.3.chunks 21
 _main.3.db2 145784
 _main.3.fwl2 57
 _main.3.ok 4
 = _main.3.chunks 290055000000010000000000000100000055000000
-## save 4: the stop of a second start; dirty chunks 0
+## attempt 1, save 4: the stop of a second start; dirty chunks 0
 00_00__0_1.chunk
 _main.4.chunks
 _main.4.db2
 _main.4.fwl2
 _main.4.ok
-## save 5: an autosave of a third start; dirty chunks 1
+## attempt 1, save 5: an autosave of a third start; dirty chunks 1
 00_00__0_2.chunk 1544
 _main.5.chunks 21
 _main.5.db2 145784
 _main.5.fwl2 57
 _main.5.ok 4
 = _main.5.chunks 290055000000010000000000000200000055000000
-## save 6: that start's stop; dirty chunks 0
+## attempt 1, save 6: that start's stop; dirty chunks 0
 00_00__0_2.chunk
+_main.6.chunks
+_main.6.db2
+_main.6.fwl2
+_main.6.ok
+## attempt 2, save 1: the first autosave of a new world; dirty chunks 1
+00_00__0_1.chunk 1464
+_main.1.chunks 21
+_main.1.db2 145955
+_main.1.fwl2 57
+_main.1.ok 4
+= _main.1.chunks 290051000000010000000000000100000051000000
+## attempt 2, save 2: the next autosave; dirty chunks 1
+00_00__0_2.chunk 1464
+_main.2.chunks 21
+_main.2.db2 145955
+_main.2.fwl2 57
+_main.2.ok 4
+= _main.2.chunks 290051000000010000000000000200000051000000
+## attempt 2, save 3: the stop; dirty chunks 0
+00_00__0_2.chunk 1464
+_main.3.chunks 21
+_main.3.db2 145955
+_main.3.fwl2 57
+_main.3.ok 4
+= _main.3.chunks 290051000000010000000000000200000051000000
+## attempt 2, save 4: the stop of a second start; dirty chunks 0
+00_00__0_2.chunk
+_main.4.chunks
+_main.4.db2
+_main.4.fwl2
+_main.4.ok
+## attempt 2, save 5: an autosave of a third start; dirty chunks 1
+00_00__0_3.chunk 1464
+_main.5.chunks 21
+_main.5.db2 145955
+_main.5.fwl2 57
+_main.5.ok 4
+= _main.5.chunks 290051000000010000000000000300000051000000
+## attempt 2, save 6: that start's stop; dirty chunks 0
+00_00__0_3.chunk
 _main.6.chunks
 _main.6.db2
 _main.6.fwl2
