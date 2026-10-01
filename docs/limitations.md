@@ -344,6 +344,7 @@ the real server too ("Manifest adapter check" in that document).
 - **Moderation with players online isn't measured**: kick, ban and the player list were only
   tried with nobody connected. Bans name the player (`/ban <name>`), which Docker Desktop's hidden
   addresses don't affect; Avorion's ban by address (`/banip`) looked the address up as a player
-  name and isn't offered. Measured.
+  name and isn't offered. Measured. A reason given for a kick or ban in the panel isn't passed on:
+  how the console takes one wasn't measured.
 - **Console commands start with `/`.** The panel adds it to what you type. Measured.
 - **x86-64 only.** Measured.

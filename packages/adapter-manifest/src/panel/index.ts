@@ -299,10 +299,15 @@ function listModeration(m: SteamGameManifest): PlayerOps {
   const files = new Map((m.config?.files ?? []).map((f) => [f.id, f]));
   const entry = (v: unknown) => (lf.target === 'steamId' ? steamIdArg(v) : nameArg(v, ''));
   const what = lf.target === 'steamId' ? 'SteamID' : 'player';
-  /** A list file's entries, as the game keeps them (none when it doesn't exist yet). */
+  /**
+   * A list file's entries, as the game keeps them (none when it doesn't exist
+   * yet): SteamIDs only, for a list of SteamIDs (a game may head its lists
+   * with lines of its own that aren't `#` comments).
+   */
   const read = async (ctx: ServerCtx, id: string): Promise<string[]> => {
     const buf = await ctx.files.read('data', named(files.get(id)!.path, ctx.srv), { maxBytes: LIST_MAX_BYTES });
-    return buf ? parseLines(buf.toString('utf8')).entries.map((e) => e.value) : [];
+    const entries = buf ? parseLines(buf.toString('utf8')).entries.map((e) => e.value) : [];
+    return lf.target === 'steamId' ? entries.filter((e) => /^\d{17}$/.test(e)) : entries;
   };
   /** Adds or removes an entry; a list the game hasn't written yet starts empty (its panel seed). */
   const change = async (ctx: ServerCtx, id: string, value: string, on: boolean, note: string): Promise<string> => {

@@ -6,12 +6,12 @@ import { INTERNAL_DIR, isSafeName } from '@gsp/archive';
 /**
  * A running backup narrowed by the game's adapter (`hotCopy.select`, BAK-02):
  * the files it picks are hard-linked into a folder of their own before the
- * copy starts, so the game may delete or rewrite them meanwhile (Valheim
- * writes a new save set, then deletes the previous one) and the copy still
- * holds them as they were. Links share the file, never its future: a file
- * the game replaces through a rename stays as linked; one it rewrites in
- * place would show the rewrite, which is why a game's selection names files
- * it no longer writes.
+ * copy starts, so the game may delete or replace them meanwhile (a game
+ * that writes a new save set, then deletes the previous one) and the copy
+ * still holds them as they were. A link is the same file: one the game
+ * deletes, or replaces through a rename, stays as linked; one it rewrote in
+ * place would show the rewrite, which is why a selection names files the
+ * game no longer writes.
  */
 
 /** The data root's folder for these links (next to the archive's own staging, trash and snapshots). */

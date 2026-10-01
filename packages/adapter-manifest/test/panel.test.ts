@@ -198,7 +198,8 @@ describe('moderation through list files (PLY-03)', () => {
 
   it('reads the bans, the allowed players and the admins from the lists', async () => {
     const p = tide().players!;
-    const { ctx } = serverCtx({ files: { 'data/banned.txt': `# banned SteamIDs\n${steamId}\n`, 'data/allowed.txt': '', 'data/admins.txt': '76561198000000002\n' } });
+    // A game's own heading that isn't a `#` comment is no entry of a list of SteamIDs.
+    const { ctx } = serverCtx({ files: { 'data/banned.txt': `# banned SteamIDs\n${steamId}\n`, 'data/allowed.txt': '', 'data/admins.txt': '// List admin players ID  ONE per line\n76561198000000002\n' } });
     expect(await p.bans!(ctx)).toEqual({ steamIds: [{ steamId, reason: null }], ips: [] });
     expect(await p.whitelist!(ctx)).toEqual({ enabled: false, usernames: [] });
     expect(await p.levelHolders!(ctx)).toEqual([{ username: '76561198000000002', level: 'admin' }]);

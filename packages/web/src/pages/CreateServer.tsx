@@ -348,7 +348,7 @@ export function CreateServer() {
                   <NumberInput
                     key={d.id}
                     label={`${l(d.label)} (${d.proto.toUpperCase()})`}
-                    // The ports that follow this one, on their numbers (Valheim's query port, a TCP twin).
+                    // The ports that follow this one, on their numbers (a query port the game derives, the same port's other protocol).
                     description={
                       followersOf(adapter.ports, d.id).length
                         ? t('create.portFollows', {
