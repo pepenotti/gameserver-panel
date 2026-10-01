@@ -155,12 +155,30 @@ on a Mac yet.
 ### Typed console commands on some games answer in the log
 
 **Affects:** games controlled through their console instead of a remote
-console: Terraria (all flavours).
+console: Terraria (all flavours), Avorion and other games added with a manifest.
 
 **What you'll notice:** a command typed on the Console page shows its reply in
 the live log below, not next to the command.
 
-**Status:** Measured, Sept 2026.
+**Status:** Measured, Sept 2026 (Terraria); the same for Avorion, Oct 2026.
+
+### Games added with a manifest have no settings forms
+
+**Affects:** Steam games the panel runs from a manifest alone (Avorion).
+
+**What you'll notice:**
+- Their launch settings (name, slots, branch, memory…) have a form, but the
+  game's own settings files are edited as text, with the keys the panel
+  manages locked and passwords hidden.
+- A problem the game reports without stopping (no access to Steam, for
+  example) is said once in the live log, not on the server's page.
+- Moderation answers with the first line the game prints after the command.
+  If the game prints something else at that moment, that line is what you see.
+
+**Why:** a manifest describes the game in data; forms per setting and richer
+replies need code (PRD §7, §10).
+
+**Status:** Measured with Avorion, Oct 2026.
 
 ### Version and update checks share one GitHub allowance
 
@@ -283,18 +301,49 @@ game client; "Expected" items need a player to confirm. The panel's Valheim supp
 ## Avorion (a Steam game run from a manifest)
 
 Measured on the dedicated server 2.5.13 (`verification/avorion-2.5.13.md`), Oct 2026, without a
-game client. Avorion is the game that proves the manifest path (M6); what the panel does is the
-plan until that lands.
+game client. Avorion is the first game the panel runs from a manifest alone
+(`packages/adapter-manifest/manifests/avorion.json`, M6); the manifest adapter was checked against
+the real server too ("Manifest adapter check" in that document).
 
-- **`server.ini` can only be edited while the server is stopped.** The running game writes its own
-  settings back over the file at every save (every 10 minutes by default) and when it stops, and
-  drops keys it doesn't know and comments. Measured.
-- **Crash reports to the game's maker are on by default.** The panel starts Avorion with them off.
-  Measured.
+- **`server.ini`, `admin.xml` and the lists can only be edited while the server is stopped.** The
+  running game writes its own settings back over `server.ini` at every save (every 5 minutes as
+  the panel starts it) and when it stops, and drops keys it doesn't know and comments. The panel
+  refuses an edit while it runs. Measured for `server.ini`; the other files are treated the same
+  to be safe (*expected*).
+- **Some settings come from the launch settings.** The port, the server's name, the player slots,
+  the public listing and the autosave interval are passed on the command line, and the game writes
+  them into `server.ini`: change them in the launch settings, not in the file. Measured.
+- **Crash reports to the game's maker are on by default.** The panel starts Avorion with them off,
+  and keeps them off in `server.ini`. Measured.
+- **Avorion makes its own backups every hour** into the server's `avorion-backups` folder (on the
+  server's data volume, not in the panel's backups). They take disk space; old ones are not
+  removed by the panel. *Expected* (the hourly backup wasn't seen: sessions were shorter).
+  - **Except during a new galaxy's first run** (a new server, or after a reset): the game writes
+    its `server.ini` on that start, so the panel can set the backup folder only from the next
+    start; until then its backups go to the steam folder (`~/.avorion/backups`). Writing a
+    `server.ini` before the first start isn't an option: the game then gives every new galaxy the
+    same seed (0, or an empty one). Measured.
+- **The panel's backups hold the whole galaxy folder,** the game's log files (`serverlog`,
+  `server-stats`) included. Measured.
+- **A reset makes a new galaxy, settings included**: `server.ini` lives in the galaxy's folder, so
+  it goes too. The next start writes a fresh one with the game's defaults and the launch
+  settings, and a new random seed. Measured.
 - **Without access to Steam it falls back to older, unsafe network protocols** after 30 seconds,
-  and isn't listed. Measured.
+  and isn't listed; the same happens when its Steam query port is taken. The panel says so in the
+  log. Measured.
 - **Which ports players need isn't known yet.** With Steam networking the game listened only on
-  its two query ports; the panel publishes the game port as well. *Expected*, needs a player.
+  its two query ports; the panel publishes the game port (UDP and TCP) as well. Steam is told each
+  port's number, so the panel publishes them at the same numbers inside and out. *Expected*, needs
+  a player.
+- **A server that isn't listed publicly should keep the default query port, 27003.** With another
+  one Avorion warns at every start that players may not be able to connect (the panel repeats
+  the warning in the log). The panel picks ports near Avorion's defaults (27000, 27003, 27020)
+  only when the host allows them: add `27000-27021` to `ORCH_HOST_PORTS` for an Avorion server,
+  or list it publicly. The warning is measured; whether players really can't join is *expected*,
+  needs a player.
 - **Moderation with players online isn't measured**: kick, ban and the player list were only
-  tried with nobody connected.
+  tried with nobody connected. Bans name the player (`/ban <name>`), which Docker Desktop's hidden
+  addresses don't affect; Avorion's ban by address (`/banip`) looked the address up as a player
+  name and isn't offered. Measured.
+- **Console commands start with `/`.** The panel adds it to what you type. Measured.
 - **x86-64 only.** Measured.
