@@ -16,12 +16,12 @@
 //   ignore-stop        SIGINT and SIGTERM do nothing (the agent has to escalate)
 // Tuning: FAKE_VALHEIM_BOOT_MS (300; a real boot takes 45 s), FAKE_VALHEIM_GEN_MS (200; generating a new
 //   world takes 30 s more), FAKE_VALHEIM_STOP_MS (200), FAKE_VALHEIM_BIND_HOST (127.0.0.1),
-//   FAKE_VALHEIM_CROSSPLAY_LIBS=1 (PlayFab's libraries are installed; the product image lacks them),
+//   FAKE_VALHEIM_CROSSPLAY_LIBS=1 (PlayFab's libraries are installed, as in the steam image since M6),
 //   FAKE_VALHEIM_SAVE_MS_PER_S (1000: milliseconds per second of -saveinterval; tests shrink it),
 //   FAKE_VALHEIM_SAVE_STEP_MS (0: how long each step of a save takes, so a test can catch one half written;
 //   the real steps took 1-45 ms for a small world; saves never overlap: a timer's save is skipped while one runs).
 // Test hooks on stdin (the real server ignores stdin entirely): fake-join <steamid>, fake-leave <steamid>,
-//   fake-crash.
+//   fake-crash, fake-hold-save (saves stop half written, after their chunk files) and fake-release-save.
 import dgram from 'node:dgram';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -105,6 +105,8 @@ function writeFwl(n) {
 
 /** The save in progress, if any: saves never overlap (one every -saveinterval, measured at 0.1 s each). */
 let saving = null;
+/** Test hook (fake-hold-save): saves wait, half written (after their chunk files), until fake-release-save. */
+let held = null;
 /** One step of a save taking its time (FAKE_VALHEIM_SAVE_STEP_MS; the real steps took 1-45 ms for a small world). */
 const step = () => (saveStepMs > 0 ? sleep(saveStepMs) : undefined);
 
@@ -135,6 +137,8 @@ async function writeSave(onStop) {
   await step();
   fs.writeFileSync(path.join(worldDir, `_main.${n}.chunks`), `chunks ${n}\n`);
   log('World save (2/5) Chunks writing done [1ms]');
+  // Test hook: held here, half written, until fake-release-save.
+  if (held) await held.promise;
   await step();
   fs.writeFileSync(path.join(worldDir, `_main.${n}.db2`), `${HEADER} save ${n}\n`);
   log('World save (3/5) DB2 writing done [1ms]');
@@ -266,6 +270,15 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
     players.add(id);
   } else if (cmd === 'fake-leave' && id && players.delete(id)) {
     log(`Closing socket ${id}`);
+  } else if (cmd === 'fake-hold-save') {
+    if (!held) {
+      let release;
+      const promise = new Promise((r) => (release = r));
+      held = { promise, release };
+    }
+  } else if (cmd === 'fake-release-save') {
+    held?.release();
+    held = null;
   } else if (cmd === 'fake-crash') {
     process.exit(3);
   }

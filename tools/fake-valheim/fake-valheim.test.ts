@@ -306,6 +306,23 @@ describe('fake-valheim server.mjs', () => {
     expect(world()).toEqual(['00_00__0_2.chunk', '_main.2.chunks', '_main.2.db2', '_main.2.fwl2', '_main.2.ok']);
   });
 
+  it('fake-hold-save holds saves half written until fake-release-save (a test hook)', async () => {
+    const dir = tempDir();
+    const f = start(launch(dir, await freeUdpPort(), ['-saveinterval', '1']), { dir, env: { FAKE_VALHEIM_SAVE_MS_PER_S: '100' } });
+    await f.waitFor(PATTERNS.saved);
+    f.send('fake-hold-save');
+    const count = (re: RegExp) => f.lines.filter((l) => re.test(l)).length;
+    // A save got to its chunk files and stopped there.
+    await until(() => count(/^World save \(2\/5\) /) > count(PATTERNS.saved));
+    const n = Number(PATTERNS.saveNumber.exec(f.lines.findLast((l) => PATTERNS.saveNumber.test(l))!)![1]);
+    await new Promise((r) => setTimeout(r, 300));
+    expect(count(PATTERNS.saved)).toBe(n - 1);
+    const world = readdirSync(path.join(dir, 'worlds_local', 'w1')).sort();
+    expect(world).toEqual([`00_00__0_${n - 1}.chunk`, `00_00__0_${n}.chunk`, `_main.${n - 1}.chunks`, `_main.${n - 1}.db2`, `_main.${n - 1}.fwl2`, `_main.${n - 1}.ok`, `_main.${n}.chunks`].sort());
+    f.send('fake-release-save');
+    await until(() => count(PATTERNS.saved) >= n);
+  });
+
   it('saves never overlap: a timer save is skipped while one runs', async () => {
     // A save every 40 ms whose 5 steps take 30 ms each.
     const f = start(launch(tempDir(), await freeUdpPort(), ['-saveinterval', '1']), { env: { FAKE_VALHEIM_SAVE_MS_PER_S: '40', FAKE_VALHEIM_SAVE_STEP_MS: '30' } });
