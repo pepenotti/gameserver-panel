@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.22 |
+| Status | Draft 0.23 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -133,8 +133,8 @@ Each can move into scope later through [change control](#14-change-control).
 | Project Zomboid (Build 42) | — | steamcmd | RCON + stdin | server ini, `SandboxVars.lua`, spawn files | Steam Workshop | UDP 16261–16262 |
 | Minecraft Java | vanilla, Paper, Fabric, Forge, NeoForge (picked per server) | official downloads and loader installers, version pinned | RCON + stdin | `server.properties`, whitelist / ops / bans, plugin and mod configs | Modrinth (Paper plugins; Fabric, Forge and NeoForge mods) | TCP 25565 |
 | Terraria | vanilla, TShock, tModLoader | terraria.org download / TShock and tModLoader releases on GitHub; tModLoader's Workshop mods with steamcmd | stdin; TShock adds its REST API | `serverconfig.txt`, world options, TShock config | TShock plugins; tModLoader via Steam Workshop | TCP 7777 |
-| Valheim | — | steamcmd | none: signals + log parsing | launch options, admin / banned / permitted lists | — (v1) | UDP 2456–2457 |
-| Other Steam games | — | steamcmd | per manifest | raw files | — | per manifest |
+| Valheim | — | steamcmd | none: signals (both save) + log parsing; Steam queries count players on public servers | launch options, admin / banned / permitted lists (SteamIDs) | — (v1) | UDP 2456 and the next port (the same numbers inside and out) |
+| Other Steam games (first: Avorion) | — | steamcmd | per manifest (stdin or signals) | raw files, launch options from the manifest | — | per manifest |
 
 - **Minecraft EULA:** Minecraft needs the owner to accept Mojang's EULA. The
   panel asks explicitly and never accepts it on the owner's behalf: only the
@@ -168,6 +168,20 @@ Each can move into scope later through [change control](#14-change-control).
   one it can't load without a word; the panel keeps them in the server's data
   and puts the enabled ones in place before each start. tModLoader takes each
   Workshop mod from the newest folder built for its version.
+- **Valheim:** it has no server console: the panel stops it with a signal (it
+  saves first), can't warn players in game or ask it to save, and its running
+  backups copy the newest complete save it made on its own timer (the panel
+  passes a 5-minute save interval instead of the game's 30 minutes). A server
+  can be listed in the game's public list (off by default, Q15); a listed
+  server needs a password of at least 5 characters that isn't part of its
+  name, checked before it starts. Crossplay is offered, off by default (Q14):
+  it needs extra libraries in the steam image and registers the host's
+  public address with Microsoft's PlayFab, which also shows in the server's
+  log. Valheim uses about 1.5 GiB and a third of a CPU core even when empty.
+- **Steam manifests:** a game can be added with a manifest alone when it
+  installs anonymously with steamcmd, runs in the steam image as it is, says
+  when it is ready, and stops cleanly with a console command or a signal.
+  The first is Avorion (measured in M6).
 - **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts (its server
   jars are Java and carry ARM64 native libraries; the fact-finding ran x86-64
   only, so an ARM64 run is part of M7). Servers
@@ -258,7 +272,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | ID | P | Requirement |
 |---|---|---|
 | BAK-01 | P0 | Per-server backups (manual, scheduled, before updates, restores and resets, and a final one before a server is removed), each with a manifest, a checksum and retention per server. |
-| BAK-02 | P0 | Consistent backups while running, using each game's own method. Project Zomboid: `save`, then SQLite snapshots. Minecraft: `save-off`, `save-all flush`, then `save-on` after the copy. Otherwise save, then copy, or a stopped-server backup. |
+| BAK-02 | P0 | Consistent backups while running, using each game's own method. Project Zomboid: `save`, then SQLite snapshots. Minecraft: `save-off`, `save-all flush`, then `save-on` after the copy. Otherwise save, then copy, or a stopped-server backup. Valheim can't be asked to save: the copy takes the newest complete save the game made. |
 | BAK-03 | P0 | Restore with a choice of parts, a staging folder, atomic swap and undo. |
 | BAK-04 | P0 | Reset scopes from each adapter (world only; world and players; factory). A backup is always taken first. |
 | BAK-05 | P1 | Download (admins) and upload (owner) of backups. Every uploaded archive entry is validated. |
@@ -361,7 +375,8 @@ NFR-01's controls, carried over from zomboid-server:
 - **Images per runtime family.**
   - `steam` (steamcmd and its libraries): Project Zomboid, Valheim, tModLoader
     (with Microsoft's .NET 8 runtime; steamcmd fetches its Workshop mods, the
-    game itself comes from GitHub) and manifest games.
+    game itself comes from GitHub) and manifest games; Valheim's crossplay
+    needs `libatomic1`, `libpulse0` and `libpulse-mainloop-glib0`.
   - `java` (Eclipse Temurin JREs 25, 21 and 17, picked per server from the
     Java major its Minecraft version declares): Minecraft.
   - `native` (with Microsoft's .NET 9 runtime): vanilla Terraria and TShock.
@@ -374,9 +389,13 @@ NFR-01's controls, carried over from zomboid-server:
 - **Adapter contract** (`packages/adapter-api`): capabilities, install, launch,
   control, readiness, players, settings schema, backups (paths and the
   running-server method), reset scopes, mod sources, EN/ES strings.
-- **Declarative adapters.** Simple Steam games are one manifest: app ID, launch
-  command, ports, readiness pattern, stop method, config files (raw editing)
-  and backup paths.
+- **Declarative adapters.** Simple Steam games are one manifest (a JSON file
+  checked against a schema): app ID and branches, launch command with
+  placeholders and typed launch settings, ports, readiness and fatal
+  patterns, stop method, save command and its done line, config files (raw
+  editing, with managed and secret keys), backup paths and how a running
+  server is copied, and player lines. Each manifest is an adapter of its own
+  ID. A game whose manifest can't say everything adds code hooks (Valheim).
 - **Data.** SQLite, with the server ID on every per-server table. Volumes are
   named by server ID, and backups go to `BACKUP_DIR/<server>/`. `servers`
   keeps each server's row, including the fixed name the game uses for its
@@ -440,7 +459,7 @@ milestone and the tests that prove it, and is updated with every merge.
 | M3 | Minecraft Java: fact-finding fixtures; vanilla, Paper and Fabric loaders; install and pinning; run; RCON; settings forms; players; running backups; reset; EULA flow | D5, D6, CFG, PLY, BAK-02, UPD-01…06 | A Minecraft server created from the UI with each of the three loaders; a client joins; build, back up, break, restore, and it's back. |
 | M4 | Modrinth mods, then Forge and NeoForge loaders: search, compatibility, dependencies, updates | MOD-02, MOD-04, UPD-07 | Add a mod that has a dependency on Fabric, then on NeoForge; each server boots and a client joins. |
 | M5 | Terraria: vanilla, TShock (REST API, plugins) and tModLoader; stdin control; world creation; Workshop mods for tModLoader | MOD-03, MOD-06, CON-02, CON-04, UPD-01…04 | Create a world from the panel for each flavour; join; kick and ban (TShock through REST); install a TShock plugin and a tModLoader mod. |
-| M6 | Valheim, plus the declarative Steam manifest | G4, D4 | Valheim runs via manifest plus hooks. A second Steam game is added **with a manifest only**, and it boots, stops and backs up. |
+| M6 | Valheim, plus the declarative Steam manifest | G4, D4, and for Valheim and the manifest game: UPD-01…04, BAK-01…04, PLY-01/03, CFG-01…09, SRV-03, HST-05 | Valheim runs via manifest plus hooks. A second Steam game is added **with a manifest only**, and it boots, stops and backs up. |
 | M7 | Host overview, job staggering, platform support: architecture checks and the Linux, Windows and macOS guides | HST-03, HST-05/06, HST-07, SCH-02, SRV-08, D10 | Smoke test (create, start, back up, restore) passes on Linux and Windows; the macOS guide exists but is marked untested until someone runs it on a Mac; an ARM host refuses an x86-only game with a clear reason; on Docker Desktop the host page and the address-ban dialogs show the hidden-address limitation, and whether Linux Docker Engine and Docker Engine in WSL (mirrored networking) keep players' addresses is measured and written into `docs/limitations.md`. |
 | M8 | v1: docs, security review, EN/ES completeness, phone layout, 48 h soak with three servers, then publish | G5, G6, UX-01…04, NFR-01/04/05/06 | Every [success criterion](#12-success-criteria-v1) met; the repository goes public under D9. |
 
@@ -495,6 +514,8 @@ None open. New questions go here, with an ID, until they're answered.
 | Q11 | Which Minecraft versions are offered? | 1.16.5 and newer, which Temurin 17, 21 and 25 cover; older ones would need Java 8 (owner, 2026-09-27). | UPD-02, §10 |
 | Q12 | Minecraft 26.x has a JSON-RPC management server (players, lists, settings, notifications). Use it instead of RCON and log reading? | Not in v1: RCON and logs work on every offered version; revisit after v1 (owner, 2026-09-27). | PLY-01/02, CON-02 |
 | Q13 | A new Minecraft version has only ALPHA Paper builds for weeks. Does the version picker offer only versions with a STABLE build? | No: every version is offered, STABLE builds are picked when they exist, and a clear warning shows when only ALPHA or BETA builds do (owner, 2026-09-27). | UPD-02, UPD-05 |
+| Q14 | Offer Valheim's crossplay (Xbox and Game Pass players), which registers the host's public address with Microsoft's PlayFab and needs extra image libraries? | Yes, off by default, with a note saying what it shares (owner, 2026-10-01). | §7, §10 |
+| Q15 | Let Valheim servers appear in the game's public server list? | Yes, private by default; a listed server needs a password of at least 5 characters that isn't part of its name (owner, 2026-10-01). | §7 |
 
 ### Answered
 
@@ -550,3 +571,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.20 | 2026-09-29 | M5 panel adapter: Terraria offered in the panel for vanilla, TShock and tModLoader (versions with warnings, world size, a secret server password; settings forms with TShock's token hidden whole; moderation per flavour; backups, restores and resets); a Terraria world is named after the server's ID (§7); PLY-03 names the ban targets; CFG-04 hides secrets kept as keys; CFG-09 notes files the game prunes. |
 | 0.21 | 2026-09-29 | M5 mods and plugins: tModLoader's Workshop mods through the shared Workshop source, downloaded before each start (MOD-03); TShock plugins by upload or GitHub release link, downloaded by the server's agent, with a restart badge and an audit record (MOD-06); plugin sources in the adapter contract; §7, §13. |
 | 0.22 | 2026-10-01 | Owner's request for a public panel: limitations stated plainly. New UX-04 (`docs/limitations.md`, kept current by every change) and HST-07 (the panel detects host limitations such as Docker Desktop's hidden addresses and shows them where they matter); M7 measures whether Linux Docker Engine and Docker Engine in WSL keep players' addresses; a §13 risk row. |
+| 0.23 | 2026-10-01 | M6 fact-finding: Valheim 1.0.16 and Avorion 2.5.13 measured (`docs/verification/valheim-1.0.16.md`, `avorion-2.5.13.md`, fixtures, `tools/fake-valheim`, `tools/fake-avorion`); Avorion is the manifest-only Steam game; Valheim has no console, saves on SIGINT/SIGTERM and backs up its newest complete save (§7, BAK-02); Q14 crossplay offered off by default, Q15 public listing offered private by default with the password rules; the manifest format (§10); M6 covers. |
