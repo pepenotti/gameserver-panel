@@ -208,9 +208,10 @@ export function manifestRuntimeAdapter(m: SteamGameManifest, hooks: ManifestRunt
         let startedAt = 0;
         const budgetMs = m.autosave!.budgetMs ?? AUTOSAVE_MS;
         return {
-          // The game can't be asked to save: wait out a save of its own in progress, then copy.
+          // The game can't be asked to save: wait out a save of its own in progress, then copy. A selection
+          // picks files the save in progress doesn't touch (the newest complete save), so it needs no wait.
           before: async (ctl) => {
-            if (live.saving) {
+            if (live.saving && !select) {
               const done = ctl.waitForLine(re.autosaveDone!, budgetMs);
               if (live.saving && !(await done)) throw new Error('The game did not finish saving on its own in time');
             }

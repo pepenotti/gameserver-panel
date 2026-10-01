@@ -328,6 +328,10 @@ describe('hooks (what a manifest cannot say)', () => {
     await t.hotCopy!.before(g.ctl);
     g.print('12:00:02 Saving world');
     await expect(t.hotCopy!.after(g.ctl)).resolves.toBeUndefined();
+    // Nor does a save in progress hold it up (BAK-02): the picks are files that save doesn't touch.
+    // (That save never ends here: a wait would use up the 2 s autosave budget and fail the copy.)
+    await expect(t.hotCopy!.before(g.ctl)).resolves.toBeUndefined();
+    await expect(t.hotCopy!.after(g.ctl)).resolves.toBeUndefined();
     await t.stop(g.ctl, { budgetMs: 10 });
     expect(g.signals).toEqual(['SIGTERM']);
     g.close();

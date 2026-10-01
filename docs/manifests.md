@@ -90,7 +90,7 @@ agent checks them again before a start.
 | `running` | What a backup of a running server does |
 |---|---|
 | `save-then-copy` | Sends `save.command`, waits for `save.done`, then copies. |
-| `copy-between-saves` | The game can't be asked to save: waits out an autosave in progress (`autosave.start` … `done`), copies, and fails the backup if one started meanwhile (unless a `hotCopySelect` hook narrows the copy). |
+| `copy-between-saves` | The game can't be asked to save: waits out an autosave in progress (`autosave.start` … `done`), copies, and fails the backup if one started meanwhile. With a `hotCopySelect` hook it does neither: the hook picks files no save in progress touches (Valheim's newest complete save). |
 | `stopped-only` | No running backup: the panel refuses one while the game runs. |
 
 ### Config files (CFG-02…09)
