@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.21 |
+| Status | Draft 0.22 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -290,6 +290,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | HST-04 | P2 | Import an existing zomboid-server deployment: world, settings, mods, backups and panel users. (The live server stays on zomboid-server for now; Q7.) |
 | HST-05 | P0 | **Runs on the main operating systems through Docker:** Linux (Docker Engine), Windows 10/11 (Docker Desktop or Docker Engine in WSL) and macOS (Docker Desktop). x86-64 and ARM64 hosts work. Adapters declare the CPU architectures they support, and the panel won't create a server the host can't run natively; it says why instead. |
 | HST-06 | P0 | A setup and operations guide for each of Linux, Windows and macOS, with firewall and router notes. |
+| HST-07 | P0 | The panel knows what its host can't do and says so where it matters: the orchestrator reports the host's traits (CPU architecture, the memory Docker gives it, and whether players' addresses reach the games, which they don't through Docker Desktop's port relay), the host page lists the limitations that apply, and each affected feature (address bans, per-address game settings, addresses in the activity log) shows its own note. |
 
 ### 8.11 Language and usability — UX
 
@@ -298,6 +299,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | UX-01 | P0 | EN/ES for all of the UI, game setting labels, Discord messages and in-game warnings. |
 | UX-02 | P0 | Every page usable on a phone. |
 | UX-03 | P1 | First-run wizard that walks the owner through the first server. |
+| UX-04 | P0 | Known limitations stated plainly: `docs/limitations.md` lists every limitation that changes what a feature does or how safe it is, by host platform and by game, each with what people will notice, why, the workaround and the fix if there is one, and whether it was measured (where) or is only expected. The panel links to it from the host page and from each in-app note (HST-07). A change that finds a limitation adds it in the same change. |
 
 ### 8.12 Assistant readiness — AST
 
@@ -439,8 +441,8 @@ milestone and the tests that prove it, and is updated with every merge.
 | M4 | Modrinth mods, then Forge and NeoForge loaders: search, compatibility, dependencies, updates | MOD-02, MOD-04, UPD-07 | Add a mod that has a dependency on Fabric, then on NeoForge; each server boots and a client joins. |
 | M5 | Terraria: vanilla, TShock (REST API, plugins) and tModLoader; stdin control; world creation; Workshop mods for tModLoader | MOD-03, MOD-06, CON-02, CON-04, UPD-01…04 | Create a world from the panel for each flavour; join; kick and ban (TShock through REST); install a TShock plugin and a tModLoader mod. |
 | M6 | Valheim, plus the declarative Steam manifest | G4, D4 | Valheim runs via manifest plus hooks. A second Steam game is added **with a manifest only**, and it boots, stops and backs up. |
-| M7 | Host overview, job staggering, platform support: architecture checks and the Linux, Windows and macOS guides | HST-03, HST-05/06, SCH-02, SRV-08, D10 | Smoke test (create, start, back up, restore) passes on Linux and Windows; the macOS guide exists but is marked untested until someone runs it on a Mac; an ARM host refuses an x86-only game with a clear reason. |
-| M8 | v1: docs, security review, EN/ES completeness, phone layout, 48 h soak with three servers, then publish | G5, G6, UX-01…03, NFR-01/04/05/06 | Every [success criterion](#12-success-criteria-v1) met; the repository goes public under D9. |
+| M7 | Host overview, job staggering, platform support: architecture checks and the Linux, Windows and macOS guides | HST-03, HST-05/06, HST-07, SCH-02, SRV-08, D10 | Smoke test (create, start, back up, restore) passes on Linux and Windows; the macOS guide exists but is marked untested until someone runs it on a Mac; an ARM host refuses an x86-only game with a clear reason; on Docker Desktop the host page and the address-ban dialogs show the hidden-address limitation, and whether Linux Docker Engine and Docker Engine in WSL (mirrored networking) keep players' addresses is measured and written into `docs/limitations.md`. |
+| M8 | v1: docs, security review, EN/ES completeness, phone layout, 48 h soak with three servers, then publish | G5, G6, UX-01…04, NFR-01/04/05/06 | Every [success criterion](#12-success-criteria-v1) met; the repository goes public under D9. |
 
 ## 12. Success criteria (v1)
 
@@ -469,6 +471,7 @@ milestone and the tests that prove it, and is updated with every merge.
 | Legal. | Explicit Minecraft EULA acceptance; no game files redistributed; captured fixtures limited to test data. |
 | Forge and NeoForge installers change often. | Pinned loader versions, fixtures per loader, and loaders shipped at P1 after the P0 ones are solid. |
 | Third-party code in plugins and mods (Paper, TShock, tModLoader). | Admin-only installs with a warning and an audit record of each file; plugin links limited to GitHub release assets, downloaded by the server's own agent; the container isolation from NFR-02/03. |
+| Docker Desktop hides players' and visitors' addresses (address bans hit everyone; per-address game limits treat all players as one). | Account-based bans first; TShock for public Terraria; the panel detects it and warns (HST-07); `docs/limitations.md` explains it with the fixes (Linux Docker Engine, Docker Engine in WSL) (UX-04). |
 | Hosts that can't run a game (ARM hosts such as Apple Silicon Macs or a Raspberry Pi). | Architecture declared per adapter, and a clear refusal (HST-05). |
 
 ## 14. Change control
@@ -546,3 +549,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.19 | 2026-09-29 | M2 follow-up (M2-I): progress runs show as one line (CON-01); the agent's player polls stay out of the live log (PLY-01); a change in how the orchestrator builds containers waits for a running game's next start, except a security fix (SRV-05, SRV-06, NFR-02); the orchestrator takes `keepDerivation` on PUT and reports each container's `derivation` (D3). |
 | 0.20 | 2026-09-29 | M5 panel adapter: Terraria offered in the panel for vanilla, TShock and tModLoader (versions with warnings, world size, a secret server password; settings forms with TShock's token hidden whole; moderation per flavour; backups, restores and resets); a Terraria world is named after the server's ID (§7); PLY-03 names the ban targets; CFG-04 hides secrets kept as keys; CFG-09 notes files the game prunes. |
 | 0.21 | 2026-09-29 | M5 mods and plugins: tModLoader's Workshop mods through the shared Workshop source, downloaded before each start (MOD-03); TShock plugins by upload or GitHub release link, downloaded by the server's agent, with a restart badge and an audit record (MOD-06); plugin sources in the adapter contract; §7, §13. |
+| 0.22 | 2026-10-01 | Owner's request for a public panel: limitations stated plainly. New UX-04 (`docs/limitations.md`, kept current by every change) and HST-07 (the panel detects host limitations such as Docker Desktop's hidden addresses and shows them where they matter); M7 measures whether Linux Docker Engine and Docker Engine in WSL keep players' addresses; a §13 risk row. |

@@ -20,6 +20,12 @@ git merge --no-ff -m "Merge m0/bootstrap (M0, D2, D9)" m0/bootstrap
 git revert --edit <sha>        # and name the IDs in the message
 ```
 
+## Limitations
+Found something the panel can't do, or does differently on some host or for some
+game? Add it to `docs/limitations.md` in the same change (UX-04): what people
+will notice, why, the workaround, and whether you measured it (where) or only
+expect it. Users read that page before opening a server to the public.
+
 ## Green means every gate
 `scripts/verify.sh` runs lint, typecheck, tests, `npm audit` (runtime deps),
 the privacy check and a CRLF check. Run it before every commit; `--offline`

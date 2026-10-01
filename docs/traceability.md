@@ -64,9 +64,11 @@ without a milestone is a PRD bug.
 | HST-04 | P2 | after v1 | — |
 | HST-05 | P0 | M7 | `panel/test/registry.test.ts` "refuses a game the host cannot run natively"; `GET /api/adapters` `supported`; a flavour's own image: `panel/test/flavour-runtime.test.ts`, `agent/test/flavour-runtime.test.ts`; Terraria amd64 only; Terraria offered on amd64 only: `panel/test/terraria.test.ts` |
 | HST-06 | P0 | M7 | — |
+| HST-07 | P0 | M7 | partial: the players page knows when address bans can't be trusted (`ipBansTrustworthy`, M5); detection and the host page in M7 |
 | UX-01 | P0 | M8 | `web/test/i18n.test.ts`; `web/test/game-neutral.test.ts` alert-title check |
 | UX-02 | P0 | M8 | M2 pages checked at 375×812 during M2-D (server list, menu, create, users, audit, delete, schedules, config) |
 | UX-03 | P1 | M8 | — |
+| UX-04 | P0 | M5–M8 | `docs/limitations.md` (started M5, Docker Desktop's hidden addresses measured on Windows); kept current by every change (CONTRIBUTING) |
 | AST-01 | P0 | M2 | `panel/test/api-first.test.ts` (every web call has a route; each route declares permission/public/session); `panel/test/api-docs.test.ts` + generated `docs/api.md` |
 | AST-02 | P0 | M2 | `panel/test/servers.test.ts` (user/schedule/recovery/system actors); `panel/test/registry.test.ts` |
 | AST-03 | P1 | M1 | `panel/test/proposals.test.ts` |
