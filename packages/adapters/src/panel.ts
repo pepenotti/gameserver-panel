@@ -10,19 +10,19 @@ import { valheimPanelAdapter } from '@gsp/adapter-valheim/panel';
 import { enabledOf, type AdapterEntry } from './entry';
 
 /**
- * Every panel adapter, and whether the panel offers it. The Valheim
- * skeleton (M3 contract step) is here so its package builds and passes the
- * contract, but no server can be created from it until its milestone turns
- * it on. Minecraft is offered since M3 measured it and built both halves,
- * Terraria since M5 phase 3, and Avorion, the first game added with a
- * manifest only (packages/adapter-manifest/manifests/avorion.json), since
- * M6: each manifest is an adapter of its own id.
+ * Every panel adapter, and whether the panel offers it (a skeleton stays
+ * registered but off until its milestone measured the game, D5). Minecraft
+ * is offered since M3 measured it and built both halves, Terraria since M5
+ * phase 3, and since M6 Valheim (a Steam manifest plus hooks,
+ * packages/adapter-valheim) and Avorion, the first game added with a
+ * manifest only (packages/adapter-manifest/manifests/avorion.json): each
+ * manifest is an adapter of its own id.
  */
 export const panelAdapterEntries: readonly AdapterEntry<PanelAdapter>[] = [
   { adapter: pzPanelAdapter, enabled: true },
   { adapter: minecraftPanelAdapter, enabled: true },
   { adapter: terrariaPanelAdapter, enabled: true },
-  { adapter: valheimPanelAdapter, enabled: false },
+  { adapter: valheimPanelAdapter as PanelAdapter, enabled: true },
   { adapter: manifestPanelAdapter(AVORION) as PanelAdapter, enabled: true },
 ];
 

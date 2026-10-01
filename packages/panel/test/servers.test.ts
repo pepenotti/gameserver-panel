@@ -77,7 +77,8 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
       expect.objectContaining({ id: 'pz', supported: true, eula: false, launch: expect.objectContaining({ secrets: [expect.objectContaining({ key: 'adminPassword' })], choices: false }) }),
       expect.objectContaining({ id: 'minecraft', supported: true, eula: true, launch: expect.objectContaining({ secrets: [], choices: true }) }),
       expect.objectContaining({ id: 'terraria', supported: true, eula: false, launch: expect.objectContaining({ secrets: [], choices: true }) }),
-      // M6: a Steam game from its manifest alone.
+      // M6: a Steam manifest plus hooks, x86-64 only, with its notes; and a Steam game from its manifest alone.
+      expect.objectContaining({ id: 'valheim', supported: true, eula: false, arch: ['amd64'], notes: expect.arrayContaining([expect.objectContaining({ id: 'crossplay', doc: 'limitations.md#valheim' })]), launch: expect.objectContaining({ secrets: [], choices: false }) }),
       expect.objectContaining({ id: 'avorion', supported: true, eula: false, launch: expect.objectContaining({ secrets: [], choices: false }) }),
     ]);
 
@@ -100,15 +101,15 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     expect(p.deps.audit.list({ action: 'server.create' })[0]).toMatchObject({ serverId: 'pz-two', username: 'all-admin', ok: true, ip: expect.any(String) });
   });
 
-  it('offers no adapter skeleton: they are registered, but neither listed nor creatable (D4, D5)', async () => {
+  it('offers only enabled adapters: a skeleton (none is left since M6) or an unknown one is neither listed nor creatable (D4, D5)', async () => {
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);
     const skeletons = panelAdapterEntries.filter((e) => !e.enabled).map((e) => e.adapter.meta.id);
-    expect(skeletons).toEqual(['valheim']);
+    expect(skeletons).toEqual([]);
     const listed = ((await owner.get('/api/adapters')).json() as { adapters: { id: string }[] }).adapters.map((a) => a.id);
-    expect(listed).toEqual(['pz', 'minecraft', 'terraria', 'avorion']);
+    expect(listed).toEqual(['pz', 'minecraft', 'terraria', 'valheim', 'avorion']);
     p.orch.calls.length = 0;
-    for (const adapter of skeletons) expect((await createTwo(owner, { id: `x-${adapter}`, name: adapter, adapter })).json(), adapter).toEqual({ error: 'unknown-adapter' });
+    for (const adapter of [...skeletons, 'manifest', 'nope']) expect((await createTwo(owner, { id: `x-${adapter}`, name: adapter, adapter })).json(), adapter).toEqual({ error: 'unknown-adapter' });
     expect(p.orch.calls).toEqual([]);
     expect(((await owner.get('/api/servers')).json() as { id: string }[]).map((s) => s.id)).toEqual(['default']);
   });
