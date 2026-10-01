@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.23 |
+| Status | Draft 0.24 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -181,7 +181,15 @@ Each can move into scope later through [change control](#14-change-control).
 - **Steam manifests:** a game can be added with a manifest alone when it
   installs anonymously with steamcmd, runs in the steam image as it is, says
   when it is ready, and stops cleanly with a console command or a signal.
-  The first is Avorion (measured in M6).
+  The first is Avorion (measured in M6). Their own settings files are edited
+  as text (no forms); their launch settings have a form with the manifest's
+  checks.
+- **Avorion:** its console takes slash commands (the panel adds the slash);
+  it writes its `server.ini` from memory, so the panel edits it only while it
+  is stopped; a server that isn't listed publicly should keep the default
+  query port 27003 (the game warns otherwise); its own hourly backups go to
+  the server's data volume from a galaxy's second start (the game writes
+  `server.ini` on the first).
 - **CPU architecture:** Minecraft runs on x86-64 and ARM64 hosts (its server
   jars are Java and carry ARM64 native libraries; the fact-finding ran x86-64
   only, so an ARM64 run is part of M7). Servers
@@ -394,8 +402,10 @@ NFR-01's controls, carried over from zomboid-server:
   placeholders and typed launch settings, ports, readiness and fatal
   patterns, stop method, save command and its done line, config files (raw
   editing, with managed and secret keys), backup paths and how a running
-  server is copied, and player lines. Each manifest is an adapter of its own
-  ID. A game whose manifest can't say everything adds code hooks (Valheim).
+  server is copied, player lines, moderation by console commands or list
+  files, and notes for the limitations people see. Each manifest is an
+  adapter of its own ID. A game whose manifest can't say everything adds code
+  hooks (Valheim: which save files a running backup takes).
 - **Data.** SQLite, with the server ID on every per-server table. Volumes are
   named by server ID, and backups go to `BACKUP_DIR/<server>/`. `servers`
   keeps each server's row, including the fixed name the game uses for its
@@ -572,3 +582,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.21 | 2026-09-29 | M5 mods and plugins: tModLoader's Workshop mods through the shared Workshop source, downloaded before each start (MOD-03); TShock plugins by upload or GitHub release link, downloaded by the server's agent, with a restart badge and an audit record (MOD-06); plugin sources in the adapter contract; §7, §13. |
 | 0.22 | 2026-10-01 | Owner's request for a public panel: limitations stated plainly. New UX-04 (`docs/limitations.md`, kept current by every change) and HST-07 (the panel detects host limitations such as Docker Desktop's hidden addresses and shows them where they matter); M7 measures whether Linux Docker Engine and Docker Engine in WSL keep players' addresses; a §13 risk row. |
 | 0.23 | 2026-10-01 | M6 fact-finding: Valheim 1.0.16 and Avorion 2.5.13 measured (`docs/verification/valheim-1.0.16.md`, `avorion-2.5.13.md`, fixtures, `tools/fake-valheim`, `tools/fake-avorion`); Avorion is the manifest-only Steam game; Valheim has no console, saves on SIGINT/SIGTERM and backs up its newest complete save (§7, BAK-02); Q14 crossplay offered off by default, Q15 public listing offered private by default with the password rules; the manifest format (§10); M6 covers. |
+| 0.24 | 2026-10-01 | M6 manifest engine: a manifest (checked against its schema) becomes an adapter of its own id; Avorion added with a manifest only and checked against the real server; ports that follow another, a running copy narrowed by a hook, in-app notes (§7, §10); the default server ports include Avorion's. |
