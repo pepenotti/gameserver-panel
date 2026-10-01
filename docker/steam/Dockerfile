@@ -45,9 +45,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DOTNET_ROOT=/usr/share/dotnet \
     DOTNET_CLI_TELEMETRY_OPTOUT=1
 # steamcmd is 32-bit: it needs the multilib gcc/stdc++ runtimes. libicu is
-# .NET's globalization, for tModLoader.
+# .NET's globalization, for tModLoader. libatomic1, libpulse0 and
+# libpulse-mainloop-glib0 are what Valheim's crossplay (PlayFab) loads
+# (PRD §10, Q14; measured in docs/verification/valheim-1.0.16.md: +24 MB).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl lib32gcc-s1 lib32stdc++6 tini procps tzdata libicu76 \
+ && apt-get install -y --no-install-recommends ca-certificates curl lib32gcc-s1 lib32stdc++6 tini procps tzdata libicu76 libatomic1 libpulse0 libpulse-mainloop-glib0 \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /opt/game /data /app \
  && chown -R node:node /opt/game /data /home/node /app
@@ -66,6 +68,8 @@ FROM base AS fake
 COPY --chown=node:node tools/fake-orchestrator/fake-game.mjs /app/fake/fake-orchestrator/fake-game.mjs
 COPY --chown=node:node tools/fake-pz/ /app/fake/fake-pz/
 COPY --chown=node:node tools/fake-terraria/ /app/fake/fake-terraria/
+COPY --chown=node:node tools/fake-valheim/ /app/fake/fake-valheim/
+COPY --chown=node:node tools/fake-avorion/ /app/fake/fake-avorion/
 ENV STEAMCMD_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","steamcmd"]' \
     GAME_START_COMMAND='["node","/app/fake/fake-orchestrator/fake-game.mjs","server"]'
 
