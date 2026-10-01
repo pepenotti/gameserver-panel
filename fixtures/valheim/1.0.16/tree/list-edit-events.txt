@@ -1,0 +1,31 @@
+# 17: the three lists replaced (temporary file + rename) while the server ran; nothing reacted, and the stop left them alone
+[+48.638] [fs] rename /data/.adminlist.tmp size=0
+[+48.640] [fs] change /data/.adminlist.tmp size=57
+[+48.648] [fs] change /data/adminlist.txt size=57
+[+48.648] [fs] rename /data/.adminlist.tmp (gone)
+[+48.649] [fs] change /data/adminlist.txt size=57
+[+48.649] [fs] change /data/adminlist.txt size=57
+[+48.652] [fs] rename /data/.bannedlist.tmp size=0
+[+48.654] [fs] change /data/.bannedlist.tmp size=58
+[+48.658] [fs] change /data/bannedlist.txt size=58
+[+48.658] [fs] rename /data/.bannedlist.tmp (gone)
+[+48.658] [fs] change /data/bannedlist.txt size=58
+[+48.659] [fs] change /data/bannedlist.txt size=58
+[+48.662] [fs] rename /data/.permittedlist.tmp size=0
+[+48.663] [fs] change /data/.permittedlist.tmp size=60
+[+48.666] [fs] change /data/permittedlist.txt size=60
+[+48.666] [fs] rename /data/.permittedlist.tmp (gone)
+[+48.667] [fs] change /data/permittedlist.txt size=60
+[+48.667] [fs] change /data/permittedlist.txt size=60
+[+48.694] [mark] lists edited
+[+163.260] [ctl] signal SIGINT to group 14
+[+167.165] [exit] code=0 signal=null after 167.165s
+# 18: the banned list written in an unusual shape while running: still byte for byte the same 35 s later and after the stop
+[+47.674] [fs] rename /data/.bannedlist.tmp size=94
+[+47.679] [fs] change /data/bannedlist.txt size=94
+[+47.679] [fs] rename /data/.bannedlist.tmp (gone)
+[+47.680] [fs] change /data/bannedlist.txt size=94
+[+47.680] [fs] change /data/bannedlist.txt size=94
+[+47.688] [mark] banned list edited oddly
+[+94.359] [ctl] signal SIGTERM to group 14
+[+98.199] [exit] code=0 signal=null after 98.199s

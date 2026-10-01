@@ -1,0 +1,146 @@
+# argv: ["/opt/game/bin/AvorionServer","--galaxy-name","gspffgalaxy","--datapath","/data","--server-name","gspff test"]
+# cwd: /opt/game
+Enabled Traces: 
+Avorion server 2.5.13 0417ab29738c running on Debian GNU/Linux 13 (trixie) starting up in "/data/gspffgalaxy"
+Version Hash: 5381909983546055243
+CPU: <host CPU>
+RAM: <host RAM>
+
+Server version, as listed publicly: 2.5.13.44140
+[stderr] [S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+[stderr] Setting breakpad minidump AppID = 445220
+[stderr] SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561198000000001 [API loaded no]
+Server connected to Steam successfully
+Server is VAC Secure!
+Game Server Steam ID: 90000000000000001
+Game Port: 27000
+Steam Port: 27021
+Steam Query Port: 27020
+Query Port: 27003
+
+Steam Networking initialized.
+Warning: No RCON password set. RCON disabled.
+Found 0 mods in "/data/gspffgalaxy/modconfig.lua".
+name: gspff test
+seed: yY9FTn3A3A
+port: 27000
+max online players: 10
+save interval: 600
+broadcast interval: 5
+max loaded sector time: 300
+weak update: yes
+worker threads: 9
+generator threads: 2
+script background threads: 2
+difficulty: Veteran
+scenario: Normal
+tutorial: no
+collision: 1
+access list: Blacklist
+multiplayer: yes
+vac secure: yes
+listed: no
+steam networking: yes
+send crash reports: yes
+Backup creation enabled. Path: "/home/node/.avorion/backups"
+Please ensure that the server has write-access to that path.
+administrators: 
+Warning: Your server does not have an administrator assigned.
+Commands file: /data/gspffgalaxy/commands.txt
+Initializing sector database...
+Initializing faction database...
+Starting up 9 worker threads...
+Starting up 2 script background threads...
+Loading groups...
+Loading script data...
+Galaxy initialized.
+Server startup complete.
+> /help
+/addcrew: Sets the current crew of a ship to the minimum required crew
+/admin: Add/remove administrators
+/ban: Ban a player from the server
+/banip: Ban a player's ip from the server
+/behemoths: Enable/disable the Behemoths Event Series
+/benchmark: Records performance stats for some time and saves it to a file.
+/blacklist: Restrict access via Blacklist
+/colldamage: Set game/server collision damage
+/destroy: Destroys your current target or the object with the given id
+/devmode: Toggle server dev-mode
+/difficulty: Set game/server difficulty
+/echo: Echoes all given parameters to console
+/give: Gives resources/money to a player
+/ground: Block a player from using hyperspace
+/groups: Manages users of groups
+/help: Lists commands and provides help on commands
+/invite: Invite players to join your group
+/join: Confirm an invitation to a group or join an existing one
+/kick: Kick a player from the server
+/knowledge: Gives building knowledge to a player or resets it.
+/leader: Promote another player to be the leader of the group
+/leave: Leave your current group
+/mute: Mute a player
+/pause: Pauses the server
+/playerinfo: Print players and their details
+/players: List all online players
+/profile: Records performance stats for some time and saves it to a file.
+/run: Run a lua script command
+/save: Save the current state of the server; Write all data to disk
+/say: Send chat message to all players on the server
+/seed: Display the seed of the server
+/selfinfo: Prints administrative information about yourself
+/status: Display status data of the server
+/stop: Stops the server
+/suicide: Destroys your current ship
+/teleport: Teleports a player
+/teleporttoship: Teleport to a sector with a ship you own
+/trade: Initiate trading with another player
+/unban: Unban a player from the server
+/unbanip: Unban an ip from the server
+/unground: Re-enable hyperspace for a player
+/unmute: Unmute a player
+/version: Retrieve the version of the server
+/w: Send a private message to a player
+/whisper: Send a private message to a player
+/whitelist: Restrict access via Whitelist
+/workers: Set the amount of worker threads on the server
+> /status
+0 players online, in 0 sectors
+0 players in memory, 0 registered
+0 factions in memory, 0 registered
+0 sectors in memory, 0 sectors in total
+Memory used by scripts: 148.06MB
+Sectors Updated: 0
+avg. server load: 4%
+avg. update: 2 ms
+max. update: 2 ms
+min. update: 2 ms
+Wrote memory stats to "/opt/game/profiling_stats.txt"
+Enable profiling=true in your server.ini file for more output, or run /profile."/opt/game/profiling_stats.txt"
+> /players
+online players (0):
+> /save
+Saving all server data.
+Triggered saving of all server data.
+All sectors saved successfully.
+> /stop
+Cleaning up entity transfers ...
+Server is shutting down.
+Saving settings...
+Saving script values...
+Saving factions...
+Saving sectors...
+Saving groups...
+Saving galaxy script data...
+Saving settings...
+waiting for unfinished sector generation jobs...
+waiting for unfinished sector save jobs...
+shutting down rcon...
+shutting down networking...
+cleaning up communicators...
+waiting for sector database termination...
+waiting for faction database termination...
+shutting down galaxy...
+shutting down faction database...
+shutting down sector database...
+cleaning up timers...
+Server shutdown successful.

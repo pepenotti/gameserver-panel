@@ -1,0 +1,29 @@
+2026-10-01T15:31:22Z
+steamcmd.sh[9]: Starting  /home/node/steamcmd/linux32/steamcmd
+WARNING: setlocale('en_US.UTF-8') failed, using locale: 'C'. International characters may not work.
+Redirecting stderr to '/home/node/Steam/logs/stderr.txt'
+Logging directory: '/home/node/Steam/logs'
+[  0%] Checking for available updates...
+[----] Verifying installation...
+UpdateUI: skip show logo
+Steam Console Client (c) Valve Corporation - version 1788292693
+-- type 'quit' to exit --
+Loading Steam API...[0mOK
+[0m
+Connecting anonymously to Steam Public...[0mOK
+[0mWaiting for client config...[0mOK
+[0mWaiting for user info...[0mOK
+[0m Update state (0x3) reconfiguring, progress: 0.00 (0 / 0)
+[0mPosixFileOpen: RESOLVE_BENEATH unsupported, falling back to plain open()
+ Update state (0x61) downloading, progress: 1.04 (22790624 / 2186649264)
+[0m Update state (0x61) downloading, progress: 5.09 (111284048 / 2186649264)
+# … 51 more progress lines …
+[0m Update state (0x0) unknown, progress: 0.00 (0 / 0)
+[0mSuccess! App '896660' fully installed.
+[0mUnloading Steam API...[0mOK
+[0m
+real	1m56.606s
+user	2m31.412s
+sys	1m26.441s
+steamcmd-exit=0
+2026-10-01T15:33:18Z

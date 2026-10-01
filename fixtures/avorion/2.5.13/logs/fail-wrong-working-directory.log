@@ -1,0 +1,35 @@
+# argv: ["/opt/game/bin/AvorionServer","--galaxy-name","gspffgalaxy","--datapath","/data","--server-name","gspff test","--port","27000","--send-crash-reports","false","--save-interval","30","--max-players","8"]
+# cwd: /data
+Enabled Traces: 
+Avorion server 2.5.13 0417ab29738c running on Debian GNU/Linux 13 (trixie) starting up in "/data/gspffgalaxy"
+Version Hash: 5381909983546055243
+CPU: <host CPU>
+RAM: <host RAM>
+
+Server version, as listed publicly: 2.5.13.44140
+[stderr] [S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+[stderr] SteamGameServer_Init call failed
+Error starting steam-based networking. Falling back to standard TCP/UDP protocols.
+The server will not be authenticated via Steam and won't show up in public server lists.
+WARNING: The fallback TCP/UDP protocols are deprecated and potentially UNSAFE!
+         If you're running a dedicated server, this is HIGHLY discouraged!
+         Use steam networking instead; Enable with --use-steam-networking 1
+Warning: No RCON password set. RCON disabled.
+Found 0 mods in "/data/gspffgalaxy/modconfig.lua".
+An exception occurred: N3lua16stacktrace_errorE: invalid type 'nil' at stack position -1, expected table
+[stderr] T: 126793947449280
+[stderr] Object: Unknown
+[stderr] Execution Context (inner to outer):
+[stderr] #0:  
+[stderr] 
+[stderr] include error: module 'generator' not found
+[stderr] Tried the following paths:
+[stderr] data/scripts/plangenerator/generator.lua
+[stderr] 
+[stderr] Modders: Make sure to enable Dev-Mode while writing scripts, or files you created while the game was already running might get ignored.
+[stderr] 
+[stderr] 
+[stderr] stack traceback:
+[stderr]     [C]:-1: in function include
+[stderr]     [string "..."]:5: in function ?
+[stderr] 

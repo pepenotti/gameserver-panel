@@ -1,0 +1,28 @@
+{
+  "info": {
+    "protocol": 17,
+    "name": "gspff test",
+    "map": "gspff test",
+    "folder": "valheim",
+    "game": "",
+    "appId": 0,
+    "players": 0,
+    "maxPlayers": 10,
+    "bots": 0,
+    "serverType": "d",
+    "environment": "l",
+    "visibility": 1,
+    "vac": 0,
+    "version": "1.0.0.0",
+    "edf": 177,
+    "port": 2456,
+    "steamId": "90000000000000001",
+    "keywords": "g=1.0.16,n=40,m=",
+    "gameId": "892970"
+  },
+  "players": {
+    "count": 0,
+    "list": []
+  },
+  "rules": null
+}

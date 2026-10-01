@@ -1,0 +1,36 @@
+# /proc/net/udp and /proc/net/udp6 inside the container (ports in hex: 0998 = 2456, 0999 = 2457, 7760 = 30560, 7761 = 30561)
+# 01: -port 2456 -public 0
+== udp
+   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops            
+  393: 00000000:0999 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18282921 2 000000001a524441 0      
+ 1414: 00000000:ED96 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18288644 2 0000000036058d90 0      
+  sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
+  392: 00000000000000000000000000000000:0998 00000000000000000000000000000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18282367 2 00000000ed07bd99 0
+# 04: -port 2456 -public 1
+== udp
+   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops            
+  805: 00000000:0999 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18360542 2 00000000177152ae 0      
+ 5610: 00000000:DC5E 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18352520 2 00000000ce42c62d 0      
+  sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
+  804: 00000000000000000000000000000000:0998 00000000000000000000000000000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18356686 2 000000005181dca5 0
+# 08: -port 30560
+== udp
+   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops            
+  154: 00000000:7761 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18383484 2 00000000acc31ba7 0      
+ 6316: 00000000:AF73 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18382682 2 00000000337c7246 0      
+  sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
+  153: 00000000000000000000000000000000:7760 00000000000000000000000000000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18383510 2 000000004275c440 0
+# 11: -port 2456 -crossplay (with the PlayFab libraries): nothing on 2456
+== udp
+   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops            
+  547: 00000000:E64B 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18410007 2 00000000b0af8593 0      
+ 1393: 00000000:0999 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18408938 2 00000000af27df94 0      
+  sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
+ 1898: 00000000000000000000000000000000:AB92 00000000000000000000000000000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18412651 2 00000000d4a06fff 0
+# 13: 2456 held by another socket (the IPv4 0998 line is that socket): the game never bound its own
+== udp
+   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops            
+ 1985: 00000000:0998 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18435605 2 0000000092a47460 0      
+ 1986: 00000000:0999 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18435729 2 00000000acc31ba7 0      
+ 2856: 00000000:ACFF 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 18436702 2 0000000095c79c4b 0      
+  sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops

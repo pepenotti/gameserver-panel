@@ -1,0 +1,74 @@
+# 03: --save-interval 30: the silent autosave at about 34 s, then /save at about 64 s
+[+34.485] [fs] rename /data/gspffgalaxy/admin.xml~ size=1740
+[+34.486] [fs] change /data/gspffgalaxy/server.ini size=2693
+[+34.486] [fs] change /data/gspffgalaxy/server.ini size=2693
+[+34.487] [fs] rename /data/gspffgalaxy/server.dat~ size=110
+[+34.487] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+34.487] [fs] rename /data/gspffgalaxy/globals~ (gone)
+[+34.488] [fs] rename /data/gspffgalaxy/server.dat.2 size=110
+[+34.488] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+34.488] [fs] change /data/gspffgalaxy/whitelist.txt size=0
+[+34.489] [fs] rename /data/gspffgalaxy/galaxyscripts.dat~ size=361
+[+34.489] [fs] change /data/gspffgalaxy/group-whitelist.txt size=0
+[+34.489] [fs] change /data/gspffgalaxy/blacklist.txt size=0
+[+34.489] [fs] change /data/gspffgalaxy/ipblacklist.txt size=0
+[+34.490] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+34.490] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+34.490] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+34.490] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+34.492] [fs] change /data/gspffgalaxy/globals size=172
+[+34.492] [fs] change /data/gspffgalaxy/globals size=172
+[+34.492] [fs] change /data/gspffgalaxy/index size=94
+[+34.493] [fs] change /data/gspffgalaxy/index size=94
+[+34.493] [fs] change /data/gspffgalaxy/groups.dat size=100
+[+34.494] [fs] change /data/gspffgalaxy/groups.dat size=100
+[+34.494] [fs] change /data/gspffgalaxy/sectors/meta.db.1 size=195
+[+34.494] [fs] change /data/gspffgalaxy/sectors/meta.db.1 size=195
+[+34.495] [fs] change /data/gspffgalaxy/galaxyscripts.dat size=361
+[+34.495] [fs] change /data/gspffgalaxy/galaxyscripts.dat size=361
+[+34.495] [fs] rename /data/gspffgalaxy/galaxyscripts.dat~ (gone)
+[+38.271] [ctl] stdin: /version
+[+40.273] [ctl] stdin: /seed
+[+42.275] [ctl] stdin: /players
+[+44.279] [ctl] stdin: /say hello from gspff
+[+46.279] [ctl] stdin: /kick gspffnobody
+[+48.083] [ctl] stdin: /ban gspffnobody
+[+50.087] [ctl] stdin: /unban gspffnobody
+[+52.089] [ctl] stdin: /banip 192.0.2.77
+[+54.092] [ctl] stdin: /unbanip 192.0.2.77
+[+56.096] [ctl] stdin: /whitelist
+[+58.099] [ctl] stdin: /admin
+[+60.101] [ctl] stdin: /notacommand
+[+62.104] [ctl] stdin: say plain words
+[+64.107] [ctl] stdin: /save
+[+64.123] [out] Saving all server data.
+[+66.104] [fs] change /data/gspffgalaxy/server.ini size=2693
+[+66.104] [fs] change /data/gspffgalaxy/server.ini size=2693
+[+66.104] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+66.105] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+66.106] [fs] rename /data/gspffgalaxy/index~ size=94
+[+66.106] [fs] change /data/gspffgalaxy/whitelist.txt size=0
+[+66.106] [fs] rename /data/gspffgalaxy/groups.dat~ size=100
+[+66.106] [fs] change /data/gspffgalaxy/group-whitelist.txt size=0
+[+66.107] [fs] change /data/gspffgalaxy/blacklist.txt size=0
+[+66.107] [fs] rename /data/gspffgalaxy/galaxyscripts.dat~ (gone)
+[+66.107] [fs] change /data/gspffgalaxy/ipblacklist.txt size=0
+[+66.108] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+66.108] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+66.108] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+66.108] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+66.109] [fs] change /data/gspffgalaxy/server.dat.0 size=110
+[+66.109] [fs] change /data/gspffgalaxy/server.dat.0 size=110
+[+66.109] [fs] change /data/gspffgalaxy/globals size=172
+[+66.110] [fs] change /data/gspffgalaxy/globals size=172
+[+66.111] [fs] change /data/gspffgalaxy/index size=94
+[+66.111] [fs] change /data/gspffgalaxy/index size=94
+[+66.111] [fs] rename /data/gspffgalaxy/index~ (gone)
+[+66.112] [fs] change /data/gspffgalaxy/groups.dat size=100
+[+66.112] [fs] change /data/gspffgalaxy/groups.dat size=100
+[+66.112] [fs] rename /data/gspffgalaxy/groups.dat~ (gone)
+[+66.113] [fs] change /data/gspffgalaxy/sectors/meta.db.0 size=195
+[+66.113] [fs] change /data/gspffgalaxy/sectors/meta.db.0 size=195
+[+66.113] [fs] change /data/gspffgalaxy/galaxyscripts.dat size=361
+[+66.113] [fs] change /data/gspffgalaxy/galaxyscripts.dat size=361
+[+66.154] [out] All sectors saved successfully.

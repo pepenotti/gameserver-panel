@@ -1,0 +1,20 @@
+# 01: the first stop of a new world, on SIGTERM
+[+199.294] [ctl] signal SIGTERM to group 14
+[+199.321] [out] 10/01/2026 15:42:05: Game - OnApplicationQuit
+[+199.324] [out] 10/01/2026 15:42:05: Shutting down
+[+199.372] [out] 10/01/2026 15:42:05: World save (1/5) Cloud & Backup checks done [1ms] => Save number 1
+[+199.381] [fs] rename /data/worlds_local/gspffworld/00_00__0_1.chunk size=0
+[+199.396] [fs] change /data/worlds_local/gspffworld/00_00__0_1.chunk size=1544
+[+199.403] [fs] rename /data/worlds_local/gspffworld/_main.1.chunks size=0
+[+199.410] [fs] change /data/worlds_local/gspffworld/_main.1.chunks size=21
+[+199.415] [out] 10/01/2026 15:42:05: World save (2/5) Chunks writing done [41ms]
+[+199.415] [fs] rename /data/worlds_local/gspffworld/_main.1.db2 size=0
+[+199.439] [fs] change /data/worlds_local/gspffworld/_main.1.db2 size=145666
+[+199.447] [out] 10/01/2026 15:42:05: World save (3/5) DB2 writing done [31ms]
+[+199.447] [fs] rename /data/worlds_local/gspffworld/_main.1.fwl2 size=55
+[+199.451] [out] 10/01/2026 15:42:05: World save (4/5) FWL writing done [4ms]
+[+199.452] [fs] rename /data/worlds_local/gspffworld/_main.1.ok size=4
+[+199.457] [fs] rename /data/worlds_local/gspffworld/_main.0.fwl2 (gone)
+[+199.458] [out] 10/01/2026 15:42:05: World save (5/5) done. Total time [90ms]
+[+202.333] [out] 10/01/2026 15:42:08: Net scene destroyed
+[+202.846] [exit] code=0 signal=null after 202.846s

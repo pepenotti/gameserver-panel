@@ -1,0 +1,10 @@
+# 03: server.ini edited while the server ran (motd, a comment, an unknown key), then /save
+== before /save
+2:; a comment of our own
+3:GspffUnknownKey=1
+71:motd=edited while running
+== after /save (the game wrote its own settings back)
+69:motd=
+# 04: the same edit made while stopped (plus backupsPath), then a start: values kept, comment and unknown key dropped
+69:motd=edited while stopped
+84:backupsPath=/data/avorion-backups

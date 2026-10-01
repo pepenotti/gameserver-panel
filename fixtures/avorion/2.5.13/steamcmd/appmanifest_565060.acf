@@ -1,0 +1,48 @@
+"AppState"
+{
+	"appid"		"565060"
+	"Universe"		"1"
+	"name"		"Avorion Dedicated Server"
+	"StateFlags"		"4"
+	"installdir"		"AvorionServer"
+	"LastUpdated"		"1790869629"
+	"LastPlayed"		"0"
+	"SizeOnDisk"		"191405119"
+	"StagingSize"		"0"
+	"buildid"		"22295362"
+	"LastOwner"		"0"
+	"DownloadType"		"1"
+	"UpdateResult"		"0"
+	"BytesToDownload"		"56918576"
+	"BytesDownloaded"		"56918576"
+	"BytesToStage"		"191405119"
+	"BytesStaged"		"191405119"
+	"TargetBuildID"		"22295362"
+	"AutoUpdateBehavior"		"0"
+	"AllowOtherDownloadsWhileRunning"		"0"
+	"ScheduledAutoUpdate"		"0"
+	"InstalledDepots"
+	{
+		"1006"
+		{
+			"manifest"		"4559160656493359681"
+			"size"		"111284048"
+		}
+		"565061"
+		{
+			"manifest"		"3169308613424354701"
+			"size"		"36957350"
+		}
+		"565063"
+		{
+			"manifest"		"4770777789942892253"
+			"size"		"43163721"
+		}
+	}
+	"UserConfig"
+	{
+	}
+	"MountedConfig"
+	{
+	}
+}
