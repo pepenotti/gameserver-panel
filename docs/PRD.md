@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.24 |
+| Status | Draft 0.25 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -170,7 +170,8 @@ Each can move into scope later through [change control](#14-change-control).
   Workshop mod from the newest folder built for its version.
 - **Valheim:** it has no server console: the panel stops it with a signal (it
   saves first), can't warn players in game or ask it to save, and its running
-  backups copy the newest complete save it made on its own timer (the panel
+  backups copy the newest complete save it made on its own timer (the save
+  set the game marked complete and the chunk files it uses; the panel
   passes a 5-minute save interval instead of the game's 30 minutes). A server
   can be listed in the game's public list (off by default, Q15); a listed
   server needs a password of at least 5 characters that isn't part of its
@@ -178,6 +179,8 @@ Each can move into scope later through [change control](#14-change-control).
   it needs extra libraries in the steam image and registers the host's
   public address with Microsoft's PlayFab, which also shows in the server's
   log. Valheim uses about 1.5 GiB and a third of a CPU core even when empty.
+  Its admin, ban and allowed lists (SteamIDs) are changed only while it is
+  stopped. World presets and modifiers aren't offered in v1.
 - **Steam manifests:** a game can be added with a manifest alone when it
   installs anonymously with steamcmd, runs in the steam image as it is, says
   when it is ready, and stops cleanly with a console command or a signal.
@@ -280,7 +283,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | ID | P | Requirement |
 |---|---|---|
 | BAK-01 | P0 | Per-server backups (manual, scheduled, before updates, restores and resets, and a final one before a server is removed), each with a manifest, a checksum and retention per server. |
-| BAK-02 | P0 | Consistent backups while running, using each game's own method. Project Zomboid: `save`, then SQLite snapshots. Minecraft: `save-off`, `save-all flush`, then `save-on` after the copy. Otherwise save, then copy, or a stopped-server backup. Valheim can't be asked to save: the copy takes the newest complete save the game made. |
+| BAK-02 | P0 | Consistent backups while running, using each game's own method. Project Zomboid: `save`, then SQLite snapshots. Minecraft: `save-off`, `save-all flush`, then `save-on` after the copy. Otherwise save, then copy, or a stopped-server backup. Valheim can't be asked to save: the copy takes the newest complete save the game made, without waiting for one in progress. |
 | BAK-03 | P0 | Restore with a choice of parts, a staging folder, atomic swap and undo. |
 | BAK-04 | P0 | Reset scopes from each adapter (world only; world and players; factory). A backup is always taken first. |
 | BAK-05 | P1 | Download (admins) and upload (owner) of backups. Every uploaded archive entry is validated. |
@@ -405,7 +408,8 @@ NFR-01's controls, carried over from zomboid-server:
   server is copied, player lines, moderation by console commands or list
   files, and notes for the limitations people see. Each manifest is an
   adapter of its own ID. A game whose manifest can't say everything adds code
-  hooks (Valheim: which save files a running backup takes).
+  hooks (Valheim: which save files a running backup takes, and its player
+  count from Steam's server queries).
 - **Data.** SQLite, with the server ID on every per-server table. Volumes are
   named by server ID, and backups go to `BACKUP_DIR/<server>/`. `servers`
   keeps each server's row, including the fixed name the game uses for its
@@ -583,3 +587,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.22 | 2026-10-01 | Owner's request for a public panel: limitations stated plainly. New UX-04 (`docs/limitations.md`, kept current by every change) and HST-07 (the panel detects host limitations such as Docker Desktop's hidden addresses and shows them where they matter); M7 measures whether Linux Docker Engine and Docker Engine in WSL keep players' addresses; a §13 risk row. |
 | 0.23 | 2026-10-01 | M6 fact-finding: Valheim 1.0.16 and Avorion 2.5.13 measured (`docs/verification/valheim-1.0.16.md`, `avorion-2.5.13.md`, fixtures, `tools/fake-valheim`, `tools/fake-avorion`); Avorion is the manifest-only Steam game; Valheim has no console, saves on SIGINT/SIGTERM and backs up its newest complete save (§7, BAK-02); Q14 crossplay offered off by default, Q15 public listing offered private by default with the password rules; the manifest format (§10); M6 covers. |
 | 0.24 | 2026-10-01 | M6 manifest engine: a manifest (checked against its schema) becomes an adapter of its own id; Avorion added with a manifest only and checked against the real server; ports that follow another, a running copy narrowed by a hook, in-app notes (§7, §10); the default server ports include Avorion's. |
+| 0.25 | 2026-10-01 | M6 Valheim: a Steam manifest plus two hooks (a running backup's newest complete save set with the chunk files it uses; Steam's A2S player count on listed servers), offered on x86-64 with the public list and crossplay off by default; checked against the real server (chunk files carry their own versions) (§7, §10, BAK-02). M6's done-when is met. |
