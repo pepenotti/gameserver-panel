@@ -106,7 +106,8 @@ export function createScrubber(o = {}) {
       const octets = [a, b, c, d].map(Number);
       if (octets.some((x) => x > 255) || neutralIp(octets) || keepIps.has(m)) return m;
       // A version rather than an address ("version 1.4.4.9", "v1.2.3.4" is already excluded above).
-      if (/(?:version|ver\.?|build|release)\s*[:=]?\s*$/i.test(String(whole).slice(Math.max(0, offset - 16), offset))) return m;
+      // Whole words only: "server: 1.2.3.4" is an address, not a "ver".
+      if (/\b(?:version|ver\.?|build|release)\s*[:=]?\s*$/i.test(String(whole).slice(Math.max(0, offset - 16), offset))) return m;
       let fake = ips.get(m);
       if (!fake) {
         const n = ips.size;

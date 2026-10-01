@@ -33,6 +33,12 @@ describe('the fixture scrubber (NFR-09)', () => {
     expect(s.counts).toEqual({});
   });
 
+  it('takes a word that merely ends in "ver" for what it is: an address after "server:" is scrubbed', () => {
+    const s = createScrubber();
+    expect(s.scrub('PlayFab server: 11.22.33.44 registered; ver 1.0.16.0 stays')).toBe('PlayFab server: 192.0.2.1 registered; ver 1.0.16.0 stays');
+    expect(s.counts).toEqual({ ipv4: 1 });
+  });
+
   it('turns the given player names into Player1, Player2… whole words only, any case', () => {
     const s = createScrubber({ names: ['Rick', 'RickGrimes'] });
     expect(s.scrub('RickGrimes joined; rick left; Rickety and xRick stay; <Rick> said hi')).toBe('Player2 joined; Player1 left; Rickety and xRick stay; <Player1> said hi');
