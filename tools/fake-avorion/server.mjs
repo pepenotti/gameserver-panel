@@ -20,7 +20,8 @@
 //   2 s), FAKE_AVORION_CRASH_MS (500), FAKE_AVORION_BIND_HOST (127.0.0.1), FAKE_AVORION_INTERVAL_MS_PER_S
 //   (1000: milliseconds per second of --save-interval), FAKE_AVORION_INSTALL_DIR (when set, the working
 //   directory must be it, as the real server's must be its install folder).
-// Test hooks on stdin (not real commands): fake-join <name>, fake-leave <name>, fake-crash.
+// Test hooks on stdin (not real commands): fake-join <name>, fake-leave <name>, fake-crash (with or without
+// the slash: the panel's console adds it).
 import dgram from 'node:dgram';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -234,6 +235,8 @@ async function command(line) {
   }
   const [cmd, ...rest] = line.slice(1).trim().split(/\s+/);
   const arg = rest.join(' ');
+  // The test hooks, typed through a console that adds the slash Avorion's commands need (the panel's).
+  if (cmd.startsWith('fake-')) return hook(line.slice(1));
   switch (cmd) {
     case 'help':
       for (const [n, d] of HELP) out(`/${n}: ${d}`);

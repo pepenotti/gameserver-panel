@@ -1,0 +1,208 @@
+{
+  "$schema": "../manifest.schema.json",
+  "manifestVersion": 1,
+  "id": "avorion",
+  "name": { "en": "Avorion", "es": "Avorion" },
+  "steam": { "appId": "565060", "branches": "listed", "defaultBranch": "public" },
+  "arch": ["amd64"],
+  "memory": { "minMb": 512, "defaultMb": 2048, "overheadMb": 256 },
+  "ports": [
+    { "id": "game", "proto": "udp", "default": 27000, "publish": true, "sameInsideOut": true, "label": { "en": "Game port (UDP)", "es": "Puerto del juego (UDP)" } },
+    { "id": "gametcp", "proto": "tcp", "default": 27000, "publish": true, "sameInsideOut": true, "follows": { "id": "game", "offset": 0 }, "label": { "en": "Game port (TCP)", "es": "Puerto del juego (TCP)" } },
+    { "id": "query", "proto": "udp", "default": 27003, "publish": true, "sameInsideOut": true, "label": { "en": "Game query port", "es": "Puerto de consultas del juego" } },
+    { "id": "steamquery", "proto": "udp", "default": 27020, "publish": true, "sameInsideOut": true, "label": { "en": "Steam query port", "es": "Puerto de consultas de Steam" } },
+    { "id": "steammaster", "proto": "udp", "default": 27021, "publish": false, "sameInsideOut": false, "label": { "en": "Steam master port (unused with Steam networking)", "es": "Puerto maestro de Steam (sin uso con la red de Steam)" } }
+  ],
+  "settings": [
+    {
+      "id": "serverName",
+      "type": "string",
+      "label": { "en": "Server name", "es": "Nombre del servidor" },
+      "description": { "en": "The name players see in the server list and when they join.", "es": "El nombre que ven los jugadores en la lista de servidores y al entrar." },
+      "default": "Avorion",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    {
+      "id": "maxPlayers",
+      "type": "integer",
+      "label": { "en": "Player slots", "es": "Plazas de jugadores" },
+      "description": { "en": "How many players can be online at once.", "es": "Cuántos jugadores pueden estar conectados a la vez." },
+      "default": 10,
+      "min": 1,
+      "max": 64
+    },
+    {
+      "id": "listed",
+      "type": "boolean",
+      "label": { "en": "List publicly on Steam", "es": "Mostrar en la lista pública de Steam" },
+      "description": {
+        "en": "Shows the server in the game's public server list, where anyone can find it. Set a join password in server.ini first if it isn't for everyone.",
+        "es": "Muestra el servidor en la lista pública del juego, donde cualquiera puede encontrarlo. Si no es para todos, poné antes una contraseña en server.ini."
+      },
+      "default": false
+    },
+    {
+      "id": "saveInterval",
+      "type": "integer",
+      "label": { "en": "Autosave every", "es": "Autoguardado cada" },
+      "description": {
+        "en": "How often the game saves on its own, in seconds. It also saves when it stops and before every backup.",
+        "es": "Cada cuánto guarda el juego por su cuenta, en segundos. También guarda al detenerse y antes de cada copia de seguridad."
+      },
+      "default": 300,
+      "min": 60,
+      "max": 3600,
+      "step": 60,
+      "unit": "s",
+      "advanced": true
+    }
+  ],
+  "launch": {
+    "executable": "{installDir}/bin/AvorionServer",
+    "args": [
+      "--galaxy-name", "{name}",
+      "--datapath", "{dataDir}",
+      "--server-name", "{setting:serverName}",
+      "--max-players", "{setting:maxPlayers}",
+      "--port", "{port:game}",
+      "--query-port", "{port:query}",
+      "--steam-query-port", "{port:steamquery}",
+      "--steam-master-port", "{port:steammaster}",
+      "--listed", "{setting:listed}",
+      "--save-interval", "{setting:saveInterval}",
+      "--send-crash-reports", "false"
+    ],
+    "cwd": "{installDir}",
+    "env": { "LD_LIBRARY_PATH": "{installDir}/linux64" }
+  },
+  "prepare": { "dirs": ["avorion-backups"] },
+  "readiness": {
+    "ready": "^Server startup complete\\.$",
+    "version": "^Avorion server (\\d+\\.\\d+\\.\\d+) \\w+ running on ",
+    "fatal": ["^Server startup FAILED\\.$", "^An exception occurred: "],
+    "warnings": [
+      {
+        "id": "no-steam",
+        "pattern": "^WARNING: The fallback TCP/UDP protocols are deprecated",
+        "message": {
+          "en": "The server runs without Steam's networking, on Avorion's older, unsafe network protocols: it isn't listed or checked through Steam. Steam couldn't be reached, or its query port was taken.",
+          "es": "El servidor funciona sin la red de Steam, con los protocolos de red antiguos e inseguros de Avorion: no aparece en la lista ni se verifica a través de Steam. No se pudo contactar con Steam, o su puerto de consultas estaba ocupado."
+        }
+      }
+    ]
+  },
+  "console": {
+    "kind": "stdin",
+    "prefix": "/",
+    "commands": [
+      { "name": "help", "syntax": "/help [command]", "description": { "en": "Lists every console command, or explains one.", "es": "Lista todos los comandos de la consola, o explica uno." } },
+      { "name": "players", "syntax": "/players", "description": { "en": "Lists the players online.", "es": "Lista los jugadores conectados." } },
+      { "name": "save", "syntax": "/save", "description": { "en": "Saves the galaxy now.", "es": "Guarda la galaxia ahora." } },
+      { "name": "stop", "syntax": "/stop", "description": { "en": "Saves and stops the server.", "es": "Guarda y detiene el servidor." }, "permission": "server.control" },
+      { "name": "say", "syntax": "/say <message>", "description": { "en": "Sends a message to every player online.", "es": "Envía un mensaje a todos los jugadores conectados." }, "permission": "server.broadcast" },
+      { "name": "kick", "syntax": "/kick <player>", "description": { "en": "Kicks a player who is online.", "es": "Expulsa a un jugador conectado." }, "permission": "players.moderate" },
+      { "name": "ban", "syntax": "/ban <player>", "description": { "en": "Bans a player the server knows.", "es": "Banea a un jugador que el servidor conoce." }, "permission": "players.moderate" },
+      { "name": "unban", "syntax": "/unban <player>", "description": { "en": "Lifts a player's ban.", "es": "Quita el baneo de un jugador." }, "permission": "players.moderate" },
+      { "name": "version", "syntax": "/version", "description": { "en": "Shows the server's version.", "es": "Muestra la versión del servidor." } },
+      { "name": "seed", "syntax": "/seed", "description": { "en": "Shows the galaxy's seed.", "es": "Muestra la semilla de la galaxia." } }
+    ]
+  },
+  "stop": { "command": "/stop", "signal": "SIGTERM", "budgetMs": 30000 },
+  "save": { "command": "/save", "done": "^All sectors saved successfully\\.$", "budgetMs": 60000 },
+  "backups": {
+    "parts": [{ "id": "galaxy", "label": { "en": "Galaxy and its settings", "es": "Galaxia y sus ajustes" }, "paths": ["{name}"] }],
+    "running": "save-then-copy"
+  },
+  "resets": [
+    {
+      "id": "factory",
+      "label": { "en": "New galaxy (its settings go too: server.ini lives in the galaxy's folder)", "es": "Galaxia nueva (sus ajustes también: server.ini está en la carpeta de la galaxia)" },
+      "permission": "reset.factory",
+      "removeParts": ["galaxy"]
+    }
+  ],
+  "config": {
+    "files": [
+      {
+        "id": "server",
+        "label": { "en": "Server settings (server.ini)", "es": "Ajustes del servidor (server.ini)" },
+        "path": "{name}/server.ini",
+        "format": "ini",
+        "managed": {
+          "port": "{port:game}",
+          "name": "{setting:serverName}",
+          "maxPlayers": "{setting:maxPlayers}",
+          "isListed": "{setting:listed}",
+          "saveInterval": "{setting:saveInterval}",
+          "sendCrashReports": "false",
+          "backupsPath": "{dataDir}/avorion-backups"
+        },
+        "secretKeys": ["password", "rconPassword"],
+        "stoppedOnly": true,
+        "restartKeys": "*",
+        "seed": "[System]\nsaveInterval={setting:saveInterval}\nsendCrashReports=false\nbackupsPath={dataDir}/avorion-backups\n[Networking]\nport={port:game}\nisListed={setting:listed}\n[Administration]\nmaxPlayers={setting:maxPlayers}\nname={setting:serverName}\n",
+        "note": {
+          "en": "Avorion writes this file back from memory while it runs (at every save and when it stops), dropping unknown keys and comments: edit it while the server is stopped. The port, name, slots, listing, autosave and backup folder come from the launch settings; crash reports stay off.",
+          "es": "Avorion reescribe este archivo desde la memoria mientras funciona (en cada guardado y al detenerse) y descarta las claves desconocidas y los comentarios: editalo con el servidor detenido. El puerto, el nombre, las plazas, la lista pública, el autoguardado y la carpeta de copias vienen de los ajustes de inicio; los informes de errores quedan desactivados."
+        }
+      },
+      { "id": "admins", "label": { "en": "Administrators and command groups (admin.xml)", "es": "Administradores y grupos de comandos (admin.xml)" }, "path": "{name}/admin.xml", "format": "text", "stoppedOnly": true, "restartKeys": "*" },
+      { "id": "blacklist", "label": { "en": "Banned players (blacklist.txt)", "es": "Jugadores baneados (blacklist.txt)" }, "path": "{name}/blacklist.txt", "format": "lines", "stoppedOnly": true, "restartKeys": "*" },
+      { "id": "ipblacklist", "label": { "en": "Banned addresses (ipblacklist.txt)", "es": "Direcciones baneadas (ipblacklist.txt)" }, "path": "{name}/ipblacklist.txt", "format": "lines", "stoppedOnly": true, "restartKeys": "*" },
+      { "id": "whitelist", "label": { "en": "Allowed players (whitelist.txt)", "es": "Jugadores permitidos (whitelist.txt)" }, "path": "{name}/whitelist.txt", "format": "lines", "stoppedOnly": true, "restartKeys": "*" },
+      { "id": "group-whitelist", "label": { "en": "Allowed Steam groups (group-whitelist.txt)", "es": "Grupos de Steam permitidos (group-whitelist.txt)" }, "path": "{name}/group-whitelist.txt", "format": "lines", "stoppedOnly": true, "restartKeys": "*" }
+    ],
+    "roots": [
+      {
+        "id": "galaxy",
+        "label": { "en": "The galaxy's settings", "es": "Ajustes de la galaxia" },
+        "path": "{name}",
+        "include": ["server.ini", "admin.xml", "*.txt"],
+        "exclude": ["serverlog *.txt", "server.ini - readme.txt"]
+      }
+    ]
+  },
+  "players": {
+    "join": "^Player logged in: (.+), index: \\d+$",
+    "leave": "^Player logged off: (.+)$",
+    "list": { "command": "/players", "count": "^online players \\((\\d+)\\):$" }
+  },
+  "moderation": {
+    "kick": "/kick {arg}",
+    "ban": "/ban {arg}",
+    "unban": "/unban {arg}",
+    "banTargets": ["username"],
+    "refusals": [
+      { "pattern": "^Player .+ is not online\\.$", "refusal": "player-not-online" },
+      { "pattern": "^Player .+ not found\\.?$", "refusal": "player-not-found" }
+    ]
+  },
+  "broadcast": "/say {arg}",
+  "notes": [
+    {
+      "id": "settings-stopped-only",
+      "text": {
+        "en": "server.ini, admin.xml and the lists can only be edited while the server is stopped: Avorion writes them back from memory while it runs.",
+        "es": "server.ini, admin.xml y las listas solo se pueden editar con el servidor detenido: Avorion los reescribe desde la memoria mientras funciona."
+      },
+      "doc": "limitations.md#avorion-a-steam-game-run-from-a-manifest"
+    },
+    {
+      "id": "players-unverified",
+      "text": {
+        "en": "Kicks, bans and the player list were only tried with nobody online: what Avorion answers with players online is expected, not measured.",
+        "es": "Las expulsiones, los baneos y la lista de jugadores solo se probaron sin nadie conectado: lo que responde Avorion con jugadores conectados es lo esperado, no lo medido."
+      },
+      "doc": "limitations.md#avorion-a-steam-game-run-from-a-manifest"
+    },
+    {
+      "id": "ports-expected",
+      "text": {
+        "en": "Forward the game port (UDP and TCP) and both query ports. With Steam networking only the query ports were seen in use; which ones players need is expected, not measured.",
+        "es": "Redirigí el puerto del juego (UDP y TCP) y los dos puertos de consultas. Con la red de Steam solo se vieron en uso los de consultas; cuáles necesitan los jugadores es lo esperado, no lo medido."
+      },
+      "doc": "limitations.md#avorion-a-steam-game-run-from-a-manifest"
+    }
+  ]
+}

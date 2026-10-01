@@ -55,6 +55,16 @@ beforeAll(async () => {
 });
 afterAll(() => terrariaDownloads.close());
 
+// Avorion, from its manifest alone (M6, G4): installed with its fake steamcmd, run by its fake
+// server in the game's place, its console on stdin.
+const fakeAvorion = (kind: 'server' | 'steamcmd') => [process.execPath, path.join(tools, '..', 'fake-avorion', `${kind}.mjs`)];
+describe('avorion (a manifest)', () => {
+  runtimeAdapterSuite(runtimeAdapter('avorion'), {
+    validLaunch: () => ({ name: 'gal', branch: 'public', updateOnStart: false, memoryMb: 2048, serverName: 'Gal test', maxPlayers: 8, listed: false, saveInterval: 300 }),
+    live: agentHost({ launcher: fakeAvorion('server'), steamcmd: fakeAvorion('steamcmd') }, { env: { FAKE_AVORION_BOOT_MS: '100' } }),
+  });
+});
+
 for (const flavour of ['vanilla', 'tshock', 'tmodloader'] as const) {
   const env: Record<string, string> = { FAKE_TERRARIA_BOOT_MS: '50' };
   terrariaEnvs.push(env);

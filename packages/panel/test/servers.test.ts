@@ -77,6 +77,8 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
       expect.objectContaining({ id: 'pz', supported: true, eula: false, launch: expect.objectContaining({ secrets: [expect.objectContaining({ key: 'adminPassword' })], choices: false }) }),
       expect.objectContaining({ id: 'minecraft', supported: true, eula: true, launch: expect.objectContaining({ secrets: [], choices: true }) }),
       expect.objectContaining({ id: 'terraria', supported: true, eula: false, launch: expect.objectContaining({ secrets: [], choices: true }) }),
+      // M6: a Steam game from its manifest alone.
+      expect.objectContaining({ id: 'avorion', supported: true, eula: false, launch: expect.objectContaining({ secrets: [], choices: false }) }),
     ]);
 
     const granted = await friend(p, owner, 'granted-admin', 'admin', 'admin');
@@ -102,9 +104,9 @@ describe('creating, renaming and removing servers through the API (SRV-01, SRV-0
     const p = await makePanel();
     const { client: owner } = await ownerReady(p);
     const skeletons = panelAdapterEntries.filter((e) => !e.enabled).map((e) => e.adapter.meta.id);
-    expect(skeletons).toEqual(['valheim', 'manifest']);
+    expect(skeletons).toEqual(['valheim']);
     const listed = ((await owner.get('/api/adapters')).json() as { adapters: { id: string }[] }).adapters.map((a) => a.id);
-    expect(listed).toEqual(['pz', 'minecraft', 'terraria']);
+    expect(listed).toEqual(['pz', 'minecraft', 'terraria', 'avorion']);
     p.orch.calls.length = 0;
     for (const adapter of skeletons) expect((await createTwo(owner, { id: `x-${adapter}`, name: adapter, adapter })).json(), adapter).toEqual({ error: 'unknown-adapter' });
     expect(p.orch.calls).toEqual([]);

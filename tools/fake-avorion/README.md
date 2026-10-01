@@ -60,7 +60,8 @@ and came up on the fallback protocols), `ignore-stop`. `FAKE_AVORION_INSTALL_DIR
 makes a start from another working directory fail as measured (the game's scripts are found
 relative to it). Tuning: `FAKE_AVORION_BOOT_MS` (300), `FAKE_AVORION_SAVE_MS` (100).
 
-Test hooks on stdin (not real commands): `fake-join <name>` prints `Player logged in: <name>,
+Test hooks on stdin (not real commands, taken with or without a leading `/`, which the panel's
+console adds to every line for Avorion): `fake-join <name>` prints `Player logged in: <name>,
 index: <n>` (`Connection refused: Player <name> is banned.` for a name in `blacklist.txt`),
 `fake-leave <name>` prints `Player logged off: <name>`, `fake-crash` exits 3; `/kick` and `/ban`
 of a joined name then work. **These player lines, and what `/players`, `/kick`, `/ban` print with
