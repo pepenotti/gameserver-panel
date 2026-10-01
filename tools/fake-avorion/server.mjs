@@ -387,6 +387,13 @@ if (scenario === 'never-ready') {
     out(`Query Port: ${ports.query}`);
     out('');
     out('Steam Networking initialized.');
+    // Measured in the M6 manifest adapter check: a query port other than the default, on a server that isn't listed.
+    if (ports.query !== 27003 && net.isListed !== 'true') {
+      out('WARNING: Query port change detected and server is not listed publicly.');
+      out('         Players may not be able to connect to the server.');
+      out('         Change this port only when using steam networking and when listing the server publicly.');
+      out("If you're running multiple servers, you may want to look at binding the server to an ip with the --ip option.");
+    }
     if (net.isListed === 'true') {
       steamQuerySocket.on('message', (m, rinfo) => {
         if (m.length < 5 || m.readUInt32LE(0) !== 0xffffffff) return;

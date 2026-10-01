@@ -24,8 +24,9 @@ Takes `--galaxy-name --datapath --server-name --port --query-port --steam-query-
 What it reproduces, per the measurements:
 - the lines: the banner (`Avorion server 2.5.13 0417ab29738c running on …`, the public version
   `2.5.13.44140`), Steam's (`Server connected to Steam successfully`, the four ports), the
-  settings it runs with (`send crash reports: no` when told), `Server startup complete.` as the
-  ready line;
+  warning a query port other than 27003 prints on a server that isn't listed (`WARNING: Query
+  port change detected …`, measured in the manifest adapter check), the settings it runs with
+  (`send crash reports: no` when told), `Server startup complete.` as the ready line;
 - the console (stdin): every line must start with `/` (`Invalid command formatting. …`
   otherwise); `/help` (the list as captured), `/version`, `/seed`, `/players` (`online players
   (<n>):`), `/status`, `/say <text>` (`<Server> <text> `), `/kick` and `/ban` of someone offline

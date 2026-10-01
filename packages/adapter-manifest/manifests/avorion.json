@@ -83,6 +83,14 @@
     "fatal": ["^Server startup FAILED\\.$", "^An exception occurred: "],
     "warnings": [
       {
+        "id": "query-port",
+        "pattern": "^WARNING: Query port change detected and server is not listed publicly\\.",
+        "message": {
+          "en": "Avorion warns that players may not be able to join a server that isn't listed publicly when its query port isn't the default 27003: list it publicly, or give it Avorion's default ports.",
+          "es": "Avorion avisa que los jugadores pueden no poder entrar a un servidor que no está en la lista pública si su puerto de consultas no es el 27003 de siempre: ponelo en la lista pública, o dale los puertos por defecto de Avorion."
+        }
+      },
+      {
         "id": "no-steam",
         "pattern": "^WARNING: The fallback TCP/UDP protocols are deprecated",
         "message": {
@@ -141,10 +149,9 @@
         "secretKeys": ["password", "rconPassword"],
         "stoppedOnly": true,
         "restartKeys": "*",
-        "seed": "[System]\nsaveInterval={setting:saveInterval}\nsendCrashReports=false\nbackupsPath={dataDir}/avorion-backups\n[Networking]\nport={port:game}\nisListed={setting:listed}\n[Administration]\nmaxPlayers={setting:maxPlayers}\nname={setting:serverName}\n",
         "note": {
-          "en": "Avorion writes this file back from memory while it runs (at every save and when it stops), dropping unknown keys and comments: edit it while the server is stopped. The port, name, slots, listing, autosave and backup folder come from the launch settings; crash reports stay off.",
-          "es": "Avorion reescribe este archivo desde la memoria mientras funciona (en cada guardado y al detenerse) y descarta las claves desconocidas y los comentarios: editalo con el servidor detenido. El puerto, el nombre, las plazas, la lista pública, el autoguardado y la carpeta de copias vienen de los ajustes de inicio; los informes de errores quedan desactivados."
+          "en": "Avorion writes this file back from memory while it runs (at every save and when it stops), dropping unknown keys and comments: edit it while the server is stopped. The port, name, slots, listing and autosave come from the launch settings; crash reports stay off, and Avorion's own backups go to the server's avorion-backups folder (from the second start of a new galaxy: the game writes this file on its first).",
+          "es": "Avorion reescribe este archivo desde la memoria mientras funciona (en cada guardado y al detenerse) y descarta las claves desconocidas y los comentarios: editalo con el servidor detenido. El puerto, el nombre, las plazas, la lista pública y el autoguardado vienen de los ajustes de inicio; los informes de errores quedan desactivados, y las copias propias de Avorion van a la carpeta avorion-backups del servidor (desde el segundo inicio de una galaxia nueva: el juego escribe este archivo en el primero)."
         }
       },
       { "id": "admins", "label": { "en": "Administrators and command groups (admin.xml)", "es": "Administradores y grupos de comandos (admin.xml)" }, "path": "{name}/admin.xml", "format": "text", "stoppedOnly": true, "restartKeys": "*" },
@@ -199,8 +206,8 @@
     {
       "id": "ports-expected",
       "text": {
-        "en": "Forward the game port (UDP and TCP) and both query ports. With Steam networking only the query ports were seen in use; which ones players need is expected, not measured.",
-        "es": "Redirigí el puerto del juego (UDP y TCP) y los dos puertos de consultas. Con la red de Steam solo se vieron en uso los de consultas; cuáles necesitan los jugadores es lo esperado, no lo medido."
+        "en": "Forward the game port (UDP and TCP) and both query ports. A server that isn't listed publicly should keep Avorion's default query port, 27003: Avorion warns that players may not be able to join otherwise. Which ports players need is expected, not measured.",
+        "es": "Redirigí el puerto del juego (UDP y TCP) y los dos puertos de consultas. Un servidor que no está en la lista pública debería conservar el puerto de consultas por defecto de Avorion, el 27003: si no, Avorion avisa que los jugadores pueden no poder entrar. Qué puertos necesitan los jugadores es lo esperado, no lo medido."
       },
       "doc": "limitations.md#avorion-a-steam-game-run-from-a-manifest"
     }

@@ -128,17 +128,17 @@ describe('launching (UPD-01…03, CFG-04)', () => {
     expect(() => t.parseLaunch({ ...tideLaunch(), extra: 1 })).toThrow(/Unknown launch setting extra/);
   });
 
-  it("prepares Avorion's galaxy: the backups folder, server.ini seeded when missing, the agent's keys set in it before every start, idempotently", () => {
+  it("prepares Avorion's galaxy: the backups folder, and the agent's keys set in the server.ini the game wrote, before every start, idempotently", () => {
     const a = avorion();
     const ctx = ctxOf();
     const p = avLaunch({ listed: true, serverName: 'Gal test' });
     return (async () => {
       await a.prepare(ctx, p);
       expect(existsSync(path.join(ctx.roots.data, 'avorion-backups'))).toBe(true);
-      const seeded = readFileSync(path.join(ctx.roots.data, 'gal', 'server.ini'), 'utf8');
-      expect(seeded).toBe(
-        `[System]\nsaveInterval=300\nsendCrashReports=false\nbackupsPath=${ctx.roots.data}/avorion-backups\n[Networking]\nport=30550\nisListed=true\n[Administration]\nmaxPlayers=8\nname=Gal test\n`,
-      );
+      // A new galaxy's first start writes server.ini itself: a file written before it makes the galaxy's
+      // seed 0 for every server (measured in the manifest adapter check), so nothing is written.
+      expect(existsSync(path.join(ctx.roots.data, 'gal', 'server.ini'))).toBe(false);
+      mkdirSync(path.join(ctx.roots.data, 'gal'));
       // What the game wrote after its runs: every key the agent manages set again, everything else kept.
       writeFileSync(path.join(ctx.roots.data, 'gal', 'server.ini'), fixture('config', 'server.ini.after-later-runs'));
       await a.prepare(ctx, p);
@@ -153,6 +153,25 @@ describe('launching (UPD-01…03, CFG-04)', () => {
       await a.prepare(ctx, p);
       expect(readFileSync(path.join(ctx.roots.data, 'gal', 'server.ini'), 'utf8')).toBe(ini);
     })();
+  });
+
+  it('writes a missing file from its seed, and the managed keys of a file that exists (a port that follows another too)', async () => {
+    const t = tide();
+    const ctx = ctxOf({ ports: { game: 30560 } });
+    const p = t.parseLaunch(tideLaunch());
+    await t.prepare(ctx, p);
+    expect(readFileSync(path.join(ctx.roots.data, 'banned.txt'), 'utf8')).toBe('# banned SteamIDs\n');
+    expect(existsSync(path.join(ctx.roots.data, 'worlds'))).toBe(true);
+    // No seed: left for the game to write.
+    expect(existsSync(path.join(ctx.roots.data, 'allowed.txt'))).toBe(false);
+    mkdirSync(path.join(ctx.roots.data, 'worlds', 'tide'));
+    writeFileSync(path.join(ctx.roots.data, 'worlds', 'tide', 'settings.ini'), '# the game\nport=1\nmotd=hi\n');
+    writeFileSync(path.join(ctx.roots.data, 'banned.txt'), '76561198000000001\n');
+    await t.prepare(ctx, p);
+    // Keys the file lacks are added at its end, as the ini format adds them (a blank line before each).
+    expect(readFileSync(path.join(ctx.roots.data, 'worlds', 'tide', 'settings.ini'), 'utf8')).toBe('# the game\nport=30560\nmotd=hi\n\nquery=30561\n\nsave=300\n\nworld=tide\n\ntelemetry=off\n');
+    // A seed never overwrites what is there.
+    expect(readFileSync(path.join(ctx.roots.data, 'banned.txt'), 'utf8')).toBe('76561198000000001\n');
   });
 
   it('reads what steamcmd installed, installs when the branch differs, updates when asked (UPD-01…03)', async () => {

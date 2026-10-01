@@ -236,15 +236,15 @@ describe('Avorion end to end, from its manifest alone, through the fake orchestr
       const listed = ((await owner.get('/api/servers')).json() as { id: string; version: string | null; state: string }[]).find((s) => s.id === id)!;
       expect(listed).toMatchObject({ state: 'running', version: '2.5.13' });
       expect(srv(id).feed.status_!.installedInfo).toMatchObject({ version: '2.5.13', channel: 'public', build: '22295362' });
-      // The command line the manifest says, crash reports off; the game's own backups on the data volume.
+      // The command line the manifest says, crash reports off; the game wrote its galaxy's server.ini itself.
       expect(logs(id).some((l) => l.startsWith('Starting: ') && l.includes(`--port ${game}`) && l.includes('--send-crash-reports false'))).toBe(true);
       expect(shown(id, 'send crash reports: no')).toBe(true);
-      expect(shown(id, `Backup creation enabled. Path: "${dataDir(id)}/avorion-backups"`)).toBe(true);
       expect(existsSync(path.join(dataDir(id), 'avorion-backups'))).toBe(true);
       const ini = () => readFileSync(path.join(dataDir(id), id, 'server.ini'), 'utf8');
       expect(ini()).toMatch(/^sendCrashReports=false$/m);
-      expect(ini()).toMatch(/^backupsPath=.*avorion-backups$/m);
       expect(ini()).toMatch(new RegExp(`^port=${game}$`, 'm'));
+      // Its query port isn't Avorion's default and it isn't listed: the game's warning, said once by the panel too.
+      expect(logs(id).filter((l) => l.startsWith('Warning: Avorion warns that players may not be able to join'))).toHaveLength(1);
 
       // ---- the console: a typed command gets the slash Avorion's console wants (CON-02).
       await ok(await owner.post(url(id, '/server/command'), { command: 'seed' }), 'seed');
@@ -292,7 +292,9 @@ describe('Avorion end to end, from its manifest alone, through the fake orchestr
       await running(id);
       expect(readFileSync(path.join(galaxy, 'players', 'alice.dat'), 'utf8')).toBe('v1');
       expect(existsSync(path.join(galaxy, 'players', 'mallory.dat'))).toBe(false);
-      // The game's own backups were never part of it.
+      // From the galaxy's second start on, the game's own backups go to the data volume (never part of the panel's).
+      expect(ini()).toMatch(/^backupsPath=.*avorion-backups$/m);
+      expect(shown(id, `Backup creation enabled. Path: "${dataDir(id)}/avorion-backups"`)).toBe(true);
       expect(existsSync(path.join(dataDir(id), 'avorion-backups'))).toBe(true);
 
       // ---- a new galaxy (BAK-04): backed up first, removed, made again at the start with the panel's settings.

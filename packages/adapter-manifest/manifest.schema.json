@@ -11,7 +11,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["en", "es"],
-      "properties": { "en": { "type": "string", "minLength": 1, "maxLength": 500 }, "es": { "type": "string", "minLength": 1, "maxLength": 500 } }
+      "properties": { "en": { "type": "string", "minLength": 1, "maxLength": 1000 }, "es": { "type": "string", "minLength": 1, "maxLength": 1000 } }
     },
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,40}$" },
     "pattern": { "type": "string", "minLength": 1, "maxLength": 500, "format": "regex" },
