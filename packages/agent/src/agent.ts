@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import type {
   ChannelSpec,
@@ -9,18 +10,21 @@ import type {
   JobResult,
   LaunchCommand,
   LineSignal,
+  PackRequest,
+  PortDecl,
   RuntimeAdapter,
   RuntimeCtx,
   RuntimeFamily,
   RuntimeState,
   VersionsResponse,
 } from '@gsp/adapter-api';
-import { RootedFiles, type HotCopy } from '@gsp/archive';
+import { MAX_RELS, RootedFiles, segments, ServerFilesError, type HotCopy } from '@gsp/archive';
 import { makeRedactor } from '@gsp/formats';
 import type { AgentStatus, AlertKind, CommandResponse, ControlKind, JobInfo, JobKind, PublicLaunch, ServerState } from '@gsp/shared';
 import type { AgentConfig } from './config';
 import type { EventHub } from './events';
 import { GameRun } from './game';
+import { linkSelection } from './hot-select';
 import { makeDownload, makeExec, makeExtract, makeFetch } from './install-tools';
 import type { StateStore } from './state-store';
 import { diskStats, ProcessSampler } from './stats';
@@ -78,6 +82,20 @@ function isJobResult(x: unknown): x is JobResult {
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms).unref());
 
 /**
+ * Port numbers by `PortDecl.id`: the environment's (`GAME_PORT_<ID>`), else,
+ * for a port that follows another (`PortDecl.follows`), that port's number
+ * plus its offset, else the default.
+ */
+export function portNumbers(decls: readonly PortDecl[], given: Readonly<Record<string, number>>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const p of decls) {
+    const base = p.follows ? out[p.follows.id] : undefined;
+    out[p.id] = given[p.id] ?? (base !== undefined ? base + p.follows!.offset : p.default);
+  }
+  return out;
+}
+
+/**
  * Supervises one game server through its runtime adapter (PRD §10): install
  * before start, launch, readiness, control channel, player polls, clean
  * stop, the crash watchdog, jobs and the adapter's actions. Everything
@@ -97,6 +115,8 @@ export class Agent {
   private lock: { id: string; holder: string; expiresAt: number } | null = null;
   private job: JobInfo | null = null;
   private crashes: number[] = [];
+  /** The warnings each run said already (`LineSignal.warning`, by their English text): each once per run. */
+  private readonly warned = new WeakMap<GameRun, Set<string>>();
   /** Each run's last fatal line, as shown (redacted, one line, capped): why a crash loop happened (SRV-07). */
   private readonly lastFatal = new WeakMap<GameRun, string>();
   /** The run the watchdog gave up on, and its count message: output read after that exit can still name the reason. */
@@ -133,7 +153,7 @@ export class Agent {
     private readonly store: StateStore,
     private readonly hub: EventHub,
   ) {
-    this.portMap = Object.fromEntries(adapter.meta.ports.map((p) => [p.id, cfg.ports[p.id] ?? p.default]));
+    this.portMap = portNumbers(adapter.meta.ports, cfg.ports);
     this.redact = makeRedactor([cfg.token, store.controlSecret]);
     this.params = this.loadLaunch();
     if (this.params !== null) this.channelKind = this.channelOf(this.params);
@@ -563,6 +583,14 @@ export class Agent {
       this.expectExit = true;
       run.proc.signal('SIGKILL');
     }
+    if (sig.warning && typeof sig.warning.en === 'string' && sig.warning.en.trim() !== '') {
+      const said = this.warned.get(run) ?? new Set<string>();
+      this.warned.set(run, said);
+      if (!said.has(sig.warning.en)) {
+        said.add(sig.warning.en);
+        this.log(`Warning: ${sig.warning.en}`);
+      }
+    }
     if (sig.fatal) {
       const line = this.shown(raw);
       this.alert('fatal', line.slice(0, FATAL_SHOWN));
@@ -721,13 +749,27 @@ export class Agent {
     // Only a running server gets channel commands; otherwise everything goes to the console.
     const running = this.state === 'running';
     const v: CommandVia | undefined = via === 'stdin' || !running ? 'stdin' : via === 'rcon' ? 'channel' : undefined;
+    // A line for the game's console as it takes it (a prefix the panel strips); a channel gets it as typed.
+    const line = (v === 'stdin' || run.channel === null) && this.adapter.consoleLine ? this.consoleLine(c) : c;
     try {
-      const output = await run.command(c, v);
+      const output = await run.command(line, v);
       // The reply as people see it, like the log (the panel shows it, and its adapter code reads it).
       return { via: output === null ? 'stdin' : 'rcon', output: output === null ? null : this.shown(output) };
     } catch (e) {
       throw new AgentError('unavailable', (e as Error).message);
     }
+  }
+
+  /** The adapter's `consoleLine`, refused when it isn't one line any more; as typed when it throws. */
+  private consoleLine(c: string): string {
+    let out: string;
+    try {
+      out = this.adapter.consoleLine!(c);
+    } catch {
+      return c;
+    }
+    if (typeof out !== 'string' || out.trim() === '' || out.length > 1000 || /[\r\n\0]/.test(out)) throw new AgentError('bad-request', 'Command must be a single line of up to 1000 characters');
+    return out;
   }
 
   private schedulePoll(delay = this.cfg.playersPollMs): void {
@@ -810,6 +852,56 @@ export class Agent {
         }
       },
     };
+  }
+
+  /**
+   * `POST /v1/archive/pack` (D11, BAK-02): the server's files as a tar
+   * stream, hot while the game runs (`hotCopy`). An adapter that narrows a
+   * running copy of the data root (`hotCopy.select`) is given every file
+   * the request covers once its `before` ran, and the files it picks are
+   * linked into a folder of their own before anything is sent: the copy
+   * holds them as they were, whatever the game does meanwhile. A pick that
+   * vanished before its link (a save moved on) is listed and picked again,
+   * once; then the backup fails, as JSON. `after` always runs.
+   */
+  async pack(req: PackRequest): Promise<AsyncIterable<Buffer>> {
+    const select = this.adapter.hotCopy?.select;
+    const hot = this.hotCopy();
+    if (!select || !hot || this.state !== 'running' || typeof req !== 'object' || req === null || req.root !== 'data') return this.files.pack(req);
+    // The request is checked as a plain pack checks it, before the game is asked anything.
+    if (!Array.isArray(req.rels) || req.rels.length > MAX_RELS) throw new ServerFilesError('invalid-path', `Expected at most ${MAX_RELS} paths`);
+    const rels: string[] = [];
+    for (const rel of req.rels) {
+      if (typeof rel !== 'string' || segments(rel).length === 0) throw new ServerFilesError('invalid-path', 'The root itself is not a file');
+      await this.files.stat('data', rel);
+      rels.push(segments(rel).join('/'));
+    }
+    if (req.prefix !== undefined) segments(req.prefix);
+    const globs = req.sqlite ?? [];
+    if (!Array.isArray(globs) || globs.length > 50 || globs.some((g) => typeof g !== 'string' || g.length > 256)) throw new ServerFilesError('invalid-path', 'Expected up to 50 SQLite globs');
+    const steps = this.adapter.hotCopy!;
+    return this.selectedPack({ ...req, rels }, (files) => select.call(steps, this.runtimeCtx(), files), hot);
+  }
+
+  private async *selectedPack(req: PackRequest, select: (files: string[]) => Promise<string[]>, hot: HotCopy): AsyncGenerator<Buffer> {
+    const data = this.roots().data;
+    let dir: string | null = null;
+    try {
+      await hot.before();
+      try {
+        dir = await linkSelection({ data, hidden: [this.cfg.stateDir], rels: req.rels, select }, (e) => this.log(`Backup: ${e.message}; picking the files again.`));
+      } catch (e) {
+        const message = `The server's files could not be picked for a copy: ${(e as Error).message}`;
+        this.log(`Backup: ${message}.`);
+        throw new AgentError('unavailable', message);
+      }
+      // The picked files, as linked; SQLite ones (the adapter's and the request's globs) still copied as snapshots.
+      const picked = new RootedFiles({ roots: { data: dir, install: dir }, hot: () => ({ before: async () => undefined, after: async () => undefined, sqlite: hot.sqlite ?? [] }) });
+      yield* await picked.pack({ root: 'data', rels: req.rels, sqlite: req.sqlite, prefix: req.prefix });
+    } finally {
+      if (dir) await rm(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(() => undefined);
+      await hot.after();
+    }
   }
 
   /** `POST /v1/save`: the adapter saves the running world; `ok: false` when it didn't finish within `timeoutMs`. */
