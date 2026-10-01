@@ -20,7 +20,8 @@
 //   2 s), FAKE_AVORION_CRASH_MS (500), FAKE_AVORION_BIND_HOST (127.0.0.1), FAKE_AVORION_INTERVAL_MS_PER_S
 //   (1000: milliseconds per second of --save-interval), FAKE_AVORION_INSTALL_DIR (when set, the working
 //   directory must be it, as the real server's must be its install folder).
-// Test hooks on stdin (not real commands): fake-join <name>, fake-leave <name>, fake-crash.
+// Test hooks on stdin (not real commands): fake-join <name>, fake-leave <name>, fake-crash (with or without
+// the slash: the panel's console adds it).
 import dgram from 'node:dgram';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -234,6 +235,8 @@ async function command(line) {
   }
   const [cmd, ...rest] = line.slice(1).trim().split(/\s+/);
   const arg = rest.join(' ');
+  // The test hooks, typed through a console that adds the slash Avorion's commands need (the panel's).
+  if (cmd.startsWith('fake-')) return hook(line.slice(1));
   switch (cmd) {
     case 'help':
       for (const [n, d] of HELP) out(`/${n}: ${d}`);
@@ -384,6 +387,13 @@ if (scenario === 'never-ready') {
     out(`Query Port: ${ports.query}`);
     out('');
     out('Steam Networking initialized.');
+    // Measured in the M6 manifest adapter check: a query port other than the default, on a server that isn't listed.
+    if (ports.query !== 27003 && net.isListed !== 'true') {
+      out('WARNING: Query port change detected and server is not listed publicly.');
+      out('         Players may not be able to connect to the server.');
+      out('         Change this port only when using steam networking and when listing the server publicly.');
+      out("If you're running multiple servers, you may want to look at binding the server to an ip with the --ip option.");
+    }
     if (net.isListed === 'true') {
       steamQuerySocket.on('message', (m, rinfo) => {
         if (m.length < 5 || m.readUInt32LE(0) !== 0xffffffff) return;

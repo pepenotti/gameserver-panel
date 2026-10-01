@@ -128,7 +128,7 @@ async function* resume<T>(first: IteratorResult<T>, it: AsyncIterator<T>): Async
 async function pack(agent: Agent, body: Record<string, unknown>, res: http.ServerResponse): Promise<void> {
   const sqlite = body.sqlite === undefined ? undefined : strs(body, 'sqlite');
   const prefix = body.prefix === undefined ? undefined : str(body, 'prefix', 256);
-  const stream = await agent.files.pack({ root: str(body, 'root', 64), rels: strs(body, 'rels'), sqlite, prefix });
+  const stream = await agent.pack({ root: str(body, 'root', 64), rels: strs(body, 'rels'), sqlite, prefix });
   const it = stream[Symbol.asyncIterator]();
   const first = await it.next();
   res.writeHead(200, { 'content-type': 'application/x-tar', 'cache-control': 'no-store' });

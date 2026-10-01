@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { can, permissionsOn, roleOn, SERVER_ID_PATTERN, type CpuArch, type Permission, type PortProto, type PortRangeInfo, type Role } from '@gsp/shared';
-import type { Agreement, I18n, LaunchChoices, LaunchOption, OptionMeta, PortDecl, RuntimeFamily } from '@gsp/adapter-api';
+import type { AdapterNote, Agreement, I18n, LaunchChoices, LaunchOption, OptionMeta, PortDecl, RuntimeFamily } from '@gsp/adapter-api';
 import type { UserRow } from '../auth/users';
 import { actor, HttpError, principal, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
@@ -95,6 +95,8 @@ export interface AdapterSummary {
   eula: boolean;
   /** That license: what it is called and where to read it; null without one. */
   agreement: Agreement | null;
+  /** What people should know about the game before relying on a feature (UX-04), each with its docs/limitations.md entry. */
+  notes: AdapterNote[];
   /**
    * Its launch settings form; the secrets it needs are generated, never asked
    * for. `choices`: its versions can be listed (`GET /api/adapters/:id/choices`);
@@ -186,6 +188,7 @@ export function serverListRoutes(app: FastifyInstance, deps: Deps): void {
         capabilities: a.meta.capabilities,
         eula: a.meta.capabilities.includes('eula'),
         agreement: a.meta.eula ?? null,
+        notes: a.meta.notes ?? [],
         launch: { schema: a.launch.schema, secrets: (a.launch.secrets ?? []).map((x) => ({ key: x.key, label: x.label })), choices: !!a.launch.choices, warnings: a.launch.warnings ?? {} },
       })),
     };

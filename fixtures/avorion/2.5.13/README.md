@@ -18,7 +18,12 @@ the data on one at `/data`, steamcmd's HOME on a third at `/home/node`, ports pu
 ## Layout
 - `logs/`: stdout and stderr as the harness read them; stderr lines start with `[stderr] `, lines
   typed on stdin with `> `; the first two lines (`# argv:`, `# cwd:`) are the harness's. Nothing
-  is cut. `help.txt` is `AvorionServer --help`.
+  is cut. `help.txt` is `AvorionServer --help`. `manifest-adapter-check.log` is later (the M6
+  manifest adapter check, 2026-10-01): the first run of a new galaxy started by the product's
+  agent from `manifests/avorion.json`, as the agent's live log streamed it (stdout, stderr), with
+  what was sent to the console marked `> ` and the agent's own steps as `# (…)` notes; the agent's
+  quiet `/players` polls stay out of its live log by design. Scrubbed the same way (host CPU and
+  memory, the server's Steam id by hand; the anonymous account id by the scrubber).
 - `config/`: the galaxy's `server.ini` and `admin.xml` after the first boot, and `server.ini`
   after the later runs (their command-line values written back, an edit made while stopped kept).
   The game's own commented copy (`server.ini - readme.txt`) is not included; the verification

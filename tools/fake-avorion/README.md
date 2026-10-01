@@ -24,8 +24,9 @@ Takes `--galaxy-name --datapath --server-name --port --query-port --steam-query-
 What it reproduces, per the measurements:
 - the lines: the banner (`Avorion server 2.5.13 0417ab29738c running on …`, the public version
   `2.5.13.44140`), Steam's (`Server connected to Steam successfully`, the four ports), the
-  settings it runs with (`send crash reports: no` when told), `Server startup complete.` as the
-  ready line;
+  warning a query port other than 27003 prints on a server that isn't listed (`WARNING: Query
+  port change detected …`, measured in the manifest adapter check), the settings it runs with
+  (`send crash reports: no` when told), `Server startup complete.` as the ready line;
 - the console (stdin): every line must start with `/` (`Invalid command formatting. …`
   otherwise); `/help` (the list as captured), `/version`, `/seed`, `/players` (`online players
   (<n>):`), `/status`, `/say <text>` (`<Server> <text> `), `/kick` and `/ban` of someone offline
@@ -60,7 +61,8 @@ and came up on the fallback protocols), `ignore-stop`. `FAKE_AVORION_INSTALL_DIR
 makes a start from another working directory fail as measured (the game's scripts are found
 relative to it). Tuning: `FAKE_AVORION_BOOT_MS` (300), `FAKE_AVORION_SAVE_MS` (100).
 
-Test hooks on stdin (not real commands): `fake-join <name>` prints `Player logged in: <name>,
+Test hooks on stdin (not real commands, taken with or without a leading `/`, which the panel's
+console adds to every line for Avorion): `fake-join <name>` prints `Player logged in: <name>,
 index: <n>` (`Connection refused: Player <name> is banned.` for a name in `blacklist.txt`),
 `fake-leave <name>` prints `Player logged off: <name>`, `fake-crash` exits 3; `/kick` and `/ban`
 of a joined name then work. **These player lines, and what `/players`, `/kick`, `/ban` print with

@@ -45,6 +45,33 @@ export function metaTests(meta: AdapterMeta): void {
     }
   });
 
+  it('meta: a port that follows another follows an earlier one, published like it, at its default distance (SRV-01)', () => {
+    for (const [i, p] of meta.ports.entries()) {
+      if (!p.follows) continue;
+      const base = meta.ports.slice(0, i).find((x) => x.id === p.follows!.id);
+      expect(base, `port ${p.id} follows an earlier port`).toBeDefined();
+      expect(base!.follows, `port ${p.id} follows ${base!.id}, which follows another`).toBeUndefined();
+      expect(base!.publish, `port ${p.id} is published like ${base!.id}`).toBe(p.publish);
+      expect(Number.isInteger(p.follows.offset), `offset of port ${p.id}`).toBe(true);
+      expect(p.default, `default of port ${p.id}`).toBe(base!.default + p.follows.offset);
+      // The same number twice is two protocols of one port, never one protocol twice.
+      if (p.follows.offset === 0) expect(p.proto, `port ${p.id} at offset 0`).not.toBe(base!.proto);
+    }
+  });
+
+  it('meta: notes are worded in both languages and name their limitations entry (UX-04)', () => {
+    const notes = meta.notes ?? [];
+    expectUnique(
+      notes.map((n) => n.id),
+      'note ids',
+    );
+    for (const n of notes) {
+      expect(n.id).toMatch(/^[a-z][a-z0-9-]{0,63}$/);
+      expectI18n(n.text, `note ${n.id}`);
+      if (n.doc !== undefined) expect(n.doc, `note ${n.id} doc`).toMatch(/^limitations\.md#[a-z0-9-]+$/);
+    }
+  });
+
   it('meta: an EULA names its agreement, and only an EULA does (D6)', () => {
     const caps = [...meta.capabilities, ...meta.flavours.flatMap((f) => f.capabilities ?? [])];
     if (!caps.includes('eula')) {

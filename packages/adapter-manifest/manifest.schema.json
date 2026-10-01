@@ -1,0 +1,380 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gameserver-panel.invalid/schemas/steam-game-manifest-1.json",
+  "title": "Steam game manifest (gameserver-panel, version 1)",
+  "description": "A Steam game the panel runs from a manifest alone (PRD §10, D4). docs/manifests.md explains every field; loadManifest checks this schema, then what a schema can't say (ids that must exist, placeholders, patterns that must compile).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifestVersion", "id", "name", "steam", "arch", "memory", "ports", "settings", "launch", "readiness", "console", "stop", "backups"],
+  "$defs": {
+    "i18n": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en", "es"],
+      "properties": { "en": { "type": "string", "minLength": 1, "maxLength": 1000 }, "es": { "type": "string", "minLength": 1, "maxLength": 1000 } }
+    },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,40}$" },
+    "pattern": { "type": "string", "minLength": 1, "maxLength": 500, "format": "regex" },
+    "template": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "permission": { "type": "string", "pattern": "^[a-z][a-zA-Z.]{1,40}$" },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setting"],
+      "properties": { "setting": { "type": "string" }, "equals": { "type": ["string", "number", "boolean"] }, "notEmpty": { "const": true } }
+    },
+    "argItem": {
+      "oneOf": [
+        { "$ref": "#/$defs/template" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["if", "args"],
+          "properties": { "if": { "$ref": "#/$defs/condition" }, "args": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/template" } } }
+        }
+      ]
+    },
+    "port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "proto", "default", "publish", "sameInsideOut", "label"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9]{0,30}$" },
+        "proto": { "enum": ["udp", "tcp"] },
+        "default": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+        "publish": { "type": "boolean" },
+        "sameInsideOut": { "type": "boolean" },
+        "follows": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "offset"],
+          "properties": { "id": { "type": "string" }, "offset": { "type": "integer", "minimum": -16, "maximum": 16 } }
+        },
+        "label": { "$ref": "#/$defs/i18n" }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message"],
+      "properties": {
+        "if": { "$ref": "#/$defs/condition" },
+        "minLength": { "type": "integer", "minimum": 1 },
+        "required": { "const": true },
+        "notIn": { "type": "string" },
+        "message": { "$ref": "#/$defs/i18n" }
+      }
+    },
+    "setting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "label", "description"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,40}$" },
+        "type": { "enum": ["string", "integer", "boolean", "enum", "secret"] },
+        "label": { "$ref": "#/$defs/i18n" },
+        "description": { "$ref": "#/$defs/i18n" },
+        "default": { "type": ["string", "integer", "boolean"] },
+        "min": { "type": "integer" },
+        "max": { "type": "integer" },
+        "step": { "type": "integer", "minimum": 1 },
+        "unit": { "type": "string", "minLength": 1, "maxLength": 16 },
+        "minLength": { "type": "integer", "minimum": 0, "maximum": 200 },
+        "maxLength": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "pattern": { "$ref": "#/$defs/pattern" },
+        "choices": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value", "label"],
+            "properties": { "value": { "type": "string", "maxLength": 200 }, "label": { "$ref": "#/$defs/i18n" } }
+          }
+        },
+        "onValue": { "type": "string", "minLength": 1 },
+        "offValue": { "type": "string", "minLength": 1 },
+        "advanced": { "type": "boolean" },
+        "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "syntax", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{1,40}$" },
+        "syntax": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "$ref": "#/$defs/i18n" },
+        "permission": { "$ref": "#/$defs/permission" },
+        "secretArgs": { "type": "boolean" }
+      }
+    },
+    "configFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "format", "restartKeys"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/i18n" },
+        "path": { "$ref": "#/$defs/template" },
+        "format": { "enum": ["ini", "properties", "json", "json5", "yaml", "toml", "lines", "text"] },
+        "managed": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 500 } },
+        "secretKeys": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "stoppedOnly": { "type": "boolean" },
+        "restartKeys": { "oneOf": [{ "const": "*" }, { "type": "array", "items": { "type": "string", "minLength": 1 } }] },
+        "seed": { "type": "string", "minLength": 1, "maxLength": 65536 },
+        "note": { "$ref": "#/$defs/i18n" }
+      }
+    },
+    "root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "path", "include"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/i18n" },
+        "path": { "$ref": "#/$defs/template" },
+        "include": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "exclude": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "banTarget": { "enum": ["username", "steamId", "ip", "uuid", "account"] }
+  },
+  "properties": {
+    "$schema": { "type": "string" },
+    "manifestVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,30}$" },
+    "name": { "$ref": "#/$defs/i18n" },
+    "steam": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["appId", "branches", "defaultBranch"],
+      "properties": {
+        "appId": { "type": "string", "pattern": "^[0-9]{1,10}$" },
+        "branches": { "oneOf": [{ "const": "listed" }, { "type": "array", "items": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" } }] },
+        "defaultBranch": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" }
+      }
+    },
+    "arch": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["amd64", "arm64"] } },
+    "eula": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "url"],
+      "properties": { "name": { "$ref": "#/$defs/i18n" }, "url": { "type": "string", "pattern": "^https://" } }
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minMb", "defaultMb", "overheadMb"],
+      "properties": {
+        "minMb": { "type": "integer", "minimum": 128, "maximum": 65536 },
+        "defaultMb": { "type": "integer", "minimum": 128, "maximum": 65536 },
+        "overheadMb": { "type": "integer", "minimum": 0, "maximum": 16384 }
+      }
+    },
+    "ports": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/port" } },
+    "settings": { "type": "array", "items": { "$ref": "#/$defs/setting" } },
+    "secrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label"],
+        "properties": { "id": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]{0,40}$" }, "label": { "$ref": "#/$defs/i18n" } }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable", "args", "cwd"],
+      "properties": {
+        "executable": { "type": "string", "pattern": "^\\{installDir\\}/[^{}]+$" },
+        "args": { "type": "array", "items": { "$ref": "#/$defs/argItem" } },
+        "cwd": { "$ref": "#/$defs/template" },
+        "env": { "type": "object", "additionalProperties": { "$ref": "#/$defs/template" } }
+      }
+    },
+    "prepare": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "dirs": { "type": "array", "items": { "$ref": "#/$defs/template" } } }
+    },
+    "log": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stripAnsi": { "type": "boolean" },
+        "strip": { "$ref": "#/$defs/pattern" },
+        "progress": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "pattern"],
+            "properties": { "key": { "$ref": "#/$defs/id" }, "pattern": { "$ref": "#/$defs/pattern" }, "text": { "type": "string", "minLength": 1, "maxLength": 200 } }
+          }
+        }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ready"],
+      "properties": {
+        "ready": { "$ref": "#/$defs/pattern" },
+        "version": { "$ref": "#/$defs/pattern" },
+        "fatal": { "type": "array", "items": { "$ref": "#/$defs/pattern" } },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "pattern", "message"],
+            "properties": { "id": { "$ref": "#/$defs/id" }, "pattern": { "$ref": "#/$defs/pattern" }, "message": { "$ref": "#/$defs/i18n" } }
+          }
+        }
+      }
+    },
+    "console": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "stdin" },
+            "prefix": { "type": "string", "minLength": 1, "maxLength": 4, "pattern": "^[^\\s\\w]+$" },
+            "commands": { "type": "array", "items": { "$ref": "#/$defs/command" } }
+          }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "none" } } }
+      ]
+    },
+    "stop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal", "budgetMs"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "signal": { "enum": ["SIGINT", "SIGTERM"] },
+        "budgetMs": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+      }
+    },
+    "save": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "done", "budgetMs"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "done": { "$ref": "#/$defs/pattern" },
+        "budgetMs": { "type": "integer", "minimum": 1000, "maximum": 3600000 }
+      }
+    },
+    "autosave": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "done"],
+      "properties": { "start": { "$ref": "#/$defs/pattern" }, "done": { "$ref": "#/$defs/pattern" }, "budgetMs": { "type": "integer", "minimum": 1000, "maximum": 3600000 } }
+    },
+    "backups": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parts", "running"],
+      "properties": {
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "paths"],
+            "properties": { "id": { "$ref": "#/$defs/id" }, "label": { "$ref": "#/$defs/i18n" }, "paths": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/template" } } }
+          }
+        },
+        "running": { "enum": ["save-then-copy", "copy-between-saves", "stopped-only"] }
+      }
+    },
+    "resets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "permission", "removeParts"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "label": { "$ref": "#/$defs/i18n" },
+          "permission": { "$ref": "#/$defs/permission" },
+          "removeParts": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files"],
+      "properties": { "files": { "type": "array", "items": { "$ref": "#/$defs/configFile" } }, "roots": { "type": "array", "items": { "$ref": "#/$defs/root" } } }
+    },
+    "players": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "join": { "$ref": "#/$defs/pattern" },
+        "leave": { "$ref": "#/$defs/pattern" },
+        "list": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["command", "count"],
+          "properties": { "command": { "type": "string", "minLength": 1, "maxLength": 200 }, "count": { "$ref": "#/$defs/pattern" }, "item": { "$ref": "#/$defs/pattern" } }
+        },
+        "steamQuery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["port"],
+          "properties": { "port": { "type": "string" }, "when": { "$ref": "#/$defs/condition" } }
+        }
+      }
+    },
+    "moderation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kick": { "$ref": "#/$defs/template" },
+        "ban": { "$ref": "#/$defs/template" },
+        "unban": { "$ref": "#/$defs/template" },
+        "banTargets": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/banTarget" } },
+        "refusals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pattern", "refusal"],
+            "properties": { "pattern": { "$ref": "#/$defs/pattern" }, "refusal": { "enum": ["player-not-found", "player-not-online", "no-change", "failed"] } }
+          }
+        },
+        "listFiles": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target", "stoppedOnly"],
+          "properties": {
+            "ban": { "type": "string" },
+            "allow": { "type": "string" },
+            "admin": { "type": "string" },
+            "target": { "enum": ["steamId", "username"] },
+            "stoppedOnly": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "broadcast": { "$ref": "#/$defs/template" },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text"],
+        "properties": { "id": { "$ref": "#/$defs/id" }, "text": { "$ref": "#/$defs/i18n" }, "doc": { "type": "string", "pattern": "^limitations\\.md#[a-z0-9-]+$" } }
+      }
+    }
+  }
+}

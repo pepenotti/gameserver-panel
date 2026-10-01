@@ -36,8 +36,11 @@ export function buildSpec(row: ServerRow, adapter: PanelAdapter, o: { agentToken
   const env: ServerSpec['env'] = { AGENT_TOKEN: o.agentToken, GAME_ADAPTER: adapter.meta.id, TZ: o.tz };
   if (row.flavour !== null) env.GAME_FLAVOUR = row.flavour;
   for (const p of publishedPorts(adapter)) {
-    const host = row.ports[p.id];
+    // A port that follows another is stored with it; a row from before it was declared takes it from its base.
+    const base = p.follows ? row.ports[p.follows.id] : undefined;
+    const host = row.ports[p.id] ?? (base === undefined ? undefined : base + p.follows!.offset);
     if (host === undefined) throw new Error(`Server ${row.id} has no host port for ${p.id}`);
+    // Inside, a port that isn't the same as outside listens on its default (a following one's is its base's plus the offset).
     const container = p.sameInsideOut ? host : p.default;
     ports.push({ container, host, proto: p.proto });
     env[`GAME_PORT_${p.id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`] = String(container);
@@ -120,17 +123,23 @@ function insideClash(all: readonly PortDecl[], hosts: Readonly<Record<string, nu
  * shifted by the width of the block, else as low as they fit in the
  * allowed ranges. Ports that must be the same inside and out never land on
  * another of the server's ports or its agent's. Refusals name the port.
+ * A port that follows another (`PortDecl.follows`) is never asked for: it
+ * comes with the port it follows, on its number plus the offset, checked
+ * like the others (a following port that can't be had refuses its base).
  */
 export function planPorts(adapter: PanelAdapter, requested: Readonly<Record<string, number>> | undefined, taken: readonly TakenPort[], allowed?: readonly PortRangeInfo[]): Record<string, number> {
   const decls = publishedPorts(adapter);
+  const followers = (id: string) => decls.filter((d) => d.follows?.id === id);
   const asked = requested ?? {};
   const ranges = allowed?.length ? [...allowed].sort((a, b) => a.from - b.from) : undefined;
+  const outside = (id: string): HttpError =>
+    ranges
+      ? new HttpError(400, 'invalid-port', undefined, { port: id, min: ranges[0]!.from, max: Math.max(...ranges.map((r) => r.to)), ranges: formatPortRanges(ranges) })
+      : new HttpError(400, 'invalid-port', undefined, { port: id, min: MIN_PORT, max: MAX_PORT });
   for (const [id, port] of Object.entries(asked)) {
-    if (!decls.some((d) => d.id === id)) throw new HttpError(400, 'unknown-port', undefined, { port: id });
+    if (!decls.some((d) => d.id === id && !d.follows)) throw new HttpError(400, 'unknown-port', undefined, { port: id });
     if (!Number.isInteger(port) || port < MIN_PORT || port > MAX_PORT) throw new HttpError(400, 'invalid-port', undefined, { port: id, min: MIN_PORT, max: MAX_PORT });
-    if (ranges && !inRanges(port, ranges)) {
-      throw new HttpError(400, 'invalid-port', undefined, { port: id, min: ranges[0]!.from, max: Math.max(...ranges.map((r) => r.to)), ranges: formatPortRanges(ranges) });
-    }
+    if (ranges && !inRanges(port, ranges)) throw outside(id);
   }
   const clash = (port: number, proto: PortProto, mine: TakenPort[]) => [...taken, ...mine].find((t) => t.port === port && t.proto === proto);
   const out: Record<string, number> = {};
@@ -142,6 +151,15 @@ export function planPorts(adapter: PanelAdapter, requested: Readonly<Record<stri
     if (t) throw new HttpError(409, 'port-conflict', undefined, { port, proto: d.proto, with: t.by });
     out[d.id] = port;
     mine.push({ port, proto: d.proto, by: 'self' });
+    // The ports that follow it come along, on the numbers it gives them.
+    for (const f of followers(d.id)) {
+      const fp = port + f.follows!.offset;
+      if (fp < MIN_PORT || fp > MAX_PORT || (ranges && !inRanges(fp, ranges))) throw outside(d.id);
+      const ft = clash(fp, f.proto, mine);
+      if (ft) throw new HttpError(409, 'port-conflict', undefined, { port: fp, proto: f.proto, with: ft.by });
+      out[f.id] = fp;
+      mine.push({ port: fp, proto: f.proto, by: 'self' });
+    }
   }
   const inside = insideClash(adapter.meta.ports, out);
   if (inside) throw new HttpError(409, 'port-conflict', undefined, inside);
@@ -155,7 +173,8 @@ export function planPorts(adapter: PanelAdapter, requested: Readonly<Record<stri
     const trial = [...mine];
     const placed = { ...out };
     for (const d of missing) {
-      const port = base + d.default - low;
+      // A following port is placed with its base (declared before it, so placed already).
+      const port = d.follows ? placed[d.follows.id]! + d.follows.offset : base + d.default - low;
       if (port < MIN_PORT || port > MAX_PORT || !inRanges(port, ranges) || clash(port, d.proto, trial)) return null;
       trial.push({ port, proto: d.proto, by: 'self' });
       placed[d.id] = port;

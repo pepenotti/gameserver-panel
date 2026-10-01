@@ -12,7 +12,7 @@ import type { PanelEnv } from '../env';
 import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
 import type { PanelBus } from '../ops/bus';
-import { launchBodyProblem } from '../routes/server';
+import { launchBodyProblem, launchRefusal } from '../routes/server';
 import { capabilitiesOf } from '../server/handle';
 import { ServerSettings } from '../settings';
 import type { ServerContext } from './context';
@@ -536,7 +536,8 @@ export class DbServerRegistry implements ServerRegistry {
     try {
       adapter.launch.toAgent({ id, gameName: id, flavour }, launch, secrets);
     } catch (e) {
-      throw new HttpError(400, 'invalid-options', (e as Error).message, { message: (e as Error).message });
+      // A refusal the adapter worded names its setting, in both languages (CFG-01, UX-01).
+      throw new HttpError(400, 'invalid-options', (e as Error).message, { message: (e as Error).message, ...(launchRefusal(e) ?? {}) });
     }
     const needMb = memoryNeedMb(adapter, launch);
     const memLimitMb = input.memLimitMb ?? needMb;

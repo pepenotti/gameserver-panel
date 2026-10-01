@@ -38,4 +38,5 @@ export default {
   memoryMax: 'At most {{max}} MiB here (the server’s container may have {{limit}} MiB in all).',
   hostTooSmall: 'This panel gives one server at most {{max}} MiB, and this game needs at least {{need}} MiB: it cannot be created here.',
   choicesUnavailable: 'The list of versions could not be loaded ({{error}}). You can still type one.',
+  portFollows: 'Comes with it: {{list}}.',
 } as const;

@@ -127,6 +127,22 @@ export interface PortDecl {
   publish: boolean;
   sameInsideOut: boolean;
   label: I18n;
+  /** Never chosen: always port `id`'s number plus `offset` (a query port the game derives, a port's other protocol). */
+  follows?: { id: string; offset: number };
+}
+
+/** What people should know about a game (the contract's `AdapterNote`, UX-04): `doc` names its docs/limitations.md entry. */
+export interface AdapterNote {
+  id: string;
+  text: I18n;
+  doc?: string;
+}
+
+/** An adapter's refusal of a launch setting, as the panel passes it on (`field`, `text`); null for any other error details. */
+export function launchRefusalOf(extra: Record<string, unknown>): { field: string; text: I18n } | null {
+  const { field, text } = extra as { field?: unknown; text?: { en?: unknown; es?: unknown } };
+  if (typeof field !== 'string' || typeof text !== 'object' || text === null || typeof text.en !== 'string' || typeof text.es !== 'string') return null;
+  return { field, text: { en: text.en, es: text.es } };
 }
 
 /** What a ban can name (the contract's `BanTarget`): a name, a SteamID, an address, the id a game client sends, an account the server keeps. */
@@ -139,6 +155,8 @@ export interface Meta {
     runtime: string;
     memory: { minMb: number; defaultMb: number; overheadMb: number };
     capabilities: Capability[];
+    /** What people should know about the game (UX-04). */
+    notes?: AdapterNote[];
   };
   server: { id?: string; name?: string; gameName: string; flavour: string | null };
   capabilities: Capability[];
@@ -192,6 +210,8 @@ export interface AdapterSummary {
   eula: boolean;
   /** That license: its name and where to read it; null without one. */
   agreement: { name: I18n; url: string } | null;
+  /** What people should know about the game before creating a server of it (UX-04); absent from an older panel. */
+  notes?: AdapterNote[];
   /** `choices`: its versions can be listed before a server exists; `warnings`: what their warning codes mean. */
   launch: { schema: LaunchOption[]; secrets: { key: string; label: I18n }[]; choices?: boolean; warnings?: Record<string, I18n> };
 }

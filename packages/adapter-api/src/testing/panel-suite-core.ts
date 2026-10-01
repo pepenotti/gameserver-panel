@@ -12,6 +12,12 @@ export interface PanelCoreSuiteOptions {
   server?: () => ServerRef;
   /** Secrets `launch.toAgent` needs; with `server`, enables the launch round trip. */
   secrets?: () => SecretBag;
+  /**
+   * A player as the game's moderation names one, for the checks that must
+   * reach the game (default `bob`; a game whose lists hold SteamIDs gives
+   * one).
+   */
+  player?: string;
 }
 
 const KINDS: (AnnounceKind | 'cancelled')[] = ['restart', 'stop', 'update', 'restore', 'reset', 'cancelled'];
@@ -286,7 +292,9 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         for (const op of p.stoppedOnly ?? []) expect(!!p[op], `players.stoppedOnly names ${op}, which it doesn't have${on}`).toBe(true);
         const targets = p.banTargets ?? [];
         const ctx = { ...bareCtx(adapter, { ...server(), flavour }) };
-        const sent = () => ctx.commands.length + ctx.actions.length;
+        const player = opts.player ?? 'bob';
+        // What reaches the game: commands, runtime actions, and changes to its files (a game moderated through list files).
+        const sent = () => ctx.commands.length + ctx.actions.length + ctx.configCalls.filter((c) => c[0] === 'set').length;
         for (const bad of HOSTILE) {
           // Every field it bans by refuses what no game command may carry (a name, an address, an id).
           for (const t of targets) {
@@ -294,8 +302,8 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
             if (p.unban) await expect(p.unban(ctx, { [t]: bad }), `unban ${t} ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
           }
           if (p.kick) await expect(p.kick(ctx, bad), `kick ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
-          if (p.kick) await expect(p.kick(ctx, 'bob', bad), `kick reason ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
-          if (p.ban && targets.includes('username')) await expect(p.ban(ctx, { username: 'bob' }, bad), `ban reason ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+          if (p.kick) await expect(p.kick(ctx, player, bad), `kick reason ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
+          if (p.ban && targets.includes('username')) await expect(p.ban(ctx, { username: player }, bad), `ban reason ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
           if (p.whitelistAdd) await expect(p.whitelistAdd(ctx, bad, 'secret-pw'), `whitelistAdd ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
           if (p.whitelistRemove) await expect(p.whitelistRemove(ctx, bad), `whitelistRemove ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
           if (p.setAccess) await expect(p.setAccess(ctx, bad, p.accessLevels?.[0]?.id ?? 'x'), `setAccess ${JSON.stringify(bad)}${on}`).rejects.toBeInstanceOf(RconProtocolError);
@@ -303,19 +311,19 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         if (p.ban) await expect(p.ban(ctx, {}), `ban without a target${on}`).rejects.toBeInstanceOf(RconProtocolError);
         // A field it doesn't ban by is refused, not taken for another.
         for (const t of BAN_TARGETS.filter((x) => !targets.includes(x))) if (p.ban) await expect(p.ban(ctx, { [t]: 'bob' }), `ban by ${t}${on}`).rejects.toBeInstanceOf(RconProtocolError);
-        if (p.setAccess) await expect(p.setAccess(ctx, 'bob', 'not-a-level; quit'), `unknown access level${on}`).rejects.toBeInstanceOf(RconProtocolError);
+        if (p.setAccess) await expect(p.setAccess(ctx, player, 'not-a-level; quit'), `unknown access level${on}`).rejects.toBeInstanceOf(RconProtocolError);
         expect(sent(), `sent to the game${on}`).toBe(0);
         if (p.ban && targets.includes('ip')) await expect(p.ban(ctx, { ip: 'not-an-address' }), `ban a word as an ip${on}`).rejects.toBeInstanceOf(RconProtocolError);
         expect(sent(), `sent to the game${on}`).toBe(0);
         // A normal kick reaches the game.
         if (p.kick) {
-          await p.kick(ctx, 'bob', 'afk');
+          await p.kick(ctx, player, 'afk');
           expect(sent(), `kick${on}`).toBeGreaterThan(0);
         }
         // A whitelist without passwords takes a name alone.
         if (p.whitelistAdd && p.whitelistPassword === false) {
           const before = sent();
-          await p.whitelistAdd(ctx, 'bob');
+          await p.whitelistAdd(ctx, player);
           expect(sent(), `whitelistAdd without a password${on}`).toBeGreaterThan(before);
         }
       }

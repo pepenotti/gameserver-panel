@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/http';
-import { capabilityKey } from '../api/meta';
+import { capabilityKey, launchRefusalOf, localize } from '../api/meta';
 
 /** Turn any thrown error into a translated, user-facing sentence. */
 export function useErrorText(): (e: unknown) => string {
@@ -15,6 +15,9 @@ export function useErrorText(): (e: unknown) => string {
       // Refusals whose details say more than the code: the host's port ranges, its memory limit per server.
       if (e.code === 'invalid-port' && typeof e.extra.ranges === 'string') return t('errors.invalid-port-ranges', { ranges: e.extra.ranges });
       if (e.code === 'orchestrator-refused' && typeof e.extra.maxMb === 'number') return t('errors.memory-above-host', { maxMb: e.extra.maxMb });
+      // A launch setting the game's adapter refused, in its own words (CFG-01).
+      const refused = launchRefusalOf(e.extra);
+      if (refused) return localize(refused.text, i18n.language);
       const key = `errors.${e.code}`;
       if (i18n.exists(key)) {
         const ms = typeof e.extra.retryAfterMs === 'number' ? e.extra.retryAfterMs : 0;

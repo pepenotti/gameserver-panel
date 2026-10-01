@@ -1,0 +1,94 @@
+# argv: ["/opt/game/bin/AvorionServer","--galaxy-name","gspffcheck","--datapath","/data","--server-name","gspff check","--max-players","4","--port","30550","--query-port","30553","--steam-query-port","30570","--steam-master-port","27021","--listed","false","--save-interval","300","--send-crash-reports","false"]
+# cwd: /opt/game
+Enabled Traces: 
+Avorion server 2.5.13 0417ab29738c running on Debian GNU/Linux 13 (trixie) starting up in "/data/gspffcheck"
+Version Hash: 5381909983546055243
+CPU: <host CPU>
+RAM: <host RAM>
+
+Server version, as listed publicly: 2.5.13.44140
+[stderr] [S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+[stderr] Setting breakpad minidump AppID = 445220
+[stderr] SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561198000000001 [API loaded no]
+Server connected to Steam successfully
+Server is VAC Secure!
+Game Server Steam ID: 90000000000000001
+Game Port: 30550
+Steam Port: 27021
+Steam Query Port: 30570
+Query Port: 30553
+
+Steam Networking initialized.
+WARNING: Query port change detected and server is not listed publicly.
+         Players may not be able to connect to the server.
+         Change this port only when using steam networking and when listing the server publicly.
+If you're running multiple servers, you may want to look at binding the server to an ip with the --ip option.
+# (the agent says, after the first of those lines: Warning: Avorion warns that players may not be able to join a server that isn't listed publicly when its query port isn't the default 27003: list it publicly, or give it Avorion's default ports.)
+Warning: No RCON password set. RCON disabled.
+Found 0 mods in "/data/gspffcheck/modconfig.lua".
+name: gspff check
+seed: KvoTY0EggR
+port: 30550
+max online players: 4
+save interval: 300
+broadcast interval: 5
+max loaded sector time: 300
+weak update: yes
+worker threads: 9
+generator threads: 2
+script background threads: 2
+difficulty: Veteran
+scenario: Normal
+tutorial: no
+collision: 1
+access list: Blacklist
+multiplayer: yes
+vac secure: yes
+listed: no
+steam networking: yes
+send crash reports: no
+Backup creation enabled. Path: "/home/node/.avorion/backups"
+Please ensure that the server has write-access to that path.
+administrators: 
+Warning: Your server does not have an administrator assigned.
+Commands file: /data/gspffcheck/commands.txt
+Initializing sector database...
+Initializing faction database...
+Starting up 9 worker threads...
+Starting up 2 script background threads...
+Loading groups...
+Loading script data...
+Galaxy initialized.
+Server startup complete.
+> /players
+online players (0):
+> /save
+Saving all server data.
+Triggered saving of all server data.
+All sectors saved successfully.
+# (the agent: a hot backup starts; it sends /save)
+Saving all server data.
+Triggered saving of all server data.
+All sectors saved successfully.
+# (the agent: stop; it sends /stop)
+Cleaning up entity transfers ...
+Server is shutting down.
+Saving settings...
+Saving script values...
+Saving factions...
+Saving sectors...
+Saving groups...
+Saving galaxy script data...
+Saving settings...
+waiting for unfinished sector generation jobs...
+waiting for unfinished sector save jobs...
+shutting down rcon...
+shutting down networking...
+cleaning up communicators...
+waiting for sector database termination...
+waiting for faction database termination...
+shutting down galaxy...
+shutting down faction database...
+shutting down sector database...
+cleaning up timers...
+Server shutdown successful.

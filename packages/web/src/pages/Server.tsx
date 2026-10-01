@@ -9,9 +9,11 @@ import { useTranslation } from 'react-i18next';
 import { SERVERS_KEY, useServerApi, useServerScope, withServer, type ServerSummary } from '../api/server';
 import { useLive } from '../api/live';
 import { useSession } from '../api/session';
-import { forFlavour, impliedBy, localize, type I18n, type LaunchChoices } from '../api/meta';
+import { ApiError } from '../api/http';
+import { forFlavour, impliedBy, launchRefusalOf, localize, type I18n, type LaunchChoices } from '../api/meta';
 import { useMeta } from '../api/useMeta';
 import { EulaNotice } from '../components/Eula';
+import { GameNotes } from '../components/GameNotes';
 import { LaunchField, launchKey } from '../components/LaunchField';
 import { PendingBadge } from '../components/PendingBadge';
 import { DeleteServerModal, RenameServerModal } from '../components/ServerAdmin';
@@ -187,6 +189,8 @@ export function Server() {
   // Asking for versions runs a job on the server (steamcmd for Steam games): only on request.
   const updates = useQuery({ queryKey: ['updates', sapi.sid], queryFn: () => sapi<Updates>('GET', '/server/updates'), enabled: false, retry: false });
   const body = (l: Launch) => Object.fromEntries(schema.map((o) => [o.key, l[o.key]]));
+  /** What the game's adapter refused, by setting (CFG-01): shown next to it until it changes. */
+  const [launchErrors, setLaunchErrors] = useState<Record<string, string>>({});
   const save = useMutation({
     mutationFn: (l: Launch) => sapi<Launch>('PUT', '/server/launch', body(l)),
     onSuccess: (l) => {
@@ -194,9 +198,14 @@ export function Server() {
       // The game's memory may have moved its container's limit (and left it waiting for the next start).
       void qc.invalidateQueries({ queryKey: SERVERS_KEY });
       setForm(l);
+      setLaunchErrors({});
       notifications.show({ color: 'green', message: t('common.saved') });
     },
-    onError: (e) => notifications.show({ color: 'red', message: errorText(e) }),
+    onError: (e) => {
+      const refused = e instanceof ApiError ? launchRefusalOf(e.extra) : null;
+      if (refused) setLaunchErrors({ [refused.field]: localize(refused.text, i18n.language) });
+      notifications.show({ color: 'red', message: errorText(e) });
+    },
   });
   const busy = !!live.op && !live.op.done;
   const overheadMb = meta?.adapter.memory.overheadMb ?? 0;
@@ -238,6 +247,8 @@ export function Server() {
 
       <NameCard />
 
+      {meta && <GameNotes game={meta.adapter.name} notes={meta.adapter.notes} />}
+
       <EulaNotice showAccepted />
 
       <Card withBorder>
@@ -260,7 +271,11 @@ export function Server() {
                   key={o.key}
                   o={o}
                   value={form[o.key]}
-                  onChange={(v) => setForm({ ...form, [o.key]: v })}
+                  error={launchErrors[o.key]}
+                  onChange={(v) => {
+                    setForm({ ...form, [o.key]: v });
+                    setLaunchErrors((errs) => (errs[o.key] === undefined ? errs : Object.fromEntries(Object.entries(errs).filter(([k]) => k !== o.key))));
+                  }}
                   versions={o.key === versionKey && o.type === 'string' ? versions : undefined}
                   choices={list}
                   warnings={meta?.launch.warnings}

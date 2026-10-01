@@ -80,6 +80,17 @@ export interface PortDecl {
   /** The game must listen on the same port number it is published on (it tells clients or Steam its port). */
   sameInsideOut: boolean;
   label: I18n;
+  /**
+   * A port the game derives from another instead of taking its own
+   * (Valheim's query port is always its game port + 1; a game port on both
+   * UDP and TCP is two ports, the second following the first at 0): never
+   * chosen, always the number of port `id` plus `offset`, inside the
+   * container and on the host. The panel allocates it with the port it
+   * follows (SRV-01 checks it too) and publishes it the same way; the agent
+   * computes it when its environment doesn't name it. The port it follows
+   * is declared before it, follows none itself, and is published when it is.
+   */
+  follows?: { id: string; offset: number };
 }
 
 export interface Flavour {
@@ -119,6 +130,18 @@ export interface AdapterMeta {
   stopBudgetMs: number;
   /** The agreement behind the `eula` capability (the adapter's or a flavour's); required with it (D6). */
   eula?: Agreement;
+  /** What people should know about the game before relying on a feature (UX-04), shown with its servers. */
+  notes?: AdapterNote[];
+}
+
+/**
+ * A known limitation of a game (UX-04), as a server's pages show it:
+ * `doc` names its entry in `docs/limitations.md` (`limitations.md#<anchor>`).
+ */
+export interface AdapterNote {
+  id: string;
+  text: I18n;
+  doc?: string;
 }
 
 // ============================================================== server files
@@ -352,6 +375,12 @@ export interface LineSignal {
    * else about the line still counts (readiness, fatal lines, `waitForLine`).
    */
   progress?: { key: string; text?: string };
+  /**
+   * Something people should know about this run, though it isn't fatal
+   * (the game can't reach Steam and runs without it): the agent says so in
+   * the log, once per run and text (in English, like its own lines).
+   */
+  warning?: I18n;
 }
 
 export type ChannelSpec =
@@ -442,13 +471,34 @@ export interface RuntimeAdapter<P = unknown> {
    * Absent: shown as it is.
    */
   display?(text: string): string;
+  /**
+   * A console line people typed (`POST /v1/command`) as the game's console
+   * takes it, when it goes to stdin: Avorion's wants every command to start
+   * with `/`, which the panel strips. Absent: as typed.
+   */
+  consoleLine?(cmd: string): string;
   channel(ctx: RuntimeCtx, p: P): ChannelSpec;
   /** Ask the game to stop cleanly; the agent waits `budgetMs` for the exit, then escalates to signals. */
   stop(ctl: ControlHandle, o: { budgetMs: number }): Promise<void>;
   /** Save the running world and resolve once the game says it finished; the agent reports a failure after `budgetMs`, so stop waiting by then. */
   save?(ctl: ControlHandle, o: { budgetMs: number }): Promise<void>;
   /** Running-server backups: `before` makes the files consistent, `after` always runs. */
-  hotCopy?: { before(ctl: ControlHandle): Promise<void>; after(ctl: ControlHandle): Promise<void>; sqlite?: string[] };
+  hotCopy?: {
+    before(ctl: ControlHandle): Promise<void>;
+    after(ctl: ControlHandle): Promise<void>;
+    sqlite?: string[];
+    /**
+     * Narrows a running backup of the data root to a consistent set of files
+     * (Valheim: only its newest complete save), after `before`: given every
+     * file the backup would copy (data-root paths, `/`-separated, the
+     * request's folders walked), the ones to copy; paths not in `files` are
+     * ignored. The agent takes the selected files as they are at that moment
+     * (a file the game deletes or rewrites afterwards stays as it was, in the
+     * backup); when one vanished before it could, it lists and asks again,
+     * once, and fails the backup if one vanishes again.
+     */
+    select?(ctx: RuntimeCtx, files: string[]): Promise<string[]>;
+  };
   /**
    * Null when the reply wasn't understood. The agent also passes the
    * server's context and launch params, for an adapter that asks some
@@ -1004,6 +1054,19 @@ export interface LaunchSecretDecl {
   /** Key in the `SecretBag`. */
   key: string;
   label: I18n;
+}
+
+/**
+ * What `launch.toAgent` (and `RuntimeAdapter.parseLaunch`) may throw for a
+ * launch setting it refuses beyond the form's types and ranges (a password
+ * too short for a public server, CFG-01): an `Error` carrying these fields.
+ * The panel answers 400 with them, and the web shows `text` next to the
+ * setting, in the reader's language.
+ */
+export interface LaunchSettingRefusal {
+  /** The launch setting's key. */
+  field: string;
+  text: I18n;
 }
 
 export interface ToAgentOptions {

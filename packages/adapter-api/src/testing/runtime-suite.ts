@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Capability, ControlHandle, InstallCtx, LineSignal, RuntimeAdapter, RuntimeCtx } from '../index';
-import { metaTests } from './meta';
+import { expectI18n, metaTests } from './meta';
 
 export interface RuntimeSuiteOptions {
   /** Launch input `parseLaunch` must accept; enables the parsing and live checks. */
@@ -107,8 +107,9 @@ function waitSignal(game: LiveGame, pred: (s: LineSignal) => boolean, timeoutMs:
   });
 }
 
-/** A `LineSignal.progress` names its run with a non-empty key, and its text (when given) is text. */
+/** A `LineSignal.progress` names its run with a non-empty key, and its text (when given) is text; a warning is worded in both languages. */
 function progressShape(s: LineSignal): void {
+  if (s.warning !== undefined) expectI18n(s.warning, 'warning');
   if (s.progress === undefined) return;
   expect(typeof s.progress.key, 'progress.key').toBe('string');
   expect(s.progress.key.trim(), 'progress.key').not.toBe('');
@@ -126,6 +127,15 @@ export function runtimeAdapterSuite<P>(adapter: RuntimeAdapter<P>, opts: Runtime
       const missing = NEEDS.filter(([need, key]) => need.some((c) => caps.has(c)) && adapter[key] === undefined).map(([, , what]) => what);
       expect(missing).toEqual([]);
       if (adapter.installOnStart) expect(adapter.install, 'installOnStart() without install()').toBeDefined();
+    });
+
+    it.runIf(adapter.consoleLine !== undefined)('turns a typed console line into one line the game takes', () => {
+      for (const typed of ['players', '/players', 'say hello world', 'x']) {
+        const line = adapter.consoleLine!(typed);
+        expect(typeof line).toBe('string');
+        expect(/[\r\n\0]/.test(line), line).toBe(false);
+        expect(line, typed).toContain(typed.replace(/^\//, ''));
+      }
     });
 
     it('names its actions with safe ids', () => {
@@ -299,6 +309,8 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
       'makes the files consistent for a hot copy, then undoes it',
       async () => {
         await adapter.hotCopy!.before(game!.ctl);
+        // A selection only ever narrows what it is given.
+        if (adapter.hotCopy!.select) expect(await adapter.hotCopy!.select(ctx, [])).toEqual([]);
         await adapter.hotCopy!.after(game!.ctl);
       },
       testMs,
