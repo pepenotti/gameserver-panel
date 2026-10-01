@@ -238,3 +238,63 @@ counts).
   move to a newer .NET, and the panel's image will follow.
 - **Large worlds need at least 2 GiB.** tModLoader uses about 1 GiB before any
   mod. Measured.
+
+## Valheim
+
+Measured on the dedicated server 1.0.16 (`verification/valheim-1.0.16.md`), Oct 2026, without a
+game client; "Expected" items need a player to confirm. The panel's Valheim support is being built
+(M6): where an entry says what the panel does, that is the plan.
+
+- **There is no server console.** The panel can't send Valheim commands, warn players in game
+  before a restart, broadcast, or ask the game to save. It starts and stops the server with
+  signals, which save the world first. Measured.
+- **A running backup holds the world as of the last autosave.** Valheim saves on its own timer
+  (every 30 minutes by default) and when it stops; it can't be asked to save. The panel copies the
+  newest complete save, so a backup taken while it runs misses what happened since. Measured.
+  - A shorter save interval (a launch setting) narrows the gap.
+  - A backup of a stopped server is complete.
+- **Kick and ban happen in the game.** Only admins (their SteamIDs in the admin list) can kick or
+  ban, from the game's own console. The panel edits the admin, ban and allowed lists; the game
+  never rewrote them in testing, but whether it notices an edit without a restart is *Expected*,
+  not measured. Bans name SteamIDs, so Docker Desktop's hidden addresses don't affect them.
+- **Public servers need a real password.** A server listed publicly refuses to start with a
+  password shorter than 5 characters, or one that is part of the server's name. Private servers
+  take any password, or none. Measured.
+- **The number of players online is only known for public servers.** Valheim answers Steam's
+  server queries only when it is listed publicly. For a private server the panel can only follow
+  the join and leave lines in the log. *Expected*, not measured with a player.
+- **Crossplay needs extra libraries and shares your public address.** Crossplay (Xbox, Game Pass
+  and other platforms, joined by a code) needs three libraries the panel's image doesn't have
+  today; without them the server starts but nobody can join through crossplay. With them, the game
+  registers your public address with Microsoft's PlayFab and prints it in its log. Measured.
+- **It needs about 1.4 GiB and keeps a third of a CPU core busy**, even with nobody online.
+  Measured.
+- **The first start downloads about 2.2 GB, and a new world takes a minute and a half** to
+  generate before the server is ready (45 seconds for an existing one). Measured.
+- **A server port taken by something else isn't reported.** The game says it is ready but no one
+  can connect. The panel gives every server its own ports, so this matters only for ports used
+  outside the panel. Measured.
+- **Without access to Steam the server starts but players can't join**: it keeps logging
+  `Game server connected failed`. *Expected* (joining not tried).
+- **x86-64 only**, like every game installed through Steam. Measured.
+- **Mods (BepInEx) aren't supported** (PRD §4): they install into the game's own folder, which the
+  panel keeps untouched.
+
+## Avorion (a Steam game run from a manifest)
+
+Measured on the dedicated server 2.5.13 (`verification/avorion-2.5.13.md`), Oct 2026, without a
+game client. Avorion is the game that proves the manifest path (M6); what the panel does is the
+plan until that lands.
+
+- **`server.ini` can only be edited while the server is stopped.** The running game writes its own
+  settings back over the file at every save (every 10 minutes by default) and when it stops, and
+  drops keys it doesn't know and comments. Measured.
+- **Crash reports to the game's maker are on by default.** The panel starts Avorion with them off.
+  Measured.
+- **Without access to Steam it falls back to older, unsafe network protocols** after 30 seconds,
+  and isn't listed. Measured.
+- **Which ports players need isn't known yet.** With Steam networking the game listened only on
+  its two query ports; the panel publishes the game port as well. *Expected*, needs a player.
+- **Moderation with players online isn't measured**: kick, ban and the player list were only
+  tried with nobody connected.
+- **x86-64 only.** Measured.
