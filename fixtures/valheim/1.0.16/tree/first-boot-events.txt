@@ -1,0 +1,13 @@
+# 01: files the first boot made, before the first save
+[+29.875] [fs] rename /data/worlds_local size=4096
+[+29.875] [fs] rename /data/worlds_local/gspffworld size=4096
+[+29.877] [fs] rename /data/worlds_local/gspffworld/_main.0.fwl2 size=0
+[+29.880] [fs] change /data/worlds_local/gspffworld/_main.0.fwl2 size=55
+[+31.885] [fs] rename /data/adminlist.txt size=0
+[+31.886] [fs] change /data/adminlist.txt size=39
+[+31.892] [fs] rename /data/bannedlist.txt size=0
+[+31.897] [fs] rename /data/permittedlist.txt size=42
+[+36.326] [out] 10/01/2026 15:39:22: Load world: gspffworld (gspffworld)
+[+36.328] [out] 10/01/2026 15:39:22:   missing /data/worlds_local/gspffworld.db
+[+44.747] [out] 10/01/2026 15:39:30: Loading: Generating locations
+[+77.157] [out] 10/01/2026 15:40:03: Opened Steam server

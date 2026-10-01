@@ -1,0 +1,41 @@
+{
+  "info": {
+    "protocol": 17,
+    "name": "gspff test",
+    "map": "yY9FTn3A3A",
+    "folder": "avorion",
+    "game": "Avorion",
+    "appId": 0,
+    "players": 0,
+    "maxPlayers": 8,
+    "bots": 0,
+    "serverType": "l",
+    "environment": "l",
+    "visibility": 0,
+    "vac": 1,
+    "version": "2.5.13.44140",
+    "edf": 177,
+    "port": 27000,
+    "steamId": "90000000000000001",
+    "keywords": "Normal",
+    "gameId": "445220"
+  },
+  "players": {
+    "count": 0,
+    "list": []
+  },
+  "rules": {
+    "count": 9,
+    "rules": {
+      "collision_damage": "Full",
+      "description": "An Avorion Server",
+      "difficulty": "Veteran",
+      "mods": "0",
+      "mod_achievements": "yes",
+      "same_start_sector": "yes",
+      "scenario": "Normal",
+      "tutorial": "no",
+      "version": "2.5.13.44140"
+    }
+  }
+}

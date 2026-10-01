@@ -1,0 +1,3 @@
+# argv: ["/opt/game/bin/AvorionServer","--galaxy-name","gspffgalaxy","--datapath","/opt/game/nosave","--server-name","gspff test","--port","27000","--send-crash-reports","false"]
+# cwd: /opt/game
+An exception occurred: N5boost10wrapexceptINS_13property_tree10ini_parser16ini_parser_errorEEE: /opt/game/nosave/gspffgalaxy/server.ini: cannot open file

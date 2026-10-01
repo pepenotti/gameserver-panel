@@ -1,0 +1,127 @@
+# argv: ["/opt/game/bin/AvorionServer","--galaxy-name","gspffgalaxy","--datapath","/data","--server-name","gspff test","--port","27000","--send-crash-reports","false","--save-interval","30","--max-players","8"]
+# cwd: /opt/game
+Enabled Traces: 
+Avorion server 2.5.13 0417ab29738c running on Debian GNU/Linux 13 (trixie) starting up in "/data/gspffgalaxy"
+Version Hash: 5381909983546055243
+CPU: <host CPU>
+RAM: <host RAM>
+
+Server version, as listed publicly: 2.5.13.44140
+[stderr] [S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+[stderr] Setting breakpad minidump AppID = 445220
+[stderr] SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561198000000001 [API loaded no]
+Server connected to Steam successfully
+Server is VAC Secure!
+Game Server Steam ID: 90000000000000001
+Game Port: 27000
+Steam Port: 27021
+Steam Query Port: 27020
+Query Port: 27003
+
+Steam Networking initialized.
+Warning: No RCON password set. RCON disabled.
+Found 0 mods in "/data/gspffgalaxy/modconfig.lua".
+name: gspff test
+seed: yY9FTn3A3A
+port: 27000
+max online players: 8
+save interval: 30
+broadcast interval: 5
+max loaded sector time: 300
+weak update: yes
+worker threads: 9
+generator threads: 2
+script background threads: 2
+difficulty: Veteran
+scenario: Normal
+tutorial: no
+collision: 1
+access list: Blacklist
+multiplayer: yes
+vac secure: yes
+listed: no
+steam networking: yes
+send crash reports: no
+Backup creation enabled. Path: "/home/node/.avorion/backups"
+Please ensure that the server has write-access to that path.
+administrators: 
+Warning: Your server does not have an administrator assigned.
+Commands file: /data/gspffgalaxy/commands.txt
+Initializing sector database...
+Initializing faction database...
+Starting up 9 worker threads...
+Starting up 2 script background threads...
+Loading groups...
+Loading script data...
+Galaxy initialized.
+Server startup complete.
+Triggered saving of all server data.
+> /version
+Server Version: 2.5.13 0417ab29738c
+> /seed
+yY9FTn3A3A
+> /players
+online players (0):
+> /say hello from gspff
+<Server> hello from gspff 
+> /kick gspffnobody
+Player gspffnobody is not online.
+> /ban gspffnobody
+Player gspffnobody not found.
+> /unban gspffnobody
+Player gspffnobody not found.
+> /banip 192.0.2.77
+Player 192.0.2.77 not found
+> /unbanip 192.0.2.77
+Ip 192.0.2.77 was not blacklisted
+> /whitelist
+Allowed options:
+  -s [ --status ]       checks if this list mode is active
+  --activate            sets the login filter to this list mode
+  --id arg              The steam Id of the player as 64bit number
+  --name arg            The nick name of the player
+  -a [ --add ]          add user to list
+  -r [ --remove ]       remove user from list
+  -c [ --check ]        check for user in list
+  -l [ --list ]         print all players in this list
+> /admin
+Invalid usage
+Example: /admin -a [Player] for adding a player as administrator.
+Allowed options:
+  --id arg              The steam Id of the player as 64bit number
+  --name arg            The nick name of the player
+  -a [ --add ] arg      add user to administrator list
+  -r [ --remove ] arg   remove user from administrator list
+> /notacommand
+Unknown command: "notacommand". To see all available commands type "/help"
+> say plain words
+Invalid command formatting. Commands must begin with a '/' character.
+> /save
+Saving all server data.
+Triggered saving of all server data.
+All sectors saved successfully.
+> /save
+Saving all server data.
+Triggered saving of all server data.
+All sectors saved successfully.
+Cleaning up entity transfers ...
+Server is shutting down.
+Saving settings...
+Saving script values...
+Saving factions...
+Saving sectors...
+Saving groups...
+Saving galaxy script data...
+Saving settings...
+waiting for unfinished sector generation jobs...
+waiting for unfinished sector save jobs...
+shutting down rcon...
+shutting down networking...
+cleaning up communicators...
+waiting for sector database termination...
+waiting for faction database termination...
+shutting down galaxy...
+shutting down faction database...
+shutting down sector database...
+cleaning up timers...
+Server shutdown successful.

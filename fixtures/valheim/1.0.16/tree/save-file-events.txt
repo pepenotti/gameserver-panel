@@ -1,0 +1,41 @@
+# 02: -saveinterval 60, the first autosave, then the stop on SIGINT (seconds since start)
+[+88.907] [out] 10/01/2026 15:44:02: Considering autobackup for World. World time: 43.75999, short time: 60, long time: 120, backup count: 3
+[+88.907] [out] 10/01/2026 15:44:02: Skipping backup. World session not long enough.
+[+88.908] [out] 10/01/2026 15:44:02: World save (1/5) Cloud & Backup checks done [1ms] => Save number 2
+[+88.916] [fs] rename /data/worlds_local/gspffworld/00_00__0_2.chunk size=0
+[+88.930] [fs] change /data/worlds_local/gspffworld/00_00__0_2.chunk size=1544
+[+88.943] [fs] rename /data/worlds_local/gspffworld/_main.2.chunks size=0
+[+88.943] [fs] change /data/worlds_local/gspffworld/_main.2.chunks size=21
+[+88.954] [out] 10/01/2026 15:44:02: World save (2/5) Chunks writing done [45ms]
+[+88.955] [fs] rename /data/worlds_local/gspffworld/_main.2.db2 size=0
+[+88.976] [fs] change /data/worlds_local/gspffworld/_main.2.db2 size=145666
+[+88.981] [out] 10/01/2026 15:44:02: World save (3/5) DB2 writing done [26ms]
+[+88.982] [fs] rename /data/worlds_local/gspffworld/_main.2.fwl2 size=0
+[+88.989] [out] 10/01/2026 15:44:02: World save (4/5) FWL writing done [7ms]
+[+88.989] [fs] rename /data/worlds_local/gspffworld/_main.2.ok size=4
+[+88.997] [fs] rename /data/worlds_local/gspffworld/_main.1.fwl2 (gone)
+[+88.998] [fs] rename /data/worlds_local/gspffworld/_main.1.db2 (gone)
+[+88.998] [fs] rename /data/worlds_local/gspffworld/_main.1.chunks (gone)
+[+88.998] [fs] rename /data/worlds_local/gspffworld/_main.1.ok (gone)
+[+88.998] [fs] rename /data/worlds_local/gspffworld/00_00__0_1.chunk (gone)
+[+88.999] [out] 10/01/2026 15:44:02: World save (5/5) done. Total time [94ms]
+[+462.765] [ctl] signal SIGINT to group 14
+[+462.806] [out] 10/01/2026 15:50:16: Game - OnApplicationQuit
+[+462.812] [out] 10/01/2026 15:50:16: World save (1/5) Cloud & Backup checks done [1ms] => Save number 9
+[+462.813] [fs] rename /data/worlds_local/gspffworld/00_00__0_9.chunk size=0
+[+462.821] [fs] rename /data/worlds_local/gspffworld/_main.9.chunks size=0
+[+462.825] [fs] change /data/worlds_local/gspffworld/_main.9.chunks size=21
+[+462.829] [out] 10/01/2026 15:50:16: World save (2/5) Chunks writing done [16ms]
+[+462.830] [fs] rename /data/worlds_local/gspffworld/_main.9.db2 size=0
+[+462.854] [fs] change /data/worlds_local/gspffworld/_main.9.db2 size=145666
+[+462.860] [out] 10/01/2026 15:50:16: World save (3/5) DB2 writing done [30ms]
+[+462.860] [fs] rename /data/worlds_local/gspffworld/_main.9.fwl2 size=55
+[+462.865] [out] 10/01/2026 15:50:16: World save (4/5) FWL writing done [5ms]
+[+462.866] [fs] rename /data/worlds_local/gspffworld/_main.9.ok size=4
+[+462.871] [fs] rename /data/worlds_local/gspffworld/_main.8.fwl2 (gone)
+[+462.872] [fs] rename /data/worlds_local/gspffworld/_main.8.db2 (gone)
+[+462.872] [fs] rename /data/worlds_local/gspffworld/_main.8.chunks (gone)
+[+462.872] [fs] rename /data/worlds_local/gspffworld/_main.8.ok (gone)
+[+462.873] [fs] rename /data/worlds_local/gspffworld/00_00__0_8.chunk (gone)
+[+462.873] [out] 10/01/2026 15:50:16: World save (5/5) done. Total time [61ms]
+[+466.451] [exit] code=0 signal=null after 466.451s

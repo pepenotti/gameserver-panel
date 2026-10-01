@@ -1,0 +1,252 @@
+# argv: ["/opt/game/valheim_server.x86_64","-nographics","-batchmode","-name","gspff test","-port","2456","-world","gspffworld","-password","<redacted>","-public","0","-savedir","/data"]
+# cwd: /opt/game
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=4194304"
+    "memorysetup-bucket-allocator-block-count=1"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=4194304"
+    "memorysetup-profiler-bucket-allocator-block-count=1"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=4194304"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=262144"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Mono path[0] = '/opt/game/valheim_server_Data/Managed'
+Mono config path = '/opt/game/valheim_server_Data/MonoBleedingEdge/etc'
+Failed to open plugin: /opt/game/valheim_server_Data/Plugins/libparty.so
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+Initialize engine version: 6000.0.75f1 (26349cd2a5c8)
+[Subsystems] Discovering subsystems at path /opt/game/valheim_server_Data/UnitySubsystems
+Forcing GfxDevice: Null
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+Begin MonoManager ReloadAssembly
+- Loaded All Assemblies, in  0.144 seconds
+- Finished resetting the current domain, in  0.003 seconds
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+UnloadTime: 0.508457 ms
+10/01/2026 16:08:14: Set background loading budget to Low
+10/01/2026 16:08:14: Loading first scene!
+10/01/2026 16:08:14: Preferences initialized! Activating first scene!
+Unloading 4 Unused Serialized files (Serialized files now loaded: 8)
+UnloadTime: 0.096898 ms
+10/01/2026 16:08:14: Loading: Starting to load scene: start.unity (169d7618616154c03be07e9ad3af5893)
+10/01/2026 16:08:14: Set background loading budget to Normal
+10/01/2026 16:08:14: Loaded localization file #0 - 'localization' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #1 - 'localization_extra' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #2 - 'heightmap_message' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #3 - 'localization_witch' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #4 - 'localization_ashlands' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #5 - 'localization_deepnorth' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #6 - 'localization_captions' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #7 - 'localization_warriortitles' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #8 - 'localization_combatupdate' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #9 - 'localization_ps' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #10 - 'localization_celebrationupdate' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #11 - 'localization_xbox' language: 'English'
+10/01/2026 16:08:14: Loaded localization file #12 - 'localization_switch' language: 'English'
+Unloading 26 unused Assets to reduce memory usage. Loaded Objects now: 3044.
+Total: 5.263692 ms (FindLiveObjects: 0.165635 ms CreateObjectMapping: 0.054561 ms MarkObjects: 4.957257 ms  DeleteObjects: 0.085397 ms)
+
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+10/01/2026 16:08:18: Set background loading budget to High
+10/01/2026 16:08:18: GPU Device: 0000:0000 (Unknown)
+The referenced script on this Behaviour (Game Object '') is missing!
+AsyncResourceUpload failed.
+AsyncResourceUpload failed.
+The referenced script on this Behaviour (Game Object '') is missing!
+The referenced script on this Behaviour (Game Object '') is missing!
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+Unloading 2 Unused Serialized files (Serialized files now loaded: 19)
+10/01/2026 16:08:24: Loading: Done, Total time: -10.182575
+10/01/2026 16:08:43: Set background loading budget to Low
+UnloadTime: 13.440671 ms
+HDR Render Texture not supported, disabling HDR on reflection probe.
+This custom render path shader needs to have at least 1 passes.
+Could not find material Hidden/VideoDecode. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+Could not find video decode shader pass YCbCr_To_RGB1 in shader <not found>
+Could not find video decode shader pass YCbCrA_To_RGBAFull in shader <not found>
+Could not find video decode shader pass YCbCrA_To_RGBA in shader <not found>
+Could not find video decode shader pass Flip_RGBA_To_RGBA in shader <not found>
+Could not find video decode shader pass Flip_RGBASplit_To_RGBA in shader <not found>
+This custom render path shader needs to have at least 1 passes.
+Could not find material Hidden/VideoComposite. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+Could not find video decode shader pass Default in shader <not found>
+10/01/2026 16:08:43: Missing audio clip in music respawn
+OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+10/01/2026 16:08:43: Setting -savedir to: /data
+10/01/2026 16:08:43: Get create world gspffworld
+10/01/2026 16:08:43: SaveSystem.Reload for World is done [72ms]
+10/01/2026 16:08:43: Using environment steamid 892970
+10/01/2026 16:08:43: Using steam APPID:892970
+[stderr] [S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+[stderr] Setting breakpad minidump AppID = 892970
+[stderr] SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561198000000001 [API loaded no]
+[stderr] [S_API FAIL] Tried to access Steam interface SteamNetworkingUtils004 before SteamAPI_Init succeeded.
+10/01/2026 16:08:46: Server ID 90071992547409920
+10/01/2026 16:08:46: Authentication:k_ESteamNetworkingAvailability_Waiting
+10/01/2026 16:08:46: Steam game server initialized
+10/01/2026 16:08:46: Valheim version: l-1.0.16 (network version 40)
+10/01/2026 16:08:46: Worldgenerator version setup:2
+10/01/2026 16:08:46: Console: Valheim l-1.0.16 (network version 40)
+10/01/2026 16:08:46: Console: 
+10/01/2026 16:08:46: Console: type "help" - for commands
+10/01/2026 16:08:46: Console: 
+10/01/2026 16:08:46: Render threading mode:SingleThreaded
+OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+10/01/2026 16:08:46: Builder started
+10/01/2026 16:08:46: SaveSystem.Reload for Character is done [0ms]
+10/01/2026 16:08:46: Failed to play intro cinematic
+10/01/2026 16:08:46: Sending PlayFab login request (attempt 1)
+10/01/2026 16:08:46: Login postponed until ID has been set.
+The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+DllNotFoundException: libParty.so assembly:<unknown assembly> type:<unknown type> member:(null)
+  at (wrapper managed-to-native) PartyCSharpSDK.Interop.PFPInterop.PartyInitialize(byte[],PartyCSharpSDK.Interop.PARTY_HANDLE&)
+  at PartyCSharpSDK.SDK.PartyInitialize (System.String titleId, PartyCSharpSDK.PARTY_HANDLE& handle) [0x00006] in <404aa553a35d4dcb8f3cef585dce8643>:0 
+  at PlayFab.Party.PlayFabMultiplayerManager.InitializeImpl () [0x000c4] in <404aa553a35d4dcb8f3cef585dce8643>:0 
+  at PlayFab.Party.PlayFabMultiplayerManager._Initialize () [0x0000a] in <404aa553a35d4dcb8f3cef585dce8643>:0 
+  at PlayFab.Party.PlayFabMultiplayerManager.Start () [0x00000] in <404aa553a35d4dcb8f3cef585dce8643>:0 
+
+10/01/2026 16:08:46: Starting music menu
+Unloading 106004 unused Assets to reduce memory usage. Loaded Objects now: 276699.
+Total: 342.632144 ms (FindLiveObjects: 58.629432 ms CreateObjectMapping: 75.108149 ms MarkObjects: 123.723159 ms  DeleteObjects: 85.169801 ms)
+
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+The referenced script on this Behaviour (Game Object '<null>') is missing!
+Unloading 3 Unused Serialized files (Serialized files now loaded: 22)
+UnloadTime: 26.932939 ms
+HDR Render Texture not supported, disabling HDR on reflection probe.
+HDR Render Texture not supported, disabling HDR on reflection probe.
+10/01/2026 16:08:47: Audioman already exist, destroying self
+OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[stderr] src/clientdll/cminterface.cpp (2257) : !BLoggedOn()
+src/clientdll/cminterface.cpp (2257) : !BLoggedOn()
+10/01/2026 16:08:47: Console: Valheim l-1.0.16 (network version 40)
+10/01/2026 16:08:47: Console: 
+10/01/2026 16:08:47: Console: type "help" - for commands
+10/01/2026 16:08:47: Console: 
+10/01/2026 16:08:47: isModded: False
+10/01/2026 16:08:47: Zonesystem Awake 18238
+10/01/2026 16:08:47: DungeonDB Awake 18238
+10/01/2026 16:08:47: Worldgenerator version setup:2
+OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+10/01/2026 16:08:51: Console: /w [text] - Whisper
+10/01/2026 16:08:51: Console: /s [text] - Shout
+10/01/2026 16:08:51: Console: /die - Kill yourself
+10/01/2026 16:08:51: Console: /resetspawn - Reset spawn point
+10/01/2026 16:08:51: Console: /[emote]
+10/01/2026 16:08:51: Console: Emotes: wave, sit, challenge, cheer, nonono, thumbsup, point, blowkiss, bow, cower, cry, despair, flex, comehere, headbang, kneel, laugh, roar, shrug, dance, relax, toast, rest, vibe, loveyou
+10/01/2026 16:08:51: Console: 
+[AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+Unloading 302 unused Assets to reduce memory usage. Loaded Objects now: 277340.
+Total: 254.563185 ms (FindLiveObjects: 31.214943 ms CreateObjectMapping: 39.560639 ms MarkObjects: 182.676698 ms  DeleteObjects: 1.109333 ms)
+
+10/01/2026 16:08:52: Zonesystem Start 18238
+10/01/2026 16:08:52: Added 3 locations, 0 vegetations, 0 environments, 0 biome env-setups, 0 clutter  from main
+10/01/2026 16:08:52: Added 2 locations, 0 vegetations, 2 environments, 0 biome env-setups, 0 clutter  from main
+10/01/2026 16:08:52: Added 27 locations, 25 vegetations, 5 environments, 1 biome env-setups, 3 clutter  from main
+10/01/2026 16:08:52: Added 4 locations, 0 vegetations, 1 environments, 0 biome env-setups, 0 clutter  from main
+10/01/2026 16:08:52: Added 25 locations, 33 vegetations, 8 environments, 2 biome env-setups, 2 clutter  from main
+10/01/2026 16:08:52: Added 25 locations, 35 vegetations, 12 environments, 1 biome env-setups, 2 clutter  from main
+10/01/2026 16:08:52: DungeonDB Start 18238
+10/01/2026 16:08:52: ZRpc timeout set to 30s 
+10/01/2026 16:08:52: Loading: ZNet Start
+10/01/2026 16:08:52: ZNet.LoadWorld: gspffworld (gspffworld), save number 15
+10/01/2026 16:08:52: ZoneSystem.Load => DB2: unpacking compressed data 145,610 => 208,319 bytes
+10/01/2026 16:08:52: ZoneSystem.Load => Loaded 12,234 locations
+10/01/2026 16:08:52: ZDOMan.LoadChunks - Starting to load 85 zdos from 1 Chunks. SessionID: 3813281904, WorldVersion: 41 [DeepNorth]
+10/01/2026 16:08:52: ZDOMan.LoadChunks => Loading ZDOs done [19ms]
+10/01/2026 16:08:52: ZDOMan.LoadChunks => Adding ZDOs to Dictionary done [1ms]
+10/01/2026 16:08:52: ZDOMan.LoadChunks => Adding ZDOs to Sectors done [0ms]
+10/01/2026 16:08:52: ZDOMan.LoadChunks => Connecting Portals done [1ms]
+10/01/2026 16:08:52: ZDOMan.LoadChunks => Connecting Spawners done [0ms]
+10/01/2026 16:08:52: ZDOMan.LoadChunks => Connecting SyncTransforms done [0ms]
+10/01/2026 16:08:52: ZDOMan.LoadChunks done [26ms]
+10/01/2026 16:08:52: Checking for any blocked players in the historical player list...
+10/01/2026 16:08:52: Unloading unused assets
+Unloading 1 Unused Serialized files (Serialized files now loaded: 22)
+10/01/2026 16:09:01: Registering lobby
+10/01/2026 16:09:01: Opened Steam server
+The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+10/01/2026 16:09:01: Game server connected
+Unloading 2 unused Assets to reduce memory usage. Loaded Objects now: 277314.
+Total: 165.152709 ms (FindLiveObjects: 28.155770 ms CreateObjectMapping: 38.367068 ms MarkObjects: 97.902692 ms  DeleteObjects: 0.726137 ms)
+
+[AmplifyOcclusion] GBuffer Normals only available in Camera Deferred Shading mode. Switched to Camera source.
+10/01/2026 16:09:36: Game - OnApplicationQuit
+10/01/2026 16:09:36: Available space to current user: <free bytes>. Saving is blocked if below: <bytes> bytes. Warnings are given if below: <bytes>
+10/01/2026 16:09:36: Shutting down
+10/01/2026 16:09:36: ZNet Shutdown
+10/01/2026 16:09:36: GetSaveClonePerChunk. Calculated number of actual chunk files: 1  Number of dirty chunks to save: 1 [5ms]
+10/01/2026 16:09:36: PrepareSave: ZDOExtraData.PrepareSave done [13ms]
+10/01/2026 16:09:36:  ### Save World Thread Started! ### 
+10/01/2026 16:09:36: Considering autobackup for World. World time: 35.01999, short time: 7200, long time: 43200, backup count: 4
+10/01/2026 16:09:36: Skipping backup. World session not long enough.
+10/01/2026 16:09:36: World save (1/5) Cloud & Backup checks done [1ms] => Save number 16
+10/01/2026 16:09:36: World save (2/5) Chunks writing done [30ms]
+10/01/2026 16:09:36: World save (3/5) DB2 writing done [29ms]
+10/01/2026 16:09:36: World save (4/5) FWL writing done [6ms]
+10/01/2026 16:09:36: World save (5/5) done. Total time [77ms]
+10/01/2026 16:09:36: Unloading unused assets
+Unloading 0 Unused Serialized files (Serialized files now loaded: 22)
+10/01/2026 16:09:36: Sending disconnect msg
+ZPlayFabMatchmaking::UnregisterServer - unregistering server now. State: Uninitialized
+10/01/2026 16:09:36: Disposing socket
+10/01/2026 16:09:36: Last socket, unregistering callback
+10/01/2026 16:09:36: ZSteamSocket  UnregisterGlobalCallbacks, existing sockets:0
+10/01/2026 16:09:36: Stopping build thread
+Unloading 1 unused Assets to reduce memory usage. Loaded Objects now: 279642.
+Total: 189.062435 ms (FindLiveObjects: 25.585060 ms CreateObjectMapping: 52.673313 ms MarkObjects: 109.930274 ms  DeleteObjects: 0.872316 ms)
+
+10/01/2026 16:09:39: ZNet OnDestroy
+10/01/2026 16:09:39: Net scene destroyed
+10/01/2026 16:09:39: Steam manager on destroy
+[Physics::Module] Cleanup current backned.
+[Physics::Module] Id: 0xf2b8ea05
+Input System module state changed to: ShutdownInProgress.
+Input System polling thread exited.
+Input System module state changed to: Shutdown.

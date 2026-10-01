@@ -1,0 +1,85 @@
+# 01: /save, then /stop (seconds since start)
+[+20.638] [ctl] stdin: /save
+[+20.688] [out] Saving all server data.
+[+22.705] [fs] change /data/gspffgalaxy/server.ini size=2694
+[+22.706] [fs] change /data/gspffgalaxy/server.ini size=2694
+[+22.706] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+22.706] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+22.707] [fs] change /data/gspffgalaxy/whitelist.txt size=0
+[+22.707] [fs] rename /data/gspffgalaxy/server.dat~ (gone)
+[+22.707] [fs] change /data/gspffgalaxy/group-whitelist.txt size=0
+[+22.708] [fs] rename /data/gspffgalaxy/globals size=170
+[+22.708] [fs] rename /data/gspffgalaxy/index size=94
+[+22.708] [fs] rename /data/gspffgalaxy/index~ (gone)
+[+22.708] [fs] rename /data/gspffgalaxy/server.dat.0 size=109
+[+22.709] [fs] change /data/gspffgalaxy/blacklist.txt size=0
+[+22.709] [fs] rename /data/gspffgalaxy/galaxyscripts.dat size=357
+[+22.709] [fs] rename /data/gspffgalaxy/groups.dat size=100
+[+22.709] [fs] change /data/gspffgalaxy/ipblacklist.txt size=0
+[+22.709] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+22.709] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+22.710] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+22.710] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+22.712] [fs] rename /data/gspffgalaxy/sectors/meta.db.1 size=195
+[+22.756] [out] All sectors saved successfully.
+[+35.460] [ctl] stdin: /stop
+[+36.713] [fs] change /data/gspffgalaxy/server.ini size=2694
+[+36.714] [fs] change /data/gspffgalaxy/server.ini size=2694
+[+36.714] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+36.714] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+36.714] [fs] change /data/gspffgalaxy/whitelist.txt size=0
+[+36.715] [fs] change /data/gspffgalaxy/group-whitelist.txt size=0
+[+36.715] [fs] rename /data/gspffgalaxy/globals~ size=170
+[+36.715] [fs] rename /data/gspffgalaxy/server.dat.1 size=109
+[+36.716] [fs] change /data/gspffgalaxy/blacklist.txt size=0
+[+36.716] [fs] change /data/gspffgalaxy/ipblacklist.txt size=0
+[+36.716] [fs] rename /data/gspffgalaxy/index~ size=94
+[+36.716] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+36.717] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+36.717] [fs] rename /data/gspffgalaxy/groups.dat~ (gone)
+[+36.717] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+36.717] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+36.717] [fs] rename /data/gspffgalaxy/galaxyscripts.dat~ size=357
+[+36.718] [fs] change /data/gspffgalaxy/globals size=170
+[+36.719] [fs] change /data/gspffgalaxy/globals size=170
+[+36.719] [fs] rename /data/gspffgalaxy/globals~ (gone)
+[+36.720] [fs] change /data/gspffgalaxy/index size=94
+[+36.720] [fs] change /data/gspffgalaxy/index size=94
+[+36.722] [fs] rename /data/gspffgalaxy/sectors/meta.db.2 size=195
+[+36.722] [fs] change /data/gspffgalaxy/groups.dat size=100
+[+36.722] [fs] change /data/gspffgalaxy/groups.dat size=100
+[+36.723] [fs] change /data/gspffgalaxy/galaxyscripts.dat size=357
+[+36.723] [fs] change /data/gspffgalaxy/galaxyscripts.dat size=357
+[+36.724] [fs] rename /data/gspffgalaxy/galaxyscripts.dat~ (gone)
+[+36.724] [fs] change /data/gspffgalaxy/server.ini size=2694
+[+36.724] [fs] change /data/gspffgalaxy/server.ini size=2694
+[+36.725] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+36.725] [fs] change /data/gspffgalaxy/admin.xml size=1740
+[+36.725] [fs] change /data/gspffgalaxy/whitelist.txt size=0
+[+36.725] [fs] change /data/gspffgalaxy/group-whitelist.txt size=0
+[+36.726] [fs] change /data/gspffgalaxy/blacklist.txt size=0
+[+36.726] [fs] change /data/gspffgalaxy/ipblacklist.txt size=0
+[+36.726] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+36.726] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+36.726] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+36.726] [fs] change /data/gspffgalaxy/server.ini - readme.txt size=19716
+[+36.728] [out] Server is shutting down.
+[+36.728] [out] Saving settings...
+[+36.728] [out] Saving script values...
+[+36.728] [out] Saving factions...
+[+36.728] [out] Saving sectors...
+[+36.728] [out] Saving groups...
+[+36.728] [out] Saving galaxy script data...
+[+36.728] [out] Saving settings...
+[+36.728] [out] shutting down rcon...
+[+36.728] [out] shutting down networking...
+[+37.090] [fs] rename /data/gspffgalaxy/index~ size=94
+[+37.092] [fs] change /data/gspffgalaxy/sectors/meta.db.0 size=195
+[+37.092] [fs] change /data/gspffgalaxy/sectors/meta.db.0 size=195
+[+37.093] [fs] change /data/gspffgalaxy/index size=94
+[+37.093] [fs] change /data/gspffgalaxy/index size=94
+[+37.106] [out] shutting down galaxy...
+[+37.106] [out] shutting down faction database...
+[+37.106] [out] shutting down sector database...
+[+37.109] [out] Server shutdown successful.
+[+37.345] [exit] code=0 signal=null after 37.345s
