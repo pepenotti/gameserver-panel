@@ -1,4 +1,4 @@
-import type { CommandDoc } from '@gsp/adapter-api';
+import type { CommandDoc, LaunchSettingRefusal } from '@gsp/adapter-api';
 import { RconProtocolError, type OptionMeta } from '@gsp/formats';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { COUNTDOWNS, type GameLang } from '../control/control';
@@ -17,6 +17,19 @@ export function auditableCommand(cmd: string, catalog: readonly CommandDoc[]): s
   const secret = catalog.some((c) => c.secretArgs && c.name.toLowerCase() === name.toLowerCase());
   if (secret && rest.length) return `${name} <arguments hidden>`;
   return cmd.slice(0, 300);
+}
+
+/**
+ * A launch setting the adapter refused, as it worded the refusal
+ * (`LaunchSettingRefusal`: the setting's key and EN/ES text), for the
+ * answer's details; null for any other error.
+ */
+export function launchRefusal(e: unknown): LaunchSettingRefusal | null {
+  if (!(e instanceof Error)) return null;
+  const { field, text } = e as Error & Partial<LaunchSettingRefusal>;
+  if (typeof field !== 'string' || field === '' || typeof text !== 'object' || text === null) return null;
+  if (typeof text.en !== 'string' || typeof text.es !== 'string') return null;
+  return { field: field.slice(0, 64), text: { en: text.en.slice(0, 300), es: text.es.slice(0, 300) } };
 }
 
 /**
@@ -152,7 +165,9 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
       try {
         handle.launchEnvelope({}, body);
       } catch (e) {
-        throw new HttpError(400, 'validation', (e as Error).message);
+        // A refusal the adapter worded names its setting, in both languages (CFG-01, UX-01).
+        const refused = launchRefusal(e);
+        throw new HttpError(400, 'validation', (e as Error).message, refused ? { ...refused, message: (e as Error).message } : undefined);
       }
       const before = handle.publicLaunchSettings();
       // SRV-05: more (or less) memory for the game moves its container's limit too, before anything is stored.

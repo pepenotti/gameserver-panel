@@ -206,7 +206,12 @@ export class ServersStore {
 export function ensureDefaultServer(store: ServersStore, o: { env: PanelEnv; adapter: PanelAdapter; settings: KeyValueSettings }): ServerRow | null {
   const { env, adapter } = o;
   if (store.count() > 0 || !env.agentUrl || !env.agentToken) return null;
-  const ports = Object.fromEntries(adapter.meta.ports.filter((p) => p.publish).map((p) => [p.id, env.ports[p.id] ?? p.default]));
+  const ports: Record<string, number> = {};
+  for (const p of adapter.meta.ports.filter((x) => x.publish)) {
+    // A port that follows another comes with it.
+    const base = p.follows ? ports[p.follows.id] : undefined;
+    ports[p.id] = env.ports[p.id] ?? (base !== undefined ? base + p.follows!.offset : p.default);
+  }
   const launch = { ...(adapter.launch.defaults() as Record<string, unknown>), ...(o.settings.getRaw<Record<string, unknown>>('launch') ?? {}) };
   const memoryKey = adapter.launch.schema.find((x) => x.role === 'memory')?.key;
   const memory = memoryKey !== undefined && typeof launch[memoryKey] === 'number' ? (launch[memoryKey] as number) : adapter.meta.memory.defaultMb;
