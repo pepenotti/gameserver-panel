@@ -125,6 +125,15 @@ function start(args: string[], o: { dir?: string; env?: Record<string, string> }
   return f;
 }
 
+/** Waits for a condition on what the fake printed (checked as each line arrives would be: every 10 ms). */
+async function until(ok: () => boolean, ms = 20_000 * SCALE): Promise<void> {
+  const end = Date.now() + ms;
+  while (!ok()) {
+    if (Date.now() > end) throw new Error('timed out');
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
 /** The launch an adapter will make (savedir in the data root). */
 const launch = (dir: string, port: number, extra: string[] = []) => ['-nographics', '-batchmode', '-name', 'gspff test', '-port', String(port), '-world', 'w1', '-password', 'secret12', '-public', '0', '-savedir', dir, ...extra];
 
@@ -282,6 +291,30 @@ describe('fake-valheim server.mjs', () => {
     f.send('help');
     await new Promise((r) => setTimeout(r, 100));
     expect(f.lines.some((l) => /help|Unknown/.test(l))).toBe(false);
+  });
+
+  it('a save can take its time step by step: caught half written, the previous complete set is still whole', async () => {
+    const dir = tempDir();
+    // A save every 3 s whose 5 steps take 150 ms each.
+    const f = start(launch(dir, await freeUdpPort(), ['-saveinterval', '1']), { dir, env: { FAKE_VALHEIM_SAVE_MS_PER_S: String(3000 * SCALE), FAKE_VALHEIM_SAVE_STEP_MS: String(150 * SCALE) } });
+    const world = () => readdirSync(path.join(dir, 'worlds_local', 'w1')).sort();
+    await f.waitFor(/^World save \(1\/5\) .* => Save number 2$/, 20_000 * SCALE);
+    // Set 2 being written, its database done (no .fwl2 or .ok yet); set 1 complete and still there.
+    await until(() => f.lines.slice(f.lines.findIndex((l) => / => Save number 2$/.test(l))).some((l) => /^World save \(3\/5\) /.test(l)));
+    expect(world()).toEqual(['00_00__0_1.chunk', '00_00__0_2.chunk', '_main.1.chunks', '_main.1.db2', '_main.1.fwl2', '_main.1.ok', '_main.2.chunks', '_main.2.db2']);
+    await until(() => f.lines.filter((l) => PATTERNS.saved.test(l)).length >= 2);
+    expect(world()).toEqual(['00_00__0_2.chunk', '_main.2.chunks', '_main.2.db2', '_main.2.fwl2', '_main.2.ok']);
+  });
+
+  it('saves never overlap: a timer save is skipped while one runs', async () => {
+    // A save every 40 ms whose 5 steps take 30 ms each.
+    const f = start(launch(tempDir(), await freeUdpPort(), ['-saveinterval', '1']), { env: { FAKE_VALHEIM_SAVE_MS_PER_S: '40', FAKE_VALHEIM_SAVE_STEP_MS: '30' } });
+    await until(() => f.lines.filter((l) => PATTERNS.saved.test(l)).length >= 4);
+    // Each (1/5) line is followed by its own (5/5) before the next (1/5), and the numbers go up by one.
+    const steps = f.lines.filter((l) => /^World save \((1|5)\/5\)/.test(l)).map((l) => l.slice(12, 13));
+    expect(steps.join('')).toMatch(/^(15)+1?$/);
+    const numbers = f.lines.filter((l) => PATTERNS.saveNumber.test(l)).map((l) => Number(PATTERNS.saveNumber.exec(l)![1]));
+    expect(numbers).toEqual(numbers.map((_, i) => i + 1));
   });
 
   it('an existing world loads by its newest complete save, without generating', async () => {

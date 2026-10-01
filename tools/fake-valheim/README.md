@@ -61,7 +61,10 @@ disabled …`, then a quit with `Skipping world save`, exit 0; a world whose `.d
 write does the same), `crash-on-boot` (the query socket can't be bound, exit 0), `never-ready` (the
 unwritable save folder: `IOException: Read-only file system`, then nothing; also when `-savedir`
 really can't be written), `ignore-stop` (SIGINT and SIGTERM do nothing). Tuning:
-`FAKE_VALHEIM_BOOT_MS` (300), `FAKE_VALHEIM_GEN_MS` (200), `FAKE_VALHEIM_STOP_MS` (200).
+`FAKE_VALHEIM_BOOT_MS` (300), `FAKE_VALHEIM_GEN_MS` (200), `FAKE_VALHEIM_STOP_MS` (200),
+`FAKE_VALHEIM_SAVE_MS_PER_S` (1000), `FAKE_VALHEIM_SAVE_STEP_MS` (0: how long each of a save's steps
+takes, so a test can catch a save half written; the real steps took 1–45 ms for a small world).
+Saves never overlap: a timer's save is skipped while one runs, and the stop's save waits for it.
 
 Test hooks on stdin (not real commands): `fake-join <steamid>` prints `Got connection SteamID
 <id>`, then `Got handshake from client <id>` and `Server: New peer connected,sending global keys`

@@ -17,7 +17,9 @@
 // Tuning: FAKE_VALHEIM_BOOT_MS (300; a real boot takes 45 s), FAKE_VALHEIM_GEN_MS (200; generating a new
 //   world takes 30 s more), FAKE_VALHEIM_STOP_MS (200), FAKE_VALHEIM_BIND_HOST (127.0.0.1),
 //   FAKE_VALHEIM_CROSSPLAY_LIBS=1 (PlayFab's libraries are installed; the product image lacks them),
-//   FAKE_VALHEIM_SAVE_MS_PER_S (1000: milliseconds per second of -saveinterval; tests shrink it).
+//   FAKE_VALHEIM_SAVE_MS_PER_S (1000: milliseconds per second of -saveinterval; tests shrink it),
+//   FAKE_VALHEIM_SAVE_STEP_MS (0: how long each step of a save takes, so a test can catch one half written;
+//   the real steps took 1-45 ms for a small world; saves never overlap: a timer's save is skipped while one runs).
 // Test hooks on stdin (the real server ignores stdin entirely): fake-join <steamid>, fake-leave <steamid>,
 //   fake-crash.
 import dgram from 'node:dgram';
@@ -34,6 +36,7 @@ const genMs = Number(env.FAKE_VALHEIM_GEN_MS ?? 200);
 const stopMs = Number(env.FAKE_VALHEIM_STOP_MS ?? 200);
 const bindHost = env.FAKE_VALHEIM_BIND_HOST ?? '127.0.0.1';
 const saveMsPerS = Number(env.FAKE_VALHEIM_SAVE_MS_PER_S ?? 1000);
+const saveStepMs = Number(env.FAKE_VALHEIM_SAVE_STEP_MS ?? 0);
 const VERSION = 'l-1.0.16';
 const NETWORK_VERSION = 40;
 
@@ -100,8 +103,23 @@ function writeFwl(n) {
   fs.writeFileSync(path.join(worldDir, `_main.${n}.fwl2`), `${HEADER}\nseed=FakeSeed01\nmodifiers=${mods.map(([k, v]) => `${k}:${v}`).join(',')}\n`);
 }
 
+/** The save in progress, if any: saves never overlap (one every -saveinterval, measured at 0.1 s each). */
+let saving = null;
+/** One step of a save taking its time (FAKE_VALHEIM_SAVE_STEP_MS; the real steps took 1-45 ms for a small world). */
+const step = () => (saveStepMs > 0 ? sleep(saveStepMs) : undefined);
+
+/** A save, after the one in progress (a timer's save is skipped while one runs). */
+function save(onStop) {
+  if (saving && !onStop) return saving;
+  const p = (saving ?? Promise.resolve()).then(() => writeSave(onStop)).finally(() => {
+    if (saving === p) saving = null;
+  });
+  saving = p;
+  return p;
+}
+
 /** One numbered save, in the order measured: chunk files, .chunks, .db2, .fwl2, the .ok marker, then the previous set goes. */
-async function save(onStop) {
+async function writeSave(onStop) {
   const s0 = Date.now();
   if (!onStop) log('Sending message to save player profiles');
   log('GetSaveClonePerChunk. Calculated number of actual chunk files: 1  Number of dirty chunks to save: 1 [1ms]');
@@ -114,13 +132,18 @@ async function save(onStop) {
   log(`World save (1/5) Cloud & Backup checks done [0ms] => Save number ${n}`);
   fs.mkdirSync(worldDir, { recursive: true });
   fs.writeFileSync(path.join(worldDir, `00_00__0_${n}.chunk`), `${HEADER} chunk save ${n}\n`);
+  await step();
   fs.writeFileSync(path.join(worldDir, `_main.${n}.chunks`), `chunks ${n}\n`);
   log('World save (2/5) Chunks writing done [1ms]');
+  await step();
   fs.writeFileSync(path.join(worldDir, `_main.${n}.db2`), `${HEADER} save ${n}\n`);
   log('World save (3/5) DB2 writing done [1ms]');
+  await step();
   writeFwl(n);
   log('World save (4/5) FWL writing done [1ms]');
+  await step();
   fs.writeFileSync(path.join(worldDir, `_main.${n}.ok`), String(n));
+  await step();
   for (const f of [`_main.${prev}.fwl2`, `_main.${prev}.db2`, `_main.${prev}.chunks`, `_main.${prev}.ok`, `00_00__0_${prev}.chunk`]) fs.rmSync(path.join(worldDir, f), { force: true });
   log(`World save (5/5) done. Total time [${Date.now() - s0}ms]`);
 }
