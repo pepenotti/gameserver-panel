@@ -1,29 +1,17 @@
 import type { AdapterMeta } from '@gsp/adapter-api';
+import { loadManifest, manifestMeta, type SteamGameManifest } from '@gsp/adapter-manifest/shared';
+import valheimJson from '../../manifest/valheim.json';
 
 /**
- * Valheim, shared by the runtime and panel halves.
- *
- * A skeleton (M3 contract step, for M6): what the PRD settles is filled in
- * (installed with steamcmd, so the steam family and x86-64 only); everything
- * about how the game behaves comes from the M6 fact-finding captures (D5,
- * `fixtures/valheim/`), and every value below marked TODO is a placeholder
- * nothing relies on. The adapter is registered but not offered
- * (`packages/adapters`) until then. M6 may turn it into the Steam manifest
- * plus hooks (`adapter-manifest`).
+ * Valheim as a Steam manifest plus hooks (M6, D4: "Valheim runs via
+ * manifest plus hooks"): `manifest/valheim.json` says everything the
+ * manifest format can (app 896660, the launch, its lines, ports, settings
+ * and their rules, the stop signal, autosaves, list files, backups, notes),
+ * from the dedicated server 1.0.16 as measured
+ * (docs/verification/valheim-1.0.16.md, fixtures/valheim/1.0.16). It is
+ * checked against the manifest schema when this module loads.
  */
-export const VALHEIM_META: AdapterMeta = {
-  id: 'valheim',
-  name: { en: 'Valheim', es: 'Valheim' },
-  // PRD §10: installed with steamcmd (docker/steam).
-  runtime: 'steam',
-  // PRD §7: servers installed with steamcmd need x86-64.
-  arch: ['amd64'],
-  flavours: [],
-  // TODO(M6 fact-finding): the game ports (PRD §7 expects UDP 2456–2457), as the captures show them.
-  ports: [],
-  // TODO(M6 fact-finding): placeholders until the server's memory use is measured.
-  memory: { minMb: 1024, defaultMb: 4096, overheadMb: 512 },
-  capabilities: [],
-  // TODO(M6 fact-finding): placeholder until a clean stop (a signal, then the world save) is timed.
-  stopBudgetMs: 60_000,
-};
+export const VALHEIM: SteamGameManifest = loadManifest(valheimJson);
+
+/** Shared by the runtime and panel halves (one object, as the adapter list expects). */
+export const VALHEIM_META: AdapterMeta = manifestMeta(VALHEIM);
