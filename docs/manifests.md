@@ -3,7 +3,7 @@
 A simple Steam game needs no adapter code: one JSON file describes it, and the manifest engine
 (`packages/adapter-manifest`) turns it into an adapter of its own id, both halves (PRD §10
 "Declarative adapters", D4, G4). Avorion was the first (`manifests/avorion.json`); Valheim is a
-manifest plus one code hook.
+manifest plus two code hooks (`packages/adapter-valheim`, see "Example: a manifest plus hooks").
 
 ## When a manifest is enough
 
@@ -115,6 +115,38 @@ it), `note`. There are no forms for manifest games' files: they are edited as te
 
 Anything else a game needs (a launch wrapper, packages in the image, a token to run) means it is
 not a manifest game: give it an adapter package.
+
+### Example: a manifest plus hooks (Valheim)
+
+A game with hooks is a small package of its own, `packages/adapter-<id>`, that holds its manifest
+and its code; the adapter list takes its two halves like any adapter's:
+
+| File | What |
+|---|---|
+| `manifest/valheim.json` | The manifest (`"$schema": "../../adapter-manifest/manifest.schema.json"`). |
+| `src/shared/meta.ts` | `VALHEIM = loadManifest(json)` (checked when imported) and `VALHEIM_META = manifestMeta(VALHEIM)`: one meta for both halves. |
+| `src/runtime/index.ts` | `manifestRuntimeAdapter(VALHEIM, { hotCopySelect, steamQuery })`. |
+| `src/panel/index.ts` | `manifestPanelAdapter(VALHEIM)`: the panel half needs no hook. |
+| `src/runtime/save-sets.ts` | The selection: each world's newest complete save set (the `.ok` marker, its `.db2` and `.fwl2`), the chunk files it uses (each chunk's newest file written before that marker: chunk files carry their own versions), and every file outside the worlds. |
+| `src/runtime/a2s.ts` | A small A2S_INFO client (UDP, Valve's challenge step included) for the player count. |
+
+```ts
+export const valheimRuntimeAdapter = manifestRuntimeAdapter(VALHEIM, {
+  // BAK-02: copy only what a save in progress can't touch (the hook may look at the files: ctx.roots.data).
+  hotCopySelect: async (ctx, files) => newestCompleteSaves(files, writtenAt(ctx)),
+  // PLY-01: called while players.steamQuery.when holds (`public` is on), on the port it names.
+  steamQuery: async (_ctx, port) => ({ count: (await queryInfo('127.0.0.1', port)).players, names: [] }),
+});
+```
+
+What stays in the manifest is everything else Valheim does: a launch argument only when its setting
+says so (`{ "if": { "setting": "password", "notEmpty": true }, "args": ["-password",
+"{setting:password}"] }`, `-crossplay` only when on), a rule across settings refused before a start
+in both languages (a listed server's password: `minLength` 5, `notIn` the server name), a port
+that follows another (`query` at `game` + 1), a stop by signal with no console, its autosave
+lines for `copy-between-saves`, list files for moderation by SteamID while stopped, and its
+notes. A hook is tested on its own (`test/save-sets.test.ts`, `test/a2s.test.ts`) and through the
+same suites and end-to-end test as a manifest game (`packages/panel/test/valheim-e2e.test.ts`).
 
 ## Testing it
 
