@@ -161,6 +161,11 @@ describe('a broken manifest is refused, every problem named', () => {
     expect(broken((m) => (m.backups.parts[0].paths = ['../{name}']))).toEqual(['backup part galaxy path 1 must be a path inside the data folder']);
     expect(broken((m) => (m.config.files[0].path = '{dataDir}/server.ini'))).toEqual(expect.arrayContaining(["config file server can't use {dataDir} here"]));
     expect(broken((m) => (m.launch.env = { 'bad-key': 'x' }))).toEqual(['launch.env.bad-key is not an environment variable name']);
+    expect(broken((m) => (m.launch.env = { '1ST': 'x' }))).toEqual(['launch.env.1ST is not an environment variable name']);
+    // Names in the case a game reads them: Steam's own is SteamAppId.
+    const mixed = avorionJson() as Json;
+    mixed.launch.env = { SteamAppId: '1', LD_LIBRARY_PATH: '{installDir}/linux64' };
+    expect(loadManifest(mixed).launch.env).toEqual({ SteamAppId: '1', LD_LIBRARY_PATH: '{installDir}/linux64' });
   });
 
   it('control: console lines need a console, behind its prefix; a save before a copy needs a save command', () => {

@@ -16,10 +16,15 @@
 //   ignore-stop        SIGINT and SIGTERM do nothing (the agent has to escalate)
 // Tuning: FAKE_VALHEIM_BOOT_MS (300; a real boot takes 45 s), FAKE_VALHEIM_GEN_MS (200; generating a new
 //   world takes 30 s more), FAKE_VALHEIM_STOP_MS (200), FAKE_VALHEIM_BIND_HOST (127.0.0.1),
-//   FAKE_VALHEIM_CROSSPLAY_LIBS=1 (PlayFab's libraries are installed; the product image lacks them),
-//   FAKE_VALHEIM_SAVE_MS_PER_S (1000: milliseconds per second of -saveinterval; tests shrink it).
+//   FAKE_VALHEIM_CROSSPLAY_LIBS=1 (PlayFab's libraries are installed, as in the steam image since M6),
+//   FAKE_VALHEIM_SAVE_MS_PER_S (1000: milliseconds per second of -saveinterval; tests shrink it),
+//   FAKE_VALHEIM_SAVE_STEP_MS (0: how long each step of a save takes, so a test can catch one half written;
+//   the real steps took 1-45 ms for a small world; saves never overlap: a timer's save is skipped while one runs),
+//   FAKE_VALHEIM_DIRTY_SAVES (all: every save writes a new version of the chunk file, as in the fact-finding;
+//   first: only a run's first save does, as in the adapter check with nobody online).
 // Test hooks on stdin (the real server ignores stdin entirely): fake-join <steamid>, fake-leave <steamid>,
-//   fake-crash.
+//   fake-crash, fake-dirty (the next save finds the chunk changed), fake-hold-save [dirty] (saves stop half
+//   written, after their chunk files) and fake-release-save.
 import dgram from 'node:dgram';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -34,6 +39,7 @@ const genMs = Number(env.FAKE_VALHEIM_GEN_MS ?? 200);
 const stopMs = Number(env.FAKE_VALHEIM_STOP_MS ?? 200);
 const bindHost = env.FAKE_VALHEIM_BIND_HOST ?? '127.0.0.1';
 const saveMsPerS = Number(env.FAKE_VALHEIM_SAVE_MS_PER_S ?? 1000);
+const saveStepMs = Number(env.FAKE_VALHEIM_SAVE_STEP_MS ?? 0);
 const VERSION = 'l-1.0.16';
 const NETWORK_VERSION = 40;
 
@@ -94,34 +100,81 @@ function saves() {
 let saveNumber = saves().at(-1) ?? 0;
 let savingDisabled = false;
 let saveTimer = null;
+/**
+ * The world's one chunk file is named by its own version, which goes up only when a save finds the
+ * chunk changed (measured in the adapter check: saves that changed nothing kept 00_00__0_1.chunk;
+ * in the fact-finding every save changed it). FAKE_VALHEIM_DIRTY_SAVES: `all` (every save writes
+ * it, the default) or `first` (only a run's first save, and one after fake-dirty).
+ */
+let chunkVersion = (() => {
+  try {
+    return Math.max(0, ...fs.readdirSync(worldDir).map((f) => Number(/^00_00__0_(\d+)\.chunk$/.exec(f)?.[1] ?? 0)));
+  } catch {
+    return 0;
+  }
+})();
+const dirtySaves = env.FAKE_VALHEIM_DIRTY_SAVES ?? 'all';
+let savedThisRun = false;
+let dirtyNext = false;
 
 function writeFwl(n) {
   const mods = [...(opts['-preset'] ? [['preset', opts['-preset']]] : []), ...modifiers];
   fs.writeFileSync(path.join(worldDir, `_main.${n}.fwl2`), `${HEADER}\nseed=FakeSeed01\nmodifiers=${mods.map(([k, v]) => `${k}:${v}`).join(',')}\n`);
 }
 
-/** One numbered save, in the order measured: chunk files, .chunks, .db2, .fwl2, the .ok marker, then the previous set goes. */
-async function save(onStop) {
+/** The save in progress, if any: saves never overlap (one every -saveinterval, measured at 0.1 s each). */
+let saving = null;
+/** Test hook (fake-hold-save): saves wait, half written (after their chunk files), until fake-release-save. */
+let held = null;
+/** One step of a save taking its time (FAKE_VALHEIM_SAVE_STEP_MS; the real steps took 1-45 ms for a small world). */
+const step = () => (saveStepMs > 0 ? sleep(saveStepMs) : undefined);
+
+/** A save, after the one in progress (a timer's save is skipped while one runs). */
+function save(onStop) {
+  if (saving && !onStop) return saving;
+  const p = (saving ?? Promise.resolve()).then(() => writeSave(onStop)).finally(() => {
+    if (saving === p) saving = null;
+  });
+  saving = p;
+  return p;
+}
+
+/**
+ * One numbered save, in the order measured: the chunk file when the chunk changed (a new version),
+ * .chunks, .db2, .fwl2, the .ok marker, then what the previous set no longer needs goes.
+ */
+async function writeSave(onStop) {
   const s0 = Date.now();
+  const dirty = dirtySaves === 'all' || !savedThisRun || dirtyNext || chunkVersion === 0;
+  savedThisRun = true;
+  dirtyNext = false;
   if (!onStop) log('Sending message to save player profiles');
-  log('GetSaveClonePerChunk. Calculated number of actual chunk files: 1  Number of dirty chunks to save: 1 [1ms]');
+  log(`GetSaveClonePerChunk. Calculated number of actual chunk files: 1  Number of dirty chunks to save: ${dirty ? 1 : 0} [1ms]`);
   log('PrepareSave: ZDOExtraData.PrepareSave done [0ms]');
   log(' ### Save World Thread Started! ### ');
   log(`Considering autobackup for World. World time: ${((Date.now() - t0) / 1000).toFixed(2)}, short time: ${backupShort}, long time: ${backupLong}, backup count: ${backups}`);
   log('Skipping backup. World session not long enough.');
   const prev = saveNumber;
   const n = ++saveNumber;
+  const oldChunk = chunkVersion;
   log(`World save (1/5) Cloud & Backup checks done [0ms] => Save number ${n}`);
   fs.mkdirSync(worldDir, { recursive: true });
-  fs.writeFileSync(path.join(worldDir, `00_00__0_${n}.chunk`), `${HEADER} chunk save ${n}\n`);
-  fs.writeFileSync(path.join(worldDir, `_main.${n}.chunks`), `chunks ${n}\n`);
+  if (dirty) fs.writeFileSync(path.join(worldDir, `00_00__0_${++chunkVersion}.chunk`), `${HEADER} chunk version ${chunkVersion}\n`);
+  await step();
+  fs.writeFileSync(path.join(worldDir, `_main.${n}.chunks`), `chunks ${n}: 00_00__0_${chunkVersion}\n`);
   log('World save (2/5) Chunks writing done [1ms]');
+  // Test hook: held here, half written, until fake-release-save.
+  if (held) await held.promise;
+  await step();
   fs.writeFileSync(path.join(worldDir, `_main.${n}.db2`), `${HEADER} save ${n}\n`);
   log('World save (3/5) DB2 writing done [1ms]');
+  await step();
   writeFwl(n);
   log('World save (4/5) FWL writing done [1ms]');
+  await step();
   fs.writeFileSync(path.join(worldDir, `_main.${n}.ok`), String(n));
-  for (const f of [`_main.${prev}.fwl2`, `_main.${prev}.db2`, `_main.${prev}.chunks`, `_main.${prev}.ok`, `00_00__0_${prev}.chunk`]) fs.rmSync(path.join(worldDir, f), { force: true });
+  await step();
+  for (const f of [`_main.${prev}.fwl2`, `_main.${prev}.db2`, `_main.${prev}.chunks`, `_main.${prev}.ok`, ...(chunkVersion !== oldChunk ? [`00_00__0_${oldChunk}.chunk`] : [])]) fs.rmSync(path.join(worldDir, f), { force: true });
   log(`World save (5/5) done. Total time [${Date.now() - s0}ms]`);
 }
 
@@ -243,6 +296,19 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
     players.add(id);
   } else if (cmd === 'fake-leave' && id && players.delete(id)) {
     log(`Closing socket ${id}`);
+  } else if (cmd === 'fake-dirty') {
+    dirtyNext = true;
+  } else if (cmd === 'fake-hold-save') {
+    // `fake-hold-save dirty`: the save it holds is one that found the chunk changed (both at once, so no save slips between).
+    if (id === 'dirty') dirtyNext = true;
+    if (!held) {
+      let release;
+      const promise = new Promise((r) => (release = r));
+      held = { promise, release };
+    }
+  } else if (cmd === 'fake-release-save') {
+    held?.release();
+    held = null;
   } else if (cmd === 'fake-crash') {
     process.exit(3);
   }

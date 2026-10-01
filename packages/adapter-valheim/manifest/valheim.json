@@ -1,0 +1,269 @@
+{
+  "$schema": "../../adapter-manifest/manifest.schema.json",
+  "manifestVersion": 1,
+  "id": "valheim",
+  "name": { "en": "Valheim", "es": "Valheim" },
+  "steam": { "appId": "896660", "branches": "listed", "defaultBranch": "public" },
+  "arch": ["amd64"],
+  "memory": { "minMb": 2048, "defaultMb": 3072, "overheadMb": 256 },
+  "ports": [
+    { "id": "game", "proto": "udp", "default": 2456, "publish": true, "sameInsideOut": true, "label": { "en": "Game port", "es": "Puerto del juego" } },
+    {
+      "id": "query",
+      "proto": "udp",
+      "default": 2457,
+      "publish": true,
+      "sameInsideOut": true,
+      "follows": { "id": "game", "offset": 1 },
+      "label": { "en": "Steam query port", "es": "Puerto de consultas de Steam" }
+    }
+  ],
+  "settings": [
+    {
+      "id": "serverName",
+      "type": "string",
+      "label": { "en": "Server name", "es": "Nombre del servidor" },
+      "description": {
+        "en": "The name players see in the game's server list and when they join. The world is saved under the server's ID.",
+        "es": "El nombre que ven los jugadores en la lista de servidores del juego y al entrar. El mundo se guarda con el ID del servidor."
+      },
+      "default": "Valheim server",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    {
+      "id": "password",
+      "type": "secret",
+      "label": { "en": "Password", "es": "Contraseña" },
+      "description": {
+        "en": "What players type to join. Leave it empty for no password (private servers only).",
+        "es": "Lo que escriben los jugadores para entrar. Dejala vacía para no tener contraseña (solo en servidores privados)."
+      },
+      "rules": [
+        {
+          "if": { "setting": "public", "equals": true },
+          "minLength": 5,
+          "message": {
+            "en": "A server in the public list needs a password of at least 5 characters: Valheim refuses to start otherwise.",
+            "es": "Un servidor de la lista pública necesita una contraseña de al menos 5 caracteres: si no, Valheim no arranca."
+          }
+        },
+        {
+          "if": { "setting": "public", "equals": true },
+          "notIn": "serverName",
+          "message": {
+            "en": "A server in the public list can't have a password that is part of its name: Valheim refuses to start otherwise.",
+            "es": "Un servidor de la lista pública no puede tener una contraseña que forme parte de su nombre: si no, Valheim no arranca."
+          }
+        }
+      ]
+    },
+    {
+      "id": "public",
+      "type": "boolean",
+      "label": { "en": "Show in the game's public server list", "es": "Mostrar en la lista pública de servidores del juego" },
+      "description": {
+        "en": "Off: players join by address. On: anyone can find the server in the game's list, and the panel counts its players with Steam's server queries; it then needs a password of at least 5 characters that isn't part of its name, checked before it starts.",
+        "es": "Desactivado: los jugadores entran por dirección. Activado: cualquiera puede encontrar el servidor en la lista del juego, y el panel cuenta sus jugadores con las consultas de servidor de Steam; entonces necesita una contraseña de al menos 5 caracteres que no forme parte de su nombre, que se comprueba antes de arrancar."
+      },
+      "default": false,
+      "onValue": "1",
+      "offValue": "0"
+    },
+    {
+      "id": "crossplay",
+      "type": "boolean",
+      "label": { "en": "Crossplay (Xbox, Game Pass and other platforms)", "es": "Juego cruzado (Xbox, Game Pass y otras plataformas)" },
+      "description": {
+        "en": "Uses Microsoft's PlayFab instead of Steam's networking, so players on other platforms can join with a code the server prints in its log. It registers this host's public address with PlayFab, and the address also shows in the server's log.",
+        "es": "Usa PlayFab de Microsoft en lugar de la red de Steam, para que jugadores de otras plataformas entren con un código que el servidor muestra en su registro. Registra la dirección pública de este equipo en PlayFab, y la dirección también aparece en el registro del servidor."
+      },
+      "default": false
+    },
+    {
+      "id": "saveInterval",
+      "type": "integer",
+      "label": { "en": "Autosave every", "es": "Autoguardado cada" },
+      "description": {
+        "en": "How often Valheim saves the world on its own, in seconds (the game's own default is 30 minutes). It also saves when it stops. A backup taken while it runs holds the world as of its last save.",
+        "es": "Cada cuánto guarda Valheim el mundo por su cuenta, en segundos (el juego, por defecto, cada 30 minutos). También guarda al detenerse. Una copia de seguridad hecha mientras funciona tiene el mundo como estaba en su último guardado."
+      },
+      "default": 300,
+      "min": 60,
+      "max": 3600,
+      "step": 60,
+      "unit": "s",
+      "advanced": true
+    }
+  ],
+  "launch": {
+    "executable": "{installDir}/valheim_server.x86_64",
+    "args": [
+      "-nographics",
+      "-batchmode",
+      "-name", "{setting:serverName}",
+      "-port", "{port:game}",
+      "-world", "{name}",
+      { "if": { "setting": "password", "notEmpty": true }, "args": ["-password", "{setting:password}"] },
+      "-public", "{setting:public}",
+      "-savedir", "{dataDir}",
+      "-saveinterval", "{setting:saveInterval}",
+      { "if": { "setting": "crossplay", "equals": true }, "args": ["-crossplay"] }
+    ],
+    "cwd": "{installDir}",
+    "env": { "LD_LIBRARY_PATH": "{installDir}/linux64", "SteamAppId": "892970" }
+  },
+  "log": {
+    "strip": "^\\d\\d/\\d\\d/\\d{4} \\d\\d:\\d\\d:\\d\\d: ",
+    "progress": [
+      { "key": "unity-memory", "pattern": "^\\s+\"memorysetup-", "text": "Unity's memory settings" },
+      { "key": "translations", "pattern": "^Loaded localization file #\\d+ ", "text": "Loading the game's translations" },
+      { "key": "location-types", "pattern": "^Added \\d+ locations, ", "text": "Adding the world's location types" },
+      { "key": "worldgen", "pattern": "^(?:Location \\S+ took more than 0\\.5 seconds to place|Failed to place all \\S+, placed )", "text": "Generating the world: placing its locations" }
+    ]
+  },
+  "readiness": {
+    "ready": "^Opened (?:Steam|PlayFab) server$",
+    "version": "^Valheim version: l-(\\d+(?:\\.\\d+)+) \\(network version \\d+\\)$",
+    "fatal": ["^Error bad password:", "^\\[Steamworks\\.NET\\] GameServer\\.Init\\(\\) failed\\.$", "^World load failed", "^IOException: Read-only file system$"],
+    "warnings": [
+      {
+        "id": "no-steam",
+        "pattern": "^Game server connected failed$",
+        "message": {
+          "en": "Valheim can't reach Steam: the server runs, but players are not expected to be able to join until it can.",
+          "es": "Valheim no puede contactar con Steam: el servidor funciona, pero no se espera que los jugadores puedan entrar hasta que pueda."
+        }
+      },
+      {
+        "id": "no-crossplay-libraries",
+        "pattern": "^DllNotFoundException: libParty\\.so",
+        "message": {
+          "en": "This image lacks the libraries crossplay needs (PlayFab Party): with crossplay on, the server starts but nobody can join through it. Servers without crossplay aren't affected.",
+          "es": "A esta imagen le faltan las bibliotecas que necesita el juego cruzado (PlayFab Party): con el juego cruzado activado, el servidor arranca pero nadie puede entrar por ahí. Los servidores sin juego cruzado no se ven afectados."
+        }
+      }
+    ]
+  },
+  "console": { "kind": "none" },
+  "stop": { "signal": "SIGINT", "budgetMs": 60000 },
+  "autosave": { "start": "^World save \\(1/5\\) ", "done": "^World save \\(5/5\\) done\\.", "budgetMs": 60000 },
+  "backups": {
+    "parts": [
+      { "id": "world", "label": { "en": "World", "es": "Mundo" }, "paths": ["worlds_local/{name}"] },
+      { "id": "lists", "label": { "en": "Admin, ban and allowed lists", "es": "Listas de administradores, baneados y permitidos" }, "paths": ["adminlist.txt", "bannedlist.txt", "permittedlist.txt"] }
+    ],
+    "running": "copy-between-saves"
+  },
+  "resets": [
+    { "id": "world", "label": { "en": "New world (the lists stay)", "es": "Mundo nuevo (las listas se conservan)" }, "permission": "reset.world", "removeParts": ["world"] },
+    { "id": "factory", "label": { "en": "New world and empty lists", "es": "Mundo nuevo y listas vacías" }, "permission": "reset.factory", "removeParts": ["world", "lists"] }
+  ],
+  "config": {
+    "files": [
+      {
+        "id": "admins",
+        "label": { "en": "Admins (adminlist.txt)", "es": "Administradores (adminlist.txt)" },
+        "path": "adminlist.txt",
+        "format": "lines",
+        "stoppedOnly": true,
+        "restartKeys": "*",
+        "note": {
+          "en": "One SteamID (17 digits) per line: these players may kick and ban from the game's own console. Edited while the server is stopped: whether Valheim notices a change while it runs isn't measured.",
+          "es": "Un SteamID (17 dígitos) por línea: estos jugadores pueden expulsar y banear desde la consola del juego. Se edita con el servidor detenido: no está medido si Valheim nota un cambio mientras funciona."
+        }
+      },
+      {
+        "id": "banned",
+        "label": { "en": "Banned players (bannedlist.txt)", "es": "Jugadores baneados (bannedlist.txt)" },
+        "path": "bannedlist.txt",
+        "format": "lines",
+        "stoppedOnly": true,
+        "restartKeys": "*",
+        "note": {
+          "en": "One SteamID (17 digits) per line. Edited while the server is stopped: whether Valheim notices a change while it runs isn't measured.",
+          "es": "Un SteamID (17 dígitos) por línea. Se edita con el servidor detenido: no está medido si Valheim nota un cambio mientras funciona."
+        }
+      },
+      {
+        "id": "permitted",
+        "label": { "en": "Allowed players (permittedlist.txt)", "es": "Jugadores permitidos (permittedlist.txt)" },
+        "path": "permittedlist.txt",
+        "format": "lines",
+        "stoppedOnly": true,
+        "restartKeys": "*",
+        "note": {
+          "en": "One SteamID (17 digits) per line. Empty: everyone may join; with SteamIDs in it, only those players. Edited while the server is stopped: whether Valheim notices a change while it runs isn't measured.",
+          "es": "Un SteamID (17 dígitos) por línea. Vacía: puede entrar cualquiera; con SteamIDs, solo esos jugadores. Se edita con el servidor detenido: no está medido si Valheim nota un cambio mientras funciona."
+        }
+      }
+    ]
+  },
+  "players": {
+    "join": "^Got handshake from client (\\S+)$",
+    "leave": "^Closing socket (\\S+)$",
+    "steamQuery": { "port": "query", "when": { "setting": "public", "equals": true } }
+  },
+  "moderation": {
+    "listFiles": { "ban": "banned", "allow": "permitted", "admin": "admins", "target": "steamId", "stoppedOnly": true },
+    "banTargets": ["steamId"]
+  },
+  "notes": [
+    {
+      "id": "no-console",
+      "text": {
+        "en": "Valheim has no server console: the panel can't warn players in game before a restart, send them messages or ask the game to save. It stops the server with a signal, and the game saves first.",
+        "es": "Valheim no tiene consola de servidor: el panel no puede avisar a los jugadores en el juego antes de reiniciar, enviarles mensajes ni pedirle al juego que guarde. Detiene el servidor con una señal, y el juego guarda antes."
+      },
+      "doc": "limitations.md#valheim"
+    },
+    {
+      "id": "running-backups",
+      "text": {
+        "en": "Valheim saves on its own every 5 minutes (the autosave launch setting) and when it stops: a backup taken while it runs holds the world as of its last save.",
+        "es": "Valheim guarda por su cuenta cada 5 minutos (el ajuste de inicio del autoguardado) y al detenerse: una copia de seguridad hecha mientras funciona tiene el mundo como estaba en su último guardado."
+      },
+      "doc": "limitations.md#valheim"
+    },
+    {
+      "id": "lists",
+      "text": {
+        "en": "Kicks and bans happen in the game, by admins. The panel bans, allows and makes admins by SteamID in the game's lists, while the server is stopped; bans by SteamID aren't affected by Docker Desktop hiding players' addresses.",
+        "es": "Las expulsiones y los baneos se hacen en el juego, por administradores. El panel banea, permite y nombra administradores por SteamID en las listas del juego, con el servidor detenido; los baneos por SteamID no se ven afectados por Docker Desktop, que oculta las direcciones de los jugadores."
+      },
+      "doc": "limitations.md#valheim"
+    },
+    {
+      "id": "public-list",
+      "text": {
+        "en": "A server in the game's public list (off by default) needs a password of at least 5 characters that isn't part of its name; the panel checks it before the server starts. Private servers take any password, or none.",
+        "es": "Un servidor de la lista pública del juego (desactivado por defecto) necesita una contraseña de al menos 5 caracteres que no forme parte de su nombre; el panel lo comprueba antes de que arranque. Los servidores privados aceptan cualquier contraseña, o ninguna."
+      },
+      "doc": "limitations.md#valheim"
+    },
+    {
+      "id": "crossplay",
+      "text": {
+        "en": "Crossplay (off by default) registers this host's public address with Microsoft's PlayFab, and the address also shows in the server's log.",
+        "es": "El juego cruzado (desactivado por defecto) registra la dirección pública de este equipo en PlayFab de Microsoft, y la dirección también aparece en el registro del servidor."
+      },
+      "doc": "limitations.md#valheim"
+    },
+    {
+      "id": "players-count",
+      "text": {
+        "en": "Players online are counted with Steam's server queries on a server in the public list, and from the join and leave lines on a private one (expected, not yet seen with a player).",
+        "es": "Los jugadores conectados se cuentan con las consultas de servidor de Steam en un servidor de la lista pública, y con las líneas de entrada y salida en uno privado (lo esperado, todavía sin ver con un jugador)."
+      },
+      "doc": "limitations.md#valheim"
+    },
+    {
+      "id": "resources",
+      "text": {
+        "en": "Valheim uses about 1.5 GiB of memory and a third of a CPU core even with nobody online; a new world takes about a minute and a half to be ready.",
+        "es": "Valheim usa alrededor de 1,5 GiB de memoria y un tercio de un núcleo de CPU incluso sin nadie conectado; un mundo nuevo tarda alrededor de un minuto y medio en estar listo."
+      },
+      "doc": "limitations.md#valheim"
+    }
+  ]
+}

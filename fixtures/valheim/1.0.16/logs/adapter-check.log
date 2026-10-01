@@ -1,0 +1,658 @@
+# The agent's live log of the adapter check's first run (M6), from GET /v1/events: Valheim's own timestamps taken off and progress runs shown as their text, as people see the log; [agent] lines are the agent's own, [state] [job] [players] its events; [+seconds] since the driver started.
+[+3.505] [state] stopped
+[+3.517] [state] stopped
+[+3.528] [job] install  Installing/updating the game
+[+3.529] [state] installing
+[+3.529] [job] install  Installing/updating (public)
+[+3.545] [agent] [steamcmd] steamcmd.sh[15]: Starting  /home/node/steamcmd/linux32/steamcmd
+[+6.187] [agent] [steamcmd] WARNING: setlocale('en_US.UTF-8') failed, using locale: 'C'. International characters may not work.
+[+6.188] [agent] [steamcmd] Redirecting stderr to '/home/node/Steam/logs/stderr.txt'
+[+6.189] [agent] [steamcmd] Logging directory: '/home/node/Steam/logs'
+[+6.189] [agent] [steamcmd] [  0%] Checking for available updates...
+[+6.190] [agent] [steamcmd] [----] Verifying installation...
+[+6.190] [agent] [steamcmd] UpdateUI: skip show logo
+[+6.191] [agent] [steamcmd] Steam Console Client (c) Valve Corporation - version 1788292693
+[+6.191] [agent] [steamcmd] -- type 'quit' to exit --
+[+6.451] [agent] [steamcmd] Loading Steam API...OK
+[+6.547] [agent] [steamcmd] 
+[+7.483] [agent] [steamcmd] Connecting anonymously to Steam Public...OK
+[+8.468] [agent] [steamcmd] Waiting for client config...OK
+[+10.595] [agent] [steamcmd] Waiting for user info...OK
+[+11.126] [agent] [steamcmd] ERROR! Failed to install app '896660' (Missing configuration)
+[+11.544] [agent] [steamcmd] Unloading Steam API...OK
+[+11.712] [agent] [steamcmd] 
+[+11.713] [agent] steamcmd attempt 1 failed (ERROR! Failed to install app '896660' (Missing configuration)); retrying
+[+16.732] [agent] [steamcmd] steamcmd.sh[56]: Starting  /home/node/steamcmd/linux32/steamcmd
+[+18.010] [agent] [steamcmd] WARNING: setlocale('en_US.UTF-8') failed, using locale: 'C'. International characters may not work.
+[+18.011] [agent] [steamcmd] Redirecting stderr to '/home/node/Steam/logs/stderr.txt'
+[+18.011] [agent] [steamcmd] Logging directory: '/home/node/Steam/logs'
+[+18.012] [agent] [steamcmd] [  0%] Checking for available updates...
+[+18.012] [agent] [steamcmd] [----] Verifying installation...
+[+18.013] [agent] [steamcmd] UpdateUI: skip show logo
+[+18.013] [agent] [steamcmd] Steam Console Client (c) Valve Corporation - version 1788292693
+[+18.014] [agent] [steamcmd] -- type 'quit' to exit --
+[+18.097] [agent] [steamcmd] Loading Steam API...OK
+[+18.181] [agent] [steamcmd] 
+[+18.462] [state] installing
+[+19.066] [agent] [steamcmd] Connecting anonymously to Steam Public...OK
+[+20.153] [agent] [steamcmd] Waiting for client config...OK
+[+20.154] [agent] [steamcmd] Waiting for user info...OK
+[+22.907] [agent] [steamcmd]  Update state (0x3) reconfiguring, progress: 0.00 (0 / 0)
+[+22.908] [job] install 0 reconfiguring
+[+24.910] [agent] [steamcmd]  Update state (0x11) preallocating, progress: 19.71 (430982831 / 2186649264)
+[+24.911] [job] install 19.7 preallocating
+[+26.911] [agent] [steamcmd] PosixFileOpen: RESOLVE_BENEATH unsupported, falling back to plain open()
+[+26.912] [agent] [steamcmd]  Update state (0x61) downloading, progress: 2.82 (61587936 / 2186649264)
+[+26.913] [job] install 2.8 downloading
+[+28.933] [agent] [steamcmd]  Update state (0x61) downloading, progress: 6.90 (150986910 / 2186649264)
+[+28.935] [job] install 6.9 downloading
+[+30.957] [agent] [steamcmd]  Update state (0x61) downloading, progress: 10.85 (237225811 / 2186649264)
+[+30.958] [job] install 10.9 downloading
+[+32.959] [agent] [steamcmd]  Update state (0x61) downloading, progress: 13.39 (292689650 / 2186649264)
+[+32.960] [job] install 13.4 downloading
+[+33.461] [state] installing
+[+34.969] [agent] [steamcmd]  Update state (0x61) downloading, progress: 15.38 (336283656 / 2186649264)
+[+34.971] [job] install 15.4 downloading
+[+36.983] [agent] [steamcmd]  Update state (0x61) downloading, progress: 17.36 (379616993 / 2186649264)
+[+36.984] [job] install 17.4 downloading
+[+38.996] [agent] [steamcmd]  Update state (0x61) downloading, progress: 19.17 (419119511 / 2186649264)
+[+38.997] [job] install 19.2 downloading
+[+41.017] [agent] [steamcmd]  Update state (0x61) downloading, progress: 20.81 (455103298 / 2186649264)
+[+41.019] [job] install 20.8 downloading
+[+43.020] [agent] [steamcmd]  Update state (0x61) downloading, progress: 22.86 (499863365 / 2186649264)
+[+43.022] [job] install 22.9 downloading
+[+45.035] [agent] [steamcmd]  Update state (0x61) downloading, progress: 24.36 (532750795 / 2186649264)
+[+45.036] [job] install 24.4 downloading
+[+47.041] [agent] [steamcmd]  Update state (0x61) downloading, progress: 26.12 (571061748 / 2186649264)
+[+47.043] [job] install 26.1 downloading
+[+48.461] [state] installing
+[+49.055] [agent] [steamcmd]  Update state (0x61) downloading, progress: 28.43 (621652233 / 2186649264)
+[+49.056] [job] install 28.4 downloading
+[+51.058] [agent] [steamcmd]  Update state (0x61) downloading, progress: 29.91 (654013121 / 2186649264)
+[+51.059] [job] install 29.9 downloading
+[+53.065] [agent] [steamcmd]  Update state (0x61) downloading, progress: 31.98 (699371634 / 2186649264)
+[+53.066] [job] install 32 downloading
+[+55.073] [agent] [steamcmd]  Update state (0x61) downloading, progress: 33.83 (739695995 / 2186649264)
+[+55.075] [job] install 33.8 downloading
+[+57.096] [agent] [steamcmd]  Update state (0x61) downloading, progress: 35.51 (776443224 / 2186649264)
+[+57.098] [job] install 35.5 downloading
+[+59.106] [agent] [steamcmd]  Update state (0x61) downloading, progress: 37.42 (818214261 / 2186649264)
+[+59.107] [job] install 37.4 downloading
+[+61.139] [agent] [steamcmd]  Update state (0x61) downloading, progress: 39.91 (872694810 / 2186649264)
+[+61.140] [job] install 39.9 downloading
+[+63.164] [agent] [steamcmd]  Update state (0x61) downloading, progress: 41.73 (912531328 / 2186649264)
+[+63.165] [job] install 41.7 downloading
+[+63.472] [state] installing
+[+65.178] [agent] [steamcmd]  Update state (0x61) downloading, progress: 43.73 (956192215 / 2186649264)
+[+65.179] [job] install 43.7 downloading
+[+67.190] [agent] [steamcmd]  Update state (0x61) downloading, progress: 46.07 (1007479412 / 2186649264)
+[+67.191] [job] install 46.1 downloading
+[+69.207] [agent] [steamcmd]  Update state (0x61) downloading, progress: 48.07 (1051026102 / 2186649264)
+[+69.209] [job] install 48.1 downloading
+[+71.223] [agent] [steamcmd]  Update state (0x61) downloading, progress: 49.69 (1086586014 / 2186649264)
+[+71.225] [job] install 49.7 downloading
+[+73.223] [agent] [steamcmd]  Update state (0x61) downloading, progress: 51.51 (1126378038 / 2186649264)
+[+73.225] [job] install 51.5 downloading
+[+75.237] [agent] [steamcmd]  Update state (0x61) downloading, progress: 53.87 (1178011794 / 2186649264)
+[+75.238] [job] install 53.9 downloading
+[+77.260] [agent] [steamcmd]  Update state (0x61) downloading, progress: 55.68 (1217630884 / 2186649264)
+[+77.261] [job] install 55.7 downloading
+[+78.472] [state] installing
+[+79.262] [agent] [steamcmd]  Update state (0x61) downloading, progress: 57.70 (1261678883 / 2186649264)
+[+79.263] [job] install 57.7 downloading
+[+81.269] [agent] [steamcmd]  Update state (0x61) downloading, progress: 60.05 (1313052784 / 2186649264)
+[+81.271] [job] install 60.1 downloading
+[+83.271] [agent] [steamcmd]  Update state (0x61) downloading, progress: 61.59 (1346765634 / 2186649264)
+[+83.273] [job] install 61.6 downloading
+[+85.313] [agent] [steamcmd]  Update state (0x61) downloading, progress: 63.41 (1386618946 / 2186649264)
+[+85.315] [job] install 63.4 downloading
+[+87.300] [agent] [steamcmd]  Update state (0x61) downloading, progress: 66.12 (1445715578 / 2186649264)
+[+87.301] [job] install 66.1 downloading
+[+89.303] [agent] [steamcmd]  Update state (0x61) downloading, progress: 67.78 (1482053049 / 2186649264)
+[+89.304] [job] install 67.8 downloading
+[+91.311] [agent] [steamcmd]  Update state (0x61) downloading, progress: 69.79 (1526141867 / 2186649264)
+[+91.312] [job] install 69.8 downloading
+[+93.327] [agent] [steamcmd]  Update state (0x61) downloading, progress: 72.02 (1574889547 / 2186649264)
+[+93.330] [job] install 72 downloading
+[+93.471] [state] installing
+[+95.353] [agent] [steamcmd]  Update state (0x61) downloading, progress: 74.04 (1619096647 / 2186649264)
+[+95.355] [job] install 74 downloading
+[+97.355] [agent] [steamcmd]  Update state (0x61) downloading, progress: 75.90 (1659748253 / 2186649264)
+[+97.358] [job] install 75.9 downloading
+[+99.358] [agent] [steamcmd]  Update state (0x61) downloading, progress: 77.74 (1699878418 / 2186649264)
+[+99.359] [job] install 77.7 downloading
+[+101.362] [agent] [steamcmd]  Update state (0x61) downloading, progress: 80.37 (1757416080 / 2186649264)
+[+101.363] [job] install 80.4 downloading
+[+103.385] [agent] [steamcmd]  Update state (0x61) downloading, progress: 82.11 (1795563945 / 2186649264)
+[+103.386] [job] install 82.1 downloading
+[+105.390] [agent] [steamcmd]  Update state (0x61) downloading, progress: 84.08 (1838609807 / 2186649264)
+[+105.391] [job] install 84.1 downloading
+[+107.391] [agent] [steamcmd]  Update state (0x61) downloading, progress: 86.67 (1895101828 / 2186649264)
+[+107.392] [job] install 86.7 downloading
+[+108.469] [state] installing
+[+109.417] [agent] [steamcmd]  Update state (0x61) downloading, progress: 88.22 (1929104782 / 2186649264)
+[+109.418] [job] install 88.2 downloading
+[+111.417] [agent] [steamcmd]  Update state (0x61) downloading, progress: 90.92 (1988008985 / 2186649264)
+[+111.418] [job] install 90.9 downloading
+[+113.422] [agent] [steamcmd]  Update state (0x61) downloading, progress: 92.98 (2033119190 / 2186649264)
+[+113.423] [job] install 93 downloading
+[+115.431] [agent] [steamcmd]  Update state (0x61) downloading, progress: 94.80 (2072992070 / 2186649264)
+[+115.433] [job] install 94.8 downloading
+[+117.440] [agent] [steamcmd]  Update state (0x61) downloading, progress: 96.87 (2118161332 / 2186649264)
+[+117.441] [job] install 96.9 downloading
+[+119.439] [agent] [steamcmd]  Update state (0x81) verifying update, progress: 3.96 (86575216 / 2186649264)
+[+119.440] [job] install 4 verifying update
+[+121.457] [agent] [steamcmd]  Update state (0x81) verifying update, progress: 41.90 (916182524 / 2186649264)
+[+121.458] [job] install 41.9 verifying update
+[+123.469] [state] installing
+[+123.473] [agent] [steamcmd]  Update state (0x81) verifying update, progress: 78.78 (1722644398 / 2186649264)
+[+123.474] [job] install 78.8 verifying update
+[+125.493] [agent] [steamcmd]  Update state (0x0) unknown, progress: 0.00 (0 / 0)
+[+125.494] [job] install 0 unknown
+[+125.495] [agent] [steamcmd] Success! App '896660' fully installed.
+[+125.891] [agent] [steamcmd] Unloading Steam API...OK
+[+126.051] [agent] [steamcmd] 
+[+126.053] [job] install 100 unknown => {"ok":true}
+[+126.054] [state] installing
+[+126.054] [state] stopped
+[+126.090] [agent] Starting: /opt/game/valheim_server.x86_64 -nographics -batchmode -name gspff check -port 30556 -world gsp-vh-check -password <redacted> -public 0 -savedir /data -saveinterval 60
+[+126.091] [state] starting
+[+126.092] [UnityMemory] Configuration Parameters - Can be set up in boot.config
+[+126.093] [run 160] Unity's memory settings
+[+126.099] [run 160] Unity's memory settings
+[+126.100] Mono path[0] = '/opt/game/valheim_server_Data/Managed'
+[+126.101] Mono config path = '/opt/game/valheim_server_Data/MonoBleedingEdge/etc'
+[+126.143] Input System module state changed to: Initialized.
+[+126.145] [Physics::Module] Initialized fallback backend.
+[+126.146] [Physics::Module] Id: 0xdecafbad
+[+126.146] PlayerPrefs - Creating folder: /home/node/.config/unity3d/IronGate
+[+126.149] PlayerPrefs - Creating folder: /home/node/.config/unity3d/IronGate/Valheim
+[+126.150] Unable to load player prefs
+[+126.150] Initialize engine version: 6000.0.75f1 (26349cd2a5c8)
+[+126.151] [Subsystems] Discovering subsystems at path /opt/game/valheim_server_Data/UnitySubsystems
+[+126.151] Forcing GfxDevice: Null
+[+126.152] GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+[+126.152] NullGfxDevice:
+[+126.153]     Version:  NULL 1.0 [1.0]
+[+126.153]     Renderer: Null Device
+[+126.154]     Vendor:   Unity Technologies
+[+126.155] Begin MonoManager ReloadAssembly
+[+126.288] - Loaded All Assemblies, in  0.134 seconds
+[+126.291] - Finished resetting the current domain, in  0.003 seconds
+[+126.292] [Physics::Module] Selected backend.
+[+126.293] [Physics::Module] Name: PhysX
+[+126.294] [Physics::Module] Id: 0xf2b8ea05
+[+126.294] [Physics::Module] SDK Version: 4.1.2
+[+126.295] [Physics::Module] Integration Version: 1.0.0
+[+126.295] [Physics::Module] Threading Mode: Multi-Threaded
+[+126.863] UnloadTime: 0.616365 ms
+[+126.936] Set background loading budget to Low
+[+126.939] Loading first scene!
+[+126.956] Preferences initialized! Activating first scene!
+[+127.338] Unloading 4 Unused Serialized files (Serialized files now loaded: 8)
+[+127.339] UnloadTime: 0.128597 ms
+[+127.573] Loading: Starting to load scene: start.unity (169d7618616154c03be07e9ad3af5893)
+[+127.574] Set background loading budget to Normal
+[+127.864] [run 195] Loading the game's translations
+[+127.905] [run 195] Loading the game's translations
+[+127.906] Unloading 26 unused Assets to reduce memory usage. Loaded Objects now: 3044.
+[+127.907] Total: 5.295839 ms (FindLiveObjects: 0.242066 ms CreateObjectMapping: 0.069879 ms MarkObjects: 4.894370 ms  DeleteObjects: 0.089004 ms)
+[+127.907] 
+[+131.959] Set background loading budget to High
+[+131.960] GPU Device: 0000:0000 (Unknown)
+[+132.435] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+132.992] The referenced script on this Behaviour (Game Object '') is missing!
+[+133.330] AsyncResourceUpload failed.
+[+133.697] AsyncResourceUpload failed.
+[+134.364] The referenced script on this Behaviour (Game Object '') is missing!
+[+135.565] The referenced script on this Behaviour (Game Object '') is missing!
+[+137.322] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+138.469] [state] starting
+[+138.705] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+139.848] Unloading 2 Unused Serialized files (Serialized files now loaded: 19)
+[+139.914] Loading: Done, Total time: -12.3426
+[+153.467] [state] starting
+[+159.095] Set background loading budget to Low
+[+159.100] UnloadTime: 15.248867 ms
+[+159.109] HDR Render Texture not supported, disabling HDR on reflection probe.
+[+159.111] This custom render path shader needs to have at least 1 passes.
+[+159.111] Could not find material Hidden/VideoDecode. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+[+159.112] Could not find video decode shader pass YCbCr_To_RGB1 in shader <not found>
+[+159.112] Could not find video decode shader pass YCbCrA_To_RGBAFull in shader <not found>
+[+159.113] Could not find video decode shader pass YCbCrA_To_RGBA in shader <not found>
+[+159.113] Could not find video decode shader pass Flip_RGBA_To_RGBA in shader <not found>
+[+159.114] Could not find video decode shader pass Flip_RGBASplit_To_RGBA in shader <not found>
+[+159.114] This custom render path shader needs to have at least 1 passes.
+[+159.115] Could not find material Hidden/VideoComposite. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+[+159.115] Could not find video decode shader pass Default in shader <not found>
+[+159.132] Missing audio clip in music respawn
+[+159.133] OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[+159.138] Setting -savedir to: /data
+[+159.139] Get create world gsp-vh-check
+[+159.152] SaveSystem.Reload for World is done [5ms]
+[+159.153]  creating
+[+159.197] Using environment steamid 892970
+[+159.199] Using steam APPID:892970
+[+161.212] [stderr] [S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+[+161.243] [stderr] Setting breakpad minidump AppID = 892970
+[+161.244] [stderr] SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561198000000001 [API loaded no]
+[+161.249] [stderr] [S_API FAIL] Tried to access Steam interface SteamNetworkingUtils004 before SteamAPI_Init succeeded.
+[+161.258] Server ID 90071992547409920
+[+161.270] Authentication:k_ESteamNetworkingAvailability_Waiting
+[+161.271] Steam game server initialized
+[+161.275] Valheim version: l-1.0.16 (network version 40)
+[+161.278] Worldgenerator version setup:2
+[+161.305] Console: Valheim l-1.0.16 (network version 40)
+[+161.306] Console: 
+[+161.306] Console: type "help" - for commands
+[+161.307] Console: 
+[+161.307] Render threading mode:SingleThreaded
+[+161.354] OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[+161.372] [AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+[+161.386] Builder started
+[+161.703] SaveSystem.Reload for Character is done [0ms]
+[+161.756] SaveSystem.Reload for World is done [49ms]
+[+161.774] Failed to play intro cinematic
+[+161.775] Sending PlayFab login request (attempt 1)
+[+161.778] Login postponed until ID has been set.
+[+161.784] The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+[+161.785] The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+[+161.789] The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+[+161.790] The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+[+161.791] The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+[+161.854] Starting music menu
+[+162.253] Unloading 106004 unused Assets to reduce memory usage. Loaded Objects now: 276702.
+[+162.253] Total: 320.518716 ms (FindLiveObjects: 56.460629 ms CreateObjectMapping: 68.959709 ms MarkObjects: 122.467214 ms  DeleteObjects: 72.629282 ms)
+[+162.254] 
+[+162.322] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+162.346] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+162.392] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+162.398] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+162.399] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+162.401] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+162.423] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+162.629] Unloading 3 Unused Serialized files (Serialized files now loaded: 22)
+[+162.656] UnloadTime: 26.117207 ms
+[+162.665] HDR Render Texture not supported, disabling HDR on reflection probe.
+[+162.665] HDR Render Texture not supported, disabling HDR on reflection probe.
+[+162.667] Audioman already exist, destroying self
+[+162.668] OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[+162.671] Console: Valheim l-1.0.16 (network version 40)
+[+162.671] Console: 
+[+162.672] Console: type "help" - for commands
+[+162.672] Console: 
+[+162.694] isModded: False
+[+162.716] Zonesystem Awake 26781
+[+162.717] DungeonDB Awake 26781
+[+162.777] Worldgenerator version setup:2
+[+167.204] OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[+167.271] Console: /w [text] - Whisper
+[+167.272] Console: /s [text] - Shout
+[+167.272] Console: /die - Kill yourself
+[+167.273] Console: /resetspawn - Reset spawn point
+[+167.273] Console: /[emote]
+[+167.273] Console: Emotes: wave, sit, challenge, cheer, nonono, thumbsup, point, blowkiss, bow, cower, cry, despair, flex, comehere, headbang, kneel, laugh, roar, shrug, dance, relax, toast, rest, vibe, loveyou
+[+167.274] Console: 
+[+167.292] [AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+[+167.600] Unloading 302 unused Assets to reduce memory usage. Loaded Objects now: 277343.
+[+167.600] Total: 257.645606 ms (FindLiveObjects: 31.518301 ms CreateObjectMapping: 38.467003 ms MarkObjects: 186.543245 ms  DeleteObjects: 1.116005 ms)
+[+167.601] 
+[+167.604] Zonesystem Start 26781
+[+167.611] [run 300] Adding the world's location types
+[+167.618] [run 300] Adding the world's location types
+[+167.619] DungeonDB Start 26781
+[+167.623] ZRpc timeout set to 30s 
+[+167.624] Loading: ZNet Start
+[+167.629] Load world: gsp-vh-check (gsp-vh-check)
+[+167.630]   missing /data/worlds_local/gsp-vh-check.db
+[+168.466] [state] starting
+[+176.176] Loading: Placed 0/1-2 of 'Fortress Mountain' altbiome. (Valid, sectors: 0, combos: 2)
+[+176.182] Setting up generating loading indicator
+[+176.183] The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+[+176.184] The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+[+176.185] The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+[+176.186] The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+[+176.187] The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+[+176.513] Game server connected
+[+176.580] [AmplifyOcclusion] GBuffer Normals only available in Camera Deferred Shading mode. Switched to Camera source.
+[+176.581] Loading: Generating locations
+[+180.225] [run 318] Generating the world: placing its locations
+[+180.474] [run 318] Generating the world: placing its locations
+[+180.953] [run 318] Generating the world: placing its locations
+[+183.467] [state] starting
+[+183.535] [run 318] Generating the world: placing its locations
+[+183.786] [run 318] Generating the world: placing its locations
+[+185.506] [run 318] Generating the world: placing its locations
+[+185.756] [run 318] Generating the world: placing its locations
+[+187.261] [run 318] Generating the world: placing its locations
+[+187.512] [run 318] Generating the world: placing its locations
+[+188.404] [run 318] Generating the world: placing its locations
+[+188.655] [run 318] Generating the world: placing its locations
+[+189.290] [run 318] Generating the world: placing its locations
+[+189.541] [run 318] Generating the world: placing its locations
+[+189.852] [run 318] Generating the world: placing its locations
+[+190.103] [run 318] Generating the world: placing its locations
+[+190.421] [run 318] Generating the world: placing its locations
+[+190.670] [run 318] Generating the world: placing its locations
+[+192.201] [run 318] Generating the world: placing its locations
+[+193.251] [run 318] Generating the world: placing its locations
+[+193.501] [run 318] Generating the world: placing its locations
+[+193.812] [run 318] Generating the world: placing its locations
+[+195.601] [run 318] Generating the world: placing its locations
+[+196.489] [run 318] Generating the world: placing its locations
+[+198.278] [run 318] Generating the world: placing its locations
+[+198.465] [run 318] Generating the world: placing its locations
+[+198.466] [state] starting
+[+199.048] [run 318] Generating the world: placing its locations
+[+200.180] [run 318] Generating the world: placing its locations
+[+201.186] [run 318] Generating the world: placing its locations
+[+201.437] [run 318] Generating the world: placing its locations
+[+201.757] [run 318] Generating the world: placing its locations
+[+202.008] [run 318] Generating the world: placing its locations
+[+202.258] [run 318] Generating the world: placing its locations
+[+202.630] [run 318] Generating the world: placing its locations
+[+203.067] [run 318] Generating the world: placing its locations
+[+203.458] [run 318] Generating the world: placing its locations
+[+203.709] [run 318] Generating the world: placing its locations
+[+204.962] [run 318] Generating the world: placing its locations
+[+205.212] [run 318] Generating the world: placing its locations
+[+206.540] [run 318] Generating the world: placing its locations
+[+206.791] [run 318] Generating the world: placing its locations
+[+208.091] [run 318] Generating the world: placing its locations
+[+208.340] [run 318] Generating the world: placing its locations
+[+208.800] [run 318] Generating the world: placing its locations
+[+209.051] [run 318] Generating the world: placing its locations
+[+209.441] [run 318] Generating the world: placing its locations
+[+209.692] [run 318] Generating the world: placing its locations
+[+210.072] [run 318] Generating the world: placing its locations
+[+210.075] [run 318] Generating the world: placing its locations
+[+210.075] There are 23 that take a long time to generate (over 0.5 sec). Total slow location time is 19.8 seconds that could be saved on world gen!
+[+210.083] Registering lobby
+[+210.088] Opened Steam server
+[+210.089] [state] running
+[+210.090] Loading: Done. Total seconds sinze ZNet start: 42.461301, Genloc duration: 33503.328 ms, (Total genloc time: 00:00:33.9022800, locations: 183, iterations: 0)
+[+211.089] [players] 0 
+[+213.464] [state] running
+[+219.100] Available space to current user: <free bytes>. Saving is blocked if below: <bytes> bytes. Warnings are given if below: <bytes>
+[+219.101] Sending message to save player profiles
+[+219.138] GetSaveClonePerChunk. Calculated number of actual chunk files: 1  Number of dirty chunks to save: 1 [4ms]
+[+219.148] PrepareSave: ZDOExtraData.PrepareSave done [9ms]
+[+219.167]  ### Save World Thread Started! ### 
+[+219.169] Considering autobackup for World. World time: 42.53999, short time: 7200, long time: 43200, backup count: 4
+[+219.170] Skipping backup. World session not long enough.
+[+219.171] World save (1/5) Cloud & Backup checks done [1ms] => Save number 1
+[+219.198] World save (2/5) Chunks writing done [26ms]
+[+219.233] World save (3/5) DB2 writing done [34ms]
+[+219.238] World save (4/5) FWL writing done [5ms]
+[+219.243] World save (5/5) done. Total time [76ms]
+[+219.265] [agent] Backup: preparing the files for a copy while the server runs.
+[+228.464] [state] running
+[+243.466] [state] running
+[+258.465] [state] running
+[+273.463] [state] running
+[+279.104] Available space to current user: <free bytes>. Saving is blocked if below: <bytes> bytes. Warnings are given if below: <bytes>
+[+279.105] Sending message to save player profiles
+[+279.112] [agent] Backup: preparing the files for a copy while the server runs.
+[+279.140] GetSaveClonePerChunk. Calculated number of actual chunk files: 1  Number of dirty chunks to save: 1 [1ms]
+[+279.141] PrepareSave: ZDOExtraData.PrepareSave done [0ms]
+[+279.142]  ### Save World Thread Started! ### 
+[+279.143] Considering autobackup for World. World time: 102.54, short time: 7200, long time: 43200, backup count: 4
+[+279.143] Skipping backup. World session not long enough.
+[+279.147] SaveSystem.Reload for World is done [5ms]
+[+279.148] World save (1/5) Cloud & Backup checks done [6ms] => Save number 2
+[+279.174] World save (2/5) Chunks writing done [26ms]
+[+279.197] World save (3/5) DB2 writing done [23ms]
+[+279.203] World save (4/5) FWL writing done [5ms]
+[+279.210] World save (5/5) done. Total time [68ms]
+[+279.241] [agent] Backup: preparing the files for a copy while the server runs.
+[+280.519] [state] stopping
+[+280.521] [agent] Stopping (requested)…
+[+280.555] Game - OnApplicationQuit
+[+280.555] Available space to current user: <free bytes>. Saving is blocked if below: <bytes> bytes. Warnings are given if below: <bytes>
+[+280.556] Shutting down
+[+280.556] ZNet Shutdown
+[+280.558] GetSaveClonePerChunk. Calculated number of actual chunk files: 1  Number of dirty chunks to save: 0 [1ms]
+[+280.558] PrepareSave: ZDOExtraData.PrepareSave done [0ms]
+[+280.559]  ### Save World Thread Started! ### 
+[+280.560] Considering autobackup for World. World time: 103.94, short time: 7200, long time: 43200, backup count: 4
+[+280.561] Skipping backup. World session not long enough.
+[+280.562] SaveSystem.Reload for World is done [1ms]
+[+280.563] World save (1/5) Cloud & Backup checks done [1ms] => Save number 3
+[+280.568] World save (2/5) Chunks writing done [7ms]
+[+280.590] World save (3/5) DB2 writing done [21ms]
+[+280.594] World save (4/5) FWL writing done [4ms]
+[+280.599] World save (5/5) done. Total time [40ms]
+[+280.606] Unloading unused assets
+[+280.607] Unloading 1 Unused Serialized files (Serialized files now loaded: 22)
+[+280.607] Sending disconnect msg
+[+280.608] ZPlayFabMatchmaking::UnregisterServer - unregistering server now. State: Uninitialized
+[+280.609] Disposing socket
+[+280.609] Stopping listening socket
+[+280.610] Last socket, unregistering callback
+[+280.610] ZSteamSocket  UnregisterGlobalCallbacks, existing sockets:0
+[+280.611] Stopping build thread
+[+282.878] Unloading 59 unused Assets to reduce memory usage. Loaded Objects now: 278477.
+[+282.879] Total: 238.252331 ms (FindLiveObjects: 27.041970 ms CreateObjectMapping: 40.685504 ms MarkObjects: 169.517914 ms  DeleteObjects: 1.005001 ms)
+[+282.880] 
+[+283.599] ZNet OnDestroy
+[+283.601] Net scene destroyed
+[+283.618] Steam manager on destroy
+[+283.943] [Physics::Module] Cleanup current backned.
+[+283.943] [Physics::Module] Id: 0xf2b8ea05
+[+283.944] Input System module state changed to: ShutdownInProgress.
+[+283.945] Input System polling thread exited.
+[+283.946] Input System module state changed to: Shutdown.
+[+284.162] [agent] Server process exited (code 0, signal none)
+[+284.162] [state] stopped
+[+284.214] [agent] Starting: /opt/game/valheim_server.x86_64 -nographics -batchmode -name gspff check -port 30556 -world gsp-vh-check -password <redacted> -public 0 -savedir /data -saveinterval 60
+[+284.215] [state] starting
+[+284.216] [UnityMemory] Configuration Parameters - Can be set up in boot.config
+[+284.217] [run 449] Unity's memory settings
+[+284.222] [run 449] Unity's memory settings
+[+284.222] Mono path[0] = '/opt/game/valheim_server_Data/Managed'
+[+284.223] Mono config path = '/opt/game/valheim_server_Data/MonoBleedingEdge/etc'
+[+284.270] Input System module state changed to: Initialized.
+[+284.272] [Physics::Module] Initialized fallback backend.
+[+284.273] [Physics::Module] Id: 0xdecafbad
+[+284.274] Initialize engine version: 6000.0.75f1 (26349cd2a5c8)
+[+284.274] [Subsystems] Discovering subsystems at path /opt/game/valheim_server_Data/UnitySubsystems
+[+284.275] Forcing GfxDevice: Null
+[+284.275] GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+[+284.276] NullGfxDevice:
+[+284.277]     Version:  NULL 1.0 [1.0]
+[+284.277]     Renderer: Null Device
+[+284.278]     Vendor:   Unity Technologies
+[+284.279] Begin MonoManager ReloadAssembly
+[+284.409] - Loaded All Assemblies, in  0.130 seconds
+[+284.412] - Finished resetting the current domain, in  0.003 seconds
+[+284.413] [Physics::Module] Selected backend.
+[+284.413] [Physics::Module] Name: PhysX
+[+284.414] [Physics::Module] Id: 0xf2b8ea05
+[+284.414] [Physics::Module] SDK Version: 4.1.2
+[+284.414] [Physics::Module] Integration Version: 1.0.0
+[+284.415] [Physics::Module] Threading Mode: Multi-Threaded
+[+284.936] UnloadTime: 0.619471 ms
+[+285.023] Set background loading budget to Low
+[+285.025] Loading first scene!
+[+285.039] Preferences initialized! Activating first scene!
+[+285.305] Unloading 4 Unused Serialized files (Serialized files now loaded: 8)
+[+285.306] UnloadTime: 0.110474 ms
+[+285.520] Loading: Starting to load scene: start.unity (169d7618616154c03be07e9ad3af5893)
+[+285.522] Set background loading budget to Normal
+[+285.750] [run 481] Loading the game's translations
+[+285.793] [run 481] Loading the game's translations
+[+285.794] Unloading 26 unused Assets to reduce memory usage. Loaded Objects now: 3044.
+[+285.794] Total: 5.724085 ms (FindLiveObjects: 0.209365 ms CreateObjectMapping: 0.066182 ms MarkObjects: 5.214337 ms  DeleteObjects: 0.233430 ms)
+[+285.795] 
+[+288.462] [state] starting
+[+289.544] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+289.849] Set background loading budget to High
+[+289.850] GPU Device: 0000:0000 (Unknown)
+[+290.047] The referenced script on this Behaviour (Game Object '') is missing!
+[+290.249] AsyncResourceUpload failed.
+[+290.483] AsyncResourceUpload failed.
+[+290.970] The referenced script on this Behaviour (Game Object '') is missing!
+[+291.632] The referenced script on this Behaviour (Game Object '') is missing!
+[+292.861] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+293.763] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+294.726] Unloading 2 Unused Serialized files (Serialized files now loaded: 19)
+[+294.763] Loading: Done, Total time: -9.243592
+[+303.460] [state] starting
+[+315.973] Set background loading budget to Low
+[+315.987] UnloadTime: 25.241304 ms
+[+315.998] HDR Render Texture not supported, disabling HDR on reflection probe.
+[+315.999] This custom render path shader needs to have at least 1 passes.
+[+316.000] Could not find material Hidden/VideoDecode. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+[+316.000] Could not find video decode shader pass YCbCr_To_RGB1 in shader <not found>
+[+316.001] Could not find video decode shader pass YCbCrA_To_RGBAFull in shader <not found>
+[+316.001] Could not find video decode shader pass YCbCrA_To_RGBA in shader <not found>
+[+316.002] Could not find video decode shader pass Flip_RGBA_To_RGBA in shader <not found>
+[+316.002] Could not find video decode shader pass Flip_RGBASplit_To_RGBA in shader <not found>
+[+316.003] This custom render path shader needs to have at least 1 passes.
+[+316.003] Could not find material Hidden/VideoComposite. Make sure the Video shaders are included in your build, in the Built-in Shader Settings section of the Graphics Settings.
+[+316.004] Could not find video decode shader pass Default in shader <not found>
+[+316.026] Missing audio clip in music respawn
+[+316.028] OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[+316.034] Setting -savedir to: /data
+[+316.034] Get create world gsp-vh-check
+[+316.096] SaveSystem.Reload for World is done [53ms]
+[+316.135] Using environment steamid 892970
+[+316.135] Using steam APPID:892970
+[+316.996] [stderr] [S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+[+317.042] [stderr] Setting breakpad minidump AppID = 892970
+[+317.043] [stderr] SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561198000000001 [API loaded no]
+[+317.049] [stderr] [S_API FAIL] Tried to access Steam interface SteamNetworkingUtils004 before SteamAPI_Init succeeded.
+[+317.058] Server ID 90071992547409920
+[+317.070] Authentication:k_ESteamNetworkingAvailability_Waiting
+[+317.070] Steam game server initialized
+[+317.073] Valheim version: l-1.0.16 (network version 40)
+[+317.080] Worldgenerator version setup:2
+[+317.107] Console: Valheim l-1.0.16 (network version 40)
+[+317.108] Console: 
+[+317.109] Console: type "help" - for commands
+[+317.109] Console: 
+[+317.110] Render threading mode:SingleThreaded
+[+317.159] OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[+317.180] [AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+[+317.199] Builder started
+[+317.575] SaveSystem.Reload for Character is done [0ms]
+[+317.590] Failed to play intro cinematic
+[+317.591] Sending PlayFab login request (attempt 1)
+[+317.593] Login postponed until ID has been set.
+[+317.600] The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+[+317.601] The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+[+317.603] The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+[+317.604] The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+[+317.605] The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+[+317.651] Starting music menu
+[+318.095] Unloading 106004 unused Assets to reduce memory usage. Loaded Objects now: 276702.
+[+318.096] Total: 333.648039 ms (FindLiveObjects: 47.525469 ms CreateObjectMapping: 71.404396 ms MarkObjects: 140.609474 ms  DeleteObjects: 74.107456 ms)
+[+318.097] 
+[+318.170] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+318.196] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+318.239] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+318.244] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+318.245] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+318.247] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+318.268] The referenced script on this Behaviour (Game Object '<null>') is missing!
+[+318.457] Unloading 3 Unused Serialized files (Serialized files now loaded: 22)
+[+318.461] [state] starting
+[+318.486] UnloadTime: 28.523003 ms
+[+318.497] HDR Render Texture not supported, disabling HDR on reflection probe.
+[+318.498] HDR Render Texture not supported, disabling HDR on reflection probe.
+[+318.499] Audioman already exist, destroying self
+[+318.499] OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[+318.501] Console: Valheim l-1.0.16 (network version 40)
+[+318.502] Console: 
+[+318.503] Console: type "help" - for commands
+[+318.503] Console: 
+[+318.516] isModded: False
+[+318.539] Zonesystem Awake 18036
+[+318.541] DungeonDB Awake 18036
+[+318.577] Worldgenerator version setup:2
+[+322.885] OnGUI function detected on MonoBehaviour, but not called, because IMGUI module is stripped.
+[+322.943] Console: /w [text] - Whisper
+[+322.943] Console: /s [text] - Shout
+[+322.944] Console: /die - Kill yourself
+[+322.945] Console: /resetspawn - Reset spawn point
+[+322.945] Console: /[emote]
+[+322.946] Console: Emotes: wave, sit, challenge, cheer, nonono, thumbsup, point, blowkiss, bow, cower, cry, despair, flex, comehere, headbang, kneel, laugh, roar, shrug, dance, relax, toast, rest, vibe, loveyou
+[+322.947] Console: 
+[+322.962] [AmplifyOcclusion] System does not support CopyTexture. CacheAware will be disabled.
+[+323.325] Unloading 302 unused Assets to reduce memory usage. Loaded Objects now: 277343.
+[+323.326] Total: 320.746534 ms (FindLiveObjects: 39.132808 ms CreateObjectMapping: 43.563730 ms MarkObjects: 236.634620 ms  DeleteObjects: 1.414083 ms)
+[+323.326] 
+[+323.331] Zonesystem Start 18036
+[+323.338] [run 585] Adding the world's location types
+[+323.348] [run 585] Adding the world's location types
+[+323.349] DungeonDB Start 18036
+[+323.354] ZRpc timeout set to 30s 
+[+323.354] Loading: ZNet Start
+[+323.360] ZNet.LoadWorld: gsp-vh-check (gsp-vh-check), save number 3
+[+323.370] ZoneSystem.Load => DB2: unpacking compressed data 145,899 => 208,982 bytes
+[+323.392] ZoneSystem.Load => Loaded 12,273 locations
+[+323.424] ZDOMan.LoadChunks - Starting to load 81 zdos from 1 Chunks. SessionID: 876245738, WorldVersion: 41 [DeepNorth]
+[+323.434] ZDOMan.LoadChunks => Loading ZDOs done [15ms]
+[+323.437] ZDOMan.LoadChunks => Adding ZDOs to Dictionary done [1ms]
+[+323.438] ZDOMan.LoadChunks => Adding ZDOs to Sectors done [0ms]
+[+323.440] ZDOMan.LoadChunks => Connecting Portals done [2ms]
+[+323.441] ZDOMan.LoadChunks => Connecting Spawners done [0ms]
+[+323.442] ZDOMan.LoadChunks => Connecting SyncTransforms done [0ms]
+[+323.443] ZDOMan.LoadChunks done [23ms]
+[+323.448] Checking for any blocked players in the historical player list...
+[+323.449] Unloading unused assets
+[+323.450] Unloading 1 Unused Serialized files (Serialized files now loaded: 22)
+[+331.702] Loading: Placed 0/1-2 of 'Fortress Mountain' altbiome. (Valid, sectors: 0, combos: 2)
+[+331.709] Registering lobby
+[+331.713] Opened Steam server
+[+331.714] [state] running
+[+331.714] The shader Hidden/Dof/DepthOfFieldHdr (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) is not supported on this platform!
+[+331.715] The image effect Main Camera (UnityStandardAssets.ImageEffects.DepthOfField) has been disabled as it's not supported on the current platform.
+[+331.715] The shader Hidden/SunShaftsComposite (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+[+331.716] The shader Hidden/SimpleClear (UnityEngine.Shader) on effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) is not supported on this platform!
+[+331.716] The image effect Main Camera (UnityStandardAssets.ImageEffects.SunShafts) has been disabled as it's not supported on the current platform.
+[+331.951] Game server connected
+[+332.165] Unloading 2 unused Assets to reduce memory usage. Loaded Objects now: 277317.
+[+332.166] Total: 158.217660 ms (FindLiveObjects: 26.101114 ms CreateObjectMapping: 36.611249 ms MarkObjects: 94.693133 ms  DeleteObjects: 0.811264 ms)
+[+332.167] 
+[+332.168] [AmplifyOcclusion] GBuffer Normals only available in Camera Deferred Shading mode. Switched to Camera source.
+[+332.713] [players] 0 
+[+332.722] [state] stopping
+[+332.723] [agent] Stopping (requested)…
+[+332.748] Game - OnApplicationQuit
+[+332.752] Available space to current user: <free bytes>. Saving is blocked if below: <bytes> bytes. Warnings are given if below: <bytes>
+[+332.753] Shutting down
+[+332.754] ZNet Shutdown
+[+332.762] GetSaveClonePerChunk. Calculated number of actual chunk files: 1  Number of dirty chunks to save: 0 [4ms]
+[+332.773] PrepareSave: ZDOExtraData.PrepareSave done [11ms]
+[+332.794]  ### Save World Thread Started! ### 
+[+332.796] Considering autobackup for World. World time: 0.5599995, short time: 7200, long time: 43200, backup count: 4
+[+332.796] Skipping backup. World session not long enough.
+[+332.797] World save (1/5) Cloud & Backup checks done [1ms] => Save number 4
+[+332.816] World save (2/5) Chunks writing done [19ms]
+[+332.856] World save (3/5) DB2 writing done [39ms]
+[+332.863] World save (4/5) FWL writing done [7ms]
+[+332.871] World save (5/5) done. Total time [77ms]
+[+332.899] Unloading unused assets
+[+332.900] Unloading 0 Unused Serialized files (Serialized files now loaded: 22)
+[+332.901] Sending disconnect msg
+[+332.901] ZPlayFabMatchmaking::UnregisterServer - unregistering server now. State: Uninitialized
+[+332.902] Disposing socket
+[+332.902] Stopping listening socket
+[+332.903] Last socket, unregistering callback
+[+332.904] ZSteamSocket  UnregisterGlobalCallbacks, existing sockets:0
+[+332.905] Stopping build thread
+[+333.459] [state] stopping
+[+335.107] Unloading 1 unused Assets to reduce memory usage. Loaded Objects now: 277481.
+[+335.108] Total: 169.733914 ms (FindLiveObjects: 30.717143 ms CreateObjectMapping: 40.229283 ms MarkObjects: 97.973338 ms  DeleteObjects: 0.812767 ms)
+[+335.108] 
+[+335.801] Steam manager on destroy
+[+336.142] ZNet OnDestroy
+[+336.145] Net scene destroyed
+[+336.214] [Physics::Module] Cleanup current backned.
+[+336.215] [Physics::Module] Id: 0xf2b8ea05
+[+336.215] Input System module state changed to: ShutdownInProgress.
+[+336.216] Input System polling thread exited.
+[+336.217] Input System module state changed to: Shutdown.
+[+336.475] [agent] Server process exited (code 0, signal none)
+[+336.475] [state] stopped

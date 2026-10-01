@@ -42,8 +42,9 @@ export function agentHost(tools: { launcher: string[]; steamcmd: string[] }, o: 
       const roots = { data: path.join(dir, 'data'), install: path.join(dir, 'install') };
       mkdirSync(roots.data, { recursive: true });
       mkdirSync(roots.install, { recursive: true });
+      // Free ports, as the panel gives them; a port that follows another gets its base's number plus its offset.
       const ports: Record<string, number> = {};
-      for (const decl of adapter.meta.ports) ports[decl.id] = await freePort();
+      for (const decl of adapter.meta.ports) ports[decl.id] = decl.follows ? ports[decl.follows.id]! + decl.follows.offset : await freePort();
       const home = path.join(dir, 'home');
       const noop = () => undefined;
       const get = makeFetch({ userAgent: 'gameserver-panel/test', baseDelayMs: 50 });

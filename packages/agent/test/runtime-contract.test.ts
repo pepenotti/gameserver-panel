@@ -65,6 +65,18 @@ describe('avorion (a manifest)', () => {
   });
 });
 
+// Valheim, a manifest plus hooks (M6, D4): installed with its fake steamcmd, run by its fake server in
+// the game's place. It has no console and stops on SIGINT, which saves first; Windows can't deliver
+// SIGINT to a child that handles it (the child is killed instead, and the suite rightly finds an
+// exit by signal), so this runs where signals work: Linux, as in the steam image.
+const fakeValheim = (kind: 'server' | 'steamcmd') => [process.execPath, path.join(tools, '..', 'fake-valheim', `${kind}.mjs`)];
+describe.skipIf(process.platform === 'win32')('valheim (a manifest plus hooks)', () => {
+  runtimeAdapterSuite(runtimeAdapter('valheim'), {
+    validLaunch: () => ({ name: 'vh', branch: 'public', updateOnStart: false, memoryMb: 3072, serverName: 'Contract test', password: 'secret12', public: false, crossplay: false, saveInterval: 60 }),
+    live: agentHost({ launcher: fakeValheim('server'), steamcmd: fakeValheim('steamcmd') }, { env: { FAKE_VALHEIM_BOOT_MS: '100', FAKE_VALHEIM_GEN_MS: '50', FAKE_VALHEIM_STOP_MS: '50' } }),
+  });
+});
+
 for (const flavour of ['vanilla', 'tshock', 'tmodloader'] as const) {
   const env: Record<string, string> = { FAKE_TERRARIA_BOOT_MS: '50' };
   terrariaEnvs.push(env);

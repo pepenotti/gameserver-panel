@@ -164,7 +164,8 @@ the live log below, not next to the command.
 
 ### Games added with a manifest have no settings forms
 
-**Affects:** Steam games the panel runs from a manifest alone (Avorion).
+**Affects:** Steam games the panel runs from a manifest (Avorion, and Valheim,
+a manifest plus a little code).
 
 **What you'll notice:**
 - Their launch settings (name, slots, branch, memory…) have a form, but the
@@ -178,7 +179,7 @@ the live log below, not next to the command.
 **Why:** a manifest describes the game in data; forms per setting and richer
 replies need code (PRD §7, §10).
 
-**Status:** Measured with Avorion, Oct 2026.
+**Status:** Measured with Avorion and Valheim, Oct 2026.
 
 ### Version and update checks share one GitHub allowance
 
@@ -260,40 +261,71 @@ counts).
 ## Valheim
 
 Measured on the dedicated server 1.0.16 (`verification/valheim-1.0.16.md`), Oct 2026, without a
-game client; "Expected" items need a player to confirm. The panel's Valheim support is being built
-(M6): where an entry says what the panel does, that is the plan.
+game client; "Expected" items need a player to confirm. The panel runs Valheim from a Steam manifest
+plus two pieces of code (M6, `packages/adapter-valheim`), checked against the real server ("Adapter
+check" in that document).
 
 - **There is no server console.** The panel can't send Valheim commands, warn players in game
-  before a restart, broadcast, or ask the game to save. It starts and stops the server with
-  signals, which save the world first. Measured.
-- **A running backup holds the world as of the last autosave.** Valheim saves on its own timer
-  (every 30 minutes by default) and when it stops; it can't be asked to save. The panel copies the
-  newest complete save, so a backup taken while it runs misses what happened since. Measured.
-  - A shorter save interval (a launch setting) narrows the gap.
+  before a restart, broadcast, or ask the game to save. It stops the server with a signal
+  (SIGINT), and the game saves the world first. Measured.
+- **A running backup holds the world as of the last autosave.** Valheim saves on its own timer and
+  when it stops; it can't be asked to save. The panel starts it with a 5-minute save interval (the
+  game's own is 30 minutes; the *Autosave every* launch setting changes it, from 1 minute to an
+  hour) and copies the newest complete save, so a backup taken while it runs misses what happened
+  since. Measured.
+  - A shorter save interval narrows the gap.
   - A backup of a stopped server is complete.
+  - A backup taken while the game is saving doesn't wait for that save: it takes the save before
+    it, which is complete (the new one isn't until the game marks it so), with the world files
+    that save uses. The save layout and its versioned chunk files are measured (the adapter
+    check); a copy overlapping a real save's writing wasn't caught (a save takes 0.1 s), so that
+    part is tested with the fake. Worlds bigger than one chunk file weren't measured: how the
+    game names their chunks is *expected* to follow the same rule.
 - **Kick and ban happen in the game.** Only admins (their SteamIDs in the admin list) can kick or
-  ban, from the game's own console. The panel edits the admin, ban and allowed lists; the game
-  never rewrote them in testing, but whether it notices an edit without a restart is *Expected*,
-  not measured. Bans name SteamIDs, so Docker Desktop's hidden addresses don't affect them.
-- **Public servers need a real password.** A server listed publicly refuses to start with a
-  password shorter than 5 characters, or one that is part of the server's name. Private servers
-  take any password, or none. Measured.
-- **The number of players online is only known for public servers.** Valheim answers Steam's
-  server queries only when it is listed publicly. For a private server the panel can only follow
-  the join and leave lines in the log. *Expected*, not measured with a player.
-- **Crossplay needs extra libraries and shares your public address.** Crossplay (Xbox, Game Pass
-  and other platforms, joined by a code) needs three libraries the panel's image doesn't have
-  today; without them the server starts but nobody can join through crossplay. With them, the game
-  registers your public address with Microsoft's PlayFab and prints it in its log. Measured.
-- **It needs about 1.4 GiB and keeps a third of a CPU core busy**, even with nobody online.
-  Measured.
+  ban, from the game's own console. The panel bans, allows and makes admins by SteamID in the
+  game's lists (`bannedlist.txt`, `permittedlist.txt`, `adminlist.txt`) and edits them as text,
+  **only while the server is stopped**: the game never rewrote them in testing, but whether it
+  notices an edit while it runs is *Expected*, not measured, so the panel doesn't rely on it. Bans
+  name SteamIDs, so Docker Desktop's hidden addresses don't affect them.
+  - A non-empty allowed list lets only those players in. A list the panel emptied may keep one
+    blank line; whether Valheim takes a blank line for an entry isn't measured. Check the allowed
+    list's file after removing its last player, and leave it truly empty (or with only its `//`
+    heading) to let everyone in.
+- **A server in the public list needs a real password.** Listing is off by default. A listed
+  server refuses to start with a password shorter than 5 characters, or one that is part of the
+  server's name: the panel refuses those settings before it starts, in its own words. Private
+  servers take any password, or none (the panel then passes no password at all). Measured.
+- **The number of players online is only known for servers in the public list.** Valheim answers
+  Steam's server queries only when it is listed; the panel counts players that way (the count
+  only: names aren't read). For a private server the panel follows the join and leave lines in the
+  log and lists players by SteamID. *Expected*, not measured with a player.
+  - A listed server that stops answering those queries is reported as not responding after a few
+    polls, as a game whose console stops answering is.
+- **Crossplay shares your public address.** Crossplay (Xbox, Game Pass and other platforms, joined
+  by a code the game prints in its log) is off by default. On, the game uses Microsoft's PlayFab
+  instead of Steam's networking, registers your public address with PlayFab and prints it in its
+  log. Its libraries are in the panel's steam image since M6; an image without them makes the game
+  start but nobody can join through crossplay, which the panel says in the log. Measured (crossplay
+  was run once, in the fact-finding; joining by code needs a player).
+- **No world presets or modifiers yet.** Valheim takes them on its command line (`-preset`,
+  `-modifier`), and they are stored in the world, but only one preset was tried and what one does
+  to an existing world wasn't measured, so the panel doesn't offer them.
+- **The world is named after the server's ID**, the name the game uses for its files
+  (`worlds_local/<id>/`). Measured with an ID with dashes in the adapter check.
+- **Valheim's own backups are left as the game sets them.** They never ran in any measured session
+  ("World session not long enough"), so where they would go and how big they get isn't known.
+  A running backup of the panel takes only the newest complete save and would leave them out.
+  *Expected*.
+- **It needs about 1.4 GiB and keeps a third of a CPU core busy**, even with nobody online. The
+  panel gives it 3 GiB plus 256 MiB by default (2 GiB at least). Measured.
 - **The first start downloads about 2.2 GB, and a new world takes a minute and a half** to
   generate before the server is ready (45 seconds for an existing one). Measured.
 - **A server port taken by something else isn't reported.** The game says it is ready but no one
   can connect. The panel gives every server its own ports, so this matters only for ports used
   outside the panel. Measured.
 - **Without access to Steam the server starts but players can't join**: it keeps logging
-  `Game server connected failed`. *Expected* (joining not tried).
+  `Game server connected failed`, and the panel says so once in the log. *Expected* (joining not
+  tried).
 - **x86-64 only**, like every game installed through Steam. Measured.
 - **Mods (BepInEx) aren't supported** (PRD §4): they install into the game's own folder, which the
   panel keeps untouched.

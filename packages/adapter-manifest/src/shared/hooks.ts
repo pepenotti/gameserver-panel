@@ -13,7 +13,9 @@ export interface ManifestRuntimeHooks {
    * `RuntimeAdapter.hotCopy.select` (BAK-02): narrows a running backup to a
    * consistent set of files (Valheim: its newest complete save set). The
    * agent copies the picks as they are and asks again, once, when one
-   * vanished.
+   * vanished. With it, `copy-between-saves` neither waits out the game's
+   * own save in progress nor fails a copy one overlaps: the picks are
+   * files such a save doesn't touch.
    */
   hotCopySelect?(ctx: RuntimeCtx, files: string[]): Promise<string[]>;
   /**

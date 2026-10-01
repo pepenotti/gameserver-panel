@@ -27,7 +27,8 @@ export class ManifestError extends Error {
 
 /** Formats whose files are keys and values: the only ones managed and secret keys can name. */
 const KEYED = new Set(['ini', 'properties', 'json', 'json5', 'yaml', 'toml']);
-const ENV_KEY = /^[A-Z_][A-Z0-9_]*$/;
+/** An environment variable name, in the case the game reads it (Steam reads `SteamAppId`). */
+const ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function duplicates(values: readonly string[]): string[] {
   return [...new Set(values.filter((v, i) => values.indexOf(v) !== i))];

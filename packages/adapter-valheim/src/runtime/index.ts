@@ -1,45 +1,50 @@
 /**
- * Valheim, agent side: a skeleton (M3 contract step, for M6). The steamcmd
- * app id, launch options, readiness and log lines, and the way it stops
- * (PRD §7: signals and log parsing, no console) come from the M6
- * fact-finding captures (D5); until then this adapter launches nothing
- * (`prepare` and `command` refuse), and it isn't offered.
+ * Valheim, agent side (M6): the runtime adapter the manifest engine makes
+ * from `manifest/valheim.json`, plus the two things a manifest can't say:
+ * which files a running backup takes (each world's newest complete save
+ * set, BAK-02) and how many players a server listed publicly has, from
+ * Steam's server queries (PLY-01). Everything else is the manifest's: the
+ * steamcmd install of app 896660, the launch, readiness and fatal lines,
+ * the stop by signal (the game saves first), autosave lines, list files.
  */
-import type { FileRoots, LaunchCommand, LineSignal, RuntimeAdapter } from '@gsp/adapter-api';
-import { VALHEIM_META } from '../shared/meta';
+import { lstatSync } from 'node:fs';
+import path from 'node:path';
+import type { PlayerList, RuntimeAdapter, RuntimeCtx } from '@gsp/adapter-api';
+import { MANIFEST_ROOTS, manifestRuntimeAdapter, type ManifestLaunch } from '@gsp/adapter-manifest/runtime';
+import { VALHEIM } from '../shared';
+import { queryInfo } from './a2s';
+import { newestCompleteSaves, type WrittenAt } from './save-sets';
 
-/** Launch params the panel sends (`LaunchEnvelope.params`). TODO(M6): world, password, branch. */
-export type ValheimLaunch = Record<string, never>;
+export { A2sError, infoRequest, parseInfo, queryInfo, type A2sInfo } from './a2s';
+export { newestCompleteSaves, type WrittenAt } from './save-sets';
+
+/** Launch params the panel sends (`LaunchEnvelope.params`): the manifest's settings and the server's game name. */
+export type ValheimLaunch = ManifestLaunch;
 
 /** The orchestrator's mounts for the steam family: the server's data and install volumes. */
-export const VALHEIM_ROOTS: FileRoots = { data: '/data', install: '/opt/game' };
+export const VALHEIM_ROOTS = MANIFEST_ROOTS;
 
-const SKELETON = 'The Valheim adapter is a skeleton: launching the game comes with the M6 fact-finding';
+/** Where the agent asks: the game listens on all addresses of its own container, which the agent shares. */
+const QUERY_HOST = '127.0.0.1';
 
-export function parseLaunch(input: unknown): ValheimLaunch {
-  if (typeof input !== 'object' || input === null || Array.isArray(input)) throw new Error('Launch params must be an object');
-  // TODO(M6 fact-finding): the settings a Valheim server is launched with.
-  return {};
+/** Players on a server listed publicly: the count Steam's server query gives (names aren't read: unverified with a player). */
+export async function steamPlayers(_ctx: RuntimeCtx, port: number): Promise<PlayerList> {
+  const info = await queryInfo(QUERY_HOST, port);
+  return { count: info.players, names: [] };
 }
 
-export const valheimRuntimeAdapter: RuntimeAdapter<ValheimLaunch> = {
-  meta: VALHEIM_META,
-  parseLaunch,
-  secrets: (_p, st) => [st.controlSecret],
-  // TODO(M6): the installed Steam build.
-  installed: () => null,
-  async prepare() {
-    throw new Error(SKELETON);
-  },
-  command(): LaunchCommand {
-    throw new Error(SKELETON);
-  },
-  // TODO(M6 fact-finding): readiness, join and leave, save and fatal lines.
-  classify: (line): LineSignal => ({ message: line }),
-  // PRD §7: no control channel; signals and the log only.
-  channel: () => ({ kind: 'none' }),
-  async stop() {
-    // TODO(M6 fact-finding): the signal that makes it save and quit; until then the agent's signals stop it.
-  },
-  roots: () => ({ ...VALHEIM_ROOTS }),
-};
+/** When a data-root file was last written, or null when it is gone. */
+function writtenAt(ctx: RuntimeCtx): WrittenAt {
+  return (rel) => {
+    try {
+      return lstatSync(path.join(ctx.roots.data, ...rel.split('/'))).mtimeMs;
+    } catch {
+      return null;
+    }
+  };
+}
+
+export const valheimRuntimeAdapter: RuntimeAdapter<ValheimLaunch> = manifestRuntimeAdapter(VALHEIM, {
+  hotCopySelect: async (ctx, files) => newestCompleteSaves(files, writtenAt(ctx)),
+  steamQuery: steamPlayers,
+});

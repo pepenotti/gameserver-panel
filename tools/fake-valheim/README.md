@@ -28,9 +28,13 @@ What it reproduces, per the measurements:
   `-crossplay`), after `Registering lobby`, and `Game server connected`;
 - saves: every `-saveinterval` seconds (scaled by `FAKE_VALHEIM_SAVE_MS_PER_S`) and on SIGINT or
   SIGTERM, the five `World save (n/5)` lines and a numbered set in
-  `<savedir>/worlds_local/<world>/` written in the measured order (`00_00__0_<n>.chunk`,
-  `_main.<n>.chunks`, `.db2`, `.fwl2`, then the `.ok` marker), the previous set removed after the
-  marker; `Skipping backup. World session not long enough.` every time (the game's own backups
+  `<savedir>/worlds_local/<world>/` written in the measured order (the chunk file when the chunk
+  changed, `_main.<n>.chunks`, `.db2`, `.fwl2`, then the `.ok` marker), what the previous set no
+  longer needs removed after the marker. The chunk file is named by its own version
+  (`00_00__0_<v>.chunk`), which goes up only when a save finds the chunk changed: every save with
+  `FAKE_VALHEIM_DIRTY_SAVES=all` (the default, as in the fact-finding, where it followed the save
+  number), only a run's first save with `first` (as in the adapter check with nobody online, where
+  saves 2 to 4 kept `00_00__0_1.chunk`); `Skipping backup. World session not long enough.` every time (the game's own backups
   never happened in the fact-finding's sessions);
 - files: `adminlist.txt`, `bannedlist.txt`, `permittedlist.txt` with their one comment line when
   missing (never rewritten after that), `_main.0.fwl2` as soon as a new world is created;
@@ -46,7 +50,7 @@ What it reproduces, per the measurements:
 - Steam queries on the query port, only for `-public 1`: A2S_INFO (name, `valheim`, players,
   10 slots, `version 1.0.0.0`, keywords `g=1.0.16,n=40,m=`, the game port) and A2S_PLAYER (the
   count, names empty) answered at once, A2S_RULES never;
-- crossplay: without PlayFab's libraries (the product image's case) `DllNotFoundException:
+- crossplay: without PlayFab's libraries (the steam image before M6 added them, and the fake's default) `DllNotFoundException:
   libParty.so` and no join code; with `FAKE_VALHEIM_CROSSPLAY_LIBS=1`
   `Session "<name>" registered with join code 123456`;
 - `-logfile <file>`: after `Setting -logfile to: …` every line goes to the file, none to stdout;
@@ -61,13 +65,21 @@ disabled …`, then a quit with `Skipping world save`, exit 0; a world whose `.d
 write does the same), `crash-on-boot` (the query socket can't be bound, exit 0), `never-ready` (the
 unwritable save folder: `IOException: Read-only file system`, then nothing; also when `-savedir`
 really can't be written), `ignore-stop` (SIGINT and SIGTERM do nothing). Tuning:
-`FAKE_VALHEIM_BOOT_MS` (300), `FAKE_VALHEIM_GEN_MS` (200), `FAKE_VALHEIM_STOP_MS` (200).
+`FAKE_VALHEIM_BOOT_MS` (300), `FAKE_VALHEIM_GEN_MS` (200), `FAKE_VALHEIM_STOP_MS` (200),
+`FAKE_VALHEIM_SAVE_MS_PER_S` (1000), `FAKE_VALHEIM_SAVE_STEP_MS` (0: how long each of a save's steps
+takes, so a test can catch a save half written; the real steps took 1–45 ms for a small world),
+`FAKE_VALHEIM_DIRTY_SAVES` (`all`).
+Saves never overlap: a timer's save is skipped while one runs, and the stop's save waits for it.
 
 Test hooks on stdin (not real commands): `fake-join <steamid>` prints `Got connection SteamID
 <id>`, then `Got handshake from client <id>` and `Server: New peer connected,sending global keys`
 (or, for a SteamID in `bannedlist.txt` or missing from a non-empty `permittedlist.txt`,
 `Peer <id> is blacklisted or not in whitelist.` and `Closing socket <id>`); `fake-leave
-<steamid>` prints `Closing socket <id>`; `fake-crash` exits 3. **These player lines come from the
+<steamid>` prints `Closing socket <id>`; `fake-crash` exits 3; `fake-dirty` makes the next save find the chunk changed (a new chunk
+version); `fake-hold-save` holds saves half
+written (after their chunk files and `World save (2/5)`) until `fake-release-save`, so a test can
+copy the world in the middle of one (`fake-hold-save dirty`: the save held is one that found the
+chunk changed). **These player lines come from the
 game's own strings, not from a capture: no client joined in the fact-finding.**
 
 Not modelled: the game's own timed backups (`_backup_auto-…`), PlayFab's relay, Unity's other

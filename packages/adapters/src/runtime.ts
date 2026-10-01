@@ -10,17 +10,17 @@ import { valheimRuntimeAdapter } from '@gsp/adapter-valheim/runtime';
 import { enabledOf, type AdapterEntry } from './entry';
 
 /**
- * Every runtime adapter, and whether an agent runs it (the skeletons don't
- * yet: see `panelAdapterEntries`). A game's runtime half is enabled once it
- * is measured and built, before the panel offers the game (its panel half
- * comes next): Minecraft since M3, Terraria since M5 phase 2, Avorion (from
- * its manifest alone) since M6.
+ * Every runtime adapter, and whether an agent runs it (a skeleton doesn't:
+ * see `panelAdapterEntries`). A game's runtime half is enabled once it is
+ * measured and built, before the panel offers the game (its panel half
+ * comes next): Minecraft since M3, Terraria since M5 phase 2, Valheim (a
+ * manifest plus hooks) and Avorion (from its manifest alone) since M6.
  */
 export const runtimeAdapterEntries: readonly AdapterEntry<RuntimeAdapter>[] = [
   { adapter: pzRuntimeAdapter, enabled: true },
   { adapter: minecraftRuntimeAdapter, enabled: true },
   { adapter: terrariaRuntimeAdapter, enabled: true },
-  { adapter: valheimRuntimeAdapter, enabled: false },
+  { adapter: valheimRuntimeAdapter as RuntimeAdapter, enabled: true },
   { adapter: manifestRuntimeAdapter(AVORION) as RuntimeAdapter, enabled: true },
 ];
 

@@ -1,20 +1,17 @@
 /**
- * Valheim, panel side: a skeleton (M3 contract step, for M6). Launch
- * options, the admin, banned and permitted lists (the `lines` format),
- * backups and resets come with the M6 adapter, from measured facts (D5).
+ * Valheim, panel side (M6): the panel adapter the manifest engine makes
+ * from `manifest/valheim.json`. Its launch settings form (the server's
+ * name, password, the public list and crossplay, both off by default, the
+ * autosave interval) with the password rules of a public server checked
+ * before it starts; the admin, ban and allowed lists edited as text and
+ * through moderation by SteamID, while the server is stopped; backups of
+ * the world and the lists; resets. No console, so no messages to players.
  */
 import type { PanelAdapter } from '@gsp/adapter-api';
-import { VALHEIM_META } from '../shared/meta';
+import { manifestPanelAdapter, type ManifestSettings } from '@gsp/adapter-manifest/panel';
+import { VALHEIM } from '../shared';
 
-/** The launch settings the panel stores. TODO(M6): world, password, branch. */
-export type ValheimLaunchSettings = Record<string, never>;
+/** The launch settings the panel stores. */
+export type ValheimLaunchSettings = ManifestSettings;
 
-export const valheimPanelAdapter: PanelAdapter<ValheimLaunchSettings> = {
-  meta: VALHEIM_META,
-  launch: { schema: [], defaults: () => ({}), toAgent: () => ({}) },
-  config: { files: () => [], roots: () => [], schemas: {}, managedValues: () => ({}) },
-  backups: { parts: [] },
-  resets: [],
-  // PRD §7: Valheim has no console to message players through.
-  messages: { announce: () => null },
-};
+export const valheimPanelAdapter: PanelAdapter<ValheimLaunchSettings> = manifestPanelAdapter(VALHEIM);
