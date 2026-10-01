@@ -28,9 +28,13 @@ What it reproduces, per the measurements:
   `-crossplay`), after `Registering lobby`, and `Game server connected`;
 - saves: every `-saveinterval` seconds (scaled by `FAKE_VALHEIM_SAVE_MS_PER_S`) and on SIGINT or
   SIGTERM, the five `World save (n/5)` lines and a numbered set in
-  `<savedir>/worlds_local/<world>/` written in the measured order (`00_00__0_<n>.chunk`,
-  `_main.<n>.chunks`, `.db2`, `.fwl2`, then the `.ok` marker), the previous set removed after the
-  marker; `Skipping backup. World session not long enough.` every time (the game's own backups
+  `<savedir>/worlds_local/<world>/` written in the measured order (the chunk file when the chunk
+  changed, `_main.<n>.chunks`, `.db2`, `.fwl2`, then the `.ok` marker), what the previous set no
+  longer needs removed after the marker. The chunk file is named by its own version
+  (`00_00__0_<v>.chunk`), which goes up only when a save finds the chunk changed: every save with
+  `FAKE_VALHEIM_DIRTY_SAVES=all` (the default, as in the fact-finding, where it followed the save
+  number), only a run's first save with `first` (as in the adapter check with nobody online, where
+  saves 2 to 4 kept `00_00__0_1.chunk`); `Skipping backup. World session not long enough.` every time (the game's own backups
   never happened in the fact-finding's sessions);
 - files: `adminlist.txt`, `bannedlist.txt`, `permittedlist.txt` with their one comment line when
   missing (never rewritten after that), `_main.0.fwl2` as soon as a new world is created;
@@ -63,16 +67,19 @@ unwritable save folder: `IOException: Read-only file system`, then nothing; also
 really can't be written), `ignore-stop` (SIGINT and SIGTERM do nothing). Tuning:
 `FAKE_VALHEIM_BOOT_MS` (300), `FAKE_VALHEIM_GEN_MS` (200), `FAKE_VALHEIM_STOP_MS` (200),
 `FAKE_VALHEIM_SAVE_MS_PER_S` (1000), `FAKE_VALHEIM_SAVE_STEP_MS` (0: how long each of a save's steps
-takes, so a test can catch a save half written; the real steps took 1–45 ms for a small world).
+takes, so a test can catch a save half written; the real steps took 1–45 ms for a small world),
+`FAKE_VALHEIM_DIRTY_SAVES` (`all`).
 Saves never overlap: a timer's save is skipped while one runs, and the stop's save waits for it.
 
 Test hooks on stdin (not real commands): `fake-join <steamid>` prints `Got connection SteamID
 <id>`, then `Got handshake from client <id>` and `Server: New peer connected,sending global keys`
 (or, for a SteamID in `bannedlist.txt` or missing from a non-empty `permittedlist.txt`,
 `Peer <id> is blacklisted or not in whitelist.` and `Closing socket <id>`); `fake-leave
-<steamid>` prints `Closing socket <id>`; `fake-crash` exits 3; `fake-hold-save` holds saves half
+<steamid>` prints `Closing socket <id>`; `fake-crash` exits 3; `fake-dirty` makes the next save find the chunk changed (a new chunk
+version); `fake-hold-save` holds saves half
 written (after their chunk files and `World save (2/5)`) until `fake-release-save`, so a test can
-copy the world in the middle of one. **These player lines come from the
+copy the world in the middle of one (`fake-hold-save dirty`: the save held is one that found the
+chunk changed). **These player lines come from the
 game's own strings, not from a capture: no client joined in the fact-finding.**
 
 Not modelled: the game's own timed backups (`_backup_auto-…`), PlayFab's relay, Unity's other

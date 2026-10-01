@@ -323,6 +323,32 @@ describe('fake-valheim server.mjs', () => {
     await until(() => count(PATTERNS.saved) >= n);
   });
 
+  it('a chunk nothing changed keeps its file and version (FAKE_VALHEIM_DIRTY_SAVES=first, as in the adapter check); fake-dirty writes the next one', async () => {
+    const dir = tempDir();
+    const f = start(launch(dir, await freeUdpPort(), ['-saveinterval', '1']), { dir, env: { FAKE_VALHEIM_SAVE_MS_PER_S: '100', FAKE_VALHEIM_DIRTY_SAVES: 'first' } });
+    const count = (re: RegExp) => f.lines.filter((l) => re.test(l)).length;
+    const world = () => readdirSync(path.join(dir, 'worlds_local', 'w1')).sort();
+    const lastSave = () => Number(PATTERNS.saveNumber.exec(f.lines.findLast((l) => PATTERNS.saveNumber.test(l))!)![1]);
+    /** Holds the next save half written, and says its number. */
+    const freeze = async () => {
+      f.send('fake-hold-save');
+      await until(() => count(/^World save \(2\/5\) /) > count(PATTERNS.saved));
+      return lastSave();
+    };
+    await until(() => count(PATTERNS.saved) >= 3);
+    let n = await freeze();
+    expect(world()).toEqual(['00_00__0_1.chunk', ...['chunks', 'db2', 'fwl2', 'ok'].map((x) => `_main.${n - 1}.${x}`), `_main.${n}.chunks`].sort());
+    const dirty = f.lines.flatMap((l) => /Number of dirty chunks to save: (\d+)/.exec(l)?.[1] ?? []);
+    expect(dirty.slice(0, 3)).toEqual(['1', '0', '0']);
+    // The next save finds it changed: version 2, and version 1 goes once that save is complete.
+    f.send('fake-dirty');
+    f.send('fake-release-save');
+    await until(() => count(PATTERNS.saved) >= n + 1);
+    n = await freeze();
+    expect(world()).toEqual(['00_00__0_2.chunk', ...['chunks', 'db2', 'fwl2', 'ok'].map((x) => `_main.${n - 1}.${x}`), `_main.${n}.chunks`].sort());
+    f.send('fake-release-save');
+  });
+
   it('saves never overlap: a timer save is skipped while one runs', async () => {
     // A save every 40 ms whose 5 steps take 30 ms each.
     const f = start(launch(tempDir(), await freeUdpPort(), ['-saveinterval', '1']), { env: { FAKE_VALHEIM_SAVE_MS_PER_S: '40', FAKE_VALHEIM_SAVE_STEP_MS: '30' } });

@@ -105,8 +105,9 @@ beforeAll(async () => {
     policy,
     agentPorts: await freeTcp(3),
     controlPorts: await freeTcp(6),
-    // The fakes' knobs: a quick boot and stop, and an autosave every 1.2 s (the 60-second minimum, 20 ms a second).
-    env: { ...agentEnvFrom({ FAKE_VALHEIM_BOOT_MS: '150', FAKE_VALHEIM_GEN_MS: '100', FAKE_VALHEIM_STOP_MS: '50', FAKE_VALHEIM_SAVE_MS_PER_S: '20' }), GAME_PLAYERS_POLL_MS: '300', GAME_RESTART_DELAY_MS: '60000' },
+    // The fakes' knobs: a quick boot and stop, an autosave every 1.2 s (the 60-second minimum, 20 ms a second),
+    // and a world chunk that only a run's first save finds changed, as in the adapter check with nobody online.
+    env: { ...agentEnvFrom({ FAKE_VALHEIM_BOOT_MS: '150', FAKE_VALHEIM_GEN_MS: '100', FAKE_VALHEIM_STOP_MS: '50', FAKE_VALHEIM_SAVE_MS_PER_S: '20', FAKE_VALHEIM_DIRTY_SAVES: 'first' }), GAME_PLAYERS_POLL_MS: '300', GAME_RESTART_DELAY_MS: '60000' },
     restartDelayMs: 60_000,
   });
   const socket = socketPath();
@@ -218,7 +219,8 @@ async function archiveFiles(id: string, name: string): Promise<string[]> {
   });
   return out.sort();
 }
-const set = (world: string, n: number) => [`00_00__0_${n}.chunk`, `_main.${n}.chunks`, `_main.${n}.db2`, `_main.${n}.fwl2`, `_main.${n}.ok`].map((f) => `data/worlds_local/${world}/${f}`);
+/** A save set's own files (the chunk files it uses are named by their own versions). */
+const main = (world: string, n: number) => [`_main.${n}.chunks`, `_main.${n}.db2`, `_main.${n}.fwl2`, `_main.${n}.ok`].map((f) => `data/worlds_local/${world}/${f}`);
 const LISTS = ['data/adminlist.txt', 'data/bannedlist.txt', 'data/permittedlist.txt'];
 
 describe('Valheim end to end, a manifest plus hooks, through the fake orchestrator and the fake server (M6)', () => {
@@ -303,22 +305,24 @@ describe('Valheim end to end, a manifest plus hooks, through the fake orchestrat
       await hook(id, `fake-leave ${VISITOR}`);
       await until('the visitor gone', async () => (await online(id)).length === 0);
 
-      // ---- BAK-02: a hot backup in the middle of an autosave holds exactly the newest complete save set.
-      await until('a first autosave', () => gameLines(id).some((l) => /^World save \(5\/5\) done/.test(l)));
-      await hook(id, 'fake-hold-save');
+      // ---- BAK-02: a hot backup in the middle of an autosave holds exactly the newest complete save set, with the
+      // chunk file that set uses: version 1, written by the first save (the saves since found nothing changed),
+      // not version 2, which the save in progress has just written.
       const count = (re: RegExp) => gameLines(id).filter((l) => re.test(l)).length;
+      await until('a few autosaves', () => count(/^World save \(5\/5\) done/) >= 3);
+      await hook(id, 'fake-hold-save dirty');
       await until('an autosave half written', () => count(/^World save \(2\/5\) /) > count(/^World save \(5\/5\) done/));
       const inProgress = Number(/=> Save number (\d+)$/.exec(gameLines(id).findLast((l) => /=> Save number \d+$/.test(l))!)![1]);
       const complete = inProgress - 1;
-      // On disk: the complete set, and the new one's chunk files without its marker.
-      expect(worldFiles(id)).toEqual([...set(id, complete), ...set(id, inProgress).slice(0, 2)].map((f) => f.split('/').pop()!).sort());
+      // On disk: the complete set and its chunk, and the new chunk version and index of the save in progress.
+      expect(worldFiles(id)).toEqual(['00_00__0_1.chunk', ...main(id, complete), '00_00__0_2.chunk', `_main.${inProgress}.chunks`].map((f) => f.split('/').pop()!).sort());
       await ok(await owner.post(url(id, '/backups')), 'backup');
       expect(await opDone(id)).toEqual({ ok: true, error: null });
       await hook(id, 'fake-release-save');
       const backups = ((await owner.get(url(id, '/backups'))).json() as { backups: { name: string; manifest: { mode: string; parts: string[]; gameVersion: string | null } }[] }).backups;
       expect(backups).toHaveLength(1);
       expect(backups[0]!.manifest).toMatchObject({ mode: 'hot', parts: ['world', 'lists'], gameVersion: '1.0.16' });
-      expect(await archiveFiles(id, backups[0]!.name)).toEqual([...LISTS, ...set(id, complete)].sort());
+      expect(await archiveFiles(id, backups[0]!.name)).toEqual([...LISTS, `data/worlds_local/${id}/00_00__0_1.chunk`, ...main(id, complete)].sort());
       await until('the autosave finished', () => count(/^World save \(5\/5\) done/) >= inProgress);
 
       // ---- stop (SRV-03, NFR-04): SIGINT, which saves first (where signals reach the fake).
@@ -335,7 +339,7 @@ describe('Valheim end to end, a manifest plus hooks, through the fake orchestrat
       // ---- restore (BAK-03): the world as the backup held it, the next start loads that save.
       await ok(await owner.post(url(id, `/backups/${encodeURIComponent(backups[0]!.name)}/restore`), { parts: ['world'] }), 'restore');
       expect(await opDone(id)).toEqual({ ok: true, error: null });
-      expect(worldFiles(id)).toEqual(set(id, complete).map((f) => f.split('/').pop()!).sort());
+      expect(worldFiles(id)).toEqual(['00_00__0_1.chunk', ...main(id, complete)].map((f) => f.split('/').pop()!).sort());
       const beforeStart = logs(id).length;
       await ok(await owner.post(url(id, '/server/start')), 'start again');
       expect(await opDone(id)).toEqual({ ok: true, error: null });

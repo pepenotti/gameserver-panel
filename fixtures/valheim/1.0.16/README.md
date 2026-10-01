@@ -36,6 +36,13 @@ libpulse-mainloop-glib0`.
 - `steamcmd/`: `app_info_print 896660` (the app's block), the anonymous `app_update 896660
   validate` (progress lines cut to the first two and the last, with a `# … n more progress
   lines …` line), and the app manifest it left.
+- Later, from the M6 adapter check (the product's agent running the Valheim adapter, driven
+  through its HTTP API; "Adapter check" in the verification document):
+  `logs/adapter-check.log` is the agent's live log of its first run as people see it (Valheim's
+  timestamps off, progress runs as their text, the agent's own lines and events marked), not the
+  harness's raw lines; `tree/adapter-check-sets.txt` is the world folder after each of its six saves,
+  with each save's dirty chunk count and the bytes of the set's `.chunks` index. Scrubbed the same
+  way: the free disk space by hand, then the scrubber (one Steam64 id).
 
 ## Players
 No client joined: Valheim's clients need a Steam (or PlayFab) account and the game. What only a

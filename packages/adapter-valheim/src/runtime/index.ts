@@ -7,14 +7,16 @@
  * steamcmd install of app 896660, the launch, readiness and fatal lines,
  * the stop by signal (the game saves first), autosave lines, list files.
  */
+import { lstatSync } from 'node:fs';
+import path from 'node:path';
 import type { PlayerList, RuntimeAdapter, RuntimeCtx } from '@gsp/adapter-api';
 import { MANIFEST_ROOTS, manifestRuntimeAdapter, type ManifestLaunch } from '@gsp/adapter-manifest/runtime';
 import { VALHEIM } from '../shared';
 import { queryInfo } from './a2s';
-import { newestCompleteSaves } from './save-sets';
+import { newestCompleteSaves, type WrittenAt } from './save-sets';
 
 export { A2sError, infoRequest, parseInfo, queryInfo, type A2sInfo } from './a2s';
-export { newestCompleteSaves } from './save-sets';
+export { newestCompleteSaves, type WrittenAt } from './save-sets';
 
 /** Launch params the panel sends (`LaunchEnvelope.params`): the manifest's settings and the server's game name. */
 export type ValheimLaunch = ManifestLaunch;
@@ -31,7 +33,18 @@ export async function steamPlayers(_ctx: RuntimeCtx, port: number): Promise<Play
   return { count: info.players, names: [] };
 }
 
+/** When a data-root file was last written, or null when it is gone. */
+function writtenAt(ctx: RuntimeCtx): WrittenAt {
+  return (rel) => {
+    try {
+      return lstatSync(path.join(ctx.roots.data, ...rel.split('/'))).mtimeMs;
+    } catch {
+      return null;
+    }
+  };
+}
+
 export const valheimRuntimeAdapter: RuntimeAdapter<ValheimLaunch> = manifestRuntimeAdapter(VALHEIM, {
-  hotCopySelect: async (_ctx, files) => newestCompleteSaves(files),
+  hotCopySelect: async (ctx, files) => newestCompleteSaves(files, writtenAt(ctx)),
   steamQuery: steamPlayers,
 });

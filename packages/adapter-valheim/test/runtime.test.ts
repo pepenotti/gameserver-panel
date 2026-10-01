@@ -4,7 +4,7 @@
 // refused before a start in both languages, its lines (CON-01, SRV-07),
 // the stop by signal (SRV-03, NFR-04), its own saves and the running copy
 // (BAK-02), players (PLY-01) and the install through steamcmd (UPD-01…03).
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -212,8 +212,16 @@ describe('stopping and saving (SRV-03, NFR-04)', () => {
     const g = game();
     g.print('10/01/2026 15:44:02: World save (1/5) Cloud & Backup checks done [1ms] => Save number 2');
     await expect(vh.hotCopy!.before(g.ctl)).resolves.toBeUndefined();
-    const files = ['adminlist.txt', 'worlds_local/vh/00_00__0_1.chunk', 'worlds_local/vh/00_00__0_2.chunk', 'worlds_local/vh/_main.1.chunks', 'worlds_local/vh/_main.1.db2', 'worlds_local/vh/_main.1.fwl2', 'worlds_local/vh/_main.1.ok', 'worlds_local/vh/_main.2.chunks'];
-    expect(await vh.hotCopy!.select!(ctxOf(), files)).toEqual(['adminlist.txt', 'worlds_local/vh/00_00__0_1.chunk', 'worlds_local/vh/_main.1.chunks', 'worlds_local/vh/_main.1.db2', 'worlds_local/vh/_main.1.fwl2', 'worlds_local/vh/_main.1.ok']);
+    // On disk, written in this order (a second apart): set 1, then save 2's chunk and index so far.
+    const ctx = ctxOf();
+    const files = ['adminlist.txt', 'worlds_local/vh/00_00__0_1.chunk', 'worlds_local/vh/_main.1.chunks', 'worlds_local/vh/_main.1.db2', 'worlds_local/vh/_main.1.fwl2', 'worlds_local/vh/_main.1.ok', 'worlds_local/vh/00_00__0_2.chunk', 'worlds_local/vh/_main.2.chunks'];
+    mkdirSync(path.join(ctx.roots.data, 'worlds_local', 'vh'), { recursive: true });
+    files.forEach((f, i) => {
+      const file = path.join(ctx.roots.data, ...f.split('/'));
+      writeFileSync(file, 'x');
+      utimesSync(file, 1_000_000 + i, 1_000_000 + i);
+    });
+    expect(await vh.hotCopy!.select!(ctx, [...files].sort())).toEqual(['adminlist.txt', 'worlds_local/vh/00_00__0_1.chunk', 'worlds_local/vh/_main.1.chunks', 'worlds_local/vh/_main.1.db2', 'worlds_local/vh/_main.1.fwl2', 'worlds_local/vh/_main.1.ok']);
     g.print('10/01/2026 15:44:02: World save (5/5) done. Total time [94ms]');
     await expect(vh.hotCopy!.after(g.ctl)).resolves.toBeUndefined();
   });
