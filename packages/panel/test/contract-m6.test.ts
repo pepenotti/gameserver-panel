@@ -39,7 +39,7 @@ const following: PanelAdapter = {
     toAgent: (srv, s, secrets, o) => {
       const v = s as { branch: string };
       if (v.branch === 'refused') refuse('branch', 'That branch is not offered.', 'Esa rama no se ofrece.');
-      return pzPanelAdapter.launch.toAgent(srv, s, secrets, o);
+      return pzPanelAdapter.launch.toAgent(srv, s as Parameters<typeof pzPanelAdapter.launch.toAgent>[1], secrets, o);
     },
   },
 };
