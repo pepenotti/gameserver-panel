@@ -44,7 +44,7 @@ export default {
   shareButton: 'Compartir',
   copyAll: 'Copiar todo',
   copiedAll: 'Se copió el mensaje entero.',
-  limitationsDoc: 'Más en docs/limitations.md, en la parte del equipo.',
+  limitationsDoc: 'Más en docs/limitations.md, en “Joining a server” (en inglés).',
   share: {
     title: 'Entrá a {{server}} ({{game}})',
     addressAndPort: 'dirección {{address}}, puerto {{port}}',

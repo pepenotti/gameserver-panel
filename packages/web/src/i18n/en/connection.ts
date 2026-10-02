@@ -44,7 +44,7 @@ export default {
   shareButton: 'Share',
   copyAll: 'Copy all',
   copiedAll: 'Copied the whole message.',
-  limitationsDoc: 'More in docs/limitations.md, under the host.',
+  limitationsDoc: 'More in docs/limitations.md, under “Joining a server”.',
   share: {
     title: 'Join {{server}} ({{game}})',
     addressAndPort: 'address {{address}}, port {{port}}',
