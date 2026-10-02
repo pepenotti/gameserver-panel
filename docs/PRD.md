@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.25 |
+| Status | Draft 0.26 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -219,7 +219,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. New limits, a newer runtime image and a new way of building containers from a panel update apply at once to a stopped server and at its next start to a running one. A host view warns when the limits add up to more than the host has. |
 | SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart, and after a product upgrade, on the newer runtime image from its next start. After an orchestrator release that builds containers another way, a running game's container is kept until the game's next start. |
 | SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server, and says why: the last fatal line the game printed (redacted). |
-| SRV-08 | P1 | Connection info per server (address, port, protocol, whether a password is set), plus the router forwards it needs. |
+| SRV-08 | P0 | Connection info per server, for everyone who can see it: what players type to join, in that game's own words and format (the address, the port players use and its protocol, the client and version they need, whether a password is set, and extra steps such as a whitelist), for three places: this PC, the home network and the internet. Each line has a copy button, and a Share button opens the phone's share sheet where the browser has one (copy otherwise). It also lists the router forwards the server needs (ports and protocols). An admin may include the password in what is shared; nobody else sees it. Facts about joining (which port a client uses) are measured per game (D5) and marked unverified until a real client confirms them. |
 | SRV-09 | P2 | Clone a server: settings only, or settings plus world. |
 
 ### 8.2 Install and updates — UPD
@@ -316,6 +316,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | HST-05 | P0 | **Runs on the main operating systems through Docker:** Linux (Docker Engine), Windows 10/11 (Docker Desktop or Docker Engine in WSL) and macOS (Docker Desktop). x86-64 and ARM64 hosts work. Adapters declare the CPU architectures they support, and the panel won't create a server the host can't run natively; it says why instead. |
 | HST-06 | P0 | A setup and operations guide for each of Linux, Windows and macOS, with firewall and router notes. |
 | HST-07 | P0 | The panel knows what its host can't do and says so where it matters: the orchestrator reports the host's traits (CPU architecture, the memory Docker gives it, and whether players' addresses reach the games, which they don't through Docker Desktop's port relay), the host page lists the limitations that apply, and each affected feature (address bans, per-address game settings, addresses in the activity log) shows its own note. |
+| HST-08 | P0 | Public address: the owner sets the name friends use to reach this host, a DNS name (by default the DuckDNS name the panel already uses for HTTPS, when there is one) or an IP address, and optionally the host's address on the home network. A "detect" button asks one fixed public service for this host's public IP, only when the owner presses it (NFR-09). Every server's connection info (SRV-08) uses these. |
 
 ### 8.11 Language and usability — UX
 
@@ -474,7 +475,7 @@ milestone and the tests that prove it, and is updated with every merge.
 | M4 | Modrinth mods, then Forge and NeoForge loaders: search, compatibility, dependencies, updates | MOD-02, MOD-04, UPD-07 | Add a mod that has a dependency on Fabric, then on NeoForge; each server boots and a client joins. |
 | M5 | Terraria: vanilla, TShock (REST API, plugins) and tModLoader; stdin control; world creation; Workshop mods for tModLoader | MOD-03, MOD-06, CON-02, CON-04, UPD-01…04 | Create a world from the panel for each flavour; join; kick and ban (TShock through REST); install a TShock plugin and a tModLoader mod. |
 | M6 | Valheim, plus the declarative Steam manifest | G4, D4, and for Valheim and the manifest game: UPD-01…04, BAK-01…04, PLY-01/03, CFG-01…09, SRV-03, HST-05 | Valheim runs via manifest plus hooks. A second Steam game is added **with a manifest only**, and it boots, stops and backs up. |
-| M7 | Host overview, job staggering, platform support: architecture checks and the Linux, Windows and macOS guides | HST-03, HST-05/06, HST-07, SCH-02, SRV-08, D10 | Smoke test (create, start, back up, restore) passes on Linux and Windows; the macOS guide exists but is marked untested until someone runs it on a Mac; an ARM host refuses an x86-only game with a clear reason; on Docker Desktop the host page and the address-ban dialogs show the hidden-address limitation, and whether Linux Docker Engine and Docker Engine in WSL (mirrored networking) keep players' addresses is measured and written into `docs/limitations.md`. |
+| M7 | Host overview, job staggering, platform support: architecture checks and the Linux, Windows and macOS guides | HST-03, HST-05/06, HST-07, SCH-02, D10 | Smoke test (create, start, back up, restore) passes on Linux and Windows; the macOS guide exists but is marked untested until someone runs it on a Mac; an ARM host refuses an x86-only game with a clear reason; on Docker Desktop the host page and the address-ban dialogs show the hidden-address limitation, and whether Linux Docker Engine and Docker Engine in WSL (mirrored networking) keep players' addresses is measured and written into `docs/limitations.md`. |
 | M8 | v1: docs, security review, EN/ES completeness, phone layout, 48 h soak with three servers, then publish | G5, G6, UX-01…04, NFR-01/04/05/06 | Every [success criterion](#12-success-criteria-v1) met; the repository goes public under D9. |
 
 ## 12. Success criteria (v1)
@@ -505,6 +506,7 @@ milestone and the tests that prove it, and is updated with every merge.
 | Forge and NeoForge installers change often. | Pinned loader versions, fixtures per loader, and loaders shipped at P1 after the P0 ones are solid. |
 | Third-party code in plugins and mods (Paper, TShock, tModLoader). | Admin-only installs with a warning and an audit record of each file; plugin links limited to GitHub release assets, downloaded by the server's own agent; the container isolation from NFR-02/03. |
 | Docker Desktop hides players' and visitors' addresses (address bans hit everyone; per-address game limits treat all players as one). | Account-based bans first; TShock for public Terraria; the panel detects it and warns (HST-07); `docs/limitations.md` explains it with the fixes (Linux Docker Engine, Docker Engine in WSL) (UX-04). |
+| Friends can't join, or the owner can't join their own public address from home. | The connection info names the router forwards per server and shows separate lines for this PC, the home network and the internet, since many routers can't loop a home player back through the public address (`docs/limitations.md`). |
 | Hosts that can't run a game (ARM hosts such as Apple Silicon Macs or a Raspberry Pi). | Architecture declared per adapter, and a clear refusal (HST-05). |
 
 ## 14. Change control
@@ -588,3 +590,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.23 | 2026-10-01 | M6 fact-finding: Valheim 1.0.16 and Avorion 2.5.13 measured (`docs/verification/valheim-1.0.16.md`, `avorion-2.5.13.md`, fixtures, `tools/fake-valheim`, `tools/fake-avorion`); Avorion is the manifest-only Steam game; Valheim has no console, saves on SIGINT/SIGTERM and backs up its newest complete save (§7, BAK-02); Q14 crossplay offered off by default, Q15 public listing offered private by default with the password rules; the manifest format (§10); M6 covers. |
 | 0.24 | 2026-10-01 | M6 manifest engine: a manifest (checked against its schema) becomes an adapter of its own id; Avorion added with a manifest only and checked against the real server; ports that follow another, a running copy narrowed by a hook, in-app notes (§7, §10); the default server ports include Avorion's. |
 | 0.25 | 2026-10-01 | M6 Valheim: a Steam manifest plus two hooks (a running backup's newest complete save set with the chunk files it uses; Steam's A2S player count on listed servers), offered on x86-64 with the public list and crossplay off by default; checked against the real server (chunk files carry their own versions) (§7, §10, BAK-02). M6's done-when is met. |
+| 0.26 | 2026-10-02 | Owner's request: connection info for every server (SRV-08, now P0, done ahead of M7) with copy and share buttons, the game's own join format, the router forwards and the password for admins only; HST-08 the public address (DNS name, by default the DuckDNS name, or IP; optional home-network address; detect on demand). |
