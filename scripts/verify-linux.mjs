@@ -31,12 +31,20 @@ if (!image || !/^[a-z0-9./_-]+:[A-Za-z0-9._-]+$/.test(image)) {
   process.exit(2);
 }
 
+// Tracked plus untracked files that aren't ignored: what the next commit would
+// hold. Listed here, not in the container: a worktree's `.git` points at the
+// main checkout by a host path the container can't follow.
+const listed = spawnSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root });
+if (listed.status !== 0 || listed.error) {
+  console.error(`verify-linux: git ls-files failed: ${listed.error?.message ?? listed.stderr.toString()}`);
+  process.exit(2);
+}
+
 const inside = [
   'set -euo pipefail',
   'mkdir -p /tmp/work',
-  'git config --global --add safe.directory /src',
-  // Tracked plus untracked files that aren't ignored: what the next commit would hold.
-  'cd /src && git ls-files -z --cached --others --exclude-standard | tar --null --ignore-failed-read -T - -cf - | tar -xf - -C /tmp/work',
+  // The file list arrives on stdin, NUL-separated; files deleted but still listed are skipped.
+  'cd /src && tar --null --ignore-failed-read -T - -cf - | tar -xf - -C /tmp/work',
   'cd /tmp/work',
   'git init -q && git add -A && git -c user.email=verify@localhost -c user.name=verify commit -qm snapshot',
   'npm ci --no-audit --no-fund --loglevel=error',
@@ -44,7 +52,7 @@ const inside = [
 ].join('\n');
 
 const args = [
-  'run', '--rm',
+  'run', '--rm', '-i',
   '--name', `gsp-verify-linux-${process.pid}`,
   '--label', 'gsp.verify=linux',
   '--user', 'node',
@@ -59,7 +67,7 @@ const args = [
 ];
 
 console.log(`verify-linux: running the gates in ${image} (this takes a few minutes)`);
-const r = spawnSync('docker', args, { stdio: 'inherit' });
+const r = spawnSync('docker', args, { input: listed.stdout, stdio: ['pipe', 'inherit', 'inherit'] });
 if (r.error) {
   console.error(`verify-linux: could not run docker: ${r.error.message}`);
   process.exit(2);

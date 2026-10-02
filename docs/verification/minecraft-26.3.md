@@ -347,3 +347,23 @@ Notes:
 
 Leftovers: none. `docker ps -a`, `docker volume ls` filtered by `label=gsp.factfinding=minecraft`
 were empty after the runs, and the `gsp/java:s4` and `gsp/java-fake:s4` images were removed.
+
+## Owner's real-client check — 2026-09-28
+
+On the M3 acceptance stack (slot 1, servers created through the panel), the owner joined the
+vanilla 26.3 server from a real Java Edition client in online mode, from **Multiplayer → Direct
+Connection** at `127.0.0.1:<published port>`:
+
+- The first join was refused with `You are not white-listed on this server!` (26.3 starts with
+  `white-list=true`), logged as `Disconnecting <name> (/<relay address>:<port>): You are not
+  white-listed on this server!`.
+- A whitelist edit made in the file editor as a bare name list (`["<name>"]`) was not loaded
+  (`Failed to load white-list … Expected entry to be a JsonObject`); the panel now refuses that
+  shape (CFG-02). Adding the player on the Players page (`whitelist add <name>`) wrote
+  `{uuid, name}` and the next join worked: `UUID of player <name> is <uuid>`, then
+  `<name> joined the game`, later `<name> left the game`.
+- The address the game logged for the player was Docker Desktop's relay (`172.x.0.1`), not the
+  client's (see `docs/limitations.md`).
+
+This verifies how a player joins (`host:port` in Direct Connection) for the connection info
+(SRV-08). Still to check with a real client: building, a running backup, breaking and restoring.

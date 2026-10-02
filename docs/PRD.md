@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.26 |
+| Status | Draft 0.27 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -219,7 +219,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. New limits, a newer runtime image and a new way of building containers from a panel update apply at once to a stopped server and at its next start to a running one. A host view warns when the limits add up to more than the host has. |
 | SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart, and after a product upgrade, on the newer runtime image from its next start. After an orchestrator release that builds containers another way, a running game's container is kept until the game's next start. |
 | SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server, and says why: the last fatal line the game printed (redacted). |
-| SRV-08 | P0 | Connection info per server, for everyone who can see it: what players type to join, in that game's own words and format (the address, the port players use and its protocol, the client and version they need, whether a password is set, and extra steps such as a whitelist), for three places: this PC, the home network and the internet. Each line has a copy button, and a Share button opens the phone's share sheet where the browser has one (copy otherwise). It also lists the router forwards the server needs (ports and protocols). An admin may include the password in what is shared; nobody else sees it. Facts about joining (which port a client uses) are measured per game (D5) and marked unverified until a real client confirms them. |
+| SRV-08 | P0 | Connection info per server, for everyone who can see it: what players type to join, in that game's own words and format (the address, the port players use and its protocol, the client and version they need, whether a password is set, and extra steps such as a whitelist), for three places: this PC, the home network and the internet. Each line has a copy button, and a Share button opens the phone's share sheet where the browser has one (copy otherwise). It also lists the router forwards the server needs (ports and protocols). An admin of the server or the owner may include the password in what is shared (each time is audited); nobody else sees it. Facts about joining (which port a client uses) are measured per game (D5) and marked unverified until a real client confirms them. |
 | SRV-09 | P2 | Clone a server: settings only, or settings plus world. |
 
 ### 8.2 Install and updates — UPD
@@ -316,7 +316,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | HST-05 | P0 | **Runs on the main operating systems through Docker:** Linux (Docker Engine), Windows 10/11 (Docker Desktop or Docker Engine in WSL) and macOS (Docker Desktop). x86-64 and ARM64 hosts work. Adapters declare the CPU architectures they support, and the panel won't create a server the host can't run natively; it says why instead. |
 | HST-06 | P0 | A setup and operations guide for each of Linux, Windows and macOS, with firewall and router notes. |
 | HST-07 | P0 | The panel knows what its host can't do and says so where it matters: the orchestrator reports the host's traits (CPU architecture, the memory Docker gives it, and whether players' addresses reach the games, which they don't through Docker Desktop's port relay), the host page lists the limitations that apply, and each affected feature (address bans, per-address game settings, addresses in the activity log) shows its own note. |
-| HST-08 | P0 | Public address: the owner sets the name friends use to reach this host, a DNS name (by default the DuckDNS name the panel already uses for HTTPS, when there is one) or an IP address, and optionally the host's address on the home network. A "detect" button asks one fixed public service for this host's public IP, only when the owner presses it (NFR-09). Every server's connection info (SRV-08) uses these. |
+| HST-08 | P0 | Public address: the owner sets the name friends use to reach this host, a DNS name (by default the DuckDNS name the panel already uses for HTTPS, when there is one) or an IP address, and optionally the host's address on the home network (by default the panel's `LAN_IP` when it is a private address). A "detect" button asks one fixed public service for this host's public IP, only when the owner presses it (NFR-09). Every server's connection info (SRV-08) uses these. |
 
 ### 8.11 Language and usability — UX
 
@@ -591,3 +591,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.24 | 2026-10-01 | M6 manifest engine: a manifest (checked against its schema) becomes an adapter of its own id; Avorion added with a manifest only and checked against the real server; ports that follow another, a running copy narrowed by a hook, in-app notes (§7, §10); the default server ports include Avorion's. |
 | 0.25 | 2026-10-01 | M6 Valheim: a Steam manifest plus two hooks (a running backup's newest complete save set with the chunk files it uses; Steam's A2S player count on listed servers), offered on x86-64 with the public list and crossplay off by default; checked against the real server (chunk files carry their own versions) (§7, §10, BAK-02). M6's done-when is met. |
 | 0.26 | 2026-10-02 | Owner's request: connection info for every server (SRV-08, now P0, done ahead of M7) with copy and share buttons, the game's own join format, the router forwards and the password for admins only; HST-08 the public address (DNS name, by default the DuckDNS name, or IP; optional home-network address; detect on demand). |
+| 0.27 | 2026-10-02 | SRV-08 and HST-08 built: a "How to join" card per server with copy and share, the host's public and home addresses with an on-demand detect; each game declares how players join, verified only where a real client joined (Minecraft so far). |
