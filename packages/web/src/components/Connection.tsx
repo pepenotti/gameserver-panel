@@ -207,7 +207,8 @@ export function ConnectionDetails({ sid }: { sid: string }) {
       )}
 
       {!info.verified && (
-        <Alert color="orange" variant="light" icon={<IconAlertTriangle />} title={t('connection.unverified')}>
+        // The game's own note says "Unverified:" itself; the panel's words need the title.
+        <Alert color="orange" variant="light" icon={<IconAlertTriangle />} title={info.note ? undefined : t('connection.unverified')}>
           <Text size="sm">{info.note ? localize(info.note, lang) : t('connection.unverifiedHelp')}</Text>
         </Alert>
       )}
