@@ -233,7 +233,9 @@ describe.each(SUBJECTS)('ServerFiles contract: %s', (_name, make) => {
     expect(await code(files.stat('data', 'link.txt'))).toBe('outside-root');
     expect(readFileSync(path.join(outside, 'secret.txt'), 'utf8')).toBe('no');
     expect((await files.list('data', '')).map((e) => [e.name, e.kind])).toEqual([['link.txt', 'symlink']]);
-    expect(await tarNames(await files.pack({ root: 'data', rels: ['link.txt'] })).catch((e: Error) => e.message)).toMatch(/Symbolic links|outside/);
+    // Refused either when the pack starts or while it streams.
+    const packed = (async () => tarNames(await files.pack({ root: 'data', rels: ['link.txt'] })))();
+    expect(await packed.catch((e: Error) => e.message)).toMatch(/Symbolic links|outside/);
   });
 
   it('caps reads and writes, and refuses to read folders or list files', async () => {

@@ -44,10 +44,11 @@ describe('scripts/dev.mjs --help', () => {
   });
 
   it('gives each checkout its own orchestrator socket, a named pipe on Windows', () => {
-    const socket = /orchestrator\s+fake, on (\S+);/.exec(help())?.[1] ?? '';
+    // The socket sits under the checkout, whose path here has spaces (on Linux; Windows uses a pipe).
+    const socket = /orchestrator\s+fake, on (.+?); its servers/.exec(help())?.[1] ?? '';
     if (process.platform === 'win32') expect(socket).toMatch(/^\\\\\.\\pipe\\gsp-dev-orch-[0-9a-f]{12}$/);
     else expect(socket).toMatch(/orch\.sock$/);
     const other = spawnSync(process.execPath, [fileURLToPath(new URL('./dev.mjs', import.meta.url)), '--help'], { encoding: 'utf8', env }).stdout;
-    expect(/orchestrator\s+fake, on (\S+);/.exec(other)?.[1]).not.toBe(socket);
+    expect(/orchestrator\s+fake, on (.+?); its servers/.exec(other)?.[1]).not.toBe(socket);
   });
 });

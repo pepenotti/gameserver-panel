@@ -31,6 +31,13 @@ expect it. Users read that page before opening a server to the public.
 the privacy check and a CRLF check. Run it before every commit; `--offline`
 skips the audit.
 
+On Windows some tests skip: they need real POSIX signals, Unix sockets, file
+modes or symlinks. `node scripts/verify-linux.mjs` runs the same gates in a
+throwaway Linux container (`node:24-trixie`, as the unprivileged `node`
+user), copying the working tree, staged or not. Run it before every merge
+into `main` and whenever you touch process control, sockets, archives or
+file safety; the gates there must be green too.
+
 ## Version (SemVer)
 `VERSION` is the single source of truth, and it changes only in the
 integrator's merge commits on `main`: a patch bump for every merged branch, a
