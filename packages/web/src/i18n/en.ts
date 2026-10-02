@@ -8,6 +8,7 @@ import backups from './en/backups';
 import capabilities from './en/capabilities';
 import common from './en/common';
 import config from './en/config';
+import connection from './en/connection';
 import consoleNs from './en/console';
 import controls from './en/controls';
 import create from './en/create';
@@ -52,6 +53,7 @@ export const en = {
   create,
   eula,
   hostSettings,
+  connection,
   config,
   backups,
   reset,
