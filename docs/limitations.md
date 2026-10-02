@@ -380,3 +380,116 @@ the real server too ("Manifest adapter check" in that document).
   how the console takes one wasn't measured.
 - **Console commands start with `/`.** The panel adds it to what you type. Measured.
 - **x86-64 only.** Measured.
+
+## Joining a server
+
+Every server's **How to join** card (SRV-08) shows what players type on this PC, on the home
+network and from the internet, and the router forwards the server needs. The addresses come from
+**Panel settings** (HST-08).
+
+### Players at home may not get in through the public address
+
+**Affects:** every host behind a home router. Every game.
+
+**What you'll notice:** friends on the internet join with the "From the internet" line, but a
+player on your own network (Wi-Fi or cable at home) can't join with that same line.
+
+**Why:** that player reaches your router's public address from inside, and the router has to send
+the connection back into your network ("loopback" or "hairpin" NAT). Many home routers can't.
+
+**Workaround:** at home, use the "On the home network" line (this PC's address on your network,
+set in Panel settings; by default the panel's `LAN_IP`).
+
+**Status:** *Expected* for routers in general. One test router did loop back: the panel was
+reached through its public name from inside the network (`verification/pz-b42.md`, M13).
+
+### The ports must be forwarded in your router
+
+**Affects:** every server friends join from the internet.
+
+**What you'll notice:** the "From the internet" line doesn't work for anyone until the router
+sends those ports to this PC.
+
+**Why:** the panel doesn't change your router: automatic router setup (UPnP) is out of scope
+(PRD §4).
+
+**Workaround:** forward every port the card lists under **Router forwards**, with its protocol
+(UDP or TCP), to this PC's home-network address, and give this PC a fixed address in the router
+(a DHCP reservation). Some games use more ports than the one players type (the next port, a query
+port): forward them all.
+
+**Status:** *Expected* (how home routers work). A forward of the panel's own TCP port was measured
+working (`verification/pz-b42.md`, M13).
+
+### With Docker Desktop, game ports listen on the PC itself
+
+**Affects:** Windows and macOS hosts running Docker Desktop.
+
+**What you'll notice:** a server's ports are open on the PC's own addresses, so "On this PC"
+(`127.0.0.1`) and the home-network address both reach it.
+- With `PUBLISH_ADDR` empty (the default), every address of the PC, IPv4 and IPv6, takes them.
+- With `PUBLISH_ADDR=127.0.0.1` (development slots), only this PC does: the home and internet
+  lines won't work.
+
+**Why:** Docker Desktop publishes each port from a process of its own on the PC
+(`com.docker.backend`) and relays it into its virtual machine.
+
+**Workaround:** none needed. Windows' firewall may have to let Docker Desktop accept connections
+from other computers: if players on your network can't get in while "On this PC" works, check it.
+
+**Status:** Measured on Windows 11 with Docker Desktop (Engine 29.7.2), Oct 2026: published game
+ports (UDP and TCP) listened on every address (`::`) or on `127.0.0.1` as published, held by
+`com.docker.backend`. The firewall part is *expected*, not measured.
+
+### A home connection's public IP address can change
+
+**Affects:** hosts on home internet connections.
+
+**What you'll notice:** the "From the internet" line stops working after the router gets a new
+address from your provider.
+
+**Workaround:** set the public address to a DNS name that follows the address, such as the
+DuckDNS name the panel already uses for HTTPS (the default when it has one), rather than an IP.
+
+**Status:** *Expected* (most home connections get a changing address).
+
+### Detect sends one request to api.ipify.org
+
+**Affects:** the owner, in Panel settings.
+
+**What you'll notice:** nothing else: the button fills in this PC's public IPv4 address, and
+nothing is saved until you press Save.
+
+**Why:** the panel can't see its public address from inside your network, so it asks one fixed
+public service, `https://api.ipify.org`, only when you press the button. That one HTTPS request
+carries nothing but itself; like any web request, it shows the service your public address.
+Each press is recorded in the activity log. Without the button, the panel never contacts it
+(NFR-09).
+
+**Status:** By design; tested against a fake service.
+
+### Which joining facts are measured
+
+The card says **Unverified** where a real client hasn't joined that way yet, with the game's own
+note:
+- **Minecraft:** measured. A real 26.3 client joined from Direct Connection at
+  `127.0.0.1:<the published port>`; the address alone works on port 25565, the client's default.
+- **Project Zomboid:** *unverified* with this panel. Players type the game port (UDP 16261 by
+  default); the next port is forwarded with it.
+- **Terraria:** *unverified* with a real client (a test client joined through a published port).
+  tModLoader's players need tModLoader.
+- **Valheim:** *unverified*: whether Join IP takes the game port or the next one hasn't been
+  tried. Type the game port; if that fails, the next one.
+- **Avorion:** *unverified*: how its client takes the address, and which port it uses.
+
+### The password can travel with the message
+
+**Affects:** admins and the owner.
+
+**What you'll notice:** with **Include the password** on, the copied or shared message holds the
+server's join password in clear text; whoever gets the message has it.
+
+**Why:** that's the point of sharing it; everyone else only sees whether a password is set. Each
+time the password is shown, the activity log records who saw it (never the password).
+
+**Status:** By design (SRV-08).

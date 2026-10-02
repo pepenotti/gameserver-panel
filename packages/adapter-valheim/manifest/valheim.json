@@ -265,5 +265,39 @@
       },
       "doc": "limitations.md#valheim"
     }
-  ]
+  ],
+  "join": {
+    "port": "game",
+    "format": "host:port",
+    "where": {
+      "en": "Start Game, pick a character, then the Join Game tab: Join IP",
+      "es": "Iniciar partida, elegí un personaje y, en la pestaña Unirse a partida, el botón Unirse por IP"
+    },
+    "client": { "name": { "en": "Valheim", "es": "Valheim" }, "sameVersion": true },
+    "steps": [
+      {
+        "id": "public-list",
+        "text": {
+          "en": "It is also in the game's public server list: players can find it there by its name.",
+          "es": "También está en la lista pública de servidores del juego: los jugadores pueden encontrarlo ahí por su nombre."
+        },
+        "when": { "setting": "public", "equals": true }
+      },
+      {
+        "id": "crossplay",
+        "text": {
+          "en": "Crossplay is on: players on other platforms (Xbox, Game Pass) join with the code the server prints in its log, which an operator can read on the Console page.",
+          "es": "El juego cruzado está activado: los jugadores de otras plataformas (Xbox, Game Pass) entran con el código que el servidor muestra en su registro, que un operador puede leer en la página Consola."
+        },
+        "when": { "setting": "crossplay", "equals": true }
+      }
+    ],
+    "password": { "setting": "password" },
+    "verified": false,
+    "source": "docs/verification/valheim-1.0.16.md: the server listens on the game port and the next one (UDP, the same numbers inside and out); no real client has joined by address yet",
+    "note": {
+      "en": "Unverified: which port Valheim's Join IP takes hasn't been tried with a real client. Type the game port; if that fails, the next one (the second port in the router forwards).",
+      "es": "Sin verificar: todavía no se probó con un cliente real qué puerto toma Unirse por IP de Valheim. Escribí el puerto del juego; si falla, el siguiente (el segundo puerto de las redirecciones del router)."
+    }
+  }
 }

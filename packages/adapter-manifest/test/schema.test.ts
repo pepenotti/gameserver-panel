@@ -5,7 +5,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkSchema, ManifestError, MANIFEST_SCHEMA, loadManifest, MANIFESTS, SchemaError, type JsonSchema } from '../src/shared';
+import { checkSchema, ManifestError, MANIFEST_SCHEMA, loadManifest, manifestMeta, MANIFESTS, SchemaError, type JsonSchema } from '../src/shared';
 
 const DIR = fileURLToPath(new URL('../manifests/', import.meta.url));
 const avorionJson = () => JSON.parse(readFileSync(`${DIR}avorion.json`, 'utf8')) as Record<string, unknown>;
@@ -187,5 +187,52 @@ describe('a broken manifest is refused, every problem named', () => {
     expect(broken((m) => (m.moderation.listFiles = { ban: 'admins', target: 'steamId', stoppedOnly: false }))).toEqual(
       expect.arrayContaining(["moderation.listFiles.ban names admins, which isn't a list (format \"lines\")", 'moderation bans either on the console or in a list file, not both']),
     );
+  });
+
+  it('joining (SRV-08): a port players can be given, settings and secret keys that exist, a default port only with host:port', () => {
+    expect(broken((m) => (m.join.port = 'nope'))).toEqual(["join.port names the port nope, which isn't declared"]);
+    expect(broken((m) => (m.join.port = 'gametcp'))).toEqual(["join.port names gametcp, which players can't be given (published, following no other)"]);
+    expect(broken((m) => (m.join.port = 'steammaster'))).toEqual(["join.port names steammaster, which players can't be given (published, following no other)"]);
+    expect(broken((m) => Object.assign(m.join, { format: 'separate', defaultPort: 27000 }))).toEqual(['join.defaultPort is for the host:port format only']);
+    expect(broken((m) => (m.join.password = { file: 'server', key: 'name' }))).toEqual(["join.password names server name, which isn't one of its secret keys"]);
+    expect(broken((m) => (m.join.password = { setting: 'serverName' }))).toEqual(["join.password names serverName, which isn't a secret setting"]);
+    expect(broken((m) => (m.join.password = { file: 'nope', key: 'password' }))).toEqual(["join.password names the config file nope, which isn't declared"]);
+    expect(broken((m) => (m.join.steps = [{ id: 'listed', text: m.name, when: { setting: 'listed', equals: 'yes' } }]))).toEqual(['join step listed compares listed with a string, not a boolean']);
+    expect(broken((m) => (m.join.steps = [{ id: 'x', text: m.name, when: { setting: 'nope', equals: true } }]))).toEqual(expect.arrayContaining(["join step x names the setting nope, which isn't declared"]));
+    expect(broken((m) => (m.join.steps = [{ id: 'x', text: m.name, when: { file: 'nope', key: 'k', equals: 1 } }]))).toEqual(["join step x names the config file nope, which isn't declared"]);
+    expect(
+      broken((m) =>
+        (m.join.steps = [
+          { id: 'x', text: m.name },
+          { id: 'x', text: m.name },
+        ]),
+      ),
+    ).toEqual(['join.steps has x twice']);
+    expect(broken((m) => (m.join.format = 'ip:port'))).toEqual(['join.format must be one of "host:port", "separate"']);
+    expect(broken((m) => delete m.join.verified)).toEqual(['join.verified is required']);
+  });
+
+  it('joining (SRV-08) reaches the adapter in the contract terms: a setting is a launch setting', () => {
+    const m = avorionJson() as Json;
+    m.join.steps = [
+      { id: 'listed', text: m.name, when: { setting: 'listed', equals: true } },
+      { id: 'pvp', text: m.name, when: { file: 'server', key: 'pvp', equals: 'true' } },
+    ];
+    m.id = 'avorion-join';
+    const meta = manifestMeta(loadManifest(m));
+    expect(meta.join).toEqual({
+      port: 'game',
+      format: 'host:port',
+      where: m.join.where,
+      client: m.join.client,
+      steps: [
+        { id: 'listed', text: m.name, when: { launch: 'listed', equals: true } },
+        { id: 'pvp', text: m.name, when: { file: 'server', key: 'pvp', equals: 'true' } },
+      ],
+      password: { file: 'server', key: 'password' },
+      verified: false,
+      source: m.join.source,
+      note: m.join.note,
+    });
   });
 });

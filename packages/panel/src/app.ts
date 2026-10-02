@@ -13,6 +13,7 @@ import { authRoutes } from './routes/auth';
 import { statusRoutes } from './routes/status';
 import { backupRoutes } from './routes/backups';
 import { configRoutes } from './routes/config';
+import { connectionRoutes, hostAddressRoutes } from './routes/connection';
 import { fileRoutes } from './routes/files';
 import { metaRoutes } from './routes/meta';
 import { modRoutes } from './routes/mods';
@@ -92,6 +93,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
   meRoutes(app, deps);
   userRoutes(app, deps);
   notificationRoutes(app, deps);
+  hostAddressRoutes(app, deps);
   serverListRoutes(app, deps);
   wsRoutes(app, deps);
 
@@ -100,6 +102,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
     serverAdminRoutes(s, deps);
     statusRoutes(s, deps);
     metaRoutes(s, deps);
+    connectionRoutes(s, deps);
     serverRoutes(s, deps);
     configRoutes(s, deps);
     fileRoutes(s, deps);

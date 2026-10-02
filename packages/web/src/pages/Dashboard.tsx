@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { AgentStatus } from '@gsp/shared';
 import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
+import { ConnectionCard } from '../components/Connection';
 import { EulaNotice } from '../components/Eula';
 import { OpBanner } from '../components/OpBanner';
 import { ServerControls } from '../components/ServerControls';
@@ -132,6 +133,8 @@ export function Dashboard() {
           )}
         </Stat>
       </SimpleGrid>
+
+      <ConnectionCard />
 
       <Card withBorder>
         <Text fw={600} mb="xs">

@@ -1,5 +1,5 @@
-import type { AdapterMeta, Capability, PortDecl } from '@gsp/adapter-api';
-import type { SteamGameManifest } from './types';
+import type { AdapterMeta, Capability, JoinDecl, JoinSetting, PortDecl } from '@gsp/adapter-api';
+import type { ManifestJoin, ManifestJoinSetting, SteamGameManifest } from './types';
 
 /**
  * What a manifest game supports, from what its manifest declares: a console
@@ -52,8 +52,30 @@ export function manifestMeta(m: SteamGameManifest): AdapterMeta {
       stopBudgetMs: m.stop.budgetMs,
       ...(m.eula ? { eula: m.eula } : {}),
       ...(m.notes?.length ? { notes: m.notes.map((n) => ({ ...n })) } : {}),
+      ...(m.join ? { join: joinOf(m.join) } : {}),
     };
     metas.set(m, meta);
   }
   return meta;
+}
+
+/** A manifest's setting, as the contract names a launch setting (`launch`) or a config key. */
+function settingOf(s: ManifestJoinSetting): JoinSetting {
+  return 'setting' in s ? { launch: s.setting } : { file: s.file, key: s.key };
+}
+
+/** How players join (SRV-08), in the contract's terms. */
+export function joinOf(j: ManifestJoin): JoinDecl {
+  return {
+    port: j.port,
+    format: j.format,
+    ...(j.defaultPort !== undefined ? { defaultPort: j.defaultPort } : {}),
+    where: { ...j.where },
+    client: { name: { ...j.client.name }, sameVersion: j.client.sameVersion },
+    ...(j.steps ? { steps: j.steps.map((s) => ({ id: s.id, text: { ...s.text }, ...(s.when ? { when: { ...settingOf(s.when), equals: s.when.equals } } : {}) })) } : {}),
+    ...(j.password ? { password: settingOf(j.password) } : {}),
+    verified: j.verified,
+    source: j.source,
+    ...(j.note ? { note: { ...j.note } } : {}),
+  };
 }

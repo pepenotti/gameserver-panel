@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { RconProtocolError } from '@gsp/formats';
 import { FS_WRITE_MAX_BYTES, PERMISSIONS } from '@gsp/shared';
-import type { AgentCommand, AnnounceKind, BanTarget, Capability, Lang, PanelAdapter, PlayerOps, SecretBag, ServerCtx, ServerFiles, ServerRef } from '../index';
+import type { AgentCommand, AnnounceKind, BanTarget, Capability, JoinDecl, JoinSetting, Lang, PanelAdapter, PlayerOps, SecretBag, ServerCtx, ServerFiles, ServerRef } from '../index';
 import { expectI18n, expectUnique, metaTests } from './meta';
 
 export interface PanelCoreSuiteOptions {
@@ -208,6 +208,67 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         // The form (and the settings the panel shows) never holds a secret.
         expect(adapter.launch.schema.map((o) => o.key), `launch secret ${s.key}`).not.toContain(s.key);
       }
+    });
+
+    it('declares how players join, flavour by flavour: a port they can reach, the client, the steps, the password, and whether a real client confirmed it (SRV-08, D5)', () => {
+      const problems: string[] = [];
+      const schema = new Map(adapter.launch.schema.map((o) => [o.key, o]));
+      for (const flavour of adapter.meta.flavours.length ? adapter.meta.flavours.map((f) => f.id) : [null]) {
+        const on = flavour === null ? '' : ` (${flavour})`;
+        const own = flavour === null ? undefined : adapter.meta.flavours.find((f) => f.id === flavour)?.join;
+        const j = { ...adapter.meta.join, ...own } as Partial<JoinDecl>;
+        if (!adapter.meta.join && !own) {
+          problems.push(`no join${on}`);
+          continue;
+        }
+        const problem = (what: string) => problems.push(`join${on}: ${what}`);
+        const port = adapter.meta.ports.find((p) => p.id === j.port);
+        if (!port) problem(`port ${String(j.port)} isn't declared`);
+        else if (!port.publish || port.follows) problem(`port ${port.id} isn't one players can be given (published, following no other)`);
+        if (j.format !== 'host:port' && j.format !== 'separate') problem(`format ${String(j.format)}`);
+        if (j.defaultPort !== undefined && (j.format !== 'host:port' || !Number.isInteger(j.defaultPort) || j.defaultPort < 1 || j.defaultPort > 65535)) problem('defaultPort is for host:port, a port number');
+        if (!j.where) problem('no where');
+        else expectI18n(j.where, `join where${on}`);
+        if (!j.client) problem('no client');
+        else {
+          expectI18n(j.client.name, `join client${on}`);
+          if (typeof j.client.sameVersion !== 'boolean') problem('client.sameVersion is not a boolean');
+        }
+        if (typeof j.verified !== 'boolean') problem('verified is not a boolean');
+        if (typeof j.source !== 'string' || j.source.trim() === '') problem('no source');
+        if (j.note) expectI18n(j.note, `join note${on}`);
+        const srv = { ...server(), flavour };
+        const files = adapter.config.files(srv);
+        // A setting it reads: a launch setting, or a key of a declared config file.
+        const reads = (s: JoinSetting, what: string, secret: boolean) => {
+          if ('launch' in s) {
+            const o = schema.get(s.launch);
+            if (!o) problem(`${what} names the launch setting ${s.launch}, which isn't declared`);
+            else if (secret && !o.secret) problem(`${what} names ${s.launch}, which isn't a secret launch setting`);
+            else if (o.flavours !== undefined && (flavour === null || !o.flavours.includes(flavour))) problem(`${what} names ${s.launch}, which isn't for this flavour`);
+          } else {
+            const f = files.find((x) => x.id === s.file);
+            if (!f) problem(`${what} names the file ${s.file}, which isn't declared`);
+            else if (s.key.trim() === '') problem(`${what} names no key of ${s.file}`);
+            else if (secret && !f.secretKeys.includes(s.key)) problem(`${what} names ${s.file} ${s.key}, which isn't one of its secret keys`);
+          }
+        };
+        if (j.password) reads(j.password, 'password', true);
+        const steps = j.steps ?? [];
+        expectUnique(
+          steps.map((s) => s.id),
+          `join step ids${on}`,
+        );
+        for (const s of steps) {
+          expect(s.id).toMatch(/^[a-z][a-z0-9-]{0,63}$/);
+          expectI18n(s.text, `join step ${s.id}${on}`);
+          if (s.when) {
+            reads(s.when, `step ${s.id}`, false);
+            if (!['string', 'number', 'boolean'].includes(typeof s.when.equals)) problem(`step ${s.id} compares with no value`);
+          }
+        }
+      }
+      expect(problems).toEqual([]);
     });
 
     it('announces every countdown in both languages; broadcasts are commands', () => {

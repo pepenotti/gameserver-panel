@@ -106,6 +106,13 @@ export interface Flavour {
    * tools (the steamcmd driver for `steam`).
    */
   runtime?: RuntimeFamily;
+  /**
+   * How players join a server of this flavour where it differs from the
+   * adapter's `AdapterMeta.join` (SRV-08): each field given replaces the
+   * adapter's (a flavour whose players need another client, a flavour with
+   * steps of its own; `steps` replaces the list whole).
+   */
+  join?: Partial<JoinDecl>;
 }
 
 /** A license the owner must accept before a game may run (D6): what the `eula` capability means. */
@@ -132,6 +139,12 @@ export interface AdapterMeta {
   eula?: Agreement;
   /** What people should know about the game before relying on a feature (UX-04), shown with its servers. */
   notes?: AdapterNote[];
+  /**
+   * How players join its servers (SRV-08), for every server's connection
+   * info. Every adapter declares it: the panel adapter contract suite checks
+   * it, flavour by flavour (`Flavour.join`).
+   */
+  join?: JoinDecl;
 }
 
 /**
@@ -142,6 +155,72 @@ export interface AdapterNote {
   id: string;
   text: I18n;
   doc?: string;
+}
+
+// ================================================================== joining
+
+/**
+ * How players join a server of a game (SRV-08), in the game's own words and
+ * format: the port they type, how its client takes the address and the
+ * port, the client they need, what else they do, and where the password
+ * they type is kept. The panel adds the addresses (this PC, the home
+ * network, the internet: HST-08) and the host port the server's `port` is
+ * published on. Each fact is measured with a real client (D5) or says it
+ * isn't: `verified`, with its `source`.
+ */
+export interface JoinDecl {
+  /** The port players type: a published `PortDecl.id` that follows no other port. */
+  port: string;
+  /**
+   * How the game's client takes the address and the port: `host:port`, in
+   * one field, the address, `:` and the port (an IPv6 address in
+   * brackets); `separate`, in fields of their own.
+   */
+  format: JoinFormat;
+  /**
+   * With `host:port`: the port the client uses when none is typed. On that
+   * port the address alone is enough.
+   */
+  defaultPort?: number;
+  /** Where in the game players type it: its menus and fields, as the game names them. */
+  where: I18n;
+  /**
+   * The client players need, by name; `sameVersion`: it must be the version
+   * the server runs, which the panel adds (`InstalledInfo.version`) when
+   * it knows it.
+   */
+  client: { name: I18n; sameVersion: boolean };
+  /** What players do besides typing the address (ask an admin for the whitelist, make an account in game). */
+  steps?: JoinStep[];
+  /** Where the password players type to join is kept; absent: the game has none. */
+  password?: JoinSetting;
+  /** A real client joined this way (D5); false: what this says is expected, not measured, and the panel says so. */
+  verified: boolean;
+  /** Where that is recorded (`docs/verification/<game>-<build>.md`), or what is still to be measured. */
+  source: string;
+  /** What players should know about joining that isn't measured yet (which port to try first), shown with it (UX-04). */
+  note?: I18n;
+}
+
+/** How a game's client takes an address and a port (`JoinDecl.format`). */
+export type JoinFormat = 'host:port' | 'separate';
+
+/**
+ * A value of a server's settings: a launch setting (`LaunchOption.key`), or
+ * a key of one of its declared config files (`ConfigFileDecl.id`, read
+ * through the server's agent).
+ */
+export type JoinSetting = { launch: string } | { file: string; key: string };
+
+/**
+ * A step players take to join. With `when`, shown only while that setting
+ * equals `equals` (compared as text, case ignored); when the panel can't
+ * read it (the server's agent is away), shown as one that may apply.
+ */
+export interface JoinStep {
+  id: string;
+  text: I18n;
+  when?: JoinSetting & { equals: Scalar };
 }
 
 // ============================================================== server files

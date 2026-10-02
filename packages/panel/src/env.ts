@@ -52,6 +52,12 @@ export interface PanelEnv {
   /** Set false when clients may all share one proxy IP (Docker Desktop). */
   clientIpTrustworthy: boolean;
   secureCookies: boolean;
+  /**
+   * `DUCKDNS_SUBDOMAIN`, when the environment names it: `<it>.duckdns.org`
+   * is the default public address (HST-08). Without it, a `.duckdns.org`
+   * name among `origins` is (`PANEL_TLS=duckdns` puts `PANEL_HOST` there).
+   */
+  duckdnsSubdomain?: string | null;
 }
 
 /** `adminPassword` → `ADMIN_PASSWORD`. */
@@ -124,6 +130,8 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): PanelEnv {
       // Browsers leave the default port out of Origin: https://host:443 → https://host.
       return u.origin;
     });
+  const duck = (env.DUCKDNS_SUBDOMAIN ?? '').trim().toLowerCase();
+  if (duck && !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(duck)) throw new Error('DUCKDNS_SUBDOMAIN must be the name before .duckdns.org: letters, digits and dashes');
   const ownerUser = env.PANEL_OWNER_USERNAME;
   const ownerPass = env.PANEL_OWNER_PASSWORD;
   const dataDir = env.PANEL_DATA_DIR ?? '/var/lib/panel';
@@ -148,5 +156,6 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): PanelEnv {
     trustProxy: env.TRUST_PROXY ?? 'loopback,uniquelocal',
     clientIpTrustworthy: env.CLIENT_IP_TRUSTWORTHY === 'true',
     secureCookies: env.PANEL_INSECURE_COOKIES !== 'true',
+    duckdnsSubdomain: duck || null,
   };
 }

@@ -28,6 +28,7 @@ const FIELDS = {
   adapters: true,
   hostJobs: true,
   choices: true,
+  hostAddress: true,
 } as const satisfies Record<keyof Deps, true>;
 
 /** Every service field of a `ServerContext`, likewise. */

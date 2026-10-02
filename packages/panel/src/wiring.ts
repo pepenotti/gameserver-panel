@@ -21,6 +21,7 @@ import { Control } from './control/control';
 import type { Db } from './db/db';
 import { secretEnvName, type PanelEnv } from './env';
 import { AgentServerFiles } from './files/agent';
+import { HostAddress } from './host/address';
 import type { AgentFeed, Deps } from './http/deps';
 import { ModsService } from './mods/service';
 import { DISCORD_OVERRIDE_KEY, DiscordNotifier, type DiscordOverride } from './notifier/discord';
@@ -229,6 +230,8 @@ export interface PanelDepsOptions {
   fetch?: typeof fetch;
   /** How launch choices reach the games' download services, and the environment naming them (tests: the fake ones, or nothing). */
   downloads?: { fetch?: typeof fetch; env?: Readonly<Record<string, string | undefined>> };
+  /** How the host address's "Detect" reaches its service (HST-08; tests: a fake one, never the real one). */
+  detect?: { fetch?: typeof fetch };
   /** The orchestrator (default: `factories.orchestrator(env)`). */
   orchestrator?: OrchestratorClient;
   /** Any of `FACTORIES` replaced (tests: fake agents and local files for orchestrator-run servers). */
@@ -322,5 +325,6 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     adapters,
     hostJobs: new HostJobs({ audit, backupPanelDb: () => backupPanelDb(db, env.backupDir) }),
     choices: new LaunchChoicesService({ version: env.version, fetch: o.downloads?.fetch, env: o.downloads?.env }),
+    hostAddress: new HostAddress({ settings, env, fetch: o.detect?.fetch }),
   };
 }

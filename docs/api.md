@@ -16,7 +16,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 - Errors are `{"error": "<code>", …}`; the web translates the codes (`packages/web/src/i18n/*/errors.ts`).
 - Request shapes: `?` marks optional properties.
 
-## Host (30 routes)
+## Host (33 routes)
 
 | Method | Path | Access | Request |
 |---|---|---|---|
@@ -45,13 +45,16 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | GET | `/api/notifications` | `notifications.manage` | — |
 | PUT | `/api/notifications` | `notifications.manage` | `body { webhookUrl?: string \| null, lang: "en" \| "es", events: { serverUp?: boolean, serverDown?: boolean, crash?: boolean, playerJoin?: boolean, playerLeave?: boolean, backup?: boolean, update?: boolean, restore?: boolean, reset?: boolean, mods?: boolean, security?: boolean } }` |
 | POST | `/api/notifications/test` | `notifications.manage` | — |
+| GET | `/api/host/address` | `host.settings` | — |
+| PUT | `/api/host/address` | `host.settings` | `body { public: string \| null, home: string \| null }` |
+| POST | `/api/host/address/detect` | `host.settings` | — |
 | GET | `/api/servers` | session | — |
 | GET | `/api/adapters` | `servers.create` | — |
 | GET | `/api/adapters/:id/choices` | `servers.create` | `params { id: string }`<br>`query { flavour?: string, version?: string }` |
 | POST | `/api/servers` | `servers.create` | `body { id: string, name: string, adapter: string, flavour?: string \| null, launch?: object, ports?: { [key]: integer }, memLimitMb?: integer, cpus?: number \| null, eulaAccepted?: boolean }` |
 | GET | `/api/ws` | session | — |
 
-## One server: `/api/servers/:sid` (68 routes)
+## One server: `/api/servers/:sid` (69 routes)
 
 `:sid` is the server's id. The permission is checked on that server; the capability is what its game must support.
 
@@ -63,6 +66,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | DELETE | `/api/servers/:sid` | `server.delete` | — | `body { confirm: string, keepBackups?: boolean, finalBackup?: boolean, force?: boolean }` |
 | GET | `/api/servers/:sid/status` | `server.view` | — | — |
 | GET | `/api/servers/:sid/meta` | `server.view` | — | — |
+| GET | `/api/servers/:sid/connection` | `server.view` | — | `query { password?: "0" \| "1" }` |
 | GET | `/api/servers/:sid/ops/current` | `server.view` | — | — |
 | POST | `/api/servers/:sid/ops/:id/cancel` | `server.control` | — | — |
 | POST | `/api/servers/:sid/server/start` | `server.control` | — | — |

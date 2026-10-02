@@ -2,7 +2,7 @@ import { ActionIcon, Alert, Anchor, Badge, Button, Card, Center, Group, Loader, 
 import { useDisclosure } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconDots, IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus, IconRefresh, IconServer2, IconTrash } from '@tabler/icons-react';
+import { IconDots, IconPencil, IconPlayerPlay, IconPlayerStop, IconPlus, IconRefresh, IconServer2, IconShare, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate } from 'react-router';
 import type { ServerState } from '@gsp/shared';
@@ -11,6 +11,7 @@ import { useLiveServers, type LiveServer } from '../api/live';
 import { localize } from '../api/meta';
 import { serverHref, useServers, type ServerSummary } from '../api/server';
 import { useSession } from '../api/session';
+import { ConnectionModal } from '../components/Connection';
 import { PendingBadge } from '../components/PendingBadge';
 import { DeleteServerModal, RenameServerModal } from '../components/ServerAdmin';
 import { StateBadge } from '../components/StateBadge';
@@ -32,6 +33,7 @@ function ServerCard({ s, live, open }: { s: ServerSummary; live: LiveServer | un
   const errorText = useErrorText();
   const [renameOpen, rename] = useDisclosure();
   const [deleteOpen, del] = useDisclosure();
+  const [joinOpen, join] = useDisclosure();
   const now = current(s, live, open);
   const can = (p: string) => s.permissions.includes(p as ServerSummary['permissions'][number]);
   const up = now.state === 'running' || now.state === 'starting';
@@ -100,6 +102,12 @@ function ServerCard({ s, live, open }: { s: ServerSummary; live: LiveServer | un
           {t('servers.open')}
         </Button>
         <Group gap={4} wrap="nowrap">
+          {/* SRV-08: how players join, for everyone who sees the server. */}
+          <Tooltip label={t('connection.title')}>
+            <ActionIcon variant="light" aria-label={t('connection.title')} onClick={join.open}>
+              <IconShare size={16} />
+            </ActionIcon>
+          </Tooltip>
           {can('server.control') && down && (
             <Tooltip label={t('controls.start')}>
               <ActionIcon variant="light" color="green" aria-label={t('controls.start')} disabled={busy || !now.agentConnected} onClick={() => run(() => sapi('POST', '/server/start', {}))}>
@@ -146,6 +154,7 @@ function ServerCard({ s, live, open }: { s: ServerSummary; live: LiveServer | un
         </Group>
       </Group>
       <RenameServerModal server={s} opened={renameOpen} onClose={rename.close} />
+      <ConnectionModal sid={s.id} name={s.name} opened={joinOpen} onClose={join.close} />
       <DeleteServerModal server={{ ...s, state: now.state }} opened={deleteOpen} onClose={del.close} />
     </Card>
   );

@@ -72,4 +72,12 @@ describe('loadEnv', () => {
     expect(ex.PANEL_HOST).not.toBe('localhost');
     expect(ex.PANEL_HOST).not.toBe(ex.LAN_IP);
   });
+
+  it('reads the DuckDNS name the public address defaults to (HST-08), and refuses one that is no name', () => {
+    expect(loadEnv(base).duckdnsSubdomain).toBeNull();
+    expect(loadEnv({ ...base, DUCKDNS_SUBDOMAIN: '' }).duckdnsSubdomain).toBeNull();
+    expect(loadEnv({ ...base, DUCKDNS_SUBDOMAIN: ' My-Zomboid ' }).duckdnsSubdomain).toBe('my-zomboid');
+    expect(() => loadEnv({ ...base, DUCKDNS_SUBDOMAIN: 'my-zomboid.duckdns.org' })).toThrow(/DUCKDNS_SUBDOMAIN/);
+    expect(() => loadEnv({ ...base, DUCKDNS_SUBDOMAIN: '-bad' })).toThrow(/DUCKDNS_SUBDOMAIN/);
+  });
 });

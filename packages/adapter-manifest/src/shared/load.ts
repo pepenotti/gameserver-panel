@@ -10,7 +10,7 @@ import schemaJson from '../../manifest.schema.json';
 import { checkSchema, compiles, type JsonSchema } from './schema';
 import { RESERVED_KEYS } from './settings';
 import { fill, placeholders, safeRelative, type PlaceholderKind } from './templates';
-import type { Condition, ManifestSetting, SteamGameManifest, Template } from './types';
+import type { Condition, ManifestJoinSetting, ManifestSetting, SteamGameManifest, Template } from './types';
 
 /** The manifest schema (draft 2020-12). */
 export const MANIFEST_SCHEMA = schemaJson as JsonSchema;
@@ -255,6 +255,33 @@ export function manifestProblems(m: SteamGameManifest): string[] {
       if (lf.ban && mod.banTargets && (mod.banTargets.length !== 1 || mod.banTargets[0] !== lf.target)) problem('moderation.banTargets', `must be [${lf.target}]: what the ban list holds`);
     }
     if (mod.banTargets && !mod.ban && !lf?.ban) problem('moderation.banTargets', 'are given without a way to ban');
+  }
+
+  // ------------------------------------------------------------ joining (SRV-08)
+  const j = m.join;
+  if (j) {
+    const port = ports.get(j.port);
+    if (!port) problem('join.port', `names the port ${j.port}, which isn't declared`);
+    else if (!port.publish || port.follows) problem('join.port', `names ${j.port}, which players can't be given (published, following no other)`);
+    if (j.defaultPort !== undefined && j.format !== 'host:port') problem('join.defaultPort', 'is for the host:port format only');
+    const reads = (where: string, s: ManifestJoinSetting, secret: boolean) => {
+      if ('setting' in s) {
+        const x = settings.get(s.setting);
+        if (!x) problem(where, `names the setting ${s.setting}, which isn't declared`);
+        else if (secret && x.type !== 'secret') problem(where, `names ${s.setting}, which isn't a secret setting`);
+      } else {
+        const f = files.get(s.file);
+        if (!f) problem(where, `names the config file ${s.file}, which isn't declared`);
+        else if (secret && !(f.secretKeys ?? []).includes(s.key)) problem(where, `names ${s.file} ${s.key}, which isn't one of its secret keys`);
+      }
+    };
+    if (j.password) reads('join.password', j.password, true);
+    unique('join.steps', (j.steps ?? []).map((s) => s.id));
+    for (const s of j.steps ?? []) {
+      if (!s.when) continue;
+      reads(`join step ${s.id}`, s.when, false);
+      if ('setting' in s.when) condition(`join step ${s.id}`, { setting: s.when.setting, equals: s.when.equals });
+    }
   }
   return out;
 }

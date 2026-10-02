@@ -9,6 +9,7 @@ import backups from './es/backups';
 import capabilities from './es/capabilities';
 import common from './es/common';
 import config from './es/config';
+import connection from './es/connection';
 import consoleNs from './es/console';
 import controls from './es/controls';
 import create from './es/create';
@@ -53,6 +54,7 @@ export const es: Translations = {
   create,
   eula,
   hostSettings,
+  connection,
   config,
   backups,
   reset,
