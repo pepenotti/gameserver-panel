@@ -111,4 +111,7 @@ export default {
   'role-follows-grants': 'This account only has access to some servers: its role there is set per server.',
   'invalid-port-ranges': 'This panel lets servers use only these ports: {{ranges}}.',
   'memory-above-host': 'That is more memory than this panel gives one server ({{maxMb}} MiB).',
+  'invalid-address': 'That is not an address: type a name such as example.duckdns.org or an IP address, without https://, a port or a path.',
+  'detect-failed': 'The address service gave no address. Try again later, or type the address yourself.',
+  'join-undeclared': 'This game does not say how players join yet.',
 } as const;

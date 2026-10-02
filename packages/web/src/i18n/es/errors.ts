@@ -113,4 +113,7 @@ export default {
   'role-follows-grants': 'Esta cuenta solo tiene acceso a algunos servidores: su rol se elige en cada uno.',
   'invalid-port-ranges': 'Este panel deja que los servidores usen solo estos puertos: {{ranges}}.',
   'memory-above-host': 'Es más memoria de la que este panel le da a un servidor ({{maxMb}} MiB).',
+  'invalid-address': 'Eso no es una dirección: escribí un nombre como example.duckdns.org o una dirección IP, sin https://, sin puerto y sin ruta.',
+  'detect-failed': 'El servicio de direcciones no devolvió ninguna. Probá más tarde, o escribí la dirección vos mismo.',
+  'join-undeclared': 'Este juego todavía no dice cómo entran los jugadores.',
 } satisfies Translations['errors'];

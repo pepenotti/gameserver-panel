@@ -304,7 +304,7 @@ if (process.env.VITEST) {
 
 export async function makePanel(
   envOver: Partial<PanelEnv> = {},
-  opts: { mods?: ModSource[] | Record<string, ModSource[]>; fetch?: typeof fetch; db?: Db; orch?: FakeOrchestrator; adapters?: readonly PanelAdapter[]; downloads?: { fetch?: typeof fetch; env?: Record<string, string | undefined> } } = {},
+  opts: { mods?: ModSource[] | Record<string, ModSource[]>; fetch?: typeof fetch; db?: Db; orch?: FakeOrchestrator; adapters?: readonly PanelAdapter[]; downloads?: { fetch?: typeof fetch; env?: Record<string, string | undefined> }; detect?: typeof fetch } = {},
 ): Promise<TestPanel> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'gsp-panel-'));
   made.push(tmp);
@@ -353,6 +353,8 @@ export async function makePanel(
     fetch: opts.fetch ?? noNetwork,
     // The games' download services only when a test brings its fakes.
     downloads: opts.downloads ?? { fetch: noNetwork, env: {} },
+    // The host address's Detect only reaches a fake service a test brings (HST-08), never the real one.
+    detect: { fetch: opts.detect ?? noNetwork },
     // Each game's Workshop source without the network (a list given applies to every game).
     mods: opts.mods ?? { pz: [createWorkshopSource({ fetch: noNetwork })], terraria: [createTmlWorkshopSource({ fetch: noNetwork })] },
     orchestrator: orch,

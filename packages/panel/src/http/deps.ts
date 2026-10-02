@@ -7,6 +7,7 @@ import type { GlobalBreaker } from '../auth/throttle';
 import type { Users } from '../auth/users';
 import type { Db } from '../db/db';
 import type { PanelEnv } from '../env';
+import type { HostAddress } from '../host/address';
 import type { DiscordNotifier } from '../notifier/discord';
 import type { PanelBus } from '../ops/bus';
 import type { HostJobs } from '../scheduler/host-jobs';
@@ -56,4 +57,6 @@ export interface Deps {
   hostJobs: HostJobs;
   /** What a game's version may be set to, from its download services (UPD-02). */
   choices: LaunchChoicesService;
+  /** The host's public and home-network addresses (HST-08), for every server's connection info (SRV-08). */
+  hostAddress: HostAddress;
 }
