@@ -58,4 +58,28 @@ export const MINECRAFT_META: AdapterMeta = {
     // The link the game's own eula.txt gives.
     url: 'https://aka.ms/MinecraftEULA',
   },
+  // SRV-08: how players join, the same for every loader (the client is the game's own). Measured: the
+  // owner joined a real 26.3 server from Direct Connection at 127.0.0.1:<the published port>, which
+  // need not be the port inside (docs/verification/minecraft-26.3.md, "Published port"); the client
+  // takes the address alone on its default port, 25565.
+  join: {
+    port: 'game',
+    format: 'host:port',
+    defaultPort: 25565,
+    where: { en: 'Multiplayer, then Direct Connection: the Server Address field', es: 'Multijugador, luego Conexión directa: el campo Dirección del servidor' },
+    client: { name: { en: 'Minecraft: Java Edition', es: 'Minecraft: Java Edition' }, sameVersion: true },
+    steps: [
+      {
+        id: 'whitelist',
+        text: {
+          en: 'The whitelist is on: only the players on it get in. Ask an admin to add your Java Edition name.',
+          es: 'La lista blanca está activada: solo entran los jugadores que están en ella. Pedile a un administrador que agregue tu nombre de Java Edition.',
+        },
+        // 26.3 starts with it on (`white-list=true`), Paper 26.2 and 1.16.5 with it off.
+        when: { file: 'properties', key: 'white-list', equals: true },
+      },
+    ],
+    verified: true,
+    source: 'M3 acceptance run, 2026-09-28: the owner joined a real 26.3 server from Direct Connection at 127.0.0.1:<published port> (docs/verification/minecraft-26.3.md)',
+  },
 };

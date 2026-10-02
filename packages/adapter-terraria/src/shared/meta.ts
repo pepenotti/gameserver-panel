@@ -38,8 +38,39 @@ export const TERRARIA_META: AdapterMeta = {
   arch: ['amd64'],
   flavours: [
     { id: 'vanilla', name: { en: 'Vanilla', es: 'Vanilla' }, capabilities: [...COMMON] },
-    { id: 'tshock', name: { en: 'TShock', es: 'TShock' }, capabilities: [...COMMON, 'mods:tshock'] },
-    { id: 'tmodloader', name: { en: 'tModLoader', es: 'tModLoader' }, runtime: 'steam', capabilities: [...COMMON, 'mods:workshop'] },
+    {
+      id: 'tshock',
+      name: { en: 'TShock', es: 'TShock' },
+      capabilities: [...COMMON, 'mods:tshock'],
+      join: {
+        steps: [
+          {
+            id: 'tshock-account',
+            // Players who never registered stay TShock's `guest` (measured over REST); `/register` with a real client isn't.
+            text: {
+              en: 'TShock may ask new players to make an account in game: type /register <password>, then /login <password> when it asks.',
+              es: 'TShock puede pedir a los jugadores nuevos que creen una cuenta en el juego: escribí /register <contraseña> y después /login <contraseña> cuando lo pida.',
+            },
+          },
+        ],
+      },
+    },
+    {
+      id: 'tmodloader',
+      name: { en: 'tModLoader', es: 'tModLoader' },
+      runtime: 'steam',
+      capabilities: [...COMMON, 'mods:workshop'],
+      // Its players need tModLoader, at the server's tModLoader version, with the same mods (PRD §7).
+      join: {
+        client: { name: { en: 'tModLoader', es: 'tModLoader' }, sameVersion: true },
+        steps: [
+          {
+            id: 'same-mods',
+            text: { en: 'Join from tModLoader, not Terraria, with the same mods as the server.', es: 'Entrá desde tModLoader, no desde Terraria, con los mismos mods que el servidor.' },
+          },
+        ],
+      },
+    },
   ],
   ports: [
     // A client joined through a different published port (30550 → 7777): the port inside need not match.
@@ -54,4 +85,16 @@ export const TERRARIA_META: AdapterMeta = {
   capabilities: [...COMMON],
   // `exit` saved and stopped in 1–2.2 s (a large world the slowest); players and slow disks add.
   stopBudgetMs: 60_000,
+  // SRV-08: the address, then the port, each asked on its own; a password set in the launch settings is
+  // asked for after that (the test client was, packet 37). Only a test client joined, through a
+  // published port that differed from the one inside (docs/verification/terraria-1.4.5.8.md).
+  join: {
+    port: 'game',
+    format: 'separate',
+    where: { en: 'Multiplayer, then Join via IP: the address, then the port', es: 'Multijugador, luego unirse por IP: primero la dirección, después el puerto' },
+    client: { name: { en: 'Terraria', es: 'Terraria' }, sameVersion: true },
+    password: { launch: 'password' },
+    verified: false,
+    source: 'docs/verification/terraria-1.4.5.8.md: a test client joined vanilla and TShock through a published port; joining from a real client is still to be checked',
+  },
 };

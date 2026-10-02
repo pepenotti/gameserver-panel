@@ -40,4 +40,27 @@ export const PZ_META: AdapterMeta = {
     'updateCheck',
   ],
   stopBudgetMs: 180_000,
+  // SRV-08: players type the game port (UDP 16261 by default); the game also uses the next one, which is
+  // forwarded with it. The join password and whether accounts must exist first are the server ini's
+  // `Password` and `Open` (the game's own descriptions). No client has joined a server of this panel
+  // yet (docs/verification/pz-b42.md), so it is unverified.
+  join: {
+    port: 'game',
+    format: 'separate',
+    where: { en: "Join: the server's IP and Port fields", es: 'Unirse: los campos IP y Puerto del servidor' },
+    client: { name: { en: 'Project Zomboid', es: 'Project Zomboid' }, sameVersion: true },
+    steps: [
+      {
+        id: 'accounts',
+        text: {
+          en: 'This server lets in only the accounts an admin made: ask one for your username and password.',
+          es: 'Este servidor deja entrar solo a las cuentas que creó un administrador: pedile a uno tu usuario y contraseña.',
+        },
+        when: { file: 'ini', key: 'Open', equals: false },
+      },
+    ],
+    password: { file: 'ini', key: 'Password' },
+    verified: false,
+    source: 'docs/verification/pz-b42.md: no real client has joined a server of this panel yet; UDP 16261 and the next port are the game defaults the panel publishes',
+  },
 };

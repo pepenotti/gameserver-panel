@@ -107,6 +107,27 @@ export interface SteamGameManifest {
   /** A message to every player (`{arg}`). */
   broadcast?: Template;
   notes?: { id: string; text: I18n; doc?: string }[];
+  /** How players join (SRV-08): the adapter contract's `JoinDecl`, with settings named as in `settings`. */
+  join?: ManifestJoin;
+}
+
+/** A launch setting (`settings`), or a key of a config file (`config.files`). */
+export type ManifestJoinSetting = { setting: string } | { file: string; key: string };
+
+/** `JoinDecl` in a manifest: a step's condition and the password name a setting by its id, or a config file's key. */
+export interface ManifestJoin {
+  /** A published port that follows no other. */
+  port: string;
+  format: 'host:port' | 'separate';
+  defaultPort?: number;
+  where: I18n;
+  client: { name: I18n; sameVersion: boolean };
+  steps?: { id: string; text: I18n; when?: ManifestJoinSetting & { equals: string | number | boolean } }[];
+  /** A secret setting, or a secret key of a config file. */
+  password?: ManifestJoinSetting;
+  verified: boolean;
+  source: string;
+  note?: I18n;
 }
 
 export interface ManifestPort {

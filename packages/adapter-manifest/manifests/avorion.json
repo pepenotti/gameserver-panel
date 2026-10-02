@@ -211,5 +211,18 @@
       },
       "doc": "limitations.md#avorion-a-steam-game-run-from-a-manifest"
     }
-  ]
+  ],
+  "join": {
+    "port": "game",
+    "format": "host:port",
+    "where": { "en": "Multiplayer: the server's address, where the game asks for one", "es": "Multijugador: la dirección del servidor, donde el juego la pide" },
+    "client": { "name": { "en": "Avorion", "es": "Avorion" }, "sameVersion": true },
+    "password": { "file": "server", "key": "password" },
+    "verified": false,
+    "source": "docs/verification/avorion-2.5.13.md: no real client has joined; with Steam networking the server listened only on its two query ports",
+    "note": {
+      "en": "Unverified: how Avorion's client takes the address, and which of the forwarded ports it uses, haven't been tried with a real client.",
+      "es": "Sin verificar: todavía no se probó con un cliente real cómo toma la dirección el cliente de Avorion, ni cuál de los puertos redirigidos usa."
+    }
+  }
 }

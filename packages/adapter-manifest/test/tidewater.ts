@@ -87,6 +87,19 @@ export const TIDEWATER_JSON = {
   players: { join: '^Joined: (\\d+)$', leave: '^Left: (\\d+)$', steamQuery: { port: 'query', when: { setting: 'public', equals: true } } },
   moderation: { listFiles: { ban: 'banned', allow: 'allowed', admin: 'admins', target: 'steamId', stoppedOnly: false }, banTargets: ['steamId'] },
   notes: [{ id: 'no-console', text: t('No console.', 'Sin consola.'), doc: 'limitations.md#host' }],
+  join: {
+    port: 'game',
+    format: 'separate',
+    where: t('Play, then Connect', 'Jugar, luego Conectar'),
+    client: { name: t('Tidewater'), sameVersion: true },
+    steps: [
+      { id: 'listed', text: t('Listed: search for it by name.', 'Listado: buscalo por su nombre.'), when: { setting: 'public', equals: true } },
+      { id: 'pvp', text: t('Players fight each other here.', 'Acá los jugadores pelean entre sí.'), when: { file: 'world-settings', key: 'pvp', equals: 'on' } },
+    ],
+    password: { setting: 'password' },
+    verified: false,
+    source: 'made up for the tests',
+  },
 } as const;
 
 export const TIDEWATER = loadManifest(TIDEWATER_JSON);
