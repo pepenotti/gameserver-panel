@@ -104,8 +104,8 @@ without the owner's acceptance (D6).
    branch answers `already up to date` and stays on it (Avorion `previous`); `-beta public` moves
    it. The adapters pass no `-beta` for `public`, so today a server switched from a beta back to
    `public` keeps the beta's files without a word.
-10. **Installs are immutable once their job ends,** so their size is measured once: from 56 MB
-   (vanilla Terraria) to 6.9 GB (Project Zomboid). Steam HOME volumes are the other per-server
+10. **Installs are immutable once their job ends,** so their size is measured once: from 59 MB
+   (vanilla Terraria) to 7.2 GB (Project Zomboid). Steam HOME volumes are the other per-server
    copy: 204 MB each, seeded from the steam image.
 
 ### Per game

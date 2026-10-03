@@ -493,3 +493,70 @@ server's join password in clear text; whoever gets the message has it.
 time the password is shown, the activity log records who saw it (never the password).
 
 **Status:** By design (SRV-08).
+
+## Shared installs
+
+Servers of the same game and version will share one install, downloaded once and mounted
+read-only (HST-09, M7). What was measured before building it is in
+`verification/shared-installs.md`; these are the parts you'll notice.
+
+### A Steam server switched back from a beta branch keeps the beta
+
+**Affects:** Steam games: Project Zomboid, Valheim and games added with a manifest (Avorion).
+Today, before shared installs.
+
+**What you'll notice:** after you change a server's branch from a beta (Avorion's `previous`,
+say) back to `public`, the update says it succeeded, but the server still runs the beta's build
+and its page still names the beta branch.
+
+**Why:** steamcmd remembers the branch inside the install, and the panel asks for `public` by
+naming no branch, which steamcmd reads as "the branch already installed".
+
+**Workaround:** none from the panel yet. Back the server up, create a new one on `public`, and
+restore the backup into it.
+
+**Fix:** ask steamcmd for `public` by name. With shared installs each branch gets an install of
+its own, so a server changes branch by moving to another install.
+
+**Status:** Measured with Avorion's `previous` branch, Oct 2026; expected for every Steam game.
+
+### Old versions stay on disk until you remove them
+
+**Affects:** every game, once installs are shared.
+
+**What you'll notice:** after an update, the version servers used before stays on disk until no
+server uses it and you confirm its removal on the host page. Sizes, measured: Project Zomboid
+7.2 GB, Valheim 2.2 GB, Paper 237 MB, Avorion 191 MB, tModLoader 174 MB, Fabric and vanilla
+Minecraft about 135 MB, TShock 102 MB, vanilla Terraria 59 MB.
+
+**Why:** a running server keeps its version until its next start, and the panel never deletes a
+version on its own.
+
+**Workaround:** remove versions no server uses from the host page.
+
+**Status:** Expected (the sizes are measured).
+
+### Mods are still downloaded per server
+
+**Affects:** Project Zomboid and tModLoader servers with Workshop mods, once installs are shared.
+
+**What you'll notice:** two servers with the same mod each download and keep their own copy.
+
+**Why:** mods differ between servers, so they stay in each server's data: tModLoader's already
+are; Project Zomboid downloads its mods into the install, and the shared install points that
+folder at the server's data instead (measured to work).
+
+**Status:** Measured, Oct 2026.
+
+### Each Steam server keeps its own copy of steamcmd
+
+**Affects:** Steam games (Project Zomboid, Valheim, tModLoader, games added with a manifest).
+Today, and with shared installs.
+
+**What you'll notice:** about 200 MB of disk per server besides its world.
+
+**Why:** the game's Steam connection loads Steam's library from the server's home folder and
+writes its settings and logs there, so every server has a home folder of its own, filled from
+the runtime image.
+
+**Status:** Measured, Oct 2026 (204 MB per server).
