@@ -1,4 +1,4 @@
-import { MAX_STOP_TIMEOUT_SEC, SERVER_ID_PATTERN, SPEC_ENV_DENIED, SPEC_ENV_KEY, type PortMapping, type RuntimeFamily, type ServerSpec, type ServerSpecEnv, type StopRequest } from '@gsp/shared';
+import { INSTALL_ID_PATTERN, MAX_STOP_TIMEOUT_SEC, SERVER_ID_PATTERN, SPEC_ENV_DENIED, SPEC_ENV_KEY, type InstallJobSpec, type PortMapping, type RuntimeFamily, type ServerSpec, type ServerSpecEnv, type StopRequest } from '@gsp/shared';
 import { AGENT_PORT, imageName } from './derive';
 import { badRequest, refused } from './errors';
 import { FIRST_UNPRIVILEGED_PORT, formatRanges, inRanges, type Policy } from './policy';
@@ -7,7 +7,8 @@ import { FIRST_UNPRIVILEGED_PORT, formatRanges, inRanges, type Policy } from './
 // every value checked; anything that asks for more than the allowlist gives
 // is `refused`, anything malformed is a `bad-request`.
 
-const SPEC_KEYS: ReadonlySet<string> = new Set(['id', 'runtime', 'variant', 'env', 'ports', 'memoryMb', 'cpus']);
+const SPEC_KEYS: ReadonlySet<string> = new Set(['id', 'runtime', 'variant', 'env', 'ports', 'memoryMb', 'cpus', 'install']);
+const JOB_KEYS: ReadonlySet<string> = new Set(['id', 'runtime', 'variant', 'env']);
 const PORT_KEYS: ReadonlySet<string> = new Set(['container', 'host', 'proto']);
 const RUNTIMES: readonly RuntimeFamily[] = ['steam', 'java', 'native'];
 /** Keys the spec sets besides `GAME_*` / `GSP_*`. */
@@ -104,21 +105,66 @@ export function parseSpec(body: unknown, pathId: string, policy: Policy): Server
   for (const k of Object.keys(body)) {
     if (!SPEC_KEYS.has(k)) throw refused(shown(k), `"${shown(k)}" is not part of a server spec: the orchestrator derives everything else itself`);
   }
-  const { id, runtime, variant, env, ports, memoryMb, cpus } = body;
+  const { id, runtime, variant, env, ports, memoryMb, cpus, install } = body;
   if (typeof id !== 'string' || !SERVER_ID_PATTERN.test(id)) throw badRequest('id must be 2-24 characters: a-z first, then a-z, 0-9 and -', 'id');
   if (id !== pathId) throw badRequest('id must equal the id in the path', 'id');
-  if (typeof runtime !== 'string' || !(RUNTIMES as readonly string[]).includes(runtime)) throw refused('runtime', 'runtime must be steam, java or native');
-  if (variant !== undefined && (typeof variant !== 'string' || !VARIANT.test(variant))) throw badRequest('variant must be a short lowercase name', 'variant');
-  imageName(runtime as RuntimeFamily, variant, policy.allowFake);
+  const image = parseImage(runtime, variant, policy);
   const specEnv = parseEnv(env);
   const specPorts = parsePorts(ports, policy);
   if (typeof memoryMb !== 'number' || !Number.isInteger(memoryMb) || memoryMb < MIN_MEM_MB) throw badRequest(`memoryMb must be a whole number of MiB, at least ${MIN_MEM_MB}`, 'memoryMb');
   if (memoryMb > policy.maxMemMb) throw refused('memoryMb', `memoryMb is above this host's limit of ${policy.maxMemMb} MiB per server`);
   if (cpus !== undefined && (typeof cpus !== 'number' || !Number.isFinite(cpus) || cpus < MIN_CPUS || cpus > MAX_CPUS)) throw badRequest(`cpus must be ${MIN_CPUS}-${MAX_CPUS} cores`, 'cpus');
-  const spec: ServerSpec = { id, runtime: runtime as RuntimeFamily, env: specEnv, ports: specPorts, memoryMb };
-  if (variant !== undefined) spec.variant = variant;
+  if (install !== undefined && (typeof install !== 'string' || !INSTALL_ID_PATTERN.test(install))) throw badRequest('install must be an install id: i, then 8-31 of a-z and 0-9', 'install');
+  const spec: ServerSpec = { id, runtime: image.runtime, env: specEnv, ports: specPorts, memoryMb };
+  if (image.variant !== undefined) spec.variant = image.variant;
   if (cpus !== undefined) spec.cpus = cpus;
+  if (install !== undefined) spec.install = install;
   return spec;
+}
+
+/** A spec's `runtime` and `variant`, checked against the image allowlist. */
+function parseImage(runtime: unknown, variant: unknown, policy: Policy): { runtime: RuntimeFamily; variant?: string } {
+  if (typeof runtime !== 'string' || !(RUNTIMES as readonly string[]).includes(runtime)) throw refused('runtime', 'runtime must be steam, java or native');
+  if (variant !== undefined && (typeof variant !== 'string' || !VARIANT.test(variant))) throw badRequest('variant must be a short lowercase name', 'variant');
+  imageName(runtime as RuntimeFamily, variant, policy.allowFake);
+  return variant === undefined ? { runtime: runtime as RuntimeFamily } : { runtime: runtime as RuntimeFamily, variant };
+}
+
+/**
+ * `PUT /v1/installs/:id` (HST-09, D12): an install job's spec, checked like
+ * a server's: an id, the image family and variant from the allowlist, and
+ * the agent's environment by the same rules (`GSP_AGENT_MODE` and
+ * `GSP_INSTALL_SHARED` are the orchestrator's). No ports, mounts, memory or
+ * anything else: those are derived (`refused`).
+ */
+export function parseInstallJobSpec(body: unknown, pathId: string, policy: Policy): InstallJobSpec {
+  if (!isObject(body)) throw badRequest('The install job spec must be a JSON object');
+  for (const k of Object.keys(body)) {
+    if (!JOB_KEYS.has(k)) throw refused(shown(k), `"${shown(k)}" is not part of an install job spec: the orchestrator derives everything else itself`);
+  }
+  const { id, runtime, variant, env } = body;
+  if (typeof id !== 'string' || !INSTALL_ID_PATTERN.test(id)) throw badRequest('id must be an install id: i, then 8-31 of a-z and 0-9', 'id');
+  if (id !== pathId) throw badRequest('id must equal the id in the path', 'id');
+  const image = parseImage(runtime, variant, policy);
+  return { id, ...image, env: parseEnv(env) };
+}
+
+/** `PUT /v1/installs/:id?from=<installId>` or `?fromServer=<serverId>`: a copy job's source, or null for an install job; nothing else. */
+export function parseInstallPutOptions(query: URLSearchParams, pathId: string): { install: string } | { server: string } | null {
+  for (const k of query.keys()) if (k !== 'from' && k !== 'fromServer') throw badRequest(`Unknown query parameter ${shown(k)}`);
+  const from = query.getAll('from');
+  const fromServer = query.getAll('fromServer');
+  if (from.length + fromServer.length > 1) throw badRequest('A copy has one source: from or fromServer, once');
+  if (from.length === 1) {
+    if (!INSTALL_ID_PATTERN.test(from[0]!)) throw badRequest('from must be an install id', 'from');
+    if (from[0] === pathId) throw badRequest('An install is not copied into itself', 'from');
+    return { install: from[0]! };
+  }
+  if (fromServer.length === 1) {
+    if (!SERVER_ID_PATTERN.test(fromServer[0]!)) throw badRequest('fromServer must be a server id', 'fromServer');
+    return { server: fromServer[0]! };
+  }
+  return null;
 }
 
 /** `POST …/stop` and `…/restart`. */

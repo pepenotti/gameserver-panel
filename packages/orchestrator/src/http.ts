@@ -1,14 +1,16 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
-import { ORCHESTRATOR_API_VERSION, SERVER_ID_PATTERN, type HealthResponse, type HostInfo } from '@gsp/shared';
+import { INSTALL_ID_PATTERN, ORCHESTRATOR_API_VERSION, SERVER_ID_PATTERN, type HealthResponse, type HostInfo } from '@gsp/shared';
 import type { Backend } from './backend';
 import { badRequest, notFound, OrchError } from './errors';
 import type { Policy } from './policy';
-import { parseEmpty, parseSpec, parseStop } from './spec';
+import { parseEmpty, parseInstallJobSpec, parseInstallPutOptions, parseSpec, parseStop } from './spec';
 
 const MAX_BODY = 64 * 1024;
 /** `/v1/servers/:id` and `/v1/servers/:id/<action>`, matched on the raw path (no dot-segment folding). */
 const SERVER_ROUTE = /^\/v1\/servers\/([^/]*)(?:\/([^/]*))?$/;
+/** `/v1/installs/:id` and `/v1/installs/:id/job` (HST-09), matched the same way. */
+const INSTALL_ROUTE = /^\/v1\/installs\/([^/]*)(?:\/([^/]*))?$/;
 const ACTIONS: ReadonlySet<string> = new Set(['start', 'stop', 'restart', 'stats']);
 
 export interface OrchestratorServerOptions {
@@ -108,6 +110,35 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
         return [200, host];
       }
       return [200, await o.backend.list()];
+    }
+
+    if (path === '/v1/installs') {
+      if (method !== 'GET') throw methodNotAllowed();
+      noQuery();
+      noBody();
+      return [200, await o.backend.installs()];
+    }
+    const im = INSTALL_ROUTE.exec(path);
+    if (im) {
+      const [, iid = '', sub] = im;
+      if (sub !== undefined && sub !== 'job') throw notFound('No such route');
+      if (!INSTALL_ID_PATTERN.test(iid)) throw badRequest('The install id must be i, then 8-31 of a-z and 0-9', 'id');
+      if (sub === 'job') {
+        if (method !== 'DELETE') throw methodNotAllowed();
+        noQuery();
+        noBody();
+        return [200, await o.backend.removeInstallJob(iid)];
+      }
+      if (method === 'PUT') {
+        const src = parseInstallPutOptions(query, iid);
+        return [200, await o.backend.putInstall(parseInstallJobSpec(body, iid, o.policy), src)];
+      }
+      if (method === 'DELETE') {
+        noQuery();
+        noBody();
+        return [200, await o.backend.removeInstall(iid)];
+      }
+      throw methodNotAllowed();
     }
 
     const m = SERVER_ROUTE.exec(path);

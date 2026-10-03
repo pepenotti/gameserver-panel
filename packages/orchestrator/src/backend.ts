@@ -1,5 +1,6 @@
-import type { ApplyOptions, DeleteResponse, HostInfo, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
+import type { ApplyOptions, DeleteResponse, HostInfo, InstallDeleteResponse, InstallInfo, InstallJobSpec, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
 import { conflict } from './errors';
+import type { CopySource } from './installs';
 
 /**
  * What the HTTP API drives, one method per route: Docker in production
@@ -24,6 +25,21 @@ export interface Backend {
   restart(id: string, timeoutSec?: number): Promise<ServerContainer>;
   stats(id: string): Promise<ServerStats>;
   remove(id: string, removeVolumes: boolean): Promise<DeleteResponse>;
+
+  // Shared installs (HST-09, D12). Ids match `INSTALL_ID_PATTERN`; specs arrive validated (`parseInstallJobSpec`).
+  /** This stack's installs, the servers mounting each and its job. */
+  installs(): Promise<InstallInfo[]>;
+  /**
+   * Creates the install's volume when missing and its job (`src`: a copy
+   * job from another install or a server's own install; null: an install
+   * job), and starts it. The same spec again, while its job exists, answers
+   * as it is; another one is `install-busy`.
+   */
+  putInstall(spec: InstallJobSpec, src: CopySource | null): Promise<InstallInfo>;
+  /** The install's job, its network and HOME; never the install. */
+  removeInstallJob(id: string): Promise<InstallDeleteResponse>;
+  /** The install's volume; refused while a job exists or anything mounts it. */
+  removeInstall(id: string): Promise<InstallDeleteResponse>;
 }
 
 /** One change at a time per server: a second one while the first runs is a `conflict`. */

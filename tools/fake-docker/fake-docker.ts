@@ -243,7 +243,8 @@ export async function startFakeDocker(): Promise<FakeDocker> {
       const hc = (b.HostConfig ?? {}) as FakeContainer['HostConfig'];
       const netName = String(hc.NetworkMode ?? 'bridge');
       const net = findNetwork(netName);
-      if (netName !== 'bridge' && !net) return new Reply(404, { message: `network ${netName} not found` });
+      // Docker's own: the default bridge, and none (no network at all).
+      if (netName !== 'bridge' && netName !== 'none' && !net) return new Reply(404, { message: `network ${netName} not found` });
       const c: FakeContainer = {
         Id: newId(),
         Name: `/${name}`,
