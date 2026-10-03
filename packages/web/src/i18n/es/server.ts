@@ -50,6 +50,7 @@ export default {
     own: 'Este servidor tiene su propia copia de los archivos del juego.',
     ownMoves: 'En su próximo inicio pasa a archivos del juego compartidos: se copian los suyos, no se descarga nada. Su propia copia queda hasta que el dueño la borre en la página de ajustes del panel.',
     next: 'En su próximo inicio pasa a la versión {{label}}, después de una copia de seguridad.',
+    nextSame: 'En su próximo inicio pasa a otra copia de la versión {{label}} (la hizo una revisión de archivos), después de una copia de seguridad.',
     nextOther: 'En su próximo inicio pasa a otros archivos del juego, después de una copia de seguridad.',
     nextPreparing: 'Se están preparando los archivos del juego a los que pasa.',
     moveNow: 'Pasar ahora',

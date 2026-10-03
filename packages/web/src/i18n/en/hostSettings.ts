@@ -11,10 +11,10 @@ export default {
     unused: 'No server uses it.',
     origin: {
       download: 'Downloaded',
-      update: 'An update, from a copy of the version before',
+      update: 'From a copy of other game files (an update or a file check)',
       adopted: 'Copied from a server’s own files',
     },
-    superseded: 'Replaced by an update',
+    superseded: 'Replaced: new servers get the newer files',
     installing: 'Being installed…',
     failed: 'Failed: {{error}}',
     removing: 'Being removed…',

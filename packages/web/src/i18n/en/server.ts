@@ -48,6 +48,7 @@ export default {
     own: 'This server has its own copy of the game files.',
     ownMoves: 'At its next start it moves to shared game files: its own are copied, nothing is downloaded. Its own copy stays until the owner removes it on the panel settings page.',
     next: 'At its next start it moves to version {{label}}, after a safety backup.',
+    nextSame: 'At its next start it moves to another copy of version {{label}} (a file check made it), after a safety backup.',
     nextOther: 'At its next start it moves to other game files, after a safety backup.',
     nextPreparing: 'The game files it moves to are being prepared.',
     moveNow: 'Move now',

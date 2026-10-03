@@ -13,10 +13,10 @@ export default {
     unused: 'Ningún servidor lo usa.',
     origin: {
       download: 'Descargado',
-      update: 'Una actualización, a partir de una copia de la versión anterior',
+      update: 'De una copia de otros archivos del juego (una actualización o una revisión de archivos)',
       adopted: 'Copiado de los archivos propios de un servidor',
     },
-    superseded: 'Reemplazado por una actualización',
+    superseded: 'Reemplazado: los servidores nuevos reciben los archivos más nuevos',
     installing: 'Instalándose…',
     failed: 'Falló: {{error}}',
     removing: 'Borrándose…',

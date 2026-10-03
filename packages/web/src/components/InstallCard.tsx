@@ -13,7 +13,7 @@ import { useLive } from '../api/live';
 import { SERVERS_KEY, useServerApi, type ServerSummary } from '../api/server';
 import { useSession } from '../api/session';
 import { formatBytes, useErrorText } from '../lib/format';
-import { canMoveNow, installLabel, jobPercent, serverInstallLine } from '../lib/installs';
+import { canMoveNow, jobPercent, nextMoveLine, serverInstallLine } from '../lib/installs';
 import { PendingBadge } from './PendingBadge';
 
 /** Something about the install moves now: a job runs, or it waits for one. */
@@ -56,6 +56,7 @@ export function InstallCard({ server }: { server: ServerSummary }) {
   }, [v, qc]);
   if (!v) return null;
   const line = serverInstallLine(v);
+  const waitingMove = nextMoveLine(v);
   const state = live.status?.state ?? null;
   const runs = state === 'running' || state === 'starting' || state === 'stopping' || state === 'installing';
   const busy = !!live.op && !live.op.done;
@@ -104,10 +105,10 @@ export function InstallCard({ server }: { server: ServerSummary }) {
           </Alert>
         )}
         {line.kind === 'own' && <Text size="sm">{t('server.install.own')}</Text>}
-        {v.next && (
+        {v.next && waitingMove && (
           <Stack gap={4}>
             <Text size="sm" c="orange">
-              {v.next.id === null ? t('server.install.ownMoves') : installLabel(v.next.key) ? t('server.install.next', { label: installLabel(v.next.key) }) : t('server.install.nextOther')}
+              {t(waitingMove.key, waitingMove.values)}
             </Text>
             {v.next.state === 'installing' && (
               <>

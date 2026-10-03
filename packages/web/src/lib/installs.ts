@@ -46,6 +46,21 @@ export function serverInstallLine(v: ServerInstallView): ServerInstallLine {
   return { kind: 'shared', label: installLabel(v.key), sharedWith: v.sharedWith, bytes: v.bytes };
 }
 
+/**
+ * What a server's waiting move says (`ServerInstallView.next`), as a
+ * translation key and its values: off its own install, to another version,
+ * to another copy of the same version (a file check's), or to other files
+ * whose version isn't known yet; null when nothing waits.
+ */
+export function nextMoveLine(v: ServerInstallView): { key: 'server.install.ownMoves' | 'server.install.next' | 'server.install.nextSame' | 'server.install.nextOther'; values: Record<string, string> } | null {
+  if (!v.next) return null;
+  if (v.next.id === null) return { key: 'server.install.ownMoves', values: {} };
+  const to = installLabel(v.next.key);
+  if (!to) return { key: 'server.install.nextOther', values: {} };
+  if (to === installLabel(v.key)) return { key: 'server.install.nextSame', values: { label: to } };
+  return { key: 'server.install.next', values: { label: to } };
+}
+
 /** Whether the server page offers to put a server on its shared install now: one on its own install that moves to one, one whose install failed, one with a move waiting. */
 export function canMoveNow(v: ServerInstallView): boolean {
   return v.next !== null || v.state === 'failed';

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { InstallView, ServerInstallView } from '../src/api/installs';
 import { en } from '../src/i18n/en';
 import { es } from '../src/i18n/es';
-import { canMoveNow, installLabel, jobPercent, planLine, removable, serverInstallLine, wantedLabel } from '../src/lib/installs';
+import { canMoveNow, installLabel, jobPercent, nextMoveLine, planLine, removable, serverInstallLine, wantedLabel } from '../src/lib/installs';
 import { pendingHelpKeys } from '../src/lib/servers';
 
 const view = (over: Partial<ServerInstallView> = {}): ServerInstallView => ({
@@ -73,6 +73,17 @@ describe('a server’s install line (HST-09)', () => {
     expect(serverInstallLine(view({ state: 'installing', waiting: true, key: null, job }))).toEqual({ kind: 'installing', job });
     expect(serverInstallLine(view({ state: 'failed', error: 'Disk full' }))).toEqual({ kind: 'failed', error: 'Disk full' });
     expect(serverInstallLine(view({ mode: 'own', id: null, state: null, key: null }))).toEqual({ kind: 'own' });
+  });
+
+  it('says where a waiting move goes: off its own install, another version, another copy of the same version, or files not known yet', () => {
+    const next = (key: ServerInstallView['key']) => ({ id: 'i1111111111111111', key, state: 'ready' as const, job: null });
+    expect(nextMoveLine(view())).toBeNull();
+    expect(nextMoveLine(view({ mode: 'own', id: null, state: null, key: null, next: { id: null, key: null, state: null, job: null } }))).toEqual({ key: 'server.install.ownMoves', values: {} });
+    expect(nextMoveLine(view({ next: next({ flavour: null, version: null, build: '25485539', branch: 'public' }) }))).toEqual({ key: 'server.install.next', values: { label: 'public · 25485539' } });
+    // A file check's copy holds the same version: it doesn't say "moves to" what it runs already.
+    expect(nextMoveLine(view({ next: next({ flavour: null, version: null, build: '25485538', branch: 'public' }) }))).toEqual({ key: 'server.install.nextSame', values: { label: 'public · 25485538' } });
+    expect(nextMoveLine(view({ next: next(null) }))).toEqual({ key: 'server.install.nextOther', values: {} });
+    for (const k of ['ownMoves', 'next', 'nextSame', 'nextOther'] as const) expect(es.server.install[k], k).toBeTruthy();
   });
 
   it('offers the move now only when there is one to make: off its own install, a failed install, a move waiting', () => {
