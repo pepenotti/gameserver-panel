@@ -332,3 +332,67 @@ servers running from one install at the same time; ARM64.
 `docker rmi`; `docker ps -a`, `docker volume ls` and `docker network ls` filtered by `gsp-s5`, and
 `GET /v1/installs` and `GET /v1/servers` before the stack went, listed nothing. The build cache was
 left alone; no other stack was touched.
+
+## Panel side check — 2026-10-03
+
+Phase 2 (panel side) run for real (D5): the panel deciding which install each server runs from,
+driving the jobs, moving servers, and the upgrade of a panel from before shared installs, against
+the real orchestrator, agent and game in a development slot. No fakes.
+
+**Setup.** Docker Desktop 29.7.2 (Linux engine, amd64, 12 cores, 15.6 GiB). The slot's stack
+(orchestrator, panel, Caddy) and the `gsp/native` runtime image built with `node scripts/stack.mjs`,
+the real images (`SERVER_IMAGE_VARIANT` empty). The panel was built twice on one database volume:
+first from `main` before the panel had shared installs (8805398), then from this branch, which is
+the upgrade every existing install will go through. Everything was driven through the panel's
+HTTPS API from the host, as the owner (session, CSRF header, 2FA), like the web. The game was
+vanilla Terraria, the newest version (1.4.5.8), small worlds; one game server ran at a time.
+
+**What a download is.** An install job's network counters (`/proc/net/dev` of its own interfaces,
+read every 100 ms while it ran, through `docker exec` into the job container) say what it received.
+Copy jobs have no network at all.
+
+**The old way, then the upgrade.** On the panel from before shared installs, server `tr-own` was
+created, started (its agent downloaded and installed 1.4.5.8 into the server's own install volume,
+58 528 804 B; a new world), and stopped. With the branch's panel on the same database (migration 7
+ran at its start), the server list said `tr-own` ran from its own install, with the pending reason
+`install` and "moves to a shared install at its next start"; `GET /api/host/installs` was empty.
+
+| Step (panel side) | What happened | Time |
+|---|---|---|
+| Create form's plan (`POST /api/adapters/terraria/install-plan`) | `download`, size unknown (no install of that game yet) | — |
+| `tr-a` and `tr-b` created one after the other | One install (`install.create` once); `tr-b` found it being installed and waited for it; both without a container until it was ready, then both created on it (read-only at `/opt/game`, `RW false`), neither with an install volume of its own | job 7.8 s (create → ready, the 58.5 MB download included); containers 1.8 s and 3.7 s later |
+| `tr-own` started | Its container stopped, its own install copied into a new install (`?fromServer=`), the install job on the copy, which found the same files as `tr-a`'s install: the copy was removed and `tr-own` put on that install; it started on its old world; its own install volume listed as a left-over with its size | 6.5 s to the move, running 12.7 s after the start |
+| `POST …/server/update` on `tr-a`, then on `tr-b` (stopped; nothing newer upstream) | A copy of the install, the job on it, the same files: the copy removed, nobody moved, nothing stopped | 4.5 s each; on a third such update, sampled, the job received 9 388 B |
+| A file check (`validate`) on `tr-a`, stopped, while `tr-own` ran | A copy, the job with `validate` on it (it downloads again: 50 842 307 B received), kept as the install that replaces the old one; `tr-a` and `tr-b`, stopped, moved at once; `tr-own`, running, showed the pending reason `install` ("moves to 1.4.5.8 at its next start") | 9 s, the moves 2–5 s later |
+| `tr-own` restarted | Stopped, a safety backup (`pre-update`, 1.4.5.8), recreated on the new install, running | 9 s |
+| Removals by the owner | The install in use: 409 `install-in-use`, naming `tr-own`, `tr-a`, `tr-b`; the old one (superseded, used by nobody) and `tr-own`'s left-over own install: removed, their volumes gone | — |
+
+**A move without a download, seen directly.** With every server and install removed through the
+panel, the panel from `main` was built again on the same (now empty) database, server `tr-old`
+created on it, started (its own install: Terraria's install marker says
+`installedAt 10:38:30.544Z`) and stopped; then the branch's panel. This time nothing else was
+installed, so the move kept what it copied: `POST /api/servers/tr-old/install` (the "move to a
+shared install" action, as the owner) stopped its container, copied its own install, and ran the
+install job on the copy, which received **10 245 bytes** (no 58.5 MB download). The new install
+(`origin: adopted`) kept Terraria's own marker unchanged (`installedAt 10:38:30.544Z`: the job found
+the game installed and installed nothing), and the shared-install marker the job wrote last named
+1.4.5.8, 58 528 804 B, 32 files. `tr-old` started on its old world (its `Worlds/tr-old.wld` from the
+first panel's run) from the install, read-only. Then the plan for a new server said `existing`
+(58 528 804 B, used by 1 server), and server `tr-new` got that install at once: no job at all.
+
+**Audit.** Every step was recorded: `install.create` (by the owner for a new server, by the panel
+for an update or a move), `install.ready` (with `sameAs` when a job found files another install
+holds), `server.install.move` (from `own` or an install, to an install, by the panel; the owner's
+request for the move as well), `install.remove` (the owner: an install, or `server:<id>` for a
+left-over own install).
+
+**Not covered here:** a Steam game (Project Zomboid, Valheim) and the steamcmd update path through
+the panel on the real stack (the runtime side check ran a copy plus an install job on Project
+Zomboid's 7.2 GB install; the end-to-end test runs this path through the fake orchestrator); a
+newer build published upstream (a file check stood in for an update that brings new files); two game
+servers running from one install at the same time; the web pages on the real stack.
+
+**Left behind:** nothing. Every server was removed through the panel (backups dropped, the owner's
+choice), every install and left-over through the host routes; then `node scripts/stack.mjs clean`
+and `docker rmi gsp/native:s5`. `docker ps -a`, `docker volume ls`, `docker network ls` filtered by
+`gsp-s5`, and `docker images` for `:s5`, listed nothing. No other stack was touched.
