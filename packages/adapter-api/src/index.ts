@@ -25,6 +25,7 @@ import type {
   InstallRedirect,
   InstallSharing,
   InstallSharingMode,
+  InstallWanted,
   JobKind,
   JobResult,
   PackRequest,
@@ -41,7 +42,7 @@ export type { AgentStatus, CommandResponse, FormatId, InstalledInfo, JobKind, Jo
 // The file shapes are the agent API's (`/v1/fs/*`, `/v1/archive/*`, D11), so the wire and the contract can't drift.
 export type { DirEntry, FileKind, FileStat, PackRequest, RootId, RuntimeFamily, ServerFilesErrorCode };
 // Shared installs (HST-09, D12): what an adapter declares and what an install job leaves.
-export type { InstallKey, InstallRedirect, InstallSharing, InstallSharingMode, SharedInstallMarker };
+export type { InstallKey, InstallRedirect, InstallSharing, InstallSharingMode, InstallWanted, SharedInstallMarker };
 
 // =================================================================== common
 
@@ -1310,6 +1311,27 @@ export interface PanelAdapter<S = unknown> {
   updates?: { check(ctx: ServerCtx, launch: S): Promise<UpdateInfo | null> };
   consoleCatalog?: CommandDoc[];
   hooks?: { beforeStart?(ctx: ServerCtx): Promise<void> };
+  /**
+   * Shared installs (HST-09, D12), panel side: what a server's launch
+   * settings want installed, known before any install job runs, so the
+   * panel gives a server an install that already holds it (or waits for the
+   * one being installed) instead of downloading it again. Required for a
+   * game (or a flavour) whose installs are shared (`AdapterMeta.install`,
+   * `Flavour.install`); the contract suite checks it.
+   */
+  install?: PanelInstall<S>;
+}
+
+/** How a panel adapter tells the panel which install a server needs (`PanelAdapter.install`). */
+export interface PanelInstall<S = unknown> {
+  /**
+   * The install `launch` (stored or submitted launch settings, over the
+   * defaults) wants for a server of `srv.flavour`: the flavour, and what the
+   * launch pins of the version, build and branch, null where it takes the
+   * newest (a Steam game names its branch; only an install job learns the
+   * build). Throws on settings `launch.toAgent` would refuse.
+   */
+  wanted(launch: S, srv: Pick<ServerRef, 'flavour'>): InstallWanted;
 }
 
 /** The panel adapter minus `meta` and `config`: what an adapter's `panel/core` provides. */

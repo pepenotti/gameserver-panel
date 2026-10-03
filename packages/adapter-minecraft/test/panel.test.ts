@@ -598,3 +598,20 @@ describe('the console catalog (AST-04)', () => {
     for (const c of minecraftPanelAdapter.consoleCatalog!) expect(help, c.name).toContain(`System chat: /${c.name} `.trimEnd());
   });
 });
+
+describe('the install a launch wants (HST-09, D12)', () => {
+  const wanted = (flavour: string, s: Partial<MinecraftLaunchSettings> = {}) => minecraftPanelAdapter.install!.wanted({ ...minecraftPanelAdapter.launch.defaults(), ...s }, { flavour });
+  it('names the loader and the version, and what each loader pins', () => {
+    // Vanilla: a version is all there is.
+    expect(wanted('vanilla', { version: '26.3' })).toEqual({ flavour: 'vanilla', version: '26.3', build: null, branch: null, channel: null });
+    // Paper: the newest build of the channel the server takes, so the channel is part of it.
+    expect(wanted('paper', { version: '26.2' })).toEqual({ flavour: 'paper', version: '26.2', build: null, branch: null, channel: 'STABLE' });
+    expect(wanted('paper', { version: '26.2', channel: 'BETA' })).toMatchObject({ channel: 'BETA' });
+    // Fabric: a pinned loader is the build; none takes the newest stable one.
+    expect(wanted('fabric', { version: '26.3' })).toEqual({ flavour: 'fabric', version: '26.3', build: null, branch: null, channel: null });
+    expect(wanted('fabric', { version: '26.3', loaderVersion: '0.19.5' })).toEqual({ flavour: 'fabric', version: '26.3', build: '0.19.5', branch: null, channel: null });
+    // Settings of another loader don't change what a server wants.
+    expect(wanted('vanilla', { version: '26.3', loaderVersion: '0.19.5', channel: 'ALPHA' })).toEqual(wanted('vanilla', { version: '26.3' }));
+    expect(() => wanted('forge', { version: '26.3' })).toThrow(/loader/);
+  });
+});

@@ -64,6 +64,35 @@ export interface InstallKey {
   branch: string | null;
 }
 
+/**
+ * What a server's launch settings want installed, before any job ran (a
+ * panel adapter's `install.wanted()`): the fields of an `InstallKey` the
+ * launch pins, each null where it takes whatever is newest (a Steam game
+ * names its branch, never its build, which only an install job learns).
+ * An install fits it when its key has the flavour it names and every other
+ * field it pins. `channel` is the least stable release channel the launch
+ * takes (Paper's build channel, tModLoader's), compared as it is written:
+ * an install made for one channel isn't given to a launch of another. The
+ * agent still refuses a start whose launch its install doesn't fit
+ * (`install-mismatch`).
+ */
+export interface InstallWanted {
+  flavour: string | null;
+  version: string | null;
+  build: string | null;
+  branch: string | null;
+  channel: string | null;
+}
+
+/**
+ * Whether an install's key fits what a launch wants: the flavour it names,
+ * and every other field it pins (`InstallWanted`; the channel is compared
+ * with the one the install was made for, not with the key).
+ */
+export function keyFits(key: InstallKey, w: InstallWanted): boolean {
+  return key.flavour === w.flavour && (w.version === null || key.version === w.version) && (w.build === null || key.build === w.build) && (w.branch === null || key.branch === w.branch);
+}
+
 /** The shared-install marker, relative to the install root: written last by an install job, so it exists only after a whole one. */
 export const SHARED_INSTALL_MARKER = '.gsp-shared-install.json';
 

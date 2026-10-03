@@ -4,7 +4,7 @@
  * UPD-06, Q11, Q13). The loader is the server's flavour, picked when it is
  * created; the version never changes on its own.
  */
-import type { ChoicesCtx, I18n, LaunchChoice, LaunchChoices, LaunchChoicesQuery, LaunchOption, SecretBag, ServerRef } from '@gsp/adapter-api';
+import type { ChoicesCtx, I18n, InstallWanted, LaunchChoice, LaunchChoices, LaunchChoicesQuery, LaunchOption, SecretBag, ServerRef } from '@gsp/adapter-api';
 import { channelRank, isPaperChannel, LOADERS, MIN_VERSION, PAPER_CHANNELS, parseMinecraftLaunch, type Loader, type MinecraftLaunch, type PaperChannel } from '../shared/launch';
 import { MINECRAFT_META } from '../shared/meta';
 import { fabricGames, fabricLoadersFor, fabricStableLoader, mojangReleases, paperVersions, sourceUrls } from '../shared/versions';
@@ -141,6 +141,19 @@ export function minecraftToAgent(srv: ServerRef, s: MinecraftLaunchSettings, _se
     loaderVersion: loader === 'fabric' && v.loaderVersion !== '' ? v.loaderVersion : null,
     memoryMb: v.memoryMb,
   });
+}
+
+/**
+ * The install a launch wants (HST-09, D12): the loader (the server's
+ * flavour), the Minecraft version, Fabric's loader when one is pinned, and
+ * Paper's build channel (an install made for the stable channel never holds
+ * a test build). Paper's build and an unpinned Fabric loader are the newest
+ * an install job finds, so the panel gives a new server the newest install
+ * it has of them, and updates bring newer ones as new installs.
+ */
+export function minecraftWanted(s: MinecraftLaunchSettings, srv: Pick<ServerRef, 'flavour'>): InstallWanted {
+  const p = minecraftToAgent({ id: 'wanted', gameName: 'wanted', flavour: srv.flavour }, s);
+  return { flavour: p.loader, version: p.version, build: p.loaderVersion, branch: null, channel: p.channel };
 }
 
 const day = (iso: string | null) => (iso && /^\d{4}-\d\d-\d\d/.test(iso) ? iso.slice(0, 10) : undefined);

@@ -511,3 +511,17 @@ describe('the console catalog (AST-04)', () => {
     expect((adapter.consoleCatalog ?? []).filter((c) => c.secretArgs).map((c) => c.name)).toEqual(['password', 'serverpassword']);
   });
 });
+
+describe('the install a launch wants (HST-09, D12)', () => {
+  const wanted = (flavour: string, s: Partial<TerrariaLaunchSettings> = {}) => adapter.install!.wanted({ ...adapter.launch.defaults(), ...s }, { flavour });
+  it('names the flavour, the version it pins (none: the newest), and the channel tModLoader takes', () => {
+    expect(wanted('vanilla')).toEqual({ flavour: 'vanilla', version: null, build: null, branch: null, channel: null });
+    expect(wanted('vanilla', { version: '1.4.5.8' })).toEqual({ flavour: 'vanilla', version: '1.4.5.8', build: null, branch: null, channel: null });
+    expect(wanted('tshock', { version: 'v6.2.1' })).toEqual({ flavour: 'tshock', version: 'v6.2.1', build: null, branch: null, channel: null });
+    expect(wanted('tmodloader')).toEqual({ flavour: 'tmodloader', version: null, build: null, branch: null, channel: 'stable' });
+    expect(wanted('tmodloader', { channel: 'preview' })).toMatchObject({ channel: 'preview' });
+    // The world, its size, the password and the memory are no part of the install.
+    expect(wanted('vanilla', { worldSize: 3, password: 'secret-123', memoryMb: 2048 })).toEqual(wanted('vanilla'));
+    expect(() => wanted('vanilla', { version: 'v6.2.1' })).toThrow(/version/);
+  });
+});

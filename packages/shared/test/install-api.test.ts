@@ -2,7 +2,7 @@
 // panel share: how an install is shared, the redirects an install job may
 // make, install ids, and what a server spec may never set itself.
 import { describe, expect, it } from 'vitest';
-import { installSharingOf, isInstallId, redirectProblem, redirectTarget, segmentMatches, SHARED_INSTALL_MARKER, SPEC_ENV_DENIED } from '../src/index';
+import { installSharingOf, isInstallId, keyFits, redirectProblem, redirectTarget, segmentMatches, SHARED_INSTALL_MARKER, SPEC_ENV_DENIED } from '../src/index';
 
 describe('shared installs (HST-09, D12)', () => {
   it('takes install ids the panel makes: i, then 8-31 lowercase letters and digits', () => {
@@ -66,5 +66,25 @@ describe('shared installs (HST-09, D12)', () => {
     expect(segmentMatches('a.b', 'aXb')).toBe(false);
     expect(segmentMatches('a.b', 'a.b')).toBe(true);
     expect(segmentMatches('x*', 'x/y')).toBe(false);
+  });
+});
+
+describe('what a launch wants against what an install holds (HST-09, D12)', () => {
+  it('fits a key with the flavour it names and every field it pins; null takes any', () => {
+    const key = { flavour: 'fabric', version: '26.3', build: '0.19.5', branch: null };
+    const w = { flavour: 'fabric', version: '26.3', build: null, branch: null, channel: null };
+    expect(keyFits(key, w)).toBe(true);
+    expect(keyFits(key, { ...w, build: '0.19.5' })).toBe(true);
+    expect(keyFits(key, { ...w, build: '0.19.6' })).toBe(false);
+    expect(keyFits(key, { ...w, version: '26.2' })).toBe(false);
+    // Another flavour never fits, null included.
+    expect(keyFits(key, { ...w, flavour: 'paper' })).toBe(false);
+    expect(keyFits(key, { ...w, flavour: null })).toBe(false);
+    // A Steam game: the branch, whatever the build.
+    const steam = { flavour: null, version: null, build: '25485538', branch: 'public' };
+    expect(keyFits(steam, { flavour: null, version: null, build: null, branch: 'public', channel: null })).toBe(true);
+    expect(keyFits(steam, { flavour: null, version: null, build: null, branch: 'unstable', channel: null })).toBe(false);
+    // The channel is not the key's to say.
+    expect(keyFits(steam, { flavour: null, version: null, build: null, branch: 'public', channel: 'STABLE' })).toBe(true);
   });
 });

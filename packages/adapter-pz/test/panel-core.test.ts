@@ -364,3 +364,13 @@ describe('Steam Workshop source', () => {
     expect(pzPanelAdapter.mods?.map((m) => m.id)).toEqual(['steam-workshop']);
   });
 });
+
+describe('the install a launch wants (HST-09, D12)', () => {
+  it('names the Steam branch; the build is the newest an install job finds', () => {
+    const wanted = pzPanelAdapter.install!.wanted;
+    expect(wanted({ ...PZ_LAUNCH_DEFAULTS }, SRV)).toEqual({ flavour: null, version: null, build: null, branch: 'public', channel: null });
+    expect(wanted({ ...PZ_LAUNCH_DEFAULTS, branch: 'unstable', memoryMb: 4096, updateOnStart: false }, SRV)).toEqual({ flavour: null, version: null, build: null, branch: 'unstable', channel: null });
+    // Settings the server can't run with want nothing.
+    expect(() => wanted({ ...PZ_LAUNCH_DEFAULTS, branch: 'no spaces' }, SRV)).toThrow(/branch/);
+  });
+});

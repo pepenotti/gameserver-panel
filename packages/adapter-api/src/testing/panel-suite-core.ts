@@ -3,7 +3,7 @@
 //   panelAdapterCoreSuite(pzPanelAdapter, { server: () => ({ … }), secrets: () => ({ … }) });
 import { describe, expect, it } from 'vitest';
 import { RconProtocolError } from '@gsp/formats';
-import { FS_WRITE_MAX_BYTES, PERMISSIONS } from '@gsp/shared';
+import { FS_WRITE_MAX_BYTES, installSharingOf, keyFits, PERMISSIONS } from '@gsp/shared';
 import type { AgentCommand, AnnounceKind, BanTarget, Capability, JoinDecl, JoinSetting, Lang, PanelAdapter, PlayerOps, SecretBag, ServerCtx, ServerFiles, ServerRef } from '../index';
 import { expectI18n, expectUnique, metaTests } from './meta';
 
@@ -207,6 +207,26 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
         expectI18n(s.label, `launch secret ${s.key}`);
         // The form (and the settings the panel shows) never holds a secret.
         expect(adapter.launch.schema.map((o) => o.key), `launch secret ${s.key}`).not.toContain(s.key);
+      }
+    });
+
+    it('says which install a launch wants, for itself or every flavour whose installs are shared (HST-09, D12)', () => {
+      const ids: (string | null)[] = adapter.meta.flavours.length ? adapter.meta.flavours.map((f) => f.id) : [null];
+      for (const flavour of ids) {
+        const on = flavour === null ? 'the adapter' : `flavour ${flavour}`;
+        if (installSharingOf(adapter.meta, flavour).mode !== 'shared') continue;
+        expect(typeof adapter.install?.wanted, `install.wanted for ${on}, whose installs are shared`).toBe('function');
+        const w = adapter.install!.wanted(adapter.launch.defaults(), { flavour });
+        expect(Object.keys(w).sort(), `install.wanted of ${on}`).toEqual(['branch', 'build', 'channel', 'flavour', 'version']);
+        // The flavour the server has; every other field a non-empty value it pins, or null for the newest.
+        expect(w.flavour, `install.wanted of ${on}: its flavour`).toBe(flavour);
+        for (const k of ['version', 'build', 'branch', 'channel'] as const) {
+          const v = w[k];
+          expect(v === null || (typeof v === 'string' && v.length > 0 && v.length <= 128), `install.wanted of ${on}: ${k} ${JSON.stringify(v)}`).toBe(true);
+        }
+        // The same settings, the same install; and one that fits what it pins.
+        expect(adapter.install!.wanted(adapter.launch.defaults(), { flavour }), `install.wanted of ${on} again`).toEqual(w);
+        expect(keyFits({ flavour: w.flavour, version: w.version ?? 'x', build: w.build ?? 'x', branch: w.branch ?? 'x' }, w), `install.wanted of ${on}: a key it fits`).toBe(true);
       }
     });
 

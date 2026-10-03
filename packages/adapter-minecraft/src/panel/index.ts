@@ -10,14 +10,14 @@ import { MINECRAFT_META } from '../shared/meta';
 import { MINECRAFT_BACKUP_PARTS, MINECRAFT_RESETS } from './backups';
 import { minecraftPanelConfig } from './config';
 import { MINECRAFT_CONSOLE_CATALOG } from './console';
-import { minecraftChoices, MINECRAFT_LAUNCH_DEFAULTS, MINECRAFT_LAUNCH_SCHEMA, MINECRAFT_WARNINGS, minecraftToAgent, type MinecraftLaunchSettings } from './launch';
+import { minecraftChoices, MINECRAFT_LAUNCH_DEFAULTS, MINECRAFT_LAUNCH_SCHEMA, MINECRAFT_WARNINGS, minecraftToAgent, minecraftWanted, type MinecraftLaunchSettings } from './launch';
 import { minecraftAnnounce, minecraftBroadcast } from './messages';
 import { minecraftPlayers } from './players';
 import { minecraftCheckUpdate } from './updates';
 
 export type { MinecraftLaunchSettings };
 export { BSTATS_SCHEMA, MINECRAFT_PRESETS, minecraftManagedValues } from './config';
-export { DEFAULT_VERSION, MINECRAFT_LAUNCH_DEFAULTS, MINECRAFT_WARNINGS, minecraftChoices, minecraftToAgent, parseMinecraftLaunchSettings } from './launch';
+export { DEFAULT_VERSION, MINECRAFT_LAUNCH_DEFAULTS, MINECRAFT_WARNINGS, minecraftChoices, minecraftToAgent, minecraftWanted, parseMinecraftLaunchSettings } from './launch';
 export { SAY_MAX } from './messages';
 export { MINECRAFT_ACCESS_LEVELS } from './players';
 export { PROPERTIES_GROUPS, PROPERTIES_SCHEMA, PROPERTIES_SECRETS } from './properties';
@@ -38,4 +38,5 @@ export const minecraftPanelAdapter: PanelAdapter<MinecraftLaunchSettings> = {
   players: minecraftPlayers,
   updates: { check: minecraftCheckUpdate },
   consoleCatalog: MINECRAFT_CONSOLE_CATALOG,
+  install: { wanted: minecraftWanted },
 };
