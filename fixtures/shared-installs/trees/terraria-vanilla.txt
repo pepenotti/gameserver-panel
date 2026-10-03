@@ -1,0 +1,32 @@
+# The install volume after its install job: entries to depth 2 (d: folder, with the bytes and number of files under it; f: file; l: link).
+f         283               ./.gsp-install.json
+d    58528521     31 files  ./vanilla-1458/
+f     1090560               ./vanilla-1458/FNA.dll
+f        1049               ./vanilla-1458/FNA.dll.config
+f       71680               ./vanilla-1458/I18N.West.dll
+f       39936               ./vanilla-1458/I18N.dll
+f      212992               ./vanilla-1458/Mono.Posix.dll
+f      241152               ./vanilla-1458/Mono.Security.dll
+f      122880               ./vanilla-1458/System.Configuration.dll
+f     1087488               ./vanilla-1458/System.Core.dll
+f     2103296               ./vanilla-1458/System.Data.dll
+f      491008               ./vanilla-1458/System.Drawing.dll
+f      119808               ./vanilla-1458/System.Numerics.dll
+f      939008               ./vanilla-1458/System.Runtime.Serialization.dll
+f      316416               ./vanilla-1458/System.Security.dll
+f     3051008               ./vanilla-1458/System.Windows.Forms.dll
+f         543               ./vanilla-1458/System.Windows.Forms.dll.config
+f      137728               ./vanilla-1458/System.Xml.Linq.dll
+f     3176448               ./vanilla-1458/System.Xml.dll
+f     2615808               ./vanilla-1458/System.dll
+f        5631               ./vanilla-1458/Terraria.png
+f         410               ./vanilla-1458/TerrariaServer
+f     6021208               ./vanilla-1458/TerrariaServer.bin.x86_64
+f    26027520               ./vanilla-1458/TerrariaServer.exe
+f      164864               ./vanilla-1458/WindowsBase.dll
+f      695347               ./vanilla-1458/changelog.txt
+d     5114464      3 files  ./vanilla-1458/lib64/
+f        4048               ./vanilla-1458/monoconfig
+f       34366               ./vanilla-1458/monomachineconfig
+f     4641792               ./vanilla-1458/mscorlib.dll
+f          63               ./vanilla-1458/open-folder

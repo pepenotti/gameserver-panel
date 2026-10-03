@@ -1,0 +1,16 @@
+# The install volume after its install job: entries to depth 1 (d: folder, with the bytes and number of files under it; f: file; l: link).
+f    37123576               ./UnityPlayer.so
+f      180385               ./Valheim Dedicated Server Manual.pdf
+d    34515501      2 files  ./docker/
+f         526               ./docker_start_server.sh
+f       45536               ./libdecor-0.so.0
+f       69664               ./libdecor-cairo.so
+f     7633256               ./libsteamwebrtc.so
+d    54546264      2 files  ./linux64/
+f         597               ./start_server.sh
+f          46               ./start_server_xterm.sh
+f           7               ./steam_appid.txt
+d         801      1 files  ./steamapps/
+f    49104528               ./steamclient.so
+f       15160               ./valheim_server.x86_64
+d  2003414218    978 files  ./valheim_server_Data/

@@ -1,0 +1,33 @@
+# The second start of the redirect run (steamapps/workshop -> /data/.workshop/steamapps/workshop, the target created).
+# … 174 lines cut …
+[agent] Starting: /opt/game/start-server.sh -Xms2048m -Xmx2048m -Duser.language=en -Duser.country=US -- -servername gspffinst -cachedir=/data -adminusername admin -adminpassword <redacted>
+== state starting
+# … 138 lines cut …
+[out] LOG  : General      f:0 st:391,639,007> Waiting for response from Steam servers
+[out] LOG  : General      f:0 st:391,640,483> Workshop: onItemQueryCompleted handle=1 numResult=1
+[out] LOG  : General      f:0 st:391,640,486> Workshop: GetItemState()=None ID=2544353492
+[out] LOG  : General      f:0 st:391,640,491> Workshop: item state CheckItemState -> DownloadPending ID=2544353492
+[out] LOG  : General      f:0 st:391,640,525> Workshop: DownloadPending GetItemState()=NeedsUpdate|DownloadPending ID=2544353492
+[out] LOG  : General      f:0 st:391,640,530> Workshop: download 0/0 ID=2544353492
+[out] LOG  : General      f:0 st:391,640,630> Workshop: DownloadPending GetItemState()=NeedsUpdate|DownloadPending ID=2544353492
+# … 3 lines cut …
+[err] src/clientdll/contentupdatecontext.cpp (2036) : Staging library folder not found
+[err] src/clientdll/contentupdatecontext.cpp (2037) : Install library folder not found
+[out] src/clientdll/contentupdatecontext.cpp (2036) : Staging library folder not found
+# … 64 lines cut …
+[out] LOG  : General      f:0 st:391,643,904> Workshop: GetItemState()=Installed ID=2544353492
+[out] LOG  : General      f:0 st:391,643,905> Workshop: item state CheckItemState -> Ready ID=2544353492
+[out] LOG  : General      f:0 st:391,643,909> Workshop: 2544353492 installed to /data/.workshop/steamapps/workshop/content/108600/2544353492
+[out] LOG  : General      f:0 st:391,643,910> Start making backup
+[out] LOG  : General      f:0 st:391,643,983> compressionElapsed=48ms, mergingElapsed=22ms
+[out] LOG  : General      f:0 st:391,643,985> Backup made in 75 ms
+[out] LOG  : General      f:0 st:391,643,986> Start making backup
+[out] LOG  : General      f:0 st:391,643,993> compressionElapsed=5ms, mergingElapsed=1ms
+[out] LOG  : General      f:0 st:391,643,994> Backup made in 8 ms
+[err] ERROR: ld.so: object 'libjsig.so' from LD_PRELOAD cannot be preloaded (cannot open shared object file): ignored.
+[out] LOG  : General      f:0 st:391,647,581> Administrator account 'admin' created.
+[out] LOG  : General      f:0 st:391,647,868> admin password changed via -adminpassword <redacted>
+[out] LOG  : Network      f:0 st:391,647,869> Initialising Server Systems...
+[out] LOG  : Mod          f:0 st:391,648,478> loading P4HasBeenRead
+[out] LOG  : Mod          f:0 st:391,648,480> mod "P4HasBeenRead" overrides media/lua/shared/translate/ua/ui.json
+# … 1902 lines cut …

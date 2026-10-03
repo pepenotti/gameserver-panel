@@ -1,0 +1,45 @@
+== state stopped
+[agent] Starting: /opt/java/25/bin/java -Xms2048m -Xmx2048m -DbundlerRepoDir=/opt/game -Dfabric.gameJarPath=/opt/game/server.jar -jar /opt/game/fabric-server-launch.jar nogui
+== state starting
+[out] Unpacking 26.3/server-26.3.jar (versions:26.3) to /opt/game/versions/26.3/server-26.3.jar
+[out] java.nio.file.FileSystemException: /opt/game/versions: Read-only file system
+[out] 	at java.base/sun.nio.fs.UnixException.translateToIOException(Unknown Source)
+[out] 	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(Unknown Source)
+[out] 	at java.base/sun.nio.fs.UnixException.rethrowAsIOException(Unknown Source)
+[out] 	at java.base/sun.nio.fs.UnixFileSystemProvider.createDirectory(Unknown Source)
+[out] 	at java.base/java.nio.file.Files.createDirectory(Unknown Source)
+[out] 	at java.base/java.nio.file.Files.createAndCheckIsDirectory(Unknown Source)
+[out] 	at java.base/java.nio.file.Files.createDirectories(Unknown Source)
+[out] 	at net.minecraft.bundler.Main.extractJar(Main.java:105)
+[out] 	at net.minecraft.bundler.Main.checkAndExtractJar(Main.java:100)
+[out] 	at net.minecraft.bundler.Main.readAndExtractDir(Main.java:92)
+[out] 	at net.minecraft.bundler.Main.run(Main.java:38)
+[out] 	at net.minecraft.bundler.Main.main(Main.java:25)
+[out] 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
+[out] 	at java.base/java.lang.reflect.Method.invoke(Unknown Source)
+[out] 	at net.fabricmc.loader.impl.game.minecraft.BundlerProcessor.process(BundlerProcessor.java:97)
+[out] 	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.locateGame(MinecraftGameProvider.java:215)
+[out] 	at net.fabricmc.loader.impl.launch.knot.Knot.createGameProvider(Knot.java:171)
+[out] 	at net.fabricmc.loader.impl.launch.knot.Knot.init(Knot.java:128)
+[out] 	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:66)
+[out] 	at net.fabricmc.loader.impl.launch.knot.KnotServer.main(KnotServer.java:23)
+[out] 	at net.fabricmc.loader.impl.launch.server.FabricServerLauncher.main(FabricServerLauncher.java:69)
+[out] Failed to extract server libraries, exiting
+[err] [06:19:21] [ERROR] [FabricLoader/]: Uncaught exception in thread "main"
+[err] java.lang.RuntimeException: An exception occurred when launching the server!
+[err] 	at net.fabricmc.loader.impl.launch.server.FabricServerLauncher.main(FabricServerLauncher.java:71)
+[err] Caused by: java.lang.RuntimeException: Error invoking MC server bundler: java.util.concurrent.TimeoutException
+[err] 	at net.fabricmc.loader.impl.game.minecraft.BundlerProcessor.process(BundlerProcessor.java:102)
+[err] 	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.locateGame(MinecraftGameProvider.java:215)
+[err] 	at net.fabricmc.loader.impl.launch.knot.Knot.createGameProvider(Knot.java:171)
+[err] 	at net.fabricmc.loader.impl.launch.knot.Knot.init(Knot.java:128)
+[err] 	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:66)
+[err] 	at net.fabricmc.loader.impl.launch.knot.KnotServer.main(KnotServer.java:23)
+[err] 	at net.fabricmc.loader.impl.launch.server.FabricServerLauncher.main(FabricServerLauncher.java:69)
+[err] Caused by: java.util.concurrent.TimeoutException
+[err] 	at java.base/java.util.concurrent.CompletableFuture.timedGet(Unknown Source)
+[err] 	at java.base/java.util.concurrent.CompletableFuture.get(Unknown Source)
+[err] 	at net.fabricmc.loader.impl.game.minecraft.BundlerProcessor.process(BundlerProcessor.java:98)
+[err] 	... 6 more
+[agent] Server process exited (code 1, signal none) unexpectedly
+# … 53 lines cut …

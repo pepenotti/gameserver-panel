@@ -1,0 +1,20 @@
+# Every file of the copy before and after steamcmd moved it from 2.5.11 to 2.5.13: kept (same inode, size, time), rewritten in place (same inode, other size or time), replaced (new inode), created, deleted; then bytes.
+{ kept: 856, inPlace: 0, replaced: 10, created: 2, deleted: 0 } { inPlace: 0, replaced: 43997390, created: 2194 }
+## inPlace
+
+## replaced
+bin/AvorionServer
+bin/ServerRunner
+data/checksums.db
+data/scripts/entity/merchants/shipyard.lua
+data/scripts/lib/entitydbg.lua
+data/scripts/player/background/simulation/supplycommand.lua
+data/scripts/player/ui/encyclopedia/encyclopedia.lua
+data/scripts/scripts.db
+data/scripts/sector/background/boardingutility.lua
+steamapps/appmanifest_565060.acf
+## created
+data/release_notes/patchnotes2.5.12.txt
+data/release_notes/patchnotes2.5.13.txt
+## deleted
+

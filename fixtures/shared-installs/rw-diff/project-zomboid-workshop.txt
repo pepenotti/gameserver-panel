@@ -1,0 +1,23 @@
+# find -newermt over the install after a read-write start with WorkshopItems=2544353492 (type, size, path); the mod's own files cut after the first 12.
+d	4096	./steamapps
+d	4096	./steamapps/workshop
+f	574	./steamapps/workshop/appworkshop_108600.acf
+d	4096	./steamapps/workshop/content
+d	4096	./steamapps/workshop/content/108600
+d	4096	./steamapps/workshop/content/108600/2544353492
+d	4096	./steamapps/workshop/content/108600/2544353492/mods
+d	4096	./steamapps/workshop/downloads
+d	4096	./steamapps/workshop/temp
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13
+f	3316	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/icon.png
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/media
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/media/lua
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/media/lua/client
+f	25322	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/media/lua/client/P4HasBeenRead.lua
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/media/lua/shared
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/media/lua/shared/Translate
+d	4096	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/media/lua/shared/Translate/CN
+f	1916	./steamapps/workshop/content/108600/2544353492/mods/P4HasBeenRead/42.13/media/lua/shared/Translate/CN/UI_CN.txt
+# … 164 more entries under mods/ …

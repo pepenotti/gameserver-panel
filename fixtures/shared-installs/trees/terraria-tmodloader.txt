@@ -1,0 +1,24 @@
+# The install volume after its install job: entries to depth 2 (d: folder, with the bytes and number of files under it; f: file; l: link).
+f         304               ./.gsp-install.json
+d   173801542    941 files  ./tmodloader-v2026.07.3.0/
+d     7746063    601 files  ./tmodloader-v2026.07.3.0/Content/
+d       23716      4 files  ./tmodloader-v2026.07.3.0/DedicatedServerUtils/
+d      666147     11 files  ./tmodloader-v2026.07.3.0/LaunchUtils/
+d   132591515    306 files  ./tmodloader-v2026.07.3.0/Libraries/
+f         805               ./tmodloader-v2026.07.3.0/RecentGitHubCommits.txt
+f        4934               ./tmodloader-v2026.07.3.0/serverconfig.txt
+f          71               ./tmodloader-v2026.07.3.0/start-tModLoader-FamilyShare.bat
+f         219               ./tmodloader-v2026.07.3.0/start-tModLoader-FamilyShare.sh
+f          87               ./tmodloader-v2026.07.3.0/start-tModLoader.bat
+f         216               ./tmodloader-v2026.07.3.0/start-tModLoader.sh
+f          85               ./tmodloader-v2026.07.3.0/start-tModLoaderServer.bat
+f        1437               ./tmodloader-v2026.07.3.0/start-tModLoaderServer.sh
+f        2868               ./tmodloader-v2026.07.3.0/tMLMod.targets
+f       59846               ./tmodloader-v2026.07.3.0/tModLoader.deps.json
+f    21875712               ./tmodloader-v2026.07.3.0/tModLoader.dll
+f     8330900               ./tmodloader-v2026.07.3.0/tModLoader.pdb
+f          87               ./tmodloader-v2026.07.3.0/tModLoader.runtimeconfig.dev.json
+f         379               ./tmodloader-v2026.07.3.0/tModLoader.runtimeconfig.json
+f     2454293               ./tmodloader-v2026.07.3.0/tModLoader.xml
+d        2548      3 files  ./tmodloader-v2026.07.3.0/tModPorter/
+f       39614               ./tmodloader-v2026.07.3.0/tModPorter.dll.config

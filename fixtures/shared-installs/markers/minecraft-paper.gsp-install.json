@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "loader": "paper",
+  "version": "26.2",
+  "javaMajor": 25,
+  "jre": 25,
+  "jar": "paper.jar",
+  "build": 129,
+  "channel": "STABLE",
+  "loaderVersion": null,
+  "installerVersion": null,
+  "sha1": null,
+  "sha256": "b1d8f6bfa1b6101fa8e947b53041cb3bdf5540e7b83b6547ca19ba7edefeb083",
+  "installedAt": "2026-10-03T06:05:21.131Z"
+}

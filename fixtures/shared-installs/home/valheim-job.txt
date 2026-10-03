@@ -1,0 +1,44 @@
+# steamcmd's HOME before and after the install job.
+before: 464 entries (203918822	. 196M	. 188); after: 480 entries (206739111	. 199M	. 199)
+created 16, deleted 0, changed 9, touched only 0, folders whose listing changed 6
+
+## created (16)
+f    2527168 ./Steam/appcache/appinfo.vdf
+f      18087 ./Steam/appcache/packageinfo.vdf
+f        264 ./Steam/config/libraryfolders.vdf
+d       4096 ./Steam/depotcache
+f       4895 ./Steam/depotcache/1006_4559160656493359681.manifest
+f     233915 ./Steam/depotcache/896661_1285123405092214913.manifest
+f         69 ./Steam/libraryfolder.vdf
+f       6321 ./Steam/logs/content_log.txt
+f        419 ./Steam/logs/sitelicense_steamcmd.txt
+f        266 ./Steam/logs/workshop_log.txt
+d       4096 ./Steam/steamapps
+f        264 ./Steam/steamapps/libraryfolders.vdf
+d       4096 ./Steam/userdata
+d       4096 ./Steam/userdata/anonymous
+d       4096 ./Steam/userdata/anonymous/config
+f        203 ./Steam/userdata/anonymous/config/localconfig.vdf
+
+## deleted (0)
+
+## changed (9)
+f->f 184->10796 ./Steam/config/config.vdf
+f->f 358->2481 ./Steam/logs/appinfo_log.txt
+f->f 7122->8416 ./Steam/logs/bootstrap_log.txt
+f->f 140->334 ./Steam/logs/compat_log.txt
+f->f 441->2048 ./Steam/logs/configstore_log.txt
+f->f 388->6255 ./Steam/logs/connection_log.txt
+f->f 128->256 ./Steam/logs/shader_log.txt
+f->f 157->157 ./Steam/logs/stderr.txt
+f->f 196->6789 ./steamcmd/linux32/logs/console_log.txt
+
+## touched (mtime only) (0)
+
+## folders whose mtime changed (6)
+./Steam
+./Steam/appcache
+./Steam/config
+./Steam/logs
+./steamcmd
+./steamcmd/package

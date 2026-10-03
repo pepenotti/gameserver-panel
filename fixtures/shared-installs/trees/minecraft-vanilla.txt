@@ -1,0 +1,3 @@
+# The install volume after its install job: entries to depth 3 (d: folder, with the bytes and number of files under it; f: file; l: link).
+f         323               ./.gsp-install.json
+f    62294556               ./server.jar

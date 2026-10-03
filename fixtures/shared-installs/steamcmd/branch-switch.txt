@@ -1,0 +1,17 @@
+# Avorion: an install of the `previous` branch (build 21146556), then steamcmd on a copy of it.
+## app_update 565060 (no -beta), the agent's install for branch "public"
+[agent] [steamcmd] Success! App '565060' already up to date.
+	"buildid"		"21146556"
+	"BytesToDownload"		"53720384"
+		"BetaKey"		"previous"
+		"BetaKey"		"previous"
+## app_update 565060 -beta public (steamcmd run directly)
+Success! App '565060' fully installed.
+steamcmd: 16 s
+	"buildid"		"22295362"
+	"BytesToDownload"		"15792864"
+		"BetaKey"		"public"
+		"BetaKey"		"public"
+## the same build installed fresh (for comparison)
+	"buildid"		"22295362"
+	"BytesToDownload"		"56918576"

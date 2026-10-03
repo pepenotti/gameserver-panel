@@ -1,0 +1,6 @@
+# Read-write runs that changed nothing in the install (SHA-256 of every file before and after; "touched" is a changed time alone).
+project-zomboid: before: 40802 entries (7206116309	. 6.9G	. 39186); after: 40802 entries (7206116309	. 6.9G	. 39186) | created 0, deleted 0, changed 0, touched only 0, folders whose listing changed 0
+valheim: before: 1018 entries (2186650065	. 2.1G	. 994); after: 1018 entries (2186650065	. 2.1G	. 994) | created 0, deleted 0, changed 0, touched only 0, folders whose listing changed 0
+avorion: before: 940 entries (191405978	. 185M	. 868); after: 940 entries (191405978	. 185M	. 868) | created 0, deleted 0, changed 0, touched only 0, folders whose listing changed 0
+minecraft-paper: before: 385 entries (237266401	. 228M	. 107); after: 385 entries (237266401	. 228M	. 107) | created 0, deleted 0, changed 0, touched only 0, folders whose listing changed 0
+terraria-vanilla: before: 35 entries (58528804	. 56M	. 32); after: 35 entries (58528804	. 56M	. 32) | created 0, deleted 0, changed 0, touched only 0, folders whose listing changed 0

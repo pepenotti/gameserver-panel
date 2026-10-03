@@ -1,0 +1,5 @@
+== state stopped
+!! start-failed: Could not prepare the start: EROFS: read-only file system, open '/opt/game/tshock-v6.2.1/ServerPlugins/.gsp-plugins.json.tmp'
+[agent] [start-failed] Could not prepare the start: EROFS: read-only file system, open '/opt/game/tshock-v6.2.1/ServerPlugins/.gsp-plugins.json.tmp'
+== state failed
+# … 5 lines cut …

@@ -1,0 +1,32 @@
+# app_update 565060 validate on a read-only install (the agent's steamcmd driver, Avorion).
+# … 755 lines cut …
+[agent] [steamcmd] Waiting for user info...OK
+[agent] [steamcmd] Success! App '565060' already up to date.
+# … 7 lines cut …
+[agent] [steamcmd] WARNING: setlocale('en_US.UTF-8') failed, using locale: 'C'. International characters may not work.
+[agent] [steamcmd] Redirecting stderr to '/home/node/Steam/logs/stderr.txt'
+[agent] [steamcmd] Logging directory: '/home/node/Steam/logs'
+[agent] [steamcmd] [  0%] Checking for available updates...
+[agent] [steamcmd] [----] Verifying installation...
+[agent] [steamcmd] UpdateUI: skip show logo
+[agent] [steamcmd] Steam Console Client (c) Valve Corporation - version 1788292693
+[agent] [steamcmd] -- type 'quit' to exit --
+[agent] [steamcmd] Loading Steam API...OK
+[agent] [steamcmd] 
+[agent] [steamcmd] Connecting anonymously to Steam Public...OK
+[agent] [steamcmd] Waiting for client config...OK
+[agent] [steamcmd] Waiting for user info...OK
+== state installing
+== state installing
+== state installing
+== state installing
+== state installing
+== state installing
+== state installing
+== state installing
+[agent] [steamcmd]  Update state (0x0) : Timed out waiting for update to start, bailing.
+[agent] [steamcmd] Error! App '565060' state is 0x204 after update job.
+[agent] [steamcmd] Unloading Steam API...OK
+[agent] [steamcmd] 
+.. job validate -> Error! App '565060' state is 0x204 after update job.
+# … 108 lines cut …

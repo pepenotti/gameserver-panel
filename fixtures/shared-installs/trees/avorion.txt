@@ -1,0 +1,28 @@
+# The install volume after its install job: entries to depth 2 (d: folder, with the bytes and number of files under it; f: file; l: link).
+d    43163504      3 files  ./bin/
+f    23344680               ./bin/AvorionServer
+f    19434024               ./bin/ServerRunner
+f      384800               ./bin/libsteam_api.so
+d    36957350    857 files  ./data/
+f       21672               ./data/checksums.db
+f      748548               ./data/data.db
+d      587388      4 files  ./data/fonts/
+d    27859994     38 files  ./data/plans/
+d      567244    151 files  ./data/release_notes/
+f       11119               ./data/rgb.txt
+d     7133191    649 files  ./data/scripts/
+d        4081      9 files  ./data/shaders/
+d       12068      1 files  ./data/styles/
+d       12045      2 files  ./data/textures/
+f          17               ./launcher.sh
+f     7633256               ./libsteamwebrtc.so
+d    54546264      2 files  ./linux64/
+f     7817336               ./linux64/libsteamwebrtc.so
+f    46728928               ./linux64/steamclient.so
+f         193               ./server.sh
+f           7               ./steam_appid.txt
+d         859      1 files  ./steamapps/
+f         859               ./steamapps/appmanifest_565060.acf
+d           0      0 files  ./steamapps/downloading/
+d           0      0 files  ./steamapps/temp/
+f    49104528               ./steamclient.so

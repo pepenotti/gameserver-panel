@@ -1,0 +1,12 @@
+# Files the read-only run wrote in its HOME (find -newermt; type, size, path).
+f	11400	./Steam/config/config.vdf
+f	1096	./Steam/logs/appinfo_log.txt
+f	947	./Steam/logs/configstore_log.txt
+f	1096	./Steam/logs/connection_log.txt
+f	10510	./Steam/logs/connection_log_16261.txt
+f	260	./Steam/logs/systemaudiomanager.txt
+f	262	./Steam/logs/systemdisplaymanager.txt
+f	258	./Steam/logs/systemdockmanager.txt
+f	402	./Steam/logs/systemmanager.txt
+f	536	./Steam/logs/systemperfmanager.txt
+f	260	./Steam/logs/systemperfreporting.txt

@@ -1,0 +1,39 @@
+# The install volume after its install job: entries to depth 3 (d: folder, with the bytes and number of files under it; f: file; l: link).
+f         286               ./.gsp-install.json
+d   101564931     33 files  ./tshock-v6.2.1/
+f     3654551               ./tshock-v6.2.1/GeoIP.dat
+d     1546785      4 files  ./tshock-v6.2.1/ServerPlugins/
+f       36066               ./tshock-v6.2.1/ServerPlugins/TShockAPI.deps.json
+f      858112               ./tshock-v6.2.1/ServerPlugins/TShockAPI.dll
+f      213040               ./tshock-v6.2.1/ServerPlugins/TShockAPI.pdb
+f      439567               ./tshock-v6.2.1/ServerPlugins/TShockAPI.xml
+f    17253434               ./tshock-v6.2.1/TShock.Installer
+f    19679630               ./tshock-v6.2.1/TShock.Server
+d    58261150     10 files  ./tshock-v6.2.1/bin/
+f      171520               ./tshock-v6.2.1/bin/HttpServer.dll
+f      421376               ./tshock-v6.2.1/bin/HttpServer.pdb
+f      279888               ./tshock-v6.2.1/bin/HttpServer.xml
+f      119808               ./tshock-v6.2.1/bin/ModFramework.dll
+f    28409856               ./tshock-v6.2.1/bin/OTAPI.Runtime.dll
+f    28637184               ./tshock-v6.2.1/bin/OTAPI.dll
+f       17796               ./tshock-v6.2.1/bin/TShockPluginManager.pdb
+f      127488               ./tshock-v6.2.1/bin/TerrariaServer.dll
+f       49064               ./tshock-v6.2.1/bin/TerrariaServer.pdb
+f       27170               ./tshock-v6.2.1/bin/TerrariaServer.xml
+d     1169381     16 files  ./tshock-v6.2.1/i18n/
+d        1331      1 files  ./tshock-v6.2.1/i18n/de_DE/
+d        7720      1 files  ./tshock-v6.2.1/i18n/en_PT/
+d      203632      1 files  ./tshock-v6.2.1/i18n/es_ES/
+d       12446      1 files  ./tshock-v6.2.1/i18n/fr_FR/
+d         502      1 files  ./tshock-v6.2.1/i18n/fr_QC/
+d      170169      1 files  ./tshock-v6.2.1/i18n/id_ID/
+d        3498      1 files  ./tshock-v6.2.1/i18n/it_IT/
+d      175516      1 files  ./tshock-v6.2.1/i18n/ja_JP/
+d       14009      1 files  ./tshock-v6.2.1/i18n/pl_PL/
+d      201197      1 files  ./tshock-v6.2.1/i18n/pt_BR/
+d         499      1 files  ./tshock-v6.2.1/i18n/pt_PT/
+d      133246      1 files  ./tshock-v6.2.1/i18n/ru_RU/
+d         672      1 files  ./tshock-v6.2.1/i18n/ru_UA/
+d       18374      1 files  ./tshock-v6.2.1/i18n/tok/
+d       34237      1 files  ./tshock-v6.2.1/i18n/tr_TR/
+d      192333      1 files  ./tshock-v6.2.1/i18n/zh_CN/

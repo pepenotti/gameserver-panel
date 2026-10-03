@@ -1,0 +1,57 @@
+# The install volume after its install job: entries to depth 3 (d: folder, with the bytes and number of files under it; f: file; l: link).
+f         347               ./.gsp-install.json
+d    60894273      1 files  ./cache/
+f    60894273               ./cache/mojang_26.2.jar
+d    82582608    103 files  ./libraries/
+d      897831      1 files  ./libraries/at/
+d      897831      1 files  ./libraries/at/yawk/
+d      788487      1 files  ./libraries/ca/
+d      788487      1 files  ./libraries/ca/spottedleaf/
+d    17463070     20 files  ./libraries/com/
+d      325945      1 files  ./libraries/com/azure/
+d     7473393      2 files  ./libraries/com/github/
+d     5298920      7 files  ./libraries/com/google/
+d       23931      1 files  ./libraries/com/googlecode/
+d       84626      1 files  ./libraries/com/lmax/
+d      396486      1 files  ./libraries/com/microsoft/
+d     1011395      5 files  ./libraries/com/mojang/
+d     2609756      1 files  ./libraries/com/mysql/
+d      238618      1 files  ./libraries/com/velocitypowered/
+d      360738      1 files  ./libraries/commons-codec/
+d      360738      1 files  ./libraries/commons-codec/commons-codec/
+d      563971      1 files  ./libraries/commons-io/
+d      563971      1 files  ./libraries/commons-io/commons-io/
+d      284220      1 files  ./libraries/commons-lang/
+d      284220      1 files  ./libraries/commons-lang/commons-lang/
+d     6833633     18 files  ./libraries/io/
+d       71272      1 files  ./libraries/io/leangen/
+d     3873166     16 files  ./libraries/io/netty/
+d     2889195      1 files  ./libraries/io/papermc/
+d    23977871      1 files  ./libraries/it/
+d    23977871      1 files  ./libraries/it/unimi/
+d        2497      1 files  ./libraries/javax/
+d        2497      1 files  ./libraries/javax/inject/
+d     3189275      2 files  ./libraries/me/
+d     3189275      2 files  ./libraries/me/lucko/
+d     4456301     17 files  ./libraries/net/
+d     3329470      2 files  ./libraries/net/java/
+d      863672     12 files  ./libraries/net/kyori/
+d      168064      1 files  ./libraries/net/md-5/
+d       16949      1 files  ./libraries/net/minecrell/
+d       78146      1 files  ./libraries/net/sf/
+d    23764714     39 files  ./libraries/org/
+d     5722447     20 files  ./libraries/org/apache/
+d      354683      2 files  ./libraries/org/codehaus/
+d      424617      1 files  ./libraries/org/eclipse/
+d      739071      5 files  ./libraries/org/jline/
+d      778846      1 files  ./libraries/org/joml/
+d        3819      1 files  ./libraries/org/jspecify/
+d      253225      3 files  ./libraries/org/ow2/
+d       86537      2 files  ./libraries/org/slf4j/
+d      743742      2 files  ./libraries/org/spongepowered/
+d    14317659      1 files  ./libraries/org/xerial/
+d      340068      1 files  ./libraries/org/yaml/
+f    64522678               ./paper.jar
+d    29266495      1 files  ./versions/
+d    29266495      1 files  ./versions/26.2/
+f    29266495               ./versions/26.2/paper-26.2.jar

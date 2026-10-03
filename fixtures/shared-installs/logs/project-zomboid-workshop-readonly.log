@@ -1,0 +1,43 @@
+== state stopped
+[agent] Starting: /opt/game/start-server.sh -Xms2048m -Xmx2048m -Duser.language=en -Duser.country=US -- -servername gspffinst -cachedir=/data -adminusername admin -adminpassword <redacted>
+# … 129 lines cut …
+[out] LOG  : General      f:0 st:391,498,230> Loading networking libraries...
+[out] LOG  : General      f:0 st:391,498,231> Loading steam_api...
+[out] LOG  : General      f:0 st:391,498,231> Loading RakNet64...
+[out] LOG  : General      f:0 st:391,498,234> Loading ZNetJNI64...
+[out] LOG  : General      f:0 st:391,498,238> SteamUtils initialised successfully
+[err] [S_API] SteamAPI_Init(): Loaded local 'steamclient.so' OK.
+[err] Setting breakpad minidump AppID = 108600
+[err] SteamInternal_SetMinidumpSteamID:  Caching Steam ID:  76561198000000001 [API loaded no]
+[out] LOG  : General      f:0 st:391,499,983> Waiting for response from Steam servers
+[out] LOG  : General      f:0 st:391,503,362> Workshop: onItemQueryCompleted handle=1 numResult=1
+[out] LOG  : General      f:0 st:391,503,365> Workshop: GetItemState()=None ID=2544353492
+[out] LOG  : General      f:0 st:391,503,368> Workshop: item state CheckItemState -> DownloadPending ID=2544353492
+[out] LOG  : General      f:0 st:391,503,403> Workshop: DownloadPending GetItemState()=NeedsUpdate|DownloadPending ID=2544353492
+[out] LOG  : General      f:0 st:391,503,407> Workshop: download 0/0 ID=2544353492
+[out] LOG  : General      f:0 st:391,503,508> Workshop: DownloadPending GetItemState()=NeedsUpdate|DownloadPending ID=2544353492
+[out] LOG  : General      f:0 st:391,503,508> Workshop: download 0/0 ID=2544353492
+[out] LOG  : General      f:0 st:391,503,608> Workshop: DownloadPending GetItemState()=NeedsUpdate|DownloadPending ID=2544353492
+[out] LOG  : General      f:0 st:391,503,609> Workshop: download 0/0 ID=2544353492
+[err] src/clientdll/contentupdatecontext.cpp (2036) : Staging library folder not found
+[err] src/clientdll/contentupdatecontext.cpp (2037) : Install library folder not found
+[out] src/clientdll/contentupdatecontext.cpp (2036) : Staging library folder not found
+[out] LOG  : General      f:0 st:391,503,676> Workshop: onItemNotDownloaded itemID=2544353492 result=37
+[out] LOG  : General      f:0 st:391,503,676> Workshop: item state DownloadPending -> Fail ID=2544353492
+[err] Exception in thread "main" LOG  : General      f:0 st:391,503,677> java.lang.NullPointerException
+!! fatal: Exception in thread "main" LOG  : General      f:0 st:391,503,677> java.lang.NullPointerException
+[agent] [fatal] Exception in thread "main" LOG  : General      f:0 st:391,503,677> java.lang.NullPointerException
+[err] LOG  : General      f:0 st:391,503,678> 	at java.base/java.io.File.<init>(Unknown Source)
+[err] LOG  : General      f:0 st:391,503,678> 	at zombie.ZomboidFileSystem.deleteDirectory(ZomboidFileSystem.java:1489)
+[err] LOG  : General      f:0 st:391,503,679> 	at zombie.network.GameServerWorkshopItems.Install(GameServerWorkshopItems.java:248)
+[err] LOG  : General      f:0 st:391,503,679> 	at zombie.network.GameServer.main(GameServer.java:751)
+[out] LOG  : General      f:0 st:391,503,680> Shutdown handling started
+[out] LOG  : Network      f:0 st:391,503,680> Server exited
+[err] LOG  : General      f:0 st:391,503,683> Exception in thread "Thread-0" LOG  : General      f:0 st:391,503,683> java.lang.NullPointerException: Cannot invoke "zombie.iso.IsoMetaGrid.save()" because "this.grid" is null
+[err] LOG  : General      f:0 st:391,503,683> 	at zombie.network.ServerMap.SaveAll(ServerMap.java:181)
+[err] LOG  : General      f:0 st:391,503,684> 	at zombie.network.ServerMap.QueuedSaveAll(ServerMap.java:827)
+[err] LOG  : General      f:0 st:391,503,684> 	at zombie.network.ServerMap.QueuedQuit(ServerMap.java:784)
+[err] LOG  : General      f:0 st:391,503,684> 	at zombie.network.GameServer$1.run(GameServer.java:380)
+[out] src/clientdll/contentupdatecontext.cpp (2037) : Install library folder not found
+[agent] Server process exited (code 0, signal none) unexpectedly
+# … 5 lines cut …
