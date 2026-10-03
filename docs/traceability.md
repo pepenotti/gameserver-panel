@@ -66,7 +66,7 @@ without a milestone is a PRD bug.
 | HST-06 | P0 | M7 | — |
 | HST-07 | P0 | M7 | partial: the players page knows when address bans can't be trusted (`ipBansTrustworthy`, M5); detection and the host page in M7 |
 | HST-08 | P0 | M6–M7 (owner's request) | `panel/test/connection.test.ts` (owner only, defaults incl. DuckDNS, validation, audit, detect against a fake service), `shared/test/connection.test.ts` (address rules), `panel/test/env.test.ts` (`DUCKDNS_SUBDOMAIN`) |
-| HST-09 | P0 | M7 (first) | — |
+| HST-09 | P0 | M7 (first) | measured: `docs/verification/shared-installs.md` (M7-0, every game from a read-only install); build in M7 |
 | UX-01 | P0 | M8 | `web/test/i18n.test.ts`; `web/test/game-neutral.test.ts` alert-title check |
 | UX-02 | P0 | M8 | M2 pages checked at 375×812 during M2-D (server list, menu, create, users, audit, delete, schedules, config) |
 | UX-03 | P1 | M8 | — |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.28 |
+| Status | Draft 0.29 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -195,7 +195,8 @@ Each can move into scope later through [change control](#14-change-control).
   when it is ready, and stops cleanly with a console command or a signal.
   The first is Avorion (measured in M6). Their own settings files are edited
   as text (no forms); their launch settings have a form with the manifest's
-  checks.
+  checks. A manifest says whether its install can be shared and which paths
+  the game writes inside it.
 - **Avorion:** its console takes slash commands (the panel adds the slash);
   it writes its `server.ini` from memory, so the panel edits it only while it
   is stopped; a server that isn't listed publicly should keep the default
@@ -225,7 +226,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | SRV-02 | P0 | List servers with their state, players, version and next scheduled restart. Each server has its own pages. |
 | SRV-03 | P0 | Start, stop, restart and kill. Stop and restart use countdown warnings wherever the game can message players. |
 | SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. The owner may force the removal of a server that can't be stopped, won't run or whose agent can't be reached: the final backup is still taken when possible, and the result says when it wasn't and why. |
-| SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. New limits, a newer runtime image and a new way of building containers from a panel update apply at once to a stopped server and at its next start to a running one. A host view warns when the limits add up to more than the host has. |
+| SRV-05 | P0 | Memory and CPU limits per server. Whoever may change a server's limits sees the most the host allows one server. New limits, a newer runtime image, a new install version and a new way of building containers from a panel update apply at once to a stopped server and at its next start to a running one. A host view warns when the limits add up to more than the host has. |
 | SRV-06 | P0 | Each server returns to its previous state after a Docker or host restart, and after a product upgrade, on the newer runtime image from its next start. After an orchestrator release that builds containers another way, a running game's container is kept until the game's next start. |
 | SRV-07 | P0 | Per-server crash watchdog that halts after repeated crashes, as in zomboid-server, and says why: the last fatal line the game printed (redacted). |
 | SRV-08 | P0 | Connection info per server, for everyone who can see it: what players type to join, in that game's own words and format (the address, the port players use and its protocol, the client and version they need, whether a password is set, and extra steps such as a whitelist), for three places: this PC, the home network and the internet. Each line has a copy button, and a Share button opens the phone's share sheet where the browser has one (copy otherwise). It also lists the router forwards the server needs (ports and protocols). An admin of the server or the owner may include the password in what is shared (each time is audited); nobody else sees it. Facts about joining (which port a client uses) are measured per game (D5) and marked unverified until a real client confirms them. |
@@ -235,9 +236,9 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 
 | ID | P | Requirement |
 |---|---|---|
-| UPD-01 | P0 | Install from the adapter's source, with progress shown in the UI. |
+| UPD-01 | P0 | Install from the adapter's source, once per game, flavour and version (HST-09), with progress shown in the UI. |
 | UPD-02 | P0 | Choose and pin a version: Steam branch, Minecraft version, loader version. The create form lists the versions a game's download services offer before the server exists. |
-| UPD-03 | P0 | Update checks with a per-server policy: apply when nobody is playing, apply after a countdown, or only notify. |
+| UPD-03 | P0 | Update checks with a per-server policy: apply when nobody is playing, apply after a countdown, or only notify. Applying an update moves the server to the new version's install at its next start; the new version is downloaded once for every server on the old one. |
 | UPD-04 | P0 | Every update takes a safety backup first. |
 | UPD-05 | P0 | Minecraft never moves to a new game version on its own, since that breaks mods and worlds. It only takes builds of the pinned version (for Paper, from the pinned build channel or a more stable one: STABLE unless an admin picks BETA or ALPHA, with a warning), unless an admin chooses a new version. |
 | UPD-06 | P0 | Minecraft's loader is picked per server when it's created: vanilla, Paper or Fabric. |
@@ -291,7 +292,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 
 | ID | P | Requirement |
 |---|---|---|
-| BAK-01 | P0 | Per-server backups (manual, scheduled, before updates, restores and resets, and a final one before a server is removed), each with a manifest, a checksum and retention per server. |
+| BAK-01 | P0 | Per-server backups (manual, scheduled, before updates, restores and resets, and a final one before a server is removed), each with a manifest, a checksum and retention per server. Game installs are not part of backups. |
 | BAK-02 | P0 | Consistent backups while running, using each game's own method. Project Zomboid: `save`, then SQLite snapshots. Minecraft: `save-off`, `save-all flush`, then `save-on` after the copy. Otherwise save, then copy, or a stopped-server backup. Valheim can't be asked to save: the copy takes the newest complete save the game made, without waiting for one in progress. |
 | BAK-03 | P0 | Restore with a choice of parts, a staging folder, atomic swap and undo. |
 | BAK-04 | P0 | Reset scopes from each adapter (world only; world and players; factory). A backup is always taken first. |
@@ -326,7 +327,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | HST-06 | P0 | A setup and operations guide for each of Linux, Windows and macOS, with firewall and router notes. |
 | HST-07 | P0 | The panel knows what its host can't do and says so where it matters: the orchestrator reports the host's traits (CPU architecture, the memory Docker gives it, and whether players' addresses reach the games, which they don't through Docker Desktop's port relay), the host page lists the limitations that apply, and each affected feature (address bans, per-address game settings, addresses in the activity log) shows its own note. |
 | HST-08 | P0 | Public address: the owner sets the name friends use to reach this host, a DNS name (by default the DuckDNS name the panel already uses for HTTPS, when there is one) or an IP address, and optionally the host's address on the home network (by default the panel's `LAN_IP` when it is a private address). A "detect" button asks one fixed public service for this host's public IP, only when the owner presses it (NFR-09). Every server's connection info (SRV-08) uses these. |
-| HST-09 | P0 | Shared installs (D12): a game's server files are downloaded once per game, flavour and version, and every server on that version mounts them read-only, so a second server never downloads them again. An update installs the new version beside the old one and each server moves to it at its next start; a version no server uses is removed after the owner confirms. The host page shows each install, its size and the servers using it. |
+| HST-09 | P0 | Shared installs (D12): a game's server files are downloaded once per game, flavour and version, and every server on that version mounts them read-only, so a second server never downloads them again. An update installs the new version beside the old one and each server moves to it at its next start; a version no server uses is removed after the owner confirms. The host page shows each install, its size and the servers using it. The install job runs as its own short-lived container with the same hardening as a server; the panel shows its progress on the server's page and the host page. Installs are never backed up. |
 
 ### 8.11 Language and usability — UX
 
@@ -357,7 +358,7 @@ on their own; only AST-05 is the assistant itself.
 | ID | Area | Requirement |
 |---|---|---|
 | NFR-01 | Security | At least zomboid-server's controls, listed below. |
-| NFR-02 | Security | The **orchestrator** is the only component with Docker access, and its API is narrow (see D3). Every server container gets `cap_drop: ALL`, `no-new-privileges`, a non-root user and a memory limit. It is never privileged, never on the host network, and has no host mounts beyond its own volumes. Images come from an allowlist. An upgrade never loosens a container: one kept across an orchestrator release is one this stack's orchestrator created from the same spec, and a release that closes a security gap in how containers are built recreates every container built before it at once, even while its game runs, and says so in the audit log. |
+| NFR-02 | Security | The **orchestrator** is the only component with Docker access, and its API is narrow (see D3). Every server container gets `cap_drop: ALL`, `no-new-privileges`, a non-root user and a memory limit. It is never privileged, never on the host network, and has no host mounts beyond its own volumes and the install of its game version, mounted read-only. Install jobs are built the same way and publish no ports. Images come from an allowlist. An upgrade never loosens a container: one kept across an orchestrator release is one this stack's orchestrator created from the same spec, and a release that closes a security gap in how containers are built recreates every container built before it at once, even while its game runs, and says so in the audit log. |
 | NFR-03 | Isolation | Each server gets its own internal network. A game container can't reach the panel, the orchestrator or another server. The panel and the orchestrator listen on unix sockets in volumes only they (and the TLS proxy, for the panel) mount, and the orchestrator has no network at all. A game server can still reach the public HTTPS address like any internet client. |
 | NFR-04 | Reliability | Graceful stop with a time budget per game; state survives restarts; watchdogs per server. |
 | NFR-05 | Portability | Linux, Windows and macOS through Docker, on x86-64 and ARM64, within each adapter's declared architectures (HST-05). Nothing in the core depends on the host OS. |
@@ -422,7 +423,7 @@ NFR-01's controls, carried over from zomboid-server:
   hooks (Valheim: which save files a running backup takes, and its player
   count from Steam's server queries).
 - **Data.** SQLite, with the server ID on every per-server table. Volumes are
-  named by server ID, and backups go to `BACKUP_DIR/<server>/`. `servers`
+  named by server ID, installs by install ID (HST-09), and backups go to `BACKUP_DIR/<server>/`. `servers`
   keeps each server's row, including the fixed name the game uses for its
   files (`game_name`); per-server settings live in `server_settings` and
   per-server roles in `server_grants`. Server routes are
@@ -459,7 +460,7 @@ NFR-01's controls, carried over from zomboid-server:
 |---|---|---|---|
 | D1 | Multi-server panel on a single host. | The chosen scope. One machine keeps it simple for friend groups. | One game per install: smaller, but doesn't meet G1. |
 | D2 | A new repository seeded from zomboid-server's public `main`. zomboid-server is frozen except for fixes. | The live server stays safe while this project restructures freely. | Evolving zomboid-server in place: risky for a working server. |
-| D3 | One container per server, created by an orchestrator with a restricted API. | Only one small component holds host-level power, and it can say no. | The panel holding the Docker socket: too much power in an internet-facing service. Generated Compose files run by hand: not self-service. A Docker socket proxy: can't restrict what a new container asks for. |
+| D3 | One container per server, plus short-lived install jobs, created by an orchestrator with a restricted API. | Only one small component holds host-level power, and it can say no. | The panel holding the Docker socket: too much power in an internet-facing service. Generated Compose files run by hand: not self-service. A Docker socket proxy: can't restrict what a new container asks for. |
 | D4 | An adapter is a code package; simple Steam games are only a manifest. | Depth where it matters, cheap breadth otherwise (G2, G4). | Everything declarative: too shallow for the main games. |
 | D5 | Measured, not guessed: each adapter milestone starts by capturing fixtures from the real server. | zomboid-server found real surprises this way (RCON framing, file rewrites, steamcmd first-run errors). | Building from documentation and blog posts. |
 | D6 | Minecraft Java only, with the loader picked per server: vanilla, Paper and Fabric (P0), Forge and NeoForge (P1). Mods come from Modrinth. The EULA is accepted explicitly. | The biggest audience. Owners choose their loader. Modrinth has an open API and hosts mods for every one of these loaders. The EULA is a legal requirement. | CurseForge (needs an API key and has its own terms): later. |
@@ -468,7 +469,7 @@ NFR-01's controls, carried over from zomboid-server:
 | D9 | License: **PolyForm Noncommercial 1.0.0.** Free for personal use and for non-profit organisations; commercial use needs the author's permission. Provided as is, without warranty. The `LICENSE` file is added in M0. | Matches the intent: free for players and communities, not for hosting businesses. PolyForm is a standard, lawyer-drafted license, unlike a home-made one. | MIT, which allows commercial use. CC BY-NC, which Creative Commons itself advises against for software. Note: this is "source-available" rather than OSI "open source". Code carried over from zomboid-server also stays available under MIT in that repository, so this repo keeps a `NOTICE` for it. |
 | D10 | OS-agnostic through Docker; adapters declare CPU architectures. | One stack for Linux, Windows and macOS (HST-05). Refusing unsupported combinations beats silently slow emulation. | Native installs per OS: far more work. Emulating x86 on ARM: slow and fragile for game servers. |
 | D11 | The panel reaches a server's files only through that server's agent (file and archive endpoints). The panel mounts no game volumes. | Mods and plugins run arbitrary code inside a server; with shared mounts the panel would walk attacker-controlled trees next to every other server's data. Running backups stay consistent because the save-off/save-on steps run next to the data and always re-enable saving. Adding a server never needs the panel recreated, on Docker Desktop or Linux. | A shared volume with sub-paths mounted in the panel (weaker isolation); per-server mounts (panel recreated per server); backups through the orchestrator (widens its narrow API). |
-| D12 | Shared installs: one install volume per game, flavour and version, filled by a separate install job (never by a running game) and mounted read-only by every server on that version; a game that writes into its install folder while it runs has those paths redirected into its server's own data, or keeps a per-server install filled by a local copy instead of a download. Updates install beside the running version and servers move at their next start. | Downloads and disk: Project Zomboid is 7 GB per server, Counter-Strike 2 tens of GB; safe updates (a running server keeps its files); a read-only install can't be changed by a game or its mods. | One install per server (downloads and stores every copy); overlay filesystems (need privileges the containers never get, NFR-02); hard links (don't cross volumes). |
+| D12 | Shared installs: one install volume per game, flavour and version, filled by a separate install job (never by a running game) and mounted read-only by every server on that version; a game that writes into its install folder while it runs has those paths redirected into its server's own data, or keeps a per-server install filled by a local copy instead of a download. Updates install beside the running version and servers move at their next start. Measured in M7-0 (`docs/verification/shared-installs.md`): six of the nine games run from a read-only install as they are; Minecraft vanilla and Fabric need their bundler unpacked by the install job; tModLoader's logs and Project Zomboid's Workshop downloads are redirected into the server's data by symlinks the install job creates; TShock loads its plugins from the server's data with `-additionalplugins`. An update starts from a local copy of the install it replaces, so steamcmd downloads only what changed. | Downloads and disk: Project Zomboid is 7 GB per server, Counter-Strike 2 tens of GB; safe updates (a running server keeps its files); a read-only install can't be changed by a game or its mods. | One install per server (downloads and stores every copy); overlay filesystems (need privileges the containers never get, NFR-02); hard links (don't cross volumes). |
 
 ## 11. Milestones
 
@@ -569,6 +570,8 @@ None open. New questions go here, with an ID, until they're answered.
 | Orchestrator | The only service allowed to create and remove containers. |
 | Manifest | A declarative description of a simple Steam game. |
 | Running backup | A backup taken without stopping the server, using the game's own save method. |
+| Install | The server files of one game, flavour and version, shared read-only by every server on that version (HST-09). |
+| Install job | The short-lived container that downloads an install; no game runs in it. |
 | Fixture | Output captured from a real server and used in tests. |
 | Flavour / loader | A variant of a game's server, picked per server (e.g. Minecraft vanilla, Paper, Fabric, Forge, NeoForge; Terraria vanilla, TShock, tModLoader). |
 | Text editor | The in-browser editor for any config file an adapter declares (CFG-07). |
@@ -607,3 +610,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.26 | 2026-10-02 | Owner's request: connection info for every server (SRV-08, now P0, done ahead of M7) with copy and share buttons, the game's own join format, the router forwards and the password for admins only; HST-08 the public address (DNS name, by default the DuckDNS name, or IP; optional home-network address; detect on demand). |
 | 0.27 | 2026-10-02 | SRV-08 and HST-08 built: a "How to join" card per server with copy and share, the host's public and home addresses with an on-demand detect; each game declares how players join, verified only where a real client joined (Minecraft so far). |
 | 0.28 | 2026-10-03 | The owner joined real servers locally: Minecraft (all three loaders), Terraria vanilla and TShock, Project Zomboid; their join facts are verified (SRV-08). M3 and M6 accepted; M5 accepted except a tModLoader client join. Shared installs (HST-09, D12) come first in M7 (Q16); Counter-Strike 2 is the first game after v1, with plugins as a second step (Q17, Q18; §7). |
+| 0.29 | 2026-10-03 | M7-0 fact-finding for shared installs (`docs/verification/shared-installs.md`, `fixtures/shared-installs`): every game runs from a read-only install, three with a fix (Minecraft's bundler unpacked by the install job; tModLoader's logs and Project Zomboid's Workshop downloads redirected into the server's data); install jobs, install volumes and the `install` pending reason (D3, D12, HST-09, SRV-05, UPD-01, UPD-03, NFR-02, BAK-01); a beta branch is named to steamcmd explicitly. |
