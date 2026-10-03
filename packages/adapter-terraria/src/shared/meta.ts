@@ -69,6 +69,9 @@ export const TERRARIA_META: AdapterMeta = {
             text: { en: 'Join from tModLoader, not Terraria, with the same mods as the server.', es: 'Entrá desde tModLoader, no desde Terraria, con los mismos mods que el servidor.' },
           },
         ],
+        // Vanilla and TShock were joined from a real client; tModLoader not yet.
+        verified: false,
+        source: 'docs/verification/terraria-1.4.5.8.md: no real tModLoader client has joined yet',
       },
     },
   ],
@@ -94,7 +97,7 @@ export const TERRARIA_META: AdapterMeta = {
     where: { en: 'Multiplayer, then Join via IP: the address, then the port', es: 'Multijugador, luego unirse por IP: primero la dirección, después el puerto' },
     client: { name: { en: 'Terraria', es: 'Terraria' }, sameVersion: true },
     password: { launch: 'password' },
-    verified: false,
-    source: 'docs/verification/terraria-1.4.5.8.md: a test client joined vanilla and TShock through a published port; joining from a real client is still to be checked',
+    verified: true,
+    source: 'The owner joined real vanilla and TShock servers from Join via IP on this PC, 2026-10-03 (docs/verification/terraria-1.4.5.8.md)',
   },
 };

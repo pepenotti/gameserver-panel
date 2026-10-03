@@ -210,7 +210,7 @@ describe('connection info (SRV-08)', () => {
       format: 'separate',
       defaultPort: null,
       client: { name: { en: 'Project Zomboid' }, sameVersion: true, version: '42.20.4' },
-      verified: false,
+      verified: true,
     });
     expect(i.places.map((x) => x.text)).toEqual(['127.0.0.1', '192.168.1.50', 'example.duckdns.org']);
     expect(i.forwards.map((f) => [f.port, f.proto, f.typed])).toEqual([
@@ -267,7 +267,7 @@ describe('connection info (SRV-08)', () => {
     await mk('tr-m', 'tmodloader', '', 30552);
     p.fakes('tr-m').feed.status_ = fakeStatus({ installedInfo: { version: 'v2026.07.3.0', channel: 'tmodloader' } });
     const v = await info(owner, 'tr-v', '?password=1');
-    expect(v).toMatchObject({ format: 'separate', port: { number: 30550, proto: 'tcp' }, client: { name: { en: 'Terraria' } }, password: { game: true, set: true, value: 'open-sesame' }, steps: [], verified: false });
+    expect(v).toMatchObject({ format: 'separate', port: { number: 30550, proto: 'tcp' }, client: { name: { en: 'Terraria' } }, password: { game: true, set: true, value: 'open-sesame' }, steps: [], verified: true });
     expect(v.places[0]).toEqual({ place: 'pc', address: '127.0.0.1', text: '127.0.0.1' });
     // TShock's REST port is the agent's alone: never forwarded.
     expect(v.forwards.map((f) => [f.port, f.proto])).toEqual([[30550, 'tcp']]);
@@ -277,6 +277,9 @@ describe('connection info (SRV-08)', () => {
     const m = await info(owner, 'tr-m');
     expect(m.client).toEqual({ name: { en: 'tModLoader', es: 'tModLoader' }, sameVersion: true, version: 'v2026.07.3.0' });
     expect(m.steps.map((x) => x.id)).toEqual(['same-mods']);
+    // Vanilla and TShock were joined from a real client; tModLoader keeps its own unverified note.
+    expect(s.verified).toBe(true);
+    expect(m.verified).toBe(false);
   });
 
   it('Valheim: host:port in Join IP, unverified with a note on which port, both UDP ports forwarded, steps for its public list and crossplay', async () => {
@@ -308,7 +311,7 @@ describe('connection info (SRV-08)', () => {
     expect(i.forwards.map((f) => `${f.port}/${f.proto}`)).toEqual(['27000/udp', '27000/tcp', '27003/udp', '27020/udp']);
   });
 
-  it('each game says how players join, and only Minecraft is verified with a real client (D5)', () => {
+  it('each game says how players join, verified only where a real client joined (D5)', () => {
     const facts = Object.fromEntries(
       panelAdapterEntries.map(({ adapter: a }) => {
         const j = a.meta.join!;
@@ -317,9 +320,9 @@ describe('connection info (SRV-08)', () => {
       }),
     );
     expect(facts).toEqual({
-      pz: { port: '16261/udp', format: 'separate', defaultPort: null, password: { file: 'ini', key: 'Password' }, verified: false },
+      pz: { port: '16261/udp', format: 'separate', defaultPort: null, password: { file: 'ini', key: 'Password' }, verified: true },
       minecraft: { port: '25565/tcp', format: 'host:port', defaultPort: 25565, password: null, verified: true },
-      terraria: { port: '7777/tcp', format: 'separate', defaultPort: null, password: { launch: 'password' }, verified: false },
+      terraria: { port: '7777/tcp', format: 'separate', defaultPort: null, password: { launch: 'password' }, verified: true },
       valheim: { port: '2456/udp', format: 'host:port', defaultPort: null, password: { launch: 'password' }, verified: false },
       avorion: { port: '27000/udp', format: 'host:port', defaultPort: null, password: { file: 'server', key: 'password' }, verified: false },
     });

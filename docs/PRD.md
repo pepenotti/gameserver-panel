@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.27 |
+| Status | Draft 0.28 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -181,6 +181,15 @@ Each can move into scope later through [change control](#14-change-control).
   log. Valheim uses about 1.5 GiB and a third of a CPU core even when empty.
   Its admin, ban and allowed lists (SteamIDs) are changed only while it is
   stopped. World presets and modifiers aren't offered in v1.
+- **After v1, Counter-Strike 2 first** (owner, 2026-10-03, Q16–Q18): the
+  dedicated server is Steam app 730 (tens of GB, so shared installs come
+  first, HST-09); control by its console and Source RCON; maps and game modes
+  as launch settings; a Game Server Login Token per server (a secret; without
+  one only home-network players can join, to be measured); updates are
+  frequent and forced, so update policies matter; bans by SteamID. Then, as a
+  second step, Metamod and CounterStrikeSharp plugins from their releases,
+  admins only with a warning, re-applied after every game update (an update
+  overwrites the file that loads them). Measured first, as every game (D5).
 - **Steam manifests:** a game can be added with a manifest alone when it
   installs anonymously with steamcmd, runs in the steam image as it is, says
   when it is ready, and stops cleanly with a console command or a signal.
@@ -317,6 +326,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | HST-06 | P0 | A setup and operations guide for each of Linux, Windows and macOS, with firewall and router notes. |
 | HST-07 | P0 | The panel knows what its host can't do and says so where it matters: the orchestrator reports the host's traits (CPU architecture, the memory Docker gives it, and whether players' addresses reach the games, which they don't through Docker Desktop's port relay), the host page lists the limitations that apply, and each affected feature (address bans, per-address game settings, addresses in the activity log) shows its own note. |
 | HST-08 | P0 | Public address: the owner sets the name friends use to reach this host, a DNS name (by default the DuckDNS name the panel already uses for HTTPS, when there is one) or an IP address, and optionally the host's address on the home network (by default the panel's `LAN_IP` when it is a private address). A "detect" button asks one fixed public service for this host's public IP, only when the owner presses it (NFR-09). Every server's connection info (SRV-08) uses these. |
+| HST-09 | P0 | Shared installs (D12): a game's server files are downloaded once per game, flavour and version, and every server on that version mounts them read-only, so a second server never downloads them again. An update installs the new version beside the old one and each server moves to it at its next start; a version no server uses is removed after the owner confirms. The host page shows each install, its size and the servers using it. |
 
 ### 8.11 Language and usability — UX
 
@@ -458,6 +468,7 @@ NFR-01's controls, carried over from zomboid-server:
 | D9 | License: **PolyForm Noncommercial 1.0.0.** Free for personal use and for non-profit organisations; commercial use needs the author's permission. Provided as is, without warranty. The `LICENSE` file is added in M0. | Matches the intent: free for players and communities, not for hosting businesses. PolyForm is a standard, lawyer-drafted license, unlike a home-made one. | MIT, which allows commercial use. CC BY-NC, which Creative Commons itself advises against for software. Note: this is "source-available" rather than OSI "open source". Code carried over from zomboid-server also stays available under MIT in that repository, so this repo keeps a `NOTICE` for it. |
 | D10 | OS-agnostic through Docker; adapters declare CPU architectures. | One stack for Linux, Windows and macOS (HST-05). Refusing unsupported combinations beats silently slow emulation. | Native installs per OS: far more work. Emulating x86 on ARM: slow and fragile for game servers. |
 | D11 | The panel reaches a server's files only through that server's agent (file and archive endpoints). The panel mounts no game volumes. | Mods and plugins run arbitrary code inside a server; with shared mounts the panel would walk attacker-controlled trees next to every other server's data. Running backups stay consistent because the save-off/save-on steps run next to the data and always re-enable saving. Adding a server never needs the panel recreated, on Docker Desktop or Linux. | A shared volume with sub-paths mounted in the panel (weaker isolation); per-server mounts (panel recreated per server); backups through the orchestrator (widens its narrow API). |
+| D12 | Shared installs: one install volume per game, flavour and version, filled by a separate install job (never by a running game) and mounted read-only by every server on that version; a game that writes into its install folder while it runs has those paths redirected into its server's own data, or keeps a per-server install filled by a local copy instead of a download. Updates install beside the running version and servers move at their next start. | Downloads and disk: Project Zomboid is 7 GB per server, Counter-Strike 2 tens of GB; safe updates (a running server keeps its files); a read-only install can't be changed by a game or its mods. | One install per server (downloads and stores every copy); overlay filesystems (need privileges the containers never get, NFR-02); hard links (don't cross volumes). |
 
 ## 11. Milestones
 
@@ -475,7 +486,7 @@ milestone and the tests that prove it, and is updated with every merge.
 | M4 | Modrinth mods, then Forge and NeoForge loaders: search, compatibility, dependencies, updates | MOD-02, MOD-04, UPD-07 | Add a mod that has a dependency on Fabric, then on NeoForge; each server boots and a client joins. |
 | M5 | Terraria: vanilla, TShock (REST API, plugins) and tModLoader; stdin control; world creation; Workshop mods for tModLoader | MOD-03, MOD-06, CON-02, CON-04, UPD-01…04 | Create a world from the panel for each flavour; join; kick and ban (TShock through REST); install a TShock plugin and a tModLoader mod. |
 | M6 | Valheim, plus the declarative Steam manifest | G4, D4, and for Valheim and the manifest game: UPD-01…04, BAK-01…04, PLY-01/03, CFG-01…09, SRV-03, HST-05 | Valheim runs via manifest plus hooks. A second Steam game is added **with a manifest only**, and it boots, stops and backs up. |
-| M7 | Host overview, job staggering, platform support: architecture checks and the Linux, Windows and macOS guides | HST-03, HST-05/06, HST-07, SCH-02, D10 | Smoke test (create, start, back up, restore) passes on Linux and Windows; the macOS guide exists but is marked untested until someone runs it on a Mac; an ARM host refuses an x86-only game with a clear reason; on Docker Desktop the host page and the address-ban dialogs show the hidden-address limitation, and whether Linux Docker Engine and Docker Engine in WSL (mirrored networking) keep players' addresses is measured and written into `docs/limitations.md`. |
+| M7 | Shared installs (first, at the owner's request), host overview, job staggering, platform support: architecture checks and the Linux, Windows and macOS guides | HST-03, HST-05/06, HST-07, HST-09, D12, SCH-02, D10 | Two servers of the same game and version share one install, and an update moves each at its next start without a second download; smoke test (create, start, back up, restore) passes on Linux and Windows; the macOS guide exists but is marked untested until someone runs it on a Mac; an ARM host refuses an x86-only game with a clear reason; on Docker Desktop the host page and the address-ban dialogs show the hidden-address limitation, and whether Linux Docker Engine and Docker Engine in WSL (mirrored networking) keep players' addresses is measured and written into `docs/limitations.md`. |
 | M8 | v1: docs, security review, EN/ES completeness, phone layout, 48 h soak with three servers, then publish | G5, G6, UX-01…04, NFR-01/04/05/06 | Every [success criterion](#12-success-criteria-v1) met; the repository goes public under D9. |
 
 ## 12. Success criteria (v1)
@@ -532,6 +543,9 @@ None open. New questions go here, with an ID, until they're answered.
 | Q13 | A new Minecraft version has only ALPHA Paper builds for weeks. Does the version picker offer only versions with a STABLE build? | No: every version is offered, STABLE builds are picked when they exist, and a clear warning shows when only ALPHA or BETA builds do (owner, 2026-09-27). | UPD-02, UPD-05 |
 | Q14 | Offer Valheim's crossplay (Xbox and Game Pass players), which registers the host's public address with Microsoft's PlayFab and needs extra image libraries? | Yes, off by default, with a note saying what it shares (owner, 2026-10-01). | §7, §10 |
 | Q15 | Let Valheim servers appear in the game's public server list? | Yes, private by default; a listed server needs a password of at least 5 characters that isn't part of its name (owner, 2026-10-01). | §7 |
+| Q16 | Share one install among servers of the same game and version instead of downloading each? | Yes, and build it before Counter-Strike 2 (owner, 2026-10-03). | HST-09, D12 |
+| Q17 | When does Counter-Strike 2 come? | After v1, as the first new game (owner, 2026-10-03). | §7 |
+| Q18 | Counter-Strike 2 plugins (Metamod, CounterStrikeSharp)? | Yes, as a second step after vanilla CS2, re-applied after every update (owner, 2026-10-03). | §7, MOD-06 |
 
 ### Answered
 
@@ -592,3 +606,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.25 | 2026-10-01 | M6 Valheim: a Steam manifest plus two hooks (a running backup's newest complete save set with the chunk files it uses; Steam's A2S player count on listed servers), offered on x86-64 with the public list and crossplay off by default; checked against the real server (chunk files carry their own versions) (§7, §10, BAK-02). M6's done-when is met. |
 | 0.26 | 2026-10-02 | Owner's request: connection info for every server (SRV-08, now P0, done ahead of M7) with copy and share buttons, the game's own join format, the router forwards and the password for admins only; HST-08 the public address (DNS name, by default the DuckDNS name, or IP; optional home-network address; detect on demand). |
 | 0.27 | 2026-10-02 | SRV-08 and HST-08 built: a "How to join" card per server with copy and share, the host's public and home addresses with an on-demand detect; each game declares how players join, verified only where a real client joined (Minecraft so far). |
+| 0.28 | 2026-10-03 | The owner joined real servers locally: Minecraft (all three loaders), Terraria vanilla and TShock, Project Zomboid; their join facts are verified (SRV-08). M3 and M6 accepted; M5 accepted except a tModLoader client join. Shared installs (HST-09, D12) come first in M7 (Q16); Counter-Strike 2 is the first game after v1, with plugins as a second step (Q17, Q18; §7). |

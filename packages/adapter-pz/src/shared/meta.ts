@@ -60,7 +60,7 @@ export const PZ_META: AdapterMeta = {
       },
     ],
     password: { file: 'ini', key: 'Password' },
-    verified: false,
-    source: 'docs/verification/pz-b42.md: no real client has joined a server of this panel yet; UDP 16261 and the next port are the game defaults the panel publishes',
+    verified: true,
+    source: 'The owner joined a real Project Zomboid server of this panel from Join on this PC, 2026-10-03 (docs/verification/pz-b42.md)',
   },
 };

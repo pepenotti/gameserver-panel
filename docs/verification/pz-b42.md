@@ -102,3 +102,9 @@ server-console.txt  Crafting/  messaging/
 - The dedicated app ships `media/lua/shared/Translate/{EN,ES,…}`, including `Sandbox.json` and `UI.json`.
 - Still open, needs the server running with players: which `-Xmx` wins (ours vs. the json), `players` output with players, the connections log, the source IPs PZ sees through Docker Desktop, the workshop download path, `ResetID`.
 - **Real certificate via DuckDNS (v0.13.0), 2026-09-24 01:42 UTC:** The DuckDNS name resolves to the same public IP as the existing No-IP name. The DNS-01 challenge through the DuckDNS TXT record was valid on the first try. The Let's Encrypt certificate (issuer YE1, 90 days, renewal handled by Caddy) was obtained about 10 s after start. A strict client validates it. The panel is also reachable at `https://<name>.duckdns.org:8443` through the public IP from inside the LAN, so the router supports loopback and the TCP 8443 forward works. The LAN IP and `localhost` keep the internal certificate.
+
+## Owner's real-client check (gameserver-panel) — 2026-10-03
+
+On the M2/M5 acceptance stack (slot 1), the owner joined the Project Zomboid server the panel
+created (`pz-a`, build 42.20.4) from a real client on this PC, from **Join** with the server's
+address and port. This verifies how a player joins (SRV-08).

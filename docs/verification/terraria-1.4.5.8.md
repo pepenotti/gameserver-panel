@@ -392,3 +392,11 @@ start is tested against the fakes).
 **Cleaned up:** after the runs, `docker ps -a`, `docker volume ls`, `docker network ls` filtered by
 `label=gsp.factfinding=terraria` and by the `gsp-ff-terraria` name, and `docker images` for `:s5`,
 listed nothing (`gsp/native:s5` and `gsp/steam:s5` removed).
+
+## Owner's real-client check — 2026-10-03
+
+On the M5 acceptance stack (slot 1, servers created through the panel), the owner joined the
+vanilla 1.4.5.8 and TShock 6.2.1 servers from a real Terraria client on this PC, from
+**Multiplayer → Join via IP**, typing the address and then the port. Both worked. This verifies
+how a player joins vanilla and TShock (SRV-08). tModLoader (joined from the tModLoader client)
+is still to be checked.
