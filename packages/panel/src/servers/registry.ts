@@ -471,11 +471,15 @@ export class DbServerRegistry implements ServerRegistry {
     return installSharingOf(adapter.meta, flavour).mode === 'shared' && typeof adapter.install?.wanted === 'function';
   }
 
-  /** What a server's stored launch settings want installed; null for a game whose installs aren't shared. */
+  /** What a server's stored launch settings want installed; null for a game whose installs aren't shared, or settings its adapter can't read. */
   private wantedOf(id: string): InstallWanted | null {
     const ctx = this.contexts.get(id);
     if (!ctx || !this.shares(ctx.adapter, ctx.row.flavour)) return null;
-    return ctx.adapter.install!.wanted(ctx.handle.launchSettings(), { flavour: ctx.row.flavour });
+    try {
+      return ctx.adapter.install!.wanted(ctx.handle.launchSettings(), { flavour: ctx.row.flavour });
+    } catch {
+      return null;
+    }
   }
 
   /** The launch an install job of this server's game is driven with: the server's own. */
@@ -590,7 +594,12 @@ export class DbServerRegistry implements ServerRegistry {
     const row = this.d.rows.get(id);
     if (!ctx || !row) return;
     if (await this.gameActive(id)) throw new HttpError(409, 'server-running');
-    const wanted = this.wantedOf(id)!;
+    const wanted = this.wantedOf(id);
+    if (!wanted) {
+      // Settings its adapter can't read: it stays on its own install (a start then says what is wrong with them).
+      if (strict) throw new HttpError(400, 'invalid-options', "The server's launch settings can't be read");
+      return;
+    }
     const game = this.gameOf(ctx.adapter, row.flavour);
     const launch = this.jobLaunch(id);
     o.step?.('migrating', null);
@@ -660,7 +669,8 @@ export class DbServerRegistry implements ServerRegistry {
     // Already waiting to move (another server's update made it): the move is the update.
     if (!o.validate && target?.state === 'ready' && row.installId !== current) return 'move';
     const game = this.gameOf(ctx.adapter, row.flavour);
-    const wanted = this.wantedOf(id)!;
+    const wanted = this.wantedOf(id);
+    if (!wanted) throw new HttpError(400, 'invalid-options', "The server's launch settings can't be read");
     if (!o.validate) {
       const newer = this.installs.find(game, wanted);
       if (newer && newer.id !== current && newer.id !== row.installId) {
