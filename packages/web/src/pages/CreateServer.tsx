@@ -6,12 +6,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { api, ApiError } from '../api/http';
+import type { InstallPlan } from '../api/installs';
 import { forFlavour, impliedBy, localize, preferredChoice, type AdapterSummary, type AdaptersResponse, type LaunchChoices } from '../api/meta';
 import { serverHref, SERVERS_KEY, useServers, withServer, type ServerSummary } from '../api/server';
 import { useSession } from '../api/session';
 import { AgreementLink } from '../components/Eula';
 import { LaunchField, launchDefault, launchKey } from '../components/LaunchField';
-import { useErrorText } from '../lib/format';
+import { formatBytes, useErrorText } from '../lib/format';
+import { planLine } from '../lib/installs';
 import { GameNotes } from '../components/GameNotes';
 import { choosablePorts, createErrorField, followersOf, formatRanges, idProblem, MAX_PORT, maxGameMemory, MIN_PORT, nameProblem, portProblem, publishedPorts, slugify, suggestPorts, type CreateField } from '../lib/servers';
 
@@ -104,6 +106,18 @@ export function CreateServer() {
     retry: false,
     placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === (adapter?.id ?? null) && prevQuery?.queryKey[2] === flavour ? prev : undefined),
   });
+
+  // What the new server would do about its game's files (HST-09): use an install already here (or being made), or
+  // download one, about as big as another of that game. The memory is no part of it.
+  const planLaunch = adapter ? Object.fromEntries(adapter.launch.schema.filter((o) => o.key !== memoryKey && launch[o.key] !== undefined).map((o) => [o.key, launch[o.key]])) : {};
+  const plan = useQuery({
+    queryKey: ['install-plan', adapter?.id ?? null, flavour, JSON.stringify(planLaunch)],
+    queryFn: () => api<InstallPlan>('POST', `/api/adapters/${encodeURIComponent(adapter!.id)}/install-plan`, { ...(adapter!.flavours.length ? { flavour } : {}), launch: planLaunch }),
+    enabled: flavourReady,
+    staleTime: 30_000,
+    retry: false,
+  });
+  const planned = plan.error ? null : planLine(plan.data, formatBytes);
 
   // The first game this host can run is picked for you (once the other servers' ports are known).
   useEffect(() => {
@@ -442,6 +456,11 @@ export function CreateServer() {
                   );
                 })}
               {apiErrors.launch && <Alert color="red">{apiErrors.launch}</Alert>}
+              {planned && (
+                <Text size="xs" c={planned.key === 'create.installExisting' || planned.key === 'create.installInstalling' ? 'teal' : 'dimmed'}>
+                  {t(planned.key, planned.values)}
+                </Text>
+              )}
               {adapter.launch.secrets.length > 0 && (
                 <Text size="xs" c="dimmed">
                   {t('create.secrets', { list: adapter.launch.secrets.map((s) => l(s.label)).join('; ') })}

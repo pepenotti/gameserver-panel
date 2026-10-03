@@ -44,6 +44,7 @@ export default {
   pendingStartHelp: 'Su contenedor recibe los límites nuevos la próxima vez que prenda el servidor.',
   pendingImageHelp: 'Su contenedor pasa a una imagen de ejecución más nueva, de una actualización del panel, la próxima vez que prenda el servidor.',
   pendingDerivationHelp: 'Una actualización del panel arma los contenedores de otra forma: el suyo se rehace así la próxima vez que prenda el servidor.',
+  pendingInstallHelp: 'Pasa a otros archivos del juego (una actualización, otra versión, o archivos compartidos con otros servidores en lugar de los suyos) la próxima vez que prenda el servidor, después de una copia de seguridad.',
   deleteStopFirstOrForce: 'El servidor está en marcha: apagalo primero, o forzá la eliminación abajo.',
   deleteUnreachable: 'El agente del servidor no responde: ahora solo el dueño puede eliminarlo, forzando la eliminación.',
   deleteUnreachableOrForce: 'El agente del servidor no responde, así que el panel no puede saber si el juego corre ni hacer la copia final: forzá la eliminación abajo.',

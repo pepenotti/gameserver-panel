@@ -41,4 +41,8 @@ export default {
   hostTooSmall: 'Este panel le da a un servidor como mucho {{max}} MiB y este juego necesita por lo menos {{need}} MiB: no se puede crear acá.',
   choicesUnavailable: 'No se pudo cargar la lista de versiones ({{error}}). Igual podés escribir una.',
   portFollows: 'Viene con este: {{list}}.',
+  installExisting: 'Usa los archivos del juego que ya están en esta computadora ({{size}}, los usan {{count}} servidor(es)): no hay nada que descargar.',
+  installInstalling: 'Usa los archivos del juego que se están descargando ahora para {{count}} servidor(es) más: no hay nada más que descargar.',
+  installDownload: 'Descarga los archivos del juego una vez: unos {{size}}. Otros servidores de esta versión los van a compartir.',
+  installDownloadUnknown: 'Descarga los archivos del juego una vez; otros servidores de esta versión los van a compartir.',
 } satisfies Translations['create'];

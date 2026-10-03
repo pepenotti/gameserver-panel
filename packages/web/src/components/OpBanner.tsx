@@ -33,6 +33,8 @@ export function OpBanner() {
   const step = t(`ops.step.${op.step}`, { defaultValue: op.step, time: dur(left) });
   const color = op.done ? (op.ok ? 'green' : op.step === 'cancelled' ? 'gray' : 'red') : 'blue';
   const showJob = !op.done && job && !job.result && (op.step === 'updating' || op.step === 'validating' || op.step === 'starting');
+  // An install job's progress (HST-09) comes with the operation itself: its job runs in a container of its own.
+  const showInstall = !op.done && !showJob && (op.step === 'installing' || op.step === 'copying');
 
   return (
     <Alert
@@ -70,6 +72,7 @@ export function OpBanner() {
           <Progress mt={4} value={job.progress ?? 100} animated striped={job.progress === null} />
         </>
       )}
+      {showInstall && <Progress mt={6} value={op.progress ?? 100} animated striped={op.progress === null} />}
     </Alert>
   );
 }
