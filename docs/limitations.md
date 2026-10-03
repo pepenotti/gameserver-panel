@@ -596,3 +596,91 @@ are removed at the server's next start. A plugin file named like one of TShock's
 `-additionalplugins` option loads the plugins in a folder (not its subfolders).
 
 **Status:** Measured with TShock 6.2.1 and a real plugin, Oct 2026.
+
+### A new server waits for its game files
+
+**Affects:** every game, the first server of a game, flavour and version.
+
+**What you'll notice:** the server is created at once, but its page says its game files are being
+downloaded (with the progress) and it has no container yet: its console, files and backups answer
+only once they are ready. Pressing Start meanwhile waits for them, then starts it. If the download
+fails, the page says why, and the next start (or "Try again") downloads again. A second server of
+the same version uses the same files and is ready at once.
+
+**Why:** the game is installed once, by an install job of its own, before any server mounts it
+read-only (D12).
+
+**Status:** Expected (the panel side is tested against the fake orchestrator; install jobs were
+measured in the runtime side check).
+
+### Servers from before shared installs move at their next start
+
+**Affects:** every server created before the panel had shared installs.
+
+**What you'll notice:** its "applies at next start" badge says it moves to shared game files. At
+its next start through the panel, its container stops for a moment while its own game files are
+copied (no download: a 7.2 GB Project Zomboid install took about 30–40 s, measured), then it
+starts as usual on the shared files. Its own old copy stays on disk, listed on the panel settings
+page, until the owner removes it. A server that holds the same version as another one ends up on
+that one's files. If the move fails, it starts on its own files as before and tries again at its
+next start. An admin of the server can also move a stopped server at once from its page.
+
+**Why:** a server's own install volume is adopted by a local copy, never touched, so nothing is
+lost if the move fails; worlds, settings and mods were never in it.
+
+**Workaround:** none needed. Remove the old copies from the panel settings page once you are
+happy with the moved servers.
+
+**Status:** Expected (tested against the fake orchestrator; the copy time is measured).
+
+### Servers that kept different builds may update twice after the move
+
+**Affects:** Steam games and loaders with builds (Project Zomboid, Valheim, games added with a
+manifest, Paper, Fabric), during the move to shared installs.
+
+**What you'll notice:** two servers of the same version whose own installs held different builds
+(one updated before the move, one not) end up on two installs. The next update of the older one
+may download what changed again, then keeps only one copy.
+
+**Why:** the panel can't tell which of two builds is newer before an install job reads them; the
+update then finds the same files already shared and drops its copy.
+
+**Status:** Expected.
+
+### Release channels get installs of their own
+
+**Affects:** Minecraft Paper (its build channel) and tModLoader (stable or preview releases).
+
+**What you'll notice:** two servers of the same version that take different channels (one only
+stable builds, one test builds too) use two installs, even when the newest build is the same for
+both.
+
+**Why:** an install made for test builds may hold one a stable-only server must not run, so the
+panel never gives one channel's install to the other.
+
+**Status:** Expected.
+
+### A file check makes a new copy of the game files
+
+**Affects:** every game, a server on shared game files.
+
+**What you'll notice:** "Verify game files" makes a checked copy of the files its server runs from
+(a local copy, then the check), and every server on the old files moves to the checked copy at its
+next start (at once when stopped). The old copy stays until the owner removes it.
+
+**Why:** the files are shared and read-only, so a check can't repair them in place.
+
+**Status:** Expected.
+
+### At most four game installs are made at once
+
+**Affects:** every game.
+
+**What you'll notice:** with four installs already being made, a fifth (a new server of yet another
+version, an update) fails at once with the orchestrator's reason; its server's next start tries
+again.
+
+**Why:** the orchestrator runs at most four install jobs at a time, so a pile of downloads can't
+starve the host.
+
+**Status:** Expected.
