@@ -141,6 +141,17 @@ describe('a server and its install (HST-09, D12, SRV-01, UPD-01)', () => {
     expect(p.orch.jobsRun).toEqual([iid, iid, iid]);
   });
 
+  it('stops waiting for a job whose container stopped before its agent answered, and says so', async () => {
+    const p = await panel();
+    p.orch.deadJobs = true;
+    await create(p, 'pz-a');
+    const iid = row(p, 'pz-a').installId!;
+    // At once, not after the two minutes an agent that is starting gets.
+    await until(() => installs(p).get(iid)?.state === 'failed');
+    expect(installs(p).get(iid)!.error).toBe('The install job stopped before its agent answered (exit 1)');
+    expect(p.orch.installsById.get(iid)!.job).toBeNull();
+  });
+
   it('removes a server that still waits for its install without asking its agent; the install stays for others', async () => {
     const p = await panel();
     let release!: () => void;

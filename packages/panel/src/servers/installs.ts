@@ -436,7 +436,7 @@ export class InstallManager {
       const url = info.job?.agentUrl;
       if (!url) throw new Error('The install job has no agent to drive');
       const agent = this.d.jobAgent(url, token);
-      await this.agentUp(agent);
+      await this.agentUp(id, agent);
       await agent.setLaunch(launch);
       const marker = await this.install(id, agent, o.validate === true);
       await orch.removeInstallJob(id).catch(() => undefined);
@@ -469,15 +469,20 @@ export class InstallManager {
     }
   }
 
-  /** Until the job's agent answers. */
-  private async agentUp(agent: AgentApi): Promise<void> {
+  /** Until the job's agent answers; a job whose container stopped meanwhile (its agent never will) fails at once. */
+  private async agentUp(id: string, agent: AgentApi): Promise<void> {
     const end = Date.now() + (this.d.agentWaitMs ?? 120_000);
-    for (;;) {
+    for (let n = 0; ; n++) {
       try {
         await agent.status();
         return;
       } catch {
         if (Date.now() > end) throw new Error("The install job's agent did not answer");
+      }
+      if (n % 3 === 2) {
+        const job = (await this.d.orchestrator.installs().catch(() => null))?.find((i) => i.id === id)?.job;
+        if (job === null) throw new Error('The install job is gone');
+        if (job && (job.state === 'exited' || job.state === 'dead')) throw new Error(`The install job stopped before its agent answered (exit ${job.exitCode ?? '?'})`);
       }
       await new Promise((r) => setTimeout(r, Math.min(this.pollMs, 1000)));
     }

@@ -246,6 +246,24 @@ describe('shared installs in the fake orchestrator (HST-09, D12)', () => {
     expect(existsSync(path.join(r.dir, 'installs', IID))).toBe(false);
     expect(await request(r.socket, 'GET', '/v1/installs')).toEqual({ status: 200, body: [] });
   });
+
+  it("gives an install job's agent a port of the pool it can listen on, skipping one another program took", { timeout: 60_000 * SCALE }, async () => {
+    const r = await rig();
+    const IID = 'i0123456789abcdef';
+    const holder = net.createServer();
+    await new Promise<void>((res) => holder.listen(r.agentPorts[0]!, '127.0.0.1', res));
+    try {
+      const put = await request(r.socket, 'PUT', `/v1/installs/${IID}`, { body: { id: IID, runtime: 'steam', env: { AGENT_TOKEN, GAME_ADAPTER: 'pz', TZ: 'UTC' } } });
+      expect(put).toMatchObject({ status: 200, body: { job: { agentUrl: `http://127.0.0.1:${r.agentPorts[1]}` } } });
+      await waitFor('the job agent', async () => ((await agent(`http://127.0.0.1:${r.agentPorts[1]}`, 'GET', '/v1/health')) as { ok?: boolean }).ok);
+      // With every port of the pool taken, the job is refused rather than started with an agent that can't listen.
+      const other = await request(r.socket, 'PUT', '/v1/installs/ifedcba9876543210', { body: { id: 'ifedcba9876543210', runtime: 'steam', env: { AGENT_TOKEN, GAME_ADAPTER: 'pz', TZ: 'UTC' } } });
+      expect(other).toMatchObject({ status: 409, body: { code: 'conflict' } });
+    } finally {
+      await new Promise((res) => holder.close(res));
+    }
+    expect(await request(r.socket, 'DELETE', `/v1/installs/${IID}/job`)).toEqual({ status: 200, body: { removed: true } });
+  });
 });
 
 describe('runtime image upgrades in the fake orchestrator (HST-01, SRV-05, SRV-06)', () => {

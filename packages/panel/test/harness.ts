@@ -182,6 +182,8 @@ export class FakeOrchestrator implements OrchestratorClient {
   failJobs: string | null = null;
   /** Copy jobs exit with this code. */
   copyExit = 0;
+  /** Install jobs' containers exit at once (exit 1), before their agent ever answers. */
+  deadJobs = false;
   /** While set, an install job's install waits for it (to see servers wait on one job). */
   hold: Promise<void> | null = null;
   /** Every install job's install that ran, by install id (one per job). */
@@ -415,7 +417,10 @@ export class FakeOrchestrator implements OrchestratorClient {
       createdAt: old?.createdAt ?? new Date().toISOString(),
       marker,
       filledFrom,
-      job: { kind, hash, token: spec.env.AGENT_TOKEN, from, state: kind === 'copy' ? 'exited' : 'running', exitCode: kind === 'copy' ? this.copyExit : null, launch: null },
+      job:
+        kind === 'copy'
+          ? { kind, hash, token: spec.env.AGENT_TOKEN, from, state: 'exited', exitCode: this.copyExit, launch: null }
+          : { kind, hash, token: spec.env.AGENT_TOKEN, from, state: this.deadJobs ? 'exited' : 'running', exitCode: this.deadJobs ? 1 : null, launch: null },
     };
     if (kind === 'copy') this.copies.push(`${spec.id} ${from}`);
     this.installsById.set(spec.id, i);
@@ -459,7 +464,7 @@ export class FakeOrchestrator implements OrchestratorClient {
     const id = /^http:\/\/job-(i[a-z0-9]+):8081$/.exec(url)?.[1] ?? '';
     const live = () => {
       const i = this.installsById.get(id);
-      if (!i?.job || i.job.kind !== 'install' || i.job.token !== token) throw new AgentCallError(503, 'unreachable', 'Install job agent unreachable');
+      if (!i?.job || i.job.kind !== 'install' || i.job.token !== token || i.job.state !== 'running') throw new AgentCallError(503, 'unreachable', 'Install job agent unreachable');
       return i;
     };
     const status = async (): Promise<AgentStatus> => {

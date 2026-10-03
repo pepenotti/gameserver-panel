@@ -420,6 +420,19 @@ export class FakeBackend implements Backend {
     return path.join(this.installRoot(id), 'install');
   }
 
+  /**
+   * An install job's agent port: the first of the pool no server or job has
+   * that this machine lets it bind now. A job is a fresh process: unlike a
+   * server's, its port isn't kept from an earlier start, so one another
+   * program took meanwhile is skipped rather than handed to an agent that
+   * can't listen on it (a job whose agent never answers).
+   */
+  private async bindableAgentPort(): Promise<number> {
+    const used = this.agentPortsUsed();
+    for (const p of this.o.agentPorts) if (!used.has(p) && (await bindTcp(p))) return p;
+    throw conflict('No free agent port left in the fake orchestrator\'s pool');
+  }
+
   private agentPortsUsed(): Set<number> {
     const used = new Set([...this.stored.values()].map((s) => s.agentPort));
     for (const i of this.stockedInstalls.values()) if (i.job?.agentPort) used.add(i.job.agentPort);
@@ -486,7 +499,7 @@ export class FakeBackend implements Backend {
         if (users.length) throw installConflict('install-in-use', `Install ${id} is mounted by ${users.map((u) => `server ${u}`).join(', ')}: a job never writes an install a server reads`, 'id');
         const source = src === null ? null : this.copySource(spec, src);
         const image = `gsp/${imageName(spec.runtime, spec.variant, true)}:${this.o.imageTag ?? 'dev'}`;
-        const job: StoredJob = { kind, specHash: hash, spec, from, image, agentPort: kind === 'install' ? this.freePort(this.o.agentPorts, this.agentPortsUsed(), 'agent') : null };
+        const job: StoredJob = { kind, specHash: hash, spec, from, image, agentPort: kind === 'install' ? await this.bindableAgentPort() : null };
         this.stockedInstalls.set(id, { game, createdAt: old?.createdAt ?? new Date().toISOString(), job });
         for (const sub of ['install', 'data']) mkdirSync(path.join(this.installRoot(id), sub), { recursive: true });
         this.save();
