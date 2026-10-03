@@ -1,4 +1,4 @@
-import type { AdapterMeta, Capability, JoinDecl, JoinSetting, PortDecl } from '@gsp/adapter-api';
+import type { AdapterMeta, Capability, InstallSharing, JoinDecl, JoinSetting, PortDecl } from '@gsp/adapter-api';
 import type { ManifestJoin, ManifestJoinSetting, SteamGameManifest } from './types';
 
 /**
@@ -53,10 +53,22 @@ export function manifestMeta(m: SteamGameManifest): AdapterMeta {
       ...(m.eula ? { eula: m.eula } : {}),
       ...(m.notes?.length ? { notes: m.notes.map((n) => ({ ...n })) } : {}),
       ...(m.join ? { join: joinOf(m.join) } : {}),
+      install: installOf(m),
     };
     metas.set(m, meta);
   }
   return meta;
+}
+
+/**
+ * How the game's installs are shared (HST-09, D12), in the contract's
+ * terms: `shared`, with its redirects, once the manifest says so; `own`
+ * (each server keeps its own install) otherwise.
+ */
+export function installOf(m: SteamGameManifest): InstallSharing {
+  if (!m.install?.shared) return { mode: 'own' };
+  const redirects = (m.install.redirects ?? []).map((r) => ({ path: r.path, to: r.to }));
+  return redirects.length ? { mode: 'shared', redirects } : { mode: 'shared' };
 }
 
 /** A manifest's setting, as the contract names a launch setting (`launch`) or a config key. */

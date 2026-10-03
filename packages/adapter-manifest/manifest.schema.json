@@ -376,6 +376,28 @@
         "properties": { "id": { "$ref": "#/$defs/id" }, "text": { "$ref": "#/$defs/i18n" }, "doc": { "type": "string", "pattern": "^limitations\\.md#[a-z0-9-]+$" } }
       }
     },
+    "install": {
+      "description": "Whether the game's install can be shared (HST-09, D12): one install per version, filled by an install job and mounted read-only by every server on it, once the game was measured running from a read-only install; and the paths the game writes inside its install, redirected into each server's data by links the job makes. Without it, or with shared false, each server keeps its own install.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shared"],
+      "properties": {
+        "shared": { "type": "boolean" },
+        "redirects": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "to"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1, "maxLength": 300, "pattern": "^[A-Za-z0-9_.*+-]+(/[A-Za-z0-9_.*+-]+)*$" },
+              "to": { "type": "string", "maxLength": 300, "pattern": "^/data/[A-Za-z0-9_.+-]+(/[A-Za-z0-9_.+-]+)*$" }
+            }
+          }
+        }
+      }
+    },
     "join": {
       "description": "How players join (SRV-08): the port they type, how the client takes the address and port, the client, extra steps, where the join password is kept, and whether a real client confirmed it (D5).",
       "type": "object",

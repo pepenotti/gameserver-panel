@@ -2,7 +2,9 @@
  * The contract between the panel and the agent that runs inside each
  * server's container. The agent owns the game process, its control channel
  * and its installer; the panel only ever talks to it through these shapes.
+ * The same agent runs an install job (HST-09, D12: `AgentStatus.install`).
  */
+import type { AgentInstallRefusal, AgentInstallStatus } from './install-api';
 
 export type ServerState =
   /** Not running and not supposed to be. */
@@ -92,6 +94,13 @@ export interface AgentStatus {
   disks: DiskStats[];
   /** Agent wall clock, so the panel can spot drift after the PC sleeps. */
   now: string;
+  /**
+   * How the server is installed (HST-09, D12): its own install, a shared
+   * one mounted read-only, or this agent is an install job; the
+   * shared-install marker once a job wrote one. Absent from agents older
+   * than shared installs.
+   */
+  install?: AgentInstallStatus;
 }
 
 export type AlertKind =
@@ -230,6 +239,8 @@ export interface AgentError {
   code: 'unauthorized' | 'bad-request' | 'not-found' | 'conflict' | 'locked' | 'unavailable' | 'internal';
   /** Why a file or archive request was refused (`/v1/fs/*`, `/v1/archive/*`). */
   reason?: ServerFilesErrorCode;
+  /** Why a request was refused because of how the server is installed (HST-09, D12; with `conflict`). */
+  install?: AgentInstallRefusal;
 }
 
 // ------------------------------------------ server files through the agent (D11)

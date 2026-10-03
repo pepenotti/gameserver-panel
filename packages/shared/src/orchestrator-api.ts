@@ -23,6 +23,16 @@
  *   POST   /v1/servers/:id/restart        StopRequest → ServerContainer
  *   GET    /v1/servers/:id/stats          → ServerStats
  *   DELETE /v1/servers/:id?removeVolumes=false → DeleteResponse
+ *
+ * Shared installs (HST-09, D12): an install is a volume of this stack named
+ * by its install id, filled by an install job (the runtime image with the
+ * agent in install-job mode, or the orchestrator's own copy command) and
+ * mounted read-only by the servers whose spec names it (`ServerSpec.install`).
+ *
+ *   GET    /v1/installs                   → InstallInfo[]       (only this stack's installs)
+ *   PUT    /v1/installs/:id               InstallJobSpec → InstallInfo   (the install job; `InstallPutOptions` for a copy job)
+ *   DELETE /v1/installs/:id/job           → InstallDeleteResponse   (the job, its network and HOME; the install stays)
+ *   DELETE /v1/installs/:id               → InstallDeleteResponse   (the install; refused while anything mounts it or a job exists)
  */
 
 /** Version of this contract; `GET /v1/health` reports the one the orchestrator speaks. */
@@ -37,6 +47,17 @@ export const SERVER_ID_PATTERN = /^[a-z][a-z0-9-]{1,23}$/;
 
 export function isServerId(x: unknown): x is string {
   return typeof x === 'string' && SERVER_ID_PATTERN.test(x);
+}
+
+/**
+ * An install id (HST-09, D12): `i`, then 8–31 lowercase letters and digits.
+ * The panel makes it (e.g. `i` and 16 hex digits of a hash of the install's
+ * key); the install's volume and job are named from it.
+ */
+export const INSTALL_ID_PATTERN = /^i[a-z0-9]{8,31}$/;
+
+export function isInstallId(x: unknown): x is string {
+  return typeof x === 'string' && INSTALL_ID_PATTERN.test(x);
 }
 
 /** Image family of a server (PRD §10 "Images per runtime family"); adapters declare theirs. */
@@ -89,9 +110,12 @@ export const SPEC_ENV_KEY = /^(GAME|GSP)_[A-Z0-9]+(_[A-Z0-9]+)*$/;
 
 /**
  * Keys the orchestrator sets or forbids itself: where the agent keeps files,
- * what it runs and where it listens are part of the image, not the spec.
+ * what it runs and where it listens are part of the image, not the spec;
+ * whether the agent runs an install job (`GSP_AGENT_MODE`) or a server on a
+ * shared install (`GSP_INSTALL_SHARED`) follows from the route and the
+ * spec's `install` (HST-09).
  */
-export const SPEC_ENV_DENIED = ['GAME_DATA_DIR', 'GAME_INSTALL_DIR', 'GAME_START_COMMAND'] as const;
+export const SPEC_ENV_DENIED = ['GAME_DATA_DIR', 'GAME_INSTALL_DIR', 'GAME_START_COMMAND', 'GSP_AGENT_MODE', 'GSP_INSTALL_SHARED'] as const;
 
 export interface ServerSpecEnv {
   /** The panel ↔ agent token of this server (never logged). */
@@ -139,6 +163,15 @@ export interface ServerSpec {
   memoryMb: number;
   /** CPU limit in cores; omitted: no limit. */
   cpus?: number;
+  /**
+   * A shared install of this stack (HST-09, D12) to run from: mounted
+   * read-only where the game's install goes, instead of the server's own
+   * install volume, and the agent told so. Refused for an install of
+   * another stack, of another game, flavour or image, one whose job still
+   * exists, or one no job finished (no shared-install marker). Omitted: the
+   * server's own install volume, derived exactly as before shared installs.
+   */
+  install?: string;
 }
 
 /** `PUT /v1/servers/:id` query parameters. */
@@ -271,10 +304,119 @@ export type OrchestratorErrorCode =
   | 'unavailable'
   | 'internal';
 
+/**
+ * Why an install request was refused or clashed (HST-09, D12), besides its
+ * `code`:
+ * - `install-in-use`: a container mounts the install (a server, even a
+ *   stopped one): it can't be removed, and no job writes into it;
+ * - `install-busy`: a job of the install exists: no server mounts a
+ *   half-written install, and only one job runs per install;
+ * - `install-not-ready`: no job finished the install (no shared-install
+ *   marker): no server mounts it and nothing copies it;
+ * - `server-running`: a copy from a server's own install waits until that
+ *   server's container is stopped.
+ */
+export type InstallRefusal = 'install-in-use' | 'install-busy' | 'install-not-ready' | 'server-running';
+
 /** Error body of every non-2xx orchestrator response. */
 export interface OrchestratorError {
   error: string;
   code: OrchestratorErrorCode;
   /** The spec field a `refused` or `bad-request` is about (`ports[1].host`, `env.GAME_START_COMMAND`). */
   field?: string;
+  /** For install routes and specs with `install`: why, when it is one of `InstallRefusal`. */
+  reason?: InstallRefusal;
+}
+
+// ------------------------------------------------------------ shared installs (HST-09, D12)
+
+/**
+ * `PUT /v1/installs/:id`: the job that fills install `id` (its volume is
+ * created when missing, labelled with the game it holds). Like a server
+ * spec, it names only what: the image family (and variant) of the game's
+ * servers and the agent's environment. Everything else is derived by the
+ * orchestrator (NFR-02): the job runs as hardened as a server (user 1000,
+ * every capability dropped, `no-new-privileges`, a read-only root), on a
+ * bridge network of its own that only the panel joins, publishes no ports,
+ * gets a fixed memory limit, `/data` on a small tmpfs and, for the steam
+ * family, a HOME volume of its own seeded from the image and removed with
+ * the job. Its agent runs in install-job mode (it installs, warms up, links
+ * the redirects and writes the shared-install marker; it never starts the
+ * game). The panel drives it at `InstallJob.agentUrl` like a server's agent
+ * (`PUT /v1/launch`, `POST /v1/install`), then removes it
+ * (`DELETE /v1/installs/:id/job`).
+ *
+ * Refused: another stack's volume of that name; an existing install of
+ * another game, flavour or image; a job of the install that exists already
+ * (the same spec again answers it as it is); an install a container mounts
+ * (a job never writes an install servers read). A copy job
+ * (`InstallPutOptions`) also refuses an install that exists already.
+ */
+export interface InstallJobSpec {
+  /** Must equal the `:id` in the path. */
+  id: string;
+  /** The image family the install's servers run in, and its variant, as their specs name them. */
+  runtime: RuntimeFamily;
+  variant?: string;
+  /** As a server spec's: the job agent's token, the game (`GAME_ADAPTER`, `GAME_FLAVOUR`), TZ, `GAME_*`/`GSP_*` knobs. */
+  env: ServerSpecEnv;
+}
+
+/**
+ * `PUT /v1/installs/:id` query parameters, at most one: a copy job instead
+ * of an install job. It runs the orchestrator's own fixed command (`cp -a`)
+ * in the runtime image, with no network, the source read-only and the new
+ * install's volume as the target, then exits (`InstallJob.exitCode` 0:
+ * copied). An update starts from a copy of the install it replaces (steamcmd
+ * then downloads only what changed); a server's own install is adopted by a
+ * copy (migration). Either way an install job runs on the copy next, for
+ * the finishing steps (redirects, warm-up, marker).
+ */
+export interface InstallPutOptions {
+  /** Copy a ready install of this stack (same game, flavour and image). */
+  from?: string;
+  /** Copy a server's own install volume (same game, flavour and image); refused while its container runs. */
+  fromServer?: string;
+}
+
+export type InstallJobKind = 'install' | 'copy';
+
+/** An install's job container. */
+export interface InstallJob {
+  kind: InstallJobKind;
+  /** Docker's state of the job container (never `missing`). */
+  state: Exclude<ContainerState, 'missing'>;
+  startedAt: string | null;
+  finishedAt: string | null;
+  /** Once it exited: a copy job's 0 means copied. */
+  exitCode: number | null;
+  image: string;
+  /** An install job's agent, on the job's own network (a copy job runs no agent: null). */
+  agentUrl: string | null;
+  /** A copy job's source: an install id, or `server:<id>` for a server's own install. */
+  from: string | null;
+}
+
+/** `GET /v1/installs`: one install of this stack. */
+export interface InstallInfo {
+  id: string;
+  /** The game it holds, from its volume's labels (set when it was created). */
+  adapter: string;
+  flavour: string | null;
+  runtime: RuntimeFamily;
+  variant: string | null;
+  /** Its Docker volume (`<stack>-inst-<id>`). */
+  volume: string;
+  /** When the volume was created, as Docker says; null when it doesn't. */
+  createdAt: string | null;
+  /** Servers of this stack whose container mounts it (running or not), read from Docker; sorted. */
+  mountedBy: string[];
+  /** Its job, while one exists; null otherwise. */
+  job: InstallJob | null;
+}
+
+/** `DELETE /v1/installs/:id/job` and `DELETE /v1/installs/:id`. */
+export interface InstallDeleteResponse {
+  /** Something was there and is gone (false: nothing to remove). */
+  removed: boolean;
 }
