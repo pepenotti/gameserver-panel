@@ -32,9 +32,9 @@ export type InstallSharingMode = 'shared' | 'copy' | 'own';
 export interface InstallRedirect {
   /**
    * Relative to the install root, `/`-separated, no `.` or `..` segments.
-   * A segment may hold `*` (any characters but `/`) for a folder whose name
-   * depends on the version (Terraria's `tmodloader-*`): the job links the
-   * path in every plain folder that matches.
+   * A folder above the linked path may hold `*` (any characters but `/`)
+   * when its name depends on the version (Terraria's `tmodloader-*`): the
+   * job links the path in every plain folder that matches.
    */
   path: string;
   /** Where the link points: `/data/<path>`, inside the server's data root (the job never links anywhere else). */
@@ -152,6 +152,7 @@ export function redirectProblem(r: InstallRedirect): string | null {
   const from = segmentsOf(r.path);
   if (!from) return `has a path that isn't one inside the install: ${JSON.stringify(r.path)}`;
   if (from[0] === SHARED_INSTALL_MARKER) return 'would replace the shared-install marker';
+  if (from.at(-1)!.includes('*')) return 'must name the linked path itself: a * only in the folders above it';
   if (typeof r.to !== 'string' || !r.to.startsWith('/data/')) return `must point under /data/, not ${JSON.stringify(r.to)}`;
   const to = segmentsOf(r.to.slice('/data/'.length));
   if (!to) return `has a target that isn't one inside the data root: ${JSON.stringify(r.to)}`;

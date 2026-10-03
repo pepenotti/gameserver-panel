@@ -51,6 +51,7 @@ describe('shared installs (HST-09, D12)', () => {
       ['logs', '/data/../etc', /inside the data root/],
       ['logs', '/data/a/*', /\* in its target/],
       ['logs', 'data/x', /under \/data\//],
+      ['game/*', '/data/x', /the linked path itself/],
     ];
     for (const [path, to, why] of problems) {
       expect(redirectProblem({ path, to }), `${path} → ${to}`).toMatch(why);
