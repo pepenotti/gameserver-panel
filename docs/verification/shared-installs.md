@@ -240,3 +240,95 @@ removed; `docker ps -a`, `docker volume ls` and `docker network ls` filtered by
 `label=gsp.factfinding=install` listed nothing; the images `gsp/steam:s5`, `gsp/java:s5` and
 `gsp/native:s5` were removed. Docker's build cache was left alone (never pruned), and no other
 stack's container or volume was touched.
+
+## Runtime side check — 2026-10-03
+
+Phase 2 (runtime side) run for real (D5): the product's orchestrator, agent and adapters from the
+M7-A branch, no fakes, against Docker in a development slot. It checks what phase 1 could only
+stand in for: the install job itself, the orchestrator's install volumes and jobs, servers mounting
+an install read-only through `ServerSpec.install`, the agent's shared runtime mode, and the redirects
+and warm-up made by the job instead of a helper container.
+
+**Setup.** Docker Desktop 29.7.2 (Linux engine, amd64, 12 cores, 15.6 GiB). The slot's stack
+(orchestrator, panel, Caddy) and the runtime images `gsp/steam`, `gsp/java` and `gsp/native` built
+from the branch (`node scripts/stack.mjs build …`, `up -d --build`). The orchestrator API was called
+on its socket and the agents on their networks from inside the panel container (the panel's own
+route to both), with a fresh agent token per job and per server; nothing else touched Docker but a
+read-only checksum container on the install volume (below). One game server ran at a time.
+
+**What a job and a server were, as Docker shows them** (`docker inspect`):
+- Install job `<stack>-job-<id>`: user 1000:1000, read-only root, not privileged, every capability
+  dropped, `no-new-privileges`, 1 GiB memory (no swap), 4096 pids, no port bindings, restart policy
+  `no`, its own bridge network `<stack>-jobnet-<id>` holding only the job and the panel, `/data` a
+  64 MiB tmpfs (`noexec,nosuid,nodev,uid=1000,gid=1000,mode=0700`), `/tmp` the servers' tmpfs; mounts:
+  the install volume read-write at `/opt/game` and, for the steam family, its own HOME volume
+  `<stack>-job-<id>-steam` (204 MB, seeded from the image). `DELETE /v1/installs/<id>/job` removed
+  the container, its network and its HOME; the install volume stayed.
+- Server on an install: the install volume at `/opt/game` with `RW false`, its data (and, steam,
+  HOME) volumes of its own and no install volume of its own; `GSP_INSTALL_SHARED=1` in its
+  environment (set by the orchestrator).
+- Copy job: `cp -a /src/. /opt/game/` (the orchestrator's command), network `none`, the image's
+  environment only (no token), the source read-only at `/src`.
+
+**Install volume unchanged:** a throwaway container (`--read-only --network none --cap-drop ALL
+--user 1000:1000`, the volume read-only) printed, before the first server and after the second:
+the number of files and links, every link's target, `du -sb`, the SHA-256 of every file (one digest
+of the sorted list) and a digest of every entry's path, type, mode, size and mtime. Both lines were
+**identical** for every game below.
+
+| Game, flavour | Install job (`POST /v1/install`: install, warm-up, redirects, marker) | Job memory peak | Install (files with the marker, `du -sb`) | Server A: running, save, running backup, stop | Server B: the same | Install after both |
+|---|---|---|---|---|---|---|
+| Project Zomboid 42.21.0, build 25485538, one Workshop mod (2544353492) | 222.4 s (steamcmd, anonymous); link `steamapps/workshop` → `/data/.workshop/steamapps/workshop` | 1 024.6 MiB: the job's limit, reached through page cache while 7.2 GB were written (`memory.events`: `max` 40 536, `oom_kill` 0; 36 MiB anonymous after) | 39 187 files, 1 link, 7 206 116 892 B | 53.2 s (the game's own Workshop download landed in `/data/.workshop/steamapps/workshop/content/108600/2544353492`, `loading P4HasBeenRead`), 0.24 s, 6.6 MB in 0.32 s, 11.5 s exit 0 | 54.2 s (its own download, into its own data), 0.24 s, 6.6 MB in 0.31 s, 11.4 s | identical |
+| Minecraft Fabric 26.3, loader 0.19.5 | 10.8 s, the warm-up included (`Unpacking 26.3/server-26.3.jar … to /opt/game/versions/…`, the option list, exit 0) | 430 MiB | 52 files, 135 757 330 B | 16.1 s, 2.3 s, 3.0 MB in 0.11 s, 0.6 s | 16.1 s, 1.9 s, 3.0 MB in 0.12 s, 0.6 s | identical |
+| Terraria TShock v6.2.1 (1.4.5.8), a real plugin | 5.1 s | 312 MiB | 35 files, 101 565 629 B | 87.3 s (a new world), with Bagger v1.3.1 added by its release link: `-additionalplugins /data/tshock/plugins` on the command line, `Plugin Bagger v1.3.1 (by Soofa) initiated.`, listed active; 0.28 s, 9.0 MB in 0.37 s, 0.7 s | 85.3 s (no plugin: no `-additionalplugins`), 0.30 s, 9.0 MB in 0.41 s, 0.7 s | identical |
+| Terraria tModLoader v2026.07.3.0 | 11.7 s; link `tmodloader-v2026.07.3.0/tModLoader-Logs` → `/data/tModLoader-Logs` | 310 MiB | 943 files, 1 link, 173 802 410 B | 31.1 s (its logs in `/data/tModLoader-Logs`: `server.log`, `environment-server.log`, `Old/`), 0.18 s, 9.1 MB in 0.18 s, 1.0 s | 31.1 s, 0.15 s, 9.2 MB in 0.17 s, 0.8 s | identical |
+
+The agent's marker said, for the job's install alone (files without the marker, the sum of their
+sizes): Project Zomboid 39 186 files, 7 206 116 353 B; Fabric 51 files, 135 756 918 B; tModLoader
+942 files, 173 801 846 B (M7-0's table: 39 186, 50 and 942 files; 7 206 116 309, 135 756 918 and
+173 801 846 B).
+
+**No second download.** Each game was downloaded once, by its install job. No server's agent ran a
+job of any kind (no `job` event, no steamcmd or download line); none got an install volume of its
+own. Project Zomboid's server B ran with "update when it starts" on: `Not updating at start: this
+server runs from a shared install, which install jobs update.`, no steamcmd. Each server downloaded
+its own copy of the Workshop mod into its own data (as `docs/limitations.md` says).
+
+**Refusals seen on the real stack:**
+| Asked | Answer |
+|---|---|
+| `PUT /v1/servers/pza` naming the install while its job ran | 409 `install-busy` (`field: install`) |
+| `DELETE /v1/installs/<id>` while its job ran | 409 `install-busy` |
+| `DELETE /v1/installs/<id>` with both servers stopped | 409 `install-in-use`: "mounted by server pza, server pzb" |
+| `POST /v1/start` on the job's agent | 409, `install: install-job` |
+| `POST /v1/install` on a server's agent | 409, `install: shared-install` |
+| A start whose launch asks for branch `unstable` (the install is `public`) | Failed at once, nothing installed: `install-mismatch: this server's shared install holds public 42.21.0 build 25485538, and its launch asks for another; …`, also in `status.install.mismatch` |
+| `PUT /v1/installs/<id>?fromServer=trown` while that server ran | 409 `server-running` |
+
+**Updates and migration, as the panel will drive them** (the copy, then a job on the copy):
+- `PUT /v1/installs/<copy>?from=<Project Zomboid's install>`: the copy job exited 0 in **28.8 s**
+  (7.2 GB); the copy's file digest equalled the source's (the entry digest differed: some folders'
+  times). An install job on the copy then answered `Success! App '380870' already up to date.` in
+  52.6 s (steamcmd starting with a fresh HOME, then the 39 186 files measured): nothing downloaded,
+  the redirect link made again, a new marker written.
+- Migration of a server's own install: a vanilla Terraria 1.4.5.8 server installed into its own
+  volume (4.3 s), stopped; `?fromServer=` copied it in 0.2 s; the install job on the copy found it
+  installed (29 ms, nothing downloaded) and wrote the marker; the server's spec then named the
+  install: its container was recreated with the install read-only, it ran (33.1 s, the world
+  created on the first start) on its old data, and its own install volume stayed behind (a
+  left-over the panel lists) until the server was removed.
+
+**Observed, unrelated to shared installs:** Project Zomboid prints `AdvancedAnimator$1.visitFileFailed`
+`NoSuchFileException` errors for `…/mods/P4HasBeenRead/common/media/AnimSets` (and `actiongroups`):
+the mod has no such folders; the server ran and loaded the mod.
+
+**Not covered here:** Minecraft vanilla and Paper, vanilla Terraria (other than the migration), Valheim
+and Avorion on the real stack (phase 1 ran them read-only; the agent's tests run every game and flavour
+through a job and a shared install against the fakes); a tModLoader Workshop mod; players; two game
+servers running from one install at the same time; ARM64.
+
+**Left behind:** nothing. Every server was removed with its volumes, every install and job with
+`DELETE`, the stack with `node scripts/stack.mjs clean`, and the slot's images (`gsp/*:s5`) with
+`docker rmi`; `docker ps -a`, `docker volume ls` and `docker network ls` filtered by `gsp-s5`, and
+`GET /v1/installs` and `GET /v1/servers` before the stack went, listed nothing. The build cache was
+left alone; no other stack was touched.
