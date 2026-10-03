@@ -38,7 +38,7 @@ import { LaunchChoicesService } from './servers/choices';
 import type { ServerContext } from './servers/context';
 import { NoOrchestrator, type OrchestratorClient } from './servers/orchestrator';
 import { OrchestratorHttp } from './servers/orchestrator-http';
-import { DbServerRegistry, type AgentParts, type AgentTarget } from './servers/registry';
+import { DbServerRegistry, type AgentParts, type AgentTarget, type ServerHooks, type StartPrep } from './servers/registry';
 import { DEFAULT_SERVER_ID, ensureDefaultServer, ServersStore, type ServerRow } from './servers/store';
 import { ServerSettings, Settings } from './settings';
 
@@ -74,7 +74,9 @@ export interface ServerParts {
   /** Where its backups go. */
   backupDir: string;
   /** Before its game starts (the registry's `ServerHooks`). */
-  beforeStart?: () => Promise<void>;
+  beforeStart?: (o?: StartPrep) => Promise<void>;
+  /** Its updates and install moves on a shared install (the registry's `ServerHooks`, HST-09). */
+  installs?: Pick<ServerHooks, 'prepareUpdate' | 'moveInstall'>;
   /** Its game's agreement, as accepted now (D6): read live, so an acceptance needs no rebuild. */
   eula?: () => EulaAcceptance;
 }
@@ -113,12 +115,12 @@ export function createServerContext(host: HostParts, row: ServerRow, parts: Serv
   const mods = new ModsService({ db, feed, ops, settings, config, server: handle, sources: (parts.mods ?? adapter.mods ?? []).filter((m) => caps.has(m.capability)) });
   const plugins = new PluginsService({ settings, server: handle, feed, config, sources: (adapter.plugins ?? []).filter((m) => caps.has(m.capability)), env: parts.linkEnv ?? process.env });
   const backups = new BackupService({ dir: parts.backupDir, panelVersion: host.version, feed, server: handle, mods });
-  const beforeStart = async () => {
-    await parts.beforeStart?.();
+  const beforeStart = async (o?: StartPrep) => {
+    await parts.beforeStart?.(o);
     // Mods the game won't fetch itself are downloaded now (MOD-03).
     await mods.beforeStart();
   };
-  const control = new Control({ agent, feed, ops, server: handle, backups, beforeStart, config });
+  const control = new Control({ agent, feed, ops, server: handle, backups, beforeStart, config, installs: parts.installs });
   const flows = new BackupFlows({ agent, feed, ops, control, backups, settings, config, server: handle });
   const scheduler = new Scheduler({ settings, agent, feed, ops, control, flows, backups, mods, notifier, audit });
   const changes = new ConfigProposals({ db, config: () => config, serverId: row.id });
@@ -182,6 +184,8 @@ export interface PanelFactories {
   agent(row: ServerRow, target: AgentTarget): AgentParts;
   /** A server's files (D11: through its agent; tests: on their own disk). */
   files(row: ServerRow, target: AgentTarget, env: PanelEnv): ServerFiles;
+  /** An install job's agent (HST-09): an `AgentClient` at the job's address, with the job's own token. */
+  jobAgent(url: string, token: string): AgentApi;
 }
 
 /** Whether the orchestrator runs this server (it has a spec), rather than Compose (`default`, until adopted). */
@@ -196,6 +200,8 @@ export const FACTORIES: PanelFactories = {
   },
   // Every server's files, `default`'s included, through its own agent: the panel mounts no game volume (D11).
   files: (_row, target) => new AgentServerFiles(target),
+  // A job's install may outlive one HTTP request: the client gives it hours, and the panel follows its status too.
+  jobAgent: (url, token) => new AgentClient(url, token, 1000, { installTimeoutMs: 6 * 3_600_000 }),
 };
 
 /**
@@ -236,6 +242,8 @@ export interface PanelDepsOptions {
   orchestrator?: OrchestratorClient;
   /** Any of `FACTORIES` replaced (tests: fake agents and local files for orchestrator-run servers). */
   factories?: Partial<PanelFactories>;
+  /** How often install jobs are looked at, ms (default 1000; tests: quicker). */
+  installPollMs?: number;
 }
 
 /**
@@ -278,6 +286,8 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     grants,
     tz: process.env.TZ || 'UTC',
     adapterFor: adapterOf,
+    jobAgent: f.jobAgent,
+    installPollMs: o.installPollMs,
     agentFor: (row, target) => (!isManaged(row) && o.agent && o.feed ? { agent: o.agent, feed: o.feed, stream: o.stream } : f.agent(row, target)),
     build: (row, target, agent, hooks) => {
       const managed = isManaged(row);
@@ -292,6 +302,7 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
         linkEnv: o.downloads?.env,
         backupDir: backupDirOf(env, row),
         beforeStart: managed ? hooks.beforeStart : undefined,
+        installs: managed ? { prepareUpdate: hooks.prepareUpdate, moveInstall: hooks.moveInstall } : undefined,
         eula: () => {
           const r = serverRows.get(row.id);
           return { at: r?.eulaAcceptedAt ?? null, by: r?.eulaAcceptedBy ?? null };

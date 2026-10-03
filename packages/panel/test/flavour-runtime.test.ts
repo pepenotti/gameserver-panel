@@ -42,6 +42,7 @@ const row = (flavour: string | null): ServerRow => ({
   createdAt: '2026-09-29T00:00:00.000Z',
   createdBy: null,
   sort: 0,
+  installId: null,
 });
 
 describe("a flavour's own image family (PRD §10, HST-05)", () => {

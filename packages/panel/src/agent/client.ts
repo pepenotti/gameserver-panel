@@ -99,11 +99,14 @@ export class AgentClient implements AgentApi {
    * `base`: the agent's address, or where to read it when it can change
    * (an orchestrator-run server's, known once the orchestrator answered;
    * empty until then, and every call fails as unreachable).
+   * `installTimeoutMs`: how long `install` waits for its answer (default an
+   * hour; an install job's agent gets longer, HST-09).
    */
   constructor(
     private readonly base: string | (() => string),
     private readonly token: string,
     private readonly logBacklog = 1000,
+    private readonly o: { installTimeoutMs?: number } = {},
   ) {}
 
   private get baseUrl(): string {
@@ -174,7 +177,7 @@ export class AgentClient implements AgentApi {
     return this.call<CommandResponse>('POST', '/v1/command', { command, via });
   }
   install(req: InstallRequest, lockId?: string) {
-    return this.call<InstallResponse>('POST', '/v1/install', req, lockId, 60 * 60_000);
+    return this.call<InstallResponse>('POST', '/v1/install', req, lockId, this.o.installTimeoutMs ?? 60 * 60_000);
   }
   versions(req: VersionsRequest = {}) {
     return this.call<VersionsResponse>('POST', '/v1/versions', req, undefined, 5 * 60_000);

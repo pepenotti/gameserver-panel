@@ -6,7 +6,24 @@ import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import type { ModSource, PanelAdapter } from '@gsp/adapter-api';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
 import { createTmlWorkshopSource } from '@gsp/adapter-terraria/panel';
-import { ORCHESTRATOR_API_VERSION, type AgentStatus, type ApplyOptions, type CpuArch, type DerivationState, type GrantRole, type PortRangeInfo, type SeqEvent, type ServerContainer, type ServerSpec } from '@gsp/shared';
+import {
+  ORCHESTRATOR_API_VERSION,
+  type AgentStatus,
+  type ApplyOptions,
+  type CpuArch,
+  type DerivationState,
+  type GrantRole,
+  type InstallInfo,
+  type InstallJobSpec,
+  type InstallKey,
+  type InstallPutOptions,
+  type LaunchEnvelope,
+  type PortRangeInfo,
+  type SeqEvent,
+  type ServerContainer,
+  type ServerSpec,
+  type SharedInstallMarker,
+} from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
 import { bootstrapOwner } from '../src/auth/bootstrap';
@@ -103,6 +120,29 @@ export const noNetwork = (() => Promise.reject(new Error('no network in tests'))
 
 type FakeContainer = ServerContainer & { spec: ServerSpec; volumes: boolean; imageId: string; derivedBy: number };
 
+/** A shared install in the fake orchestrator (HST-09): the game it holds, its marker once a job wrote one, its job while one exists. */
+export interface FakeInstall {
+  id: string;
+  adapter: string;
+  flavour: string | null;
+  runtime: ServerSpec['runtime'];
+  variant: string | null;
+  createdAt: string;
+  marker: SharedInstallMarker | null;
+  /** The copies its files came from, oldest first (install ids, `server:<id>`); empty: downloaded by its own job. */
+  filledFrom: string[];
+  job: { kind: 'install' | 'copy'; hash: string; token: string; from: string | null; state: 'running' | 'exited'; exitCode: number | null; launch: LaunchEnvelope | null } | null;
+}
+
+/** What a fake install job installs by default: what the launch names (its branch, version or loader), build `b1`. */
+export function defaultJobKey(spec: InstallJobSpec, launch: LaunchEnvelope | null): InstallKey {
+  const p = (launch?.params ?? {}) as Record<string, unknown>;
+  const str = (x: unknown) => (typeof x === 'string' && x !== '' ? x : null);
+  const flavour = spec.env.GAME_FLAVOUR ?? null;
+  if (str(p.branch)) return { flavour, version: null, build: 'b1', branch: str(p.branch) };
+  return { flavour, version: str(p.version) ?? 'v1', build: str(p.loaderVersion) ?? null, branch: null };
+}
+
 /**
  * The orchestrator in memory (D3's API, `@gsp/shared` orchestrator-api):
  * containers by id with the spec each was created from, every call made,
@@ -129,6 +169,27 @@ export class FakeOrchestrator implements OrchestratorClient {
   readonly failNext = new Map<keyof OrchestratorClient, OrchestratorCallError>();
   /** Every call fails with this: the orchestrator is down. */
   down: OrchestratorCallError | null = null;
+
+  // ------------------------------------------------------------ shared installs (HST-09, D12)
+  /** Whether it has shared installs; off (the default): an orchestrator from before them (`not-found`), so servers keep installs of their own. */
+  sharedInstalls = false;
+  readonly installsById = new Map<string, FakeInstall>();
+  /** Servers whose own install volume exists (made with their first container without `install`; kept until removed). */
+  readonly ownInstalls = new Set<string>();
+  /** What an install job's agent installs, from its spec and launch: the key its marker names. */
+  jobKey: (spec: InstallJobSpec, launch: LaunchEnvelope | null) => InstallKey = defaultJobKey;
+  /** Install jobs fail with this error while it is set. */
+  failJobs: string | null = null;
+  /** Copy jobs exit with this code. */
+  copyExit = 0;
+  /** While set, an install job's install waits for it (to see servers wait on one job). */
+  hold: Promise<void> | null = null;
+  /** Every install job's install that ran, by install id (one per job). */
+  readonly jobsRun: string[] = [];
+  /** Every copy job, as `<id> <from>`. */
+  readonly copies: string[] = [];
+  /** Install jobs that downloaded the whole game (nothing copied into their install first), by install id. */
+  readonly downloads: string[] = [];
 
   private check(method: keyof OrchestratorClient, detail = ''): void {
     this.calls.push(detail ? `${method} ${detail}` : method);
@@ -208,6 +269,14 @@ export class FakeOrchestrator implements OrchestratorClient {
     this.check('apply', `${spec.id}${o.keepImage ? ' keepImage' : ''}${o.keepDerivation ? ' keepDerivation' : ''}`);
     const specHash = createHash('sha256').update(JSON.stringify(spec)).digest('hex');
     const cur = this.containers.get(spec.id);
+    // As the real one refuses a server on an install (HST-09): none of that id, another game's, one with a job, one no job finished.
+    if (spec.install !== undefined) {
+      const i = this.installsById.get(spec.install);
+      if (!i) throw new OrchestratorCallError(403, 'refused', `Install ${spec.install} does not exist in this stack`, 'install');
+      if (i.adapter !== spec.env.GAME_ADAPTER || i.flavour !== (spec.env.GAME_FLAVOUR ?? null) || i.runtime !== spec.runtime || i.variant !== (spec.variant ?? null)) throw new OrchestratorCallError(403, 'refused', `Install ${spec.install} holds another game`, 'install');
+      if (i.job) throw new OrchestratorCallError(409, 'conflict', `Install ${spec.install} has a job`, 'install', 'install-busy');
+      if (!i.marker) throw new OrchestratorCallError(409, 'conflict', `No install job finished install ${spec.install}`, 'install', 'install-not-ready');
+    } else this.ownInstalls.add(spec.id);
     // The same spec on the image its tag names now, or kept on its own (a newer image waits); derived as now, or
     // kept as derived (a changed derivation waits), never across a security fix.
     const derived = cur ? this.derivationOf(cur) : 'current';
@@ -259,7 +328,179 @@ export class FakeOrchestrator implements OrchestratorClient {
     this.get(id);
     this.containers.delete(id);
     if (!o.removeVolumes) this.keptVolumes.add(id);
+    else this.ownInstalls.delete(id);
     return { removed: true, volumesRemoved: o.removeVolumes };
+  }
+
+  // ------------------------------------------------------------ shared installs (HST-09, D12)
+
+  private sharedOnly(method: keyof OrchestratorClient, detail: string): void {
+    this.check(method, detail);
+    if (!this.sharedInstalls) throw new OrchestratorCallError(404, 'not-found', 'No such route');
+  }
+
+  private mountedBy(id: string): string[] {
+    return [...this.containers.values()]
+      .filter((c) => c.spec.install === id)
+      .map((c) => c.id)
+      .sort();
+  }
+
+  private installView(i: FakeInstall): InstallInfo {
+    return {
+      id: i.id,
+      adapter: i.adapter,
+      flavour: i.flavour,
+      runtime: i.runtime,
+      variant: i.variant,
+      volume: `fake-inst-${i.id}`,
+      createdAt: i.createdAt,
+      mountedBy: this.mountedBy(i.id),
+      job: i.job
+        ? {
+            kind: i.job.kind,
+            state: i.job.state,
+            startedAt: i.createdAt,
+            finishedAt: null,
+            exitCode: i.job.exitCode,
+            image: `gsp/${i.runtime}:fake`,
+            agentUrl: i.job.kind === 'install' ? `http://job-${i.id}:8081` : null,
+            from: i.job.from,
+          }
+        : null,
+    };
+  }
+
+  async installs(): Promise<InstallInfo[]> {
+    this.sharedOnly('installs', '');
+    return [...this.installsById.values()].map((i) => this.installView(i));
+  }
+
+  /** Recorded as `putInstall <id>`, with ` from=<id>` or ` fromServer=<id>`. */
+  async putInstall(spec: InstallJobSpec, o: InstallPutOptions = {}): Promise<InstallInfo> {
+    this.sharedOnly('putInstall', `${spec.id}${o.from ? ` from=${o.from}` : ''}${o.fromServer ? ` fromServer=${o.fromServer}` : ''}`);
+    const from = o.from ?? (o.fromServer ? `server:${o.fromServer}` : null);
+    const kind = from === null ? 'install' : 'copy';
+    const hash = createHash('sha256').update(JSON.stringify({ spec, kind, from })).digest('hex');
+    const old = this.installsById.get(spec.id);
+    if (old?.job) {
+      if (old.job.hash !== hash) throw new OrchestratorCallError(409, 'conflict', `Install ${spec.id} has a job already`, 'id', 'install-busy');
+      return this.installView(old);
+    }
+    if (old && (old.adapter !== spec.env.GAME_ADAPTER || old.flavour !== (spec.env.GAME_FLAVOUR ?? null))) throw new OrchestratorCallError(403, 'refused', `Install ${spec.id} was made for another game`, 'id');
+    if (old && from) throw new OrchestratorCallError(409, 'conflict', `Install ${spec.id} exists already: a copy goes into a new install`, 'id');
+    if (this.mountedBy(spec.id).length) throw new OrchestratorCallError(409, 'conflict', `Install ${spec.id} is mounted`, 'id', 'install-in-use');
+    let marker: SharedInstallMarker | null = old?.marker ?? null;
+    let filledFrom = old?.filledFrom ?? [];
+    if (o.from) {
+      const src = this.installsById.get(o.from);
+      if (!src) throw new OrchestratorCallError(403, 'refused', `Install ${o.from} does not exist in this stack`, 'from');
+      if (src.job) throw new OrchestratorCallError(409, 'conflict', `Install ${o.from} has a job`, 'from', 'install-busy');
+      if (!src.marker) throw new OrchestratorCallError(409, 'conflict', `No install job finished install ${o.from}`, 'from', 'install-not-ready');
+      marker = src.marker;
+      filledFrom = [...src.filledFrom, o.from];
+    }
+    if (o.fromServer) {
+      if (!this.ownInstalls.has(o.fromServer)) throw new OrchestratorCallError(403, 'refused', `Server ${o.fromServer} has no install volume of its own`, 'fromServer');
+      if (this.containers.get(o.fromServer)?.state === 'running') throw new OrchestratorCallError(409, 'conflict', `Server ${o.fromServer} is running`, 'fromServer', 'server-running');
+      marker = null;
+      filledFrom = [`server:${o.fromServer}`];
+    }
+    const i: FakeInstall = {
+      id: spec.id,
+      adapter: spec.env.GAME_ADAPTER,
+      flavour: spec.env.GAME_FLAVOUR ?? null,
+      runtime: spec.runtime,
+      variant: spec.variant ?? null,
+      createdAt: old?.createdAt ?? new Date().toISOString(),
+      marker,
+      filledFrom,
+      job: { kind, hash, token: spec.env.AGENT_TOKEN, from, state: kind === 'copy' ? 'exited' : 'running', exitCode: kind === 'copy' ? this.copyExit : null, launch: null },
+    };
+    if (kind === 'copy') this.copies.push(`${spec.id} ${from}`);
+    this.installsById.set(spec.id, i);
+    return this.installView(i);
+  }
+
+  async removeInstallJob(id: string) {
+    this.sharedOnly('removeInstallJob', id);
+    const i = this.installsById.get(id);
+    if (!i?.job) return { removed: false };
+    i.job = null;
+    return { removed: true };
+  }
+
+  async removeInstall(id: string) {
+    this.sharedOnly('removeInstall', id);
+    const i = this.installsById.get(id);
+    if (!i) return { removed: false };
+    if (i.job) throw new OrchestratorCallError(409, 'conflict', `Install ${id} has a job`, 'id', 'install-busy');
+    const users = this.mountedBy(id);
+    if (users.length) throw new OrchestratorCallError(409, 'conflict', `Install ${id} is mounted by ${users.map((u) => `server ${u}`).join(', ')}`, 'id', 'install-in-use');
+    this.installsById.delete(id);
+    return { removed: true };
+  }
+
+  async removeOwnInstall(serverId: string) {
+    this.sharedOnly('removeOwnInstall', serverId);
+    if (!this.ownInstalls.has(serverId)) return { removed: false };
+    const c = this.containers.get(serverId);
+    if (c && c.spec.install === undefined) throw new OrchestratorCallError(409, 'conflict', `Server ${serverId}'s own install is mounted by server ${serverId}`, 'id', 'install-in-use');
+    this.ownInstalls.delete(serverId);
+    return { removed: true };
+  }
+
+  /**
+   * An install job's agent (the panel's `jobAgent` factory): it answers once
+   * its job runs, keeps the launch, and its install writes the marker of
+   * `jobKey` (or fails with `failJobs`), after `hold`.
+   */
+  jobAgent(url: string, token: string): AgentApi {
+    const id = /^http:\/\/job-(i[a-z0-9]+):8081$/.exec(url)?.[1] ?? '';
+    const live = () => {
+      const i = this.installsById.get(id);
+      if (!i?.job || i.job.kind !== 'install' || i.job.token !== token) throw new AgentCallError(503, 'unreachable', 'Install job agent unreachable');
+      return i;
+    };
+    const status = async (): Promise<AgentStatus> => {
+      const i = live();
+      return fakeStatus({ installedInfo: null, install: { mode: 'job', sharing: { mode: 'shared' }, marker: i.marker, mismatch: null } });
+    };
+    const refuse = async (): Promise<never> => {
+      throw new AgentCallError(409, 'conflict', 'This is an install job');
+    };
+    return {
+      status,
+      setLaunch: async (l) => {
+        live().job!.launch = l;
+        return status();
+      },
+      install: async () => {
+        const i = live();
+        // A job drops the marker a copy brought, and writes its own last.
+        i.marker = null;
+        if (this.hold) await this.hold;
+        this.jobsRun.push(id);
+        if (this.failJobs) return { ok: false, error: this.failJobs };
+        const spec: InstallJobSpec = { id, runtime: i.runtime, ...(i.variant ? { variant: i.variant } : {}), env: { AGENT_TOKEN: token, GAME_ADAPTER: i.adapter, ...(i.flavour ? { GAME_FLAVOUR: i.flavour } : {}), TZ: 'UTC' } };
+        const key = this.jobKey(spec, i.job!.launch);
+        i.marker = { schema: 1, adapter: i.adapter, flavour: i.flavour, mode: 'shared', key, installed: { version: key.version, ...(key.build ? { build: key.build } : {}), ...(key.branch ? { channel: key.branch } : {}) }, redirects: [], bytes: 1_000_000, files: 10, agentVersion: 'fake', finishedAt: new Date().toISOString() };
+        // A job on nothing copied downloads the whole game.
+        if (i.filledFrom.length === 0) this.downloads.push(id);
+        return { ok: true };
+      },
+      versions: refuse,
+      start: refuse,
+      stop: refuse,
+      restart: refuse,
+      kill: refuse,
+      command: refuse,
+      save: refuse,
+      action: refuse,
+      lock: refuse,
+      renewLock: refuse,
+      unlock: refuse,
+    };
   }
 }
 
@@ -365,7 +606,10 @@ export async function makePanel(
       agent: (row, target) => Object.assign(fakes(row.id), { target, made: (fakes(row.id).made ?? 0) + 1 }),
       files: (row, _target, e) =>
         isManaged(row) ? new LocalServerFiles({ data: fakes(row.id).dataDir, install: path.join(tmp, 'servers', row.id, 'install') }) : new LocalServerFiles({ data: e.pzDataDir, install: e.pzInstallDir }),
+      // Install jobs' agents are the fake orchestrator's (HST-09).
+      jobAgent: (url, token) => orch.jobAgent(url, token),
     },
+    installPollMs: 5,
   });
   await bootstrapOwner(deps);
   const app = await buildApp(deps);

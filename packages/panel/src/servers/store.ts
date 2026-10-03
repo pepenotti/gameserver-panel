@@ -35,9 +35,17 @@ export interface ServerRow {
   createdBy: number | null;
   /** Order in lists. */
   sort: number;
+  /**
+   * The shared install it should run from (HST-09, D12); null: its own
+   * install volume (a server from before shared installs, until it moves at
+   * its next start, or a game whose installs aren't shared). What its
+   * container mounts now is `spec.install`: when they differ, the server
+   * moves at its next start (the `install` pending reason).
+   */
+  installId: string | null;
 }
 
-export type NewServer = Omit<ServerRow, 'createdAt' | 'spec' | 'eulaAcceptedAt' | 'eulaAcceptedBy' | 'sort'> & Partial<Pick<ServerRow, 'spec' | 'sort' | 'eulaAcceptedAt' | 'eulaAcceptedBy'>>;
+export type NewServer = Omit<ServerRow, 'createdAt' | 'spec' | 'eulaAcceptedAt' | 'eulaAcceptedBy' | 'sort' | 'installId'> & Partial<Pick<ServerRow, 'spec' | 'sort' | 'eulaAcceptedAt' | 'eulaAcceptedBy' | 'installId'>>;
 
 /**
  * What can change about a server after it was created. Its name and order
@@ -58,7 +66,7 @@ export interface ServerPatch {
  * key to `servers` (the audit log must outlive a server), so removing one
  * deletes from each explicitly; `audit` is deliberately not here.
  */
-const SERVER_TABLES = ['server_grants', 'server_settings', 'server_mods', 'config_versions', 'player_sessions', 'proposals'] as const;
+const SERVER_TABLES = ['server_grants', 'server_settings', 'server_mods', 'config_versions', 'player_sessions', 'proposals', 'install_leftovers'] as const;
 
 interface DbRow {
   id: string;
@@ -76,9 +84,10 @@ interface DbRow {
   created_at: string;
   created_by: number | null;
   sort: number;
+  install_id: string | null;
 }
 
-const COLUMNS = 'id, name, adapter, flavour, game_name, version_pin, ports, mem_limit_mb, cpus, spec, eula_accepted_at, eula_accepted_by, created_at, created_by, sort';
+const COLUMNS = 'id, name, adapter, flavour, game_name, version_pin, ports, mem_limit_mb, cpus, spec, eula_accepted_at, eula_accepted_by, created_at, created_by, sort, install_id';
 
 function toRow(r: DbRow): ServerRow {
   return {
@@ -97,6 +106,7 @@ function toRow(r: DbRow): ServerRow {
     createdAt: r.created_at,
     createdBy: r.created_by,
     sort: r.sort,
+    installId: r.install_id,
   };
 }
 
@@ -125,7 +135,7 @@ export class ServersStore {
     if (!isServerId(s.id)) throw new Error(`Invalid server id ${JSON.stringify(s.id)}`);
     this.db
       .prepare(
-        'INSERT INTO servers (id, name, adapter, flavour, game_name, version_pin, ports, mem_limit_mb, cpus, secrets, spec, created_at, created_by, sort, eula_accepted_at, eula_accepted_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO servers (id, name, adapter, flavour, game_name, version_pin, ports, mem_limit_mb, cpus, secrets, spec, created_at, created_by, sort, eula_accepted_at, eula_accepted_by, install_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
       )
       .run(
         s.id,
@@ -144,6 +154,7 @@ export class ServersStore {
         s.sort ?? 0,
         s.eulaAcceptedAt ?? null,
         s.eulaAcceptedBy ?? null,
+        s.installId ?? null,
       );
     return this.get(s.id)!;
   }
@@ -191,6 +202,11 @@ export class ServersStore {
 
   setSpec(id: string, spec: ServerSpec | null): void {
     this.db.prepare('UPDATE servers SET spec = ? WHERE id = ?').run(spec ? JSON.stringify(spec) : null, id);
+  }
+
+  /** The shared install the server should run from (HST-09); null: its own install volume. */
+  setInstall(id: string, installId: string | null): void {
+    this.db.prepare('UPDATE servers SET install_id = ? WHERE id = ?').run(installId, id);
   }
 }
 

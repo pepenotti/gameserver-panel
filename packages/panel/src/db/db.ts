@@ -233,6 +233,43 @@ const MIGRATIONS: string[] = [
     SELECT 'default', 'steam-workshop', workshop_id, title, preview_url, time_updated, scanned_updated, info, added_at, added_by, last_checked, error FROM mods;
   DROP TABLE mods;
   `,
+  // Shared installs (HST-09, D12): one install per game, flavour and version,
+  // filled by an install job and mounted read-only by the servers on it. A
+  // server's `install_id` is the install it should run from (NULL: its own
+  // install volume, as before); what its container mounts now is its spec's.
+  // A server moved off its own install keeps that volume as a left-over
+  // until the owner removes it. Nothing existing is rebuilt.
+  `
+  CREATE TABLE installs (
+    id TEXT PRIMARY KEY CHECK (id GLOB 'i*' AND length(id) BETWEEN 9 AND 32 AND substr(id, 2) NOT GLOB '*[^a-z0-9]*'),
+    adapter TEXT NOT NULL,
+    flavour TEXT,
+    runtime TEXT NOT NULL,
+    variant TEXT,
+    wanted TEXT NOT NULL,
+    key TEXT,
+    state TEXT NOT NULL CHECK (state IN ('installing','ready','failed','removing')),
+    source TEXT,
+    bytes INTEGER,
+    files INTEGER,
+    marker TEXT,
+    error TEXT,
+    superseded_by TEXT,
+    created_at TEXT NOT NULL,
+    created_by INTEGER,
+    ready_at TEXT
+  );
+  CREATE INDEX installs_game ON installs(adapter, flavour, state);
+
+  ALTER TABLE servers ADD COLUMN install_id TEXT;
+
+  CREATE TABLE install_leftovers (
+    server_id TEXT PRIMARY KEY,
+    bytes INTEGER,
+    files INTEGER,
+    since TEXT NOT NULL
+  );
+  `,
 ];
 
 /** Settings keys that belong to one server (`server_settings`); every other key is the host's (`settings`). */

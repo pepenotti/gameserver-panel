@@ -58,7 +58,8 @@ describe('creating a server (SRV-01)', () => {
     expect(JSON.stringify(row)).not.toContain(secrets.agentToken);
     // Ports next to default's (16261/16262), as a pair; memory = heap + the adapter's overhead.
     expect(row).toMatchObject({ name: 'Second', adapter: 'pz', flavour: null, gameName: 'pz-two', ports: { game: 16263, udp: 16264 }, memLimitMb: 4096 + 3072, createdBy: 1 });
-    expect(p.orch.calls).toEqual(['host', 'list', 'apply pz-two', 'start pz-two']);
+    // An orchestrator without shared installs (HST-09) is asked, and the server keeps an install of its own.
+    expect(p.orch.calls).toEqual(['host', 'list', 'installs', 'apply pz-two', 'start pz-two']);
     const sent = p.orch.containers.get('pz-two')!;
     expect(sent.state).toBe('running');
     expect(sent.spec).toEqual({

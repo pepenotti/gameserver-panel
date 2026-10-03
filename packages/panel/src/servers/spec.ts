@@ -49,6 +49,8 @@ export function buildSpec(row: ServerRow, adapter: PanelAdapter, o: { agentToken
   // The install's image variant (`SERVER_IMAGE_VARIANT`: the fake game images in dev and test slots).
   if (o.variant) spec.variant = o.variant;
   if (row.cpus !== null) spec.cpus = row.cpus;
+  // A shared install (HST-09, D12), mounted read-only; without one, the server's own install volume, as before.
+  if (row.installId) spec.install = row.installId;
   return spec;
 }
 
