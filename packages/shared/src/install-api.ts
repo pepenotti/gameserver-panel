@@ -71,7 +71,7 @@ export interface InstallKey {
  * names its branch, never its build, which only an install job learns).
  * An install fits it when its key has the flavour it names and every other
  * field it pins. `channel` is the least stable release channel the launch
- * takes (Paper's build channel, tModLoader's), compared as it is written:
+ * takes (a loader's build channel), compared as it is written:
  * an install made for one channel isn't given to a launch of another. The
  * agent still refuses a start whose launch its install doesn't fit
  * (`install-mismatch`).
