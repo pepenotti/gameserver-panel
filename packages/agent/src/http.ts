@@ -4,13 +4,32 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { MAX_RELS, ServerFilesError, TarError } from '@gsp/archive';
 import { FS_WRITE_MAX_BYTES, type AgentError as AgentErrorBody, type FsListResponse, type FsOkResponse, type FsStatResponse, type ServerFilesErrorCode, type StageResponse, type SwapResponse } from '@gsp/shared';
-import { AgentError, type Agent } from './agent';
+import { AgentError, INSTALL_JOB_REFUSAL, type Agent } from './agent';
 import type { EventHub } from './events';
 
 const MAX_BODY = 64 * 1024;
 const ACTION_ROUTE = /^\/v1\/actions\/([a-z][a-z0-9-]{0,39})$/;
 /** Routes whose body is a stream (a file, an archive), not JSON. */
 const STREAM_ROUTES = new Set(['PUT /v1/fs/write', 'POST /v1/archive/stage']);
+/**
+ * What an install job answers (HST-09): its status and events, the launch
+ * and install it is driven by, the version list, locks, and reads of its
+ * files. Everything else (starting the game, commands, saves, actions, file
+ * writes, archives) is refused with `install-job`.
+ */
+const INSTALL_JOB_ROUTES: ReadonlySet<string> = new Set([
+  'GET /v1/status',
+  'GET /v1/events',
+  'PUT /v1/launch',
+  'POST /v1/install',
+  'POST /v1/versions',
+  'POST /v1/lock',
+  'PUT /v1/lock',
+  'DELETE /v1/lock',
+  'POST /v1/fs/stat',
+  'POST /v1/fs/list',
+  'POST /v1/fs/read',
+]);
 
 class HttpError extends Error {
   constructor(
@@ -175,6 +194,11 @@ export function createAgentServer(agent: Agent, hub: EventHub, token: string): h
         const auth = req.headers.authorization ?? '';
         if (!auth.startsWith('Bearer ') || !sameToken(auth.slice(7), token)) throw new HttpError(401, 'unauthorized', 'Unauthorized');
         const lockId = typeof req.headers['x-lock-id'] === 'string' ? req.headers['x-lock-id'] : undefined;
+        if (agent.installMode() === 'job' && !INSTALL_JOB_ROUTES.has(route)) {
+          // Before the body is read: nothing of it reaches the files or the game.
+          req.resume();
+          throw new AgentError('conflict', INSTALL_JOB_REFUSAL, 'install-job');
+        }
         if (STREAM_ROUTES.has(route)) return await streamRoute(agent, route, url, req, res);
         const body = await readJson(req);
 
@@ -270,7 +294,7 @@ export function createAgentServer(agent: Agent, hub: EventHub, token: string): h
           return;
         }
         if (e instanceof HttpError) return send(res, e.status, { error: e.message, code: e.code } satisfies AgentErrorBody);
-        if (e instanceof AgentError) return send(res, STATUS_FOR[e.code], { error: e.message, code: e.code } satisfies AgentErrorBody);
+        if (e instanceof AgentError) return send(res, STATUS_FOR[e.code], { error: e.message, code: e.code, ...(e.install ? { install: e.install } : {}) } satisfies AgentErrorBody);
         if (e instanceof ServerFilesError) {
           return send(res, FILE_STATUS[e.code], { error: e.message, code: e.code === 'unknown-root' ? 'not-found' : 'bad-request', reason: e.code } satisfies AgentErrorBody);
         }

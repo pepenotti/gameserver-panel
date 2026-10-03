@@ -170,6 +170,18 @@ describe('install', () => {
     expect(pz.installed(ctx({ env: { PZ_APP_ID: '999' } }).c)).toBeNull();
   });
 
+  it('shares its install, its own Workshop downloads redirected into the data, and names an install by branch and build (HST-09, D12)', () => {
+    // Measured on 42.21.0 (docs/verification/shared-installs.md): the agent's Workshop cache is the target.
+    expect(pz.meta.install).toEqual({ mode: 'shared', redirects: [{ path: 'steamapps/workshop', to: '/data/.workshop/steamapps/workshop' }] });
+    const { c } = ctx({ gameVersion: '42.21.0' });
+    expect(pz.installKey!(c)).toBeNull();
+    writeManifest('380870', '25485538', 'public');
+    // The version line is learnt per server, never part of an install's identity.
+    expect(pz.installKey!(c)).toEqual({ flavour: null, version: null, build: '25485538', branch: 'public' });
+    writeManifest('380870', '20111111', 'legacy41');
+    expect(pz.installKey!(c)).toEqual({ flavour: null, version: null, build: '20111111', branch: 'legacy41' });
+  });
+
   it('installs first when nothing or another branch is installed; updates when asked', () => {
     const { c } = ctx();
     expect(pz.installOnStart!(c, launch)).toBe('required');
@@ -186,9 +198,9 @@ describe('install', () => {
     await pz.install!(c, { ...launch, branch: 'legacy41' }, { validate: true });
     await pz.install!(ctx({ steam, env: { PZ_APP_ID: '12345' } }).c, launch, { validate: false });
     expect(calls).toEqual([
-      ['appUpdate', { appId: '380870', branch: null, validate: false }],
+      ['appUpdate', { appId: '380870', branch: 'public', validate: false }],
       ['appUpdate', { appId: '380870', branch: 'legacy41', validate: true }],
-      ['appUpdate', { appId: '12345', branch: null, validate: false }],
+      ['appUpdate', { appId: '12345', branch: 'public', validate: false }],
     ]);
     expect(progress[1]).toEqual([null, 'Validating (legacy41)']);
     await expect(pz.install!(ctx().c, launch, { validate: false })).rejects.toThrow(/steamcmd/);

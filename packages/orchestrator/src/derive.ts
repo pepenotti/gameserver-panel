@@ -34,6 +34,18 @@ export const LABEL = {
   configHash: 'gsp.config-hash',
   /** `DERIVATION_VERSION` of the orchestrator that derived it (part of the config hash). */
   derivation: 'gsp.derivation',
+  /** An install's id (HST-09): on its volume, its job, the job's network and HOME, a probe. */
+  install: 'gsp.install',
+  /** The game an install volume holds (set when it is created): adapter, flavour ('' for none), image family and variant ('' for none). */
+  installAdapter: 'gsp.install.adapter',
+  installFlavour: 'gsp.install.flavour',
+  installRuntime: 'gsp.install.runtime',
+  installVariant: 'gsp.install.variant',
+  /** A job container's kind (`install` or `copy`) and a copy's source. */
+  job: 'gsp.job',
+  jobFrom: 'gsp.job.from',
+  /** A container made only to read a file of a volume, never started. */
+  probe: 'gsp.probe',
 } as const;
 
 /**
@@ -110,7 +122,11 @@ export const MOUNTS: Readonly<Record<RuntimeFamily, readonly { volume: VolumeKin
 };
 
 /** The agent's roots, matching the mounts (`SPEC_ENV_DENIED`: the spec can't move them). */
-const ROOT_ENV: Readonly<Record<string, string>> = { GAME_DATA_DIR: '/data', GAME_INSTALL_DIR: '/opt/game' };
+export const ROOT_ENV: Readonly<Record<string, string>> = { GAME_DATA_DIR: '/data', GAME_INSTALL_DIR: '/opt/game' };
+/** Where the install goes in every family's mounts: a server's own install volume, a shared install (read-only) or an install job's. */
+export const INSTALL_TARGET = '/opt/game';
+/** Tells a server's agent its install is shared and read-only (HST-09; `SPEC_ENV_DENIED`: only the orchestrator sets it). */
+export const SHARED_INSTALL_ENV: Readonly<Record<string, string>> = { GSP_INSTALL_SHARED: '1' };
 
 /** The image repository a runtime and variant run, or a refusal. */
 export function imageName(runtime: RuntimeFamily, variant: string | undefined, allowFake: boolean): string {
@@ -143,6 +159,21 @@ export function names(stack: string, id: string) {
   };
 }
 
+/**
+ * An install's names (HST-09, D12), from its id: its volume, its job's
+ * container, network and HOME volume, and the probe that reads its marker.
+ * None can be a server's: those are `<stack>-srv-…` and `<stack>-net-…`.
+ */
+export function installNames(stack: string, id: string) {
+  return {
+    volume: `${stack}-inst-${id}`,
+    job: `${stack}-job-${id}`,
+    network: `${stack}-jobnet-${id}`,
+    home: `${stack}-job-${id}-steam`,
+    probe: `${stack}-probe-${id}`,
+  };
+}
+
 /** Where the panel reaches a server's agent: by container name, on the server's own network. */
 export const agentUrl = (stack: string, id: string) => `http://${names(stack, id).container}:${AGENT_PORT}`;
 
@@ -164,7 +195,8 @@ export interface ContainerCreateBody {
     Privileged: false;
     ReadonlyRootfs: true;
     Tmpfs: Record<string, string>;
-    Mounts: { Type: 'volume'; Source: string; Target: string; ReadOnly: false }[];
+    /** Named volumes only; read-only for a shared install (HST-09), writable for the server's own. */
+    Mounts: { Type: 'volume'; Source: string; Target: string; ReadOnly: boolean }[];
     PortBindings: Record<string, { HostIp: string; HostPort: string }[]>;
     NetworkMode: string;
     RestartPolicy: { Name: 'unless-stopped'; MaximumRetryCount: 0 };
@@ -177,7 +209,10 @@ export interface ContainerCreateBody {
 export interface ContainerPlan {
   name: string;
   network: string;
+  /** The server's own volumes (created for it, owned by it). */
   volumes: { kind: VolumeKind; name: string }[];
+  /** The shared install it mounts read-only (`ServerSpec.install`); null: its own install volume. */
+  install: { id: string; volume: string } | null;
   image: string;
   specHash: string;
   configHash: string;
@@ -188,12 +223,16 @@ export interface ContainerPlan {
 export function planContainer(spec: ServerSpec, ctx: StackContext, d: Derivation = DERIVATION): ContainerPlan {
   const n = names(ctx.stack, spec.id);
   const image = `gsp/${imageName(spec.runtime, spec.variant, ctx.allowFake)}:${ctx.imageTag}`;
-  const env: Record<string, string | undefined> = { ...spec.env, ...ROOT_ENV };
+  // A shared install (HST-09, D12) takes the place of the server's own install volume, read-only, and the agent is told.
+  const shared = spec.install === undefined ? null : { id: spec.install, volume: installNames(ctx.stack, spec.install).volume };
+  const env: Record<string, string | undefined> = { ...spec.env, ...ROOT_ENV, ...(shared ? SHARED_INSTALL_ENV : {}) };
   const Env = Object.keys(env)
     .filter((k) => env[k] !== undefined)
     .sort()
     .map((k) => `${k}=${env[k]}`);
-  const volumes = MOUNTS[spec.runtime].map((m) => ({ kind: m.volume, name: n.volume(m.volume), target: m.target }));
+  const mounts = MOUNTS[spec.runtime].map((m) =>
+    m.volume === 'install' && shared ? { kind: m.volume, name: shared.volume, target: m.target, readOnly: true, own: false } : { kind: m.volume, name: n.volume(m.volume), target: m.target, readOnly: false, own: true },
+  );
   const ExposedPorts: Record<string, Record<string, never>> = {};
   const PortBindings: Record<string, { HostIp: string; HostPort: string }[]> = {};
   for (const p of spec.ports) {
@@ -218,7 +257,7 @@ export function planContainer(spec: ServerSpec, ctx: StackContext, d: Derivation
       Privileged: false,
       ReadonlyRootfs: true,
       Tmpfs: { ...TMPFS },
-      Mounts: volumes.map((v) => ({ Type: 'volume', Source: v.name, Target: v.target, ReadOnly: false })),
+      Mounts: mounts.map((v) => ({ Type: 'volume', Source: v.name, Target: v.target, ReadOnly: v.readOnly })),
       PortBindings,
       NetworkMode: n.network,
       RestartPolicy: { Name: 'unless-stopped', MaximumRetryCount: 0 },
@@ -233,7 +272,8 @@ export function planContainer(spec: ServerSpec, ctx: StackContext, d: Derivation
   return {
     name: n.container,
     network: n.network,
-    volumes: volumes.map(({ kind, name }) => ({ kind, name })),
+    volumes: mounts.filter((v) => v.own).map(({ kind, name }) => ({ kind, name })),
+    install: shared,
     image,
     specHash: sHash,
     configHash,

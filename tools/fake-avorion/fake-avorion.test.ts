@@ -361,6 +361,21 @@ describe('fake-avorion steamcmd.mjs', () => {
     }
   });
 
+  it('keeps an install on its beta branch when none is named, and moves it with -beta public (as measured, HST-09)', () => {
+    const real = readFileSync(path.join(here, '..', '..', 'fixtures', 'shared-installs', 'steamcmd', 'branch-switch.txt'), 'utf8');
+    expect(real).toContain("Success! App '565060' already up to date.");
+    const dir = tempDir();
+    const update = (...beta: string[]) => run(['+force_install_dir', dir, '+login', 'anonymous', '+app_update', '565060', ...beta, '+quit']).stdout;
+    const manifest = () => readFileSync(path.join(dir, 'steamapps', 'appmanifest_565060.acf'), 'utf8');
+    expect(update('-beta', 'previous')).toContain('fully installed');
+    expect(manifest()).toMatch(/"BetaKey"\t\t"previous"/);
+    expect(update()).toContain("Success! App '565060' already up to date.");
+    expect(manifest()).toMatch(/"buildid"\t\t"21146556"/);
+    expect(update('-beta', 'public')).toContain('fully installed');
+    expect(manifest()).toMatch(/"buildid"\t\t"22295362"/);
+    expect(manifest()).toMatch(/"BetaKey"\t\t"public"/);
+  });
+
   it('fails like a fresh steamcmd did on its first install: Missing configuration', () => {
     const real = fixture('steamcmd', 'app-update-565060-first-try.log');
     expect(real).toContain("ERROR! Failed to install app '565060' (Missing configuration)");

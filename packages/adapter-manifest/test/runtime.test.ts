@@ -196,7 +196,7 @@ describe('launching (UPD-01…03, CFG-04)', () => {
     await a.install!(install, avLaunch(), { validate: true });
     await a.install!(install, avLaunch({ branch: 'beta' }), { validate: false });
     expect(calls).toEqual([
-      { appId: '565060', branch: null, validate: true },
+      { appId: '565060', branch: 'public', validate: true },
       { appId: '565060', branch: 'beta', validate: false },
     ]);
     expect((await a.versions!(install, avLaunch())).versions.map((v) => v.id)).toEqual(['public', 'beta', 'other']);

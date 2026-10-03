@@ -123,11 +123,57 @@ if (requireJars && !fs.existsSync(path.resolve(cwd, jar))) {
 /** The thread of the first log lines: `main` under Fabric's launcher, `ServerMain` otherwise. */
 const MAIN = loader === 'fabric' ? 'main' : 'ServerMain';
 
-/** The vanilla bundler (also under Fabric): unpack the libraries the first time. */
+// A shared install (HST-09): an install an install job finished carries the shared-install marker,
+// and servers mount it read-only, so the fake treats an install with the marker as read-only (a real
+// read-only mount, as in the fake images, fails the same way).
+const SHARED_MARKER = '.gsp-shared-install.json';
+function readOnlyAt(target) {
+  let p = path.resolve(target);
+  for (;;) {
+    try {
+      fs.lstatSync(p);
+      break;
+    } catch {
+      const up = path.dirname(p);
+      if (up === p) return false;
+      p = up;
+    }
+  }
+  let real;
+  try {
+    real = fs.realpathSync(p);
+  } catch {
+    return false;
+  }
+  for (let d = real; ; d = path.dirname(d)) {
+    if (fs.existsSync(path.join(d, SHARED_MARKER))) return true;
+    if (path.dirname(d) === d) return false;
+  }
+}
+
+/**
+ * The vanilla bundler (also under Fabric): unpack the libraries the first time, into the repo
+ * dir (the install). Read-only, it can't (measured on 26.3, docs/verification/shared-installs.md):
+ * vanilla exits 0, Fabric's launcher 1, and the agent sees a crash loop. The install job's warm-up
+ * (`--help`) unpacks them once instead.
+ */
 function bundler() {
-  if (fs.existsSync(repo('libraries').abs)) return;
+  // What it unpacks first (Fabric's installer puts its own libraries in the same folder before).
   const v = repo(path.join('versions', VERSION, `server-${VERSION}.jar`));
+  if (fs.existsSync(v.abs)) return;
   out(`Unpacking ${VERSION}/server-${VERSION}.jar (versions:${VERSION}) to ${v.shown}`);
+  if (readOnlyAt(repo('versions').abs)) {
+    out(`java.nio.file.FileSystemException: ${repo('versions').shown}: Read-only file system`);
+    out('\tat net.minecraft.bundler.Main.extractJar(Main.java:105)');
+    out('\tat net.minecraft.bundler.Main.main(Main.java:25)');
+    out('Failed to extract server libraries, exiting');
+    if (loader === 'fabric') {
+      err('[00:00:00] [ERROR] [FabricLoader/]: Uncaught exception in thread "main"');
+      err('java.lang.RuntimeException: An exception occurred when launching the server!');
+      process.exit(1);
+    }
+    process.exit(0);
+  }
   fs.mkdirSync(path.dirname(v.abs), { recursive: true });
   fs.writeFileSync(v.abs, `FAKE server ${VERSION}\n`);
   for (const [p, coords] of [
@@ -140,6 +186,17 @@ function bundler() {
     fs.mkdirSync(path.dirname(l.abs), { recursive: true });
     fs.writeFileSync(l.abs, `FAKE ${coords}\n`);
   }
+}
+
+// `--help` on Mojang's jar (the install job's warm-up, measured on 26.3): the bundler unpacks, the
+// server prints its option list and exits 0, without starting a server or writing anything else.
+if (gameArgs.includes('--help')) {
+  bundler();
+  out('Starting net.minecraft.server.Main');
+  out('Option                 Description');
+  out('------                 -----------');
+  for (const o of ['--bonusChest', '--demo', '--eraseCache', '--forceUpgrade', '--help', '--initSettings', '--nogui', '--port <Integer>', '--safeMode', '--serverId <String>', '--universe <String>', '--world <String>']) out(o);
+  process.exit(0);
 }
 
 // ------------------------------------------------------------------- server.properties (26.3 defaults)

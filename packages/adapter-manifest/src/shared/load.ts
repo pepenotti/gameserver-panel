@@ -5,7 +5,7 @@
  * they are used, commands only for a game with a console. A manifest that
  * fails any of it is refused with every problem found, never half-used.
  */
-import { PERMISSIONS } from '@gsp/shared';
+import { PERMISSIONS, redirectProblem } from '@gsp/shared';
 import schemaJson from '../../manifest.schema.json';
 import { checkSchema, compiles, type JsonSchema } from './schema';
 import { RESERVED_KEYS } from './settings';
@@ -255,6 +255,17 @@ export function manifestProblems(m: SteamGameManifest): string[] {
       if (lf.ban && mod.banTargets && (mod.banTargets.length !== 1 || mod.banTargets[0] !== lf.target)) problem('moderation.banTargets', `must be [${lf.target}]: what the ban list holds`);
     }
     if (mod.banTargets && !mod.ban && !lf?.ban) problem('moderation.banTargets', 'are given without a way to ban');
+  }
+
+  // ------------------------------------------------------------ shared installs (HST-09, D12)
+  const inst = m.install;
+  if (inst) {
+    if (!inst.shared && inst.redirects?.length) problem('install.redirects', 'are for a shared install only');
+    for (const [i, r] of (inst.redirects ?? []).entries()) {
+      const why = redirectProblem(r);
+      if (why) problem(`install.redirects[${i}]`, why);
+    }
+    unique('install.redirects', (inst.redirects ?? []).map((r) => r.path));
   }
 
   // ------------------------------------------------------------ joining (SRV-08)

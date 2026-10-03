@@ -212,6 +212,43 @@ describe('a broken manifest is refused, every problem named', () => {
     expect(broken((m) => delete m.join.verified)).toEqual(['join.verified is required']);
   });
 
+  it('shared installs (HST-09, D12): redirects inside the install to targets under /data, for a shared install only', () => {
+    expect(broken((m) => (m.install = { shared: 'yes' }))).toEqual(['install.shared must be boolean, not string']);
+    expect(broken((m) => (m.install = { redirects: [] }))).toEqual(['install.shared is required']);
+    expect(broken((m) => (m.install = { shared: true, redirects: [{ path: '/abs', to: '/data/x' }] }))).toEqual([expect.stringMatching(/^install\.redirects\[0\]\.path must match/)]);
+    expect(broken((m) => (m.install = { shared: true, redirects: [{ path: 'logs', to: '/tmp/x' }] }))).toEqual([expect.stringMatching(/^install\.redirects\[0\]\.to must match/)]);
+    expect(broken((m) => (m.install = { shared: true, redirects: [{ path: 'a/../b', to: '/data/x' }] }))).toEqual([expect.stringMatching(/^install\.redirects\[0\] has a path that isn't one inside the install/)]);
+    expect(broken((m) => (m.install = { shared: true, redirects: [{ path: 'logs', to: '/data/../etc' }] }))).toEqual([expect.stringMatching(/^install\.redirects\[0\] has a target that isn't one inside the data root/)]);
+    expect(broken((m) => (m.install = { shared: true, redirects: [{ path: '.gsp-shared-install.json', to: '/data/x' }] }))).toEqual(['install.redirects[0] would replace the shared-install marker']);
+    expect(broken((m) => (m.install = { shared: false, redirects: [{ path: 'logs', to: '/data/logs' }] }))).toEqual(['install.redirects are for a shared install only']);
+    expect(
+      broken(
+        (m) =>
+          (m.install = {
+            shared: true,
+            redirects: [
+              { path: 'logs', to: '/data/logs' },
+              { path: 'logs', to: '/data/logs2' },
+            ],
+          }),
+      ),
+    ).toEqual(['install.redirects has logs twice']);
+  });
+
+  it('shared installs reach the adapter in the contract terms: shared with its redirects, else its own install', () => {
+    const shared = avorionJson() as Json;
+    shared.id = 'avorion-shared';
+    shared.install = { shared: true, redirects: [{ path: 'logs', to: '/data/logs' }] };
+    expect(manifestMeta(loadManifest(shared)).install).toEqual({ mode: 'shared', redirects: [{ path: 'logs', to: '/data/logs' }] });
+    const own = avorionJson() as Json;
+    own.id = 'avorion-own';
+    delete own.install;
+    expect(manifestMeta(loadManifest(own)).install).toEqual({ mode: 'own' });
+    own.id = 'avorion-own-2';
+    own.install = { shared: false };
+    expect(manifestMeta(loadManifest(own)).install).toEqual({ mode: 'own' });
+  });
+
   it('joining (SRV-08) reaches the adapter in the contract terms: a setting is a launch setting', () => {
     const m = avorionJson() as Json;
     m.join.steps = [

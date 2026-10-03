@@ -15,19 +15,65 @@
 //   `rebuildImage` stands for `docker build` again under the same tag;
 // - each "container" records the derivation version it was made with, and
 //   `changeDerivation` stands for an orchestrator release that derives
-//   containers differently (a security fix, if it says so).
+//   containers differently (a security fix, if it says so);
+// - shared installs (HST-09, D12) are folders under `installs/<id>/`: an
+//   install job is a local agent in install-job mode on `install/`, with
+//   `data/` as its data folder, kept with the install (there are no mount
+//   namespaces here, so the redirect links the job makes point into it: the
+//   servers on one install share what lands behind them); a copy job is a
+//   local copy; a server on a shared install gets its folder as its install
+//   and is told it is shared, but nothing makes it read-only (the fake games
+//   treat an install holding the shared-install marker as read-only).
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import dgram from 'node:dgram';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { PortDecl } from '@gsp/adapter-api';
 import { runtimeAdapter } from '@gsp/adapters/runtime';
-import { conflict, DEFAULT_STOP_TIMEOUT_SEC, DERIVATION, derivationState, IdLocks, imageName, LABEL, Mutex, notFound, refused, specHash, type Backend, type Derivation, type Policy } from '@gsp/orchestrator';
-import type { ApplyOptions, ContainerState, CpuArch, DeleteResponse, HostInfo, PortProto, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
+import {
+  canonicalJson,
+  conflict,
+  DEFAULT_STOP_TIMEOUT_SEC,
+  DERIVATION,
+  derivationState,
+  gameMismatch,
+  IdLocks,
+  imageName,
+  installConflict,
+  LABEL,
+  MAX_INSTALL_JOBS,
+  Mutex,
+  notFound,
+  refused,
+  serverMismatch,
+  specHash,
+  type Backend,
+  type CopySource,
+  type Derivation,
+  type InstallGame,
+  type Policy,
+} from '@gsp/orchestrator';
+import {
+  SHARED_INSTALL_MARKER,
+  type ApplyOptions,
+  type ContainerState,
+  type CpuArch,
+  type DeleteResponse,
+  type HostInfo,
+  type InstallDeleteResponse,
+  type InstallInfo,
+  type InstallJob,
+  type InstallJobKind,
+  type InstallJobSpec,
+  type PortProto,
+  type ServerContainer,
+  type ServerSpec,
+  type ServerStats,
+} from '@gsp/shared';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const AGENT_ENTRY = fileURLToPath(new URL('./agent-entry.mjs', import.meta.url));
@@ -78,6 +124,23 @@ interface Stored {
   internal: Record<string, number>;
   /** Unless-stopped: started and not stopped since, so it comes back with the fake orchestrator. */
   running: boolean;
+}
+
+/** A shared install (HST-09): the game it holds, and its job while one exists. */
+interface StoredInstall {
+  game: InstallGame;
+  createdAt: string;
+  job: StoredJob | null;
+}
+
+interface StoredJob {
+  kind: InstallJobKind;
+  specHash: string;
+  spec: InstallJobSpec;
+  from: string | null;
+  image: string;
+  /** Install jobs: their agent's port. */
+  agentPort: number | null;
 }
 
 interface Live {
@@ -136,6 +199,10 @@ export class FakeBackend implements Backend {
   private readonly creating = new Mutex();
   private readonly stored = new Map<string, Stored>();
   private readonly live = new Map<string, Live>();
+  private readonly stockedInstalls = new Map<string, StoredInstall>();
+  /** Jobs: an install job's agent, or a copy (done in this process), by install id. */
+  private readonly jobs = new Map<string, Live>();
+  private readonly installBusy = new IdLocks();
   /** Image name → the content id it names now. */
   private readonly images = new Map<string, string>();
   /** How this "release" derives containers (the real one's, until `changeDerivation`). */
@@ -147,7 +214,9 @@ export class FakeBackend implements Backend {
     mkdirSync(o.stateDir, { recursive: true });
     this.file = path.join(o.stateDir, 'servers.json');
     if (existsSync(this.file)) {
-      const saved = JSON.parse(readFileSync(this.file, 'utf8')) as { servers?: Record<string, Partial<Stored> & Omit<Stored, 'imageId' | 'derivation'>>; images?: Record<string, string>; derivation?: Derivation };
+      const saved = JSON.parse(readFileSync(this.file, 'utf8')) as { servers?: Record<string, Partial<Stored> & Omit<Stored, 'imageId' | 'derivation'>>; images?: Record<string, string>; derivation?: Derivation; installs?: Record<string, StoredInstall> };
+      // A job doesn't outlive the fake orchestrator: its install stays, its job is gone.
+      for (const [id, i] of Object.entries(saved.installs ?? {})) this.stockedInstalls.set(id, { ...i, job: null });
       for (const [name, id] of Object.entries(saved.images ?? {})) this.images.set(name, id);
       if (saved.derivation) this.derivation = saved.derivation;
       // A state file from before image ids or derivations: each server runs what its image names now, derived as now.
@@ -198,6 +267,7 @@ export class FakeBackend implements Backend {
   async shutdown(): Promise<void> {
     this.closing = true;
     await Promise.all([...this.live.keys()].map((id) => this.halt(id, 30)));
+    await Promise.all([...this.jobs.keys()].map((id) => this.haltJob(id)));
   }
 
   private log(line: string): void {
@@ -205,7 +275,7 @@ export class FakeBackend implements Backend {
   }
 
   private save(): void {
-    writeFileSync(this.file, JSON.stringify({ servers: Object.fromEntries(this.stored), images: Object.fromEntries(this.images), derivation: this.derivation }, null, 2), { mode: 0o600 });
+    writeFileSync(this.file, JSON.stringify({ servers: Object.fromEntries(this.stored), images: Object.fromEntries(this.images), derivation: this.derivation, installs: Object.fromEntries(this.stockedInstalls) }, null, 2), { mode: 0o600 });
   }
 
   private liveOf(id: string): Live {
@@ -263,12 +333,14 @@ export class FakeBackend implements Backend {
       if (spec.cpus !== undefined && spec.cpus > os.cpus().length) throw refused('cpus', `This host has ${os.cpus().length} CPUs`);
       await this.creating.run(async () => {
         if (!old && this.stored.size >= this.o.policy.maxServers) throw refused('id', `This host allows at most ${this.o.policy.maxServers} servers`);
+        if (spec.install !== undefined) this.checkSharedInstall(spec, spec.install);
         await this.checkPorts(spec);
       });
       if (old && this.liveOf(spec.id).proc) await this.halt(spec.id, DEFAULT_STOP_TIMEOUT_SEC);
       await this.creating.run(async () => {
+        if (spec.install !== undefined) this.checkSharedInstall(spec, spec.install);
         await this.checkPorts(spec);
-        const agentPort = old?.agentPort ?? this.freePort(this.o.agentPorts, new Set([...this.stored.values()].map((s) => s.agentPort)), 'agent');
+        const agentPort = old?.agentPort ?? this.freePort(this.o.agentPorts, this.agentPortsUsed(), 'agent');
         const internal: Record<string, number> = {};
         const usedInternal = new Set([...this.stored.entries()].filter(([id]) => id !== spec.id).flatMap(([, s]) => Object.values(s.internal)));
         for (const d of portDecls(spec.env.GAME_ADAPTER)) {
@@ -328,11 +400,224 @@ export class FakeBackend implements Backend {
       AGENT_HOST: '127.0.0.1',
       AGENT_PORT: String(s.agentPort),
       GAME_DATA_DIR: path.join(dir, 'data'),
-      GAME_INSTALL_DIR: path.join(dir, 'install'),
+      // A shared install (HST-09) in place of its own, and the agent told so, as the orchestrator does.
+      GAME_INSTALL_DIR: s.spec.install === undefined ? path.join(dir, 'install') : this.installDir(s.spec.install),
+      ...(s.spec.install === undefined ? {} : { GSP_INSTALL_SHARED: '1' }),
       HOME: path.join(dir, 'steam'),
       STEAMCMD_COMMAND: JSON.stringify([node, FAKE_GAME, 'steamcmd']),
       GAME_START_COMMAND: JSON.stringify([node, FAKE_GAME, 'server']),
     };
+  }
+
+  // ------------------------------------------------------------ shared installs (HST-09, D12)
+
+  private installRoot(id: string): string {
+    return path.join(this.o.stateDir, 'installs', id);
+  }
+
+  /** The install's files, as servers on it see them. */
+  installDir(id: string): string {
+    return path.join(this.installRoot(id), 'install');
+  }
+
+  private agentPortsUsed(): Set<number> {
+    const used = new Set([...this.stored.values()].map((s) => s.agentPort));
+    for (const i of this.stockedInstalls.values()) if (i.job?.agentPort) used.add(i.job.agentPort);
+    return used;
+  }
+
+  /** As the real one refuses (`DockerBackend`): no such install, another game's, one with a job, one no job finished. */
+  private checkSharedInstall(spec: ServerSpec, id: string): void {
+    const i = this.stockedInstalls.get(id);
+    if (!i) throw refused('install', `Install ${id} does not exist in this stack`);
+    const why = serverMismatch(i.game, spec);
+    if (why) throw refused('install', `Install ${id} doesn't fit server ${spec.id}: ${why}`);
+    if (i.job) throw installConflict('install-busy', `Install ${id} has a job: no server mounts it before its job is removed`);
+    if (!existsSync(path.join(this.installDir(id), SHARED_INSTALL_MARKER))) throw installConflict('install-not-ready', `No install job finished install ${id} (it has no shared-install marker): no server mounts it`);
+  }
+
+  private mountedBy(id: string): string[] {
+    return [...this.stored.entries()].filter(([, s]) => s.spec.install === id).map(([sid]) => sid).sort();
+  }
+
+  private describeInstall(id: string): InstallInfo {
+    const i = this.stockedInstalls.get(id);
+    if (!i) throw notFound(`Install ${id} does not exist in this stack`);
+    const l = this.jobs.get(id);
+    const job: InstallJob | null = i.job
+      ? {
+          kind: i.job.kind,
+          state: (l?.state ?? 'exited') as InstallJob['state'],
+          startedAt: l?.startedAt ?? null,
+          finishedAt: l?.finishedAt ?? null,
+          exitCode: l && l.state === 'exited' ? l.exitCode : null,
+          image: i.job.image,
+          agentUrl: i.job.agentPort ? `http://127.0.0.1:${i.job.agentPort}` : null,
+          from: i.job.from,
+        }
+      : null;
+    return { id, ...i.game, volume: `installs/${id}`, createdAt: i.createdAt, mountedBy: this.mountedBy(id), job };
+  }
+
+  async installs(): Promise<InstallInfo[]> {
+    return [...this.stockedInstalls.keys()].sort().map((id) => this.describeInstall(id));
+  }
+
+  putInstall(spec: InstallJobSpec, src: CopySource | null): Promise<InstallInfo> {
+    const id = spec.id;
+    return this.installBusy.run(id, async () => {
+      const kind: InstallJobKind = src === null ? 'install' : 'copy';
+      const from = src === null ? null : 'install' in src ? src.install : `server:${src.server}`;
+      const hash = createHash('sha256').update(canonicalJson({ spec, kind, from })).digest('hex');
+      const old = this.stockedInstalls.get(id);
+      if (old?.job) {
+        if (old.job.specHash !== hash) throw installConflict('install-busy', `Install ${id} has a job already: remove it first`, 'id');
+        return this.describeInstall(id);
+      }
+      const game: InstallGame = { adapter: spec.env.GAME_ADAPTER, flavour: spec.env.GAME_FLAVOUR ?? null, runtime: spec.runtime, variant: spec.variant ?? null };
+      await this.creating.run(async () => {
+        if ([...this.stockedInstalls.values()].filter((i) => i.job).length >= MAX_INSTALL_JOBS) throw conflict(`At most ${MAX_INSTALL_JOBS} install jobs run at once on this host`, 'id');
+        if (old) {
+          const why = gameMismatch(old.game, spec);
+          if (why) throw refused('id', `Install ${id} was made for another game: ${why}`);
+          if (src) throw conflict(`Install ${id} exists already: a copy goes into a new install`, 'id');
+        }
+        const users = this.mountedBy(id);
+        if (users.length) throw installConflict('install-in-use', `Install ${id} is mounted by ${users.map((u) => `server ${u}`).join(', ')}: a job never writes an install a server reads`, 'id');
+        const source = src === null ? null : this.copySource(spec, src);
+        const image = `gsp/${imageName(spec.runtime, spec.variant, true)}:${this.o.imageTag ?? 'dev'}`;
+        const job: StoredJob = { kind, specHash: hash, spec, from, image, agentPort: kind === 'install' ? this.freePort(this.o.agentPorts, this.agentPortsUsed(), 'agent') : null };
+        this.stockedInstalls.set(id, { game, createdAt: old?.createdAt ?? new Date().toISOString(), job });
+        for (const sub of ['install', 'data']) mkdirSync(path.join(this.installRoot(id), sub), { recursive: true });
+        this.save();
+        if (source !== null) this.copy(id, source);
+        else this.launchJob(id, job);
+      });
+      return this.describeInstall(id);
+    });
+  }
+
+  /** A copy's source folder, as the real one checks it: a finished install of the game, or a stopped server's own install of it. */
+  private copySource(spec: InstallJobSpec, src: CopySource): string {
+    if ('install' in src) {
+      const s = this.stockedInstalls.get(src.install);
+      if (!s) throw refused('from', `Install ${src.install} does not exist in this stack`);
+      const why = gameMismatch(s.game, spec);
+      if (why) throw refused('from', `Install ${src.install} can't be copied into ${spec.id}: ${why}`);
+      if (s.job) throw installConflict('install-busy', `Install ${src.install} has a job: nothing copies it before its job is removed`, 'from');
+      if (!existsSync(path.join(this.installDir(src.install), SHARED_INSTALL_MARKER))) throw installConflict('install-not-ready', `No install job finished install ${src.install}: nothing copies it`, 'from');
+      return this.installDir(src.install);
+    }
+    const s = this.stored.get(src.server);
+    if (!s || s.spec.install !== undefined) throw refused('fromServer', `Server ${src.server} has no install volume of its own`);
+    const why = gameMismatch({ adapter: s.spec.env.GAME_ADAPTER, flavour: s.spec.env.GAME_FLAVOUR ?? null, runtime: s.spec.runtime, variant: s.spec.variant ?? null }, spec);
+    if (why) throw refused('fromServer', `Server ${src.server}'s install can't be copied into ${spec.id}: ${why}`);
+    if (this.liveOf(src.server).proc) throw installConflict('server-running', `Server ${src.server} is running: its install is copied once it is stopped`, 'fromServer');
+    return path.join(this.dir(src.server), 'install');
+  }
+
+  /** The copy job: links kept as links, times kept (`cp -a`); it has finished when this returns. */
+  private copy(id: string, source: string): void {
+    const l: Live = { proc: null, state: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, stopping: false, restartTimer: null, exited: null };
+    this.jobs.set(id, l);
+    let code = 0;
+    try {
+      cpSync(source, this.installDir(id), { recursive: true, verbatimSymlinks: true, preserveTimestamps: true, force: true });
+    } catch (e) {
+      code = 1;
+      this.log(`install ${id}: the copy failed: ${(e as Error).message}`);
+    }
+    Object.assign(l, { state: 'exited', finishedAt: new Date().toISOString(), exitCode: code });
+  }
+
+  /** The install job: the agent in install-job mode on the install's folder, its own data folder and HOME. */
+  private launchJob(id: string, job: StoredJob): void {
+    const base = this.installRoot(id);
+    const env: NodeJS.ProcessEnv = {};
+    for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !NOT_INHERITED.test(k)) env[k] = v;
+    Object.assign(env, this.o.env ?? {});
+    for (const [k, v] of Object.entries(job.spec.env)) if (v !== undefined) env[k] = v;
+    mkdirSync(path.join(base, 'home'), { recursive: true });
+    const node = process.execPath;
+    Object.assign(env, {
+      AGENT_HOST: '127.0.0.1',
+      AGENT_PORT: String(job.agentPort),
+      GAME_DATA_DIR: path.join(base, 'data'),
+      GAME_INSTALL_DIR: this.installDir(id),
+      HOME: path.join(base, 'home'),
+      GSP_AGENT_MODE: 'install-job',
+      STEAMCMD_COMMAND: JSON.stringify([node, FAKE_GAME, 'steamcmd']),
+      GAME_START_COMMAND: JSON.stringify([node, FAKE_GAME, 'server']),
+    });
+    const child = spawn(process.execPath, ['--import', 'tsx', AGENT_ENTRY], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], detached: process.platform !== 'win32', windowsHide: true });
+    for (const stream of [child.stdout, child.stderr]) {
+      let rest = '';
+      stream?.on('data', (d: Buffer) => {
+        rest += d.toString();
+        const lines = rest.split(/\r?\n/);
+        rest = lines.pop() ?? '';
+        for (const line of lines) this.log(`[job ${id}] ${line}`);
+      });
+    }
+    const l: Live = { proc: child, state: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, stopping: false, restartTimer: null, exited: null };
+    l.exited = new Promise<void>((resolve) => {
+      child.on('exit', (code, signal) => {
+        Object.assign(l, { proc: null, state: 'exited', finishedAt: new Date().toISOString(), exitCode: code ?? (signal ? 137 : 0) });
+        resolve();
+      });
+    });
+    this.jobs.set(id, l);
+  }
+
+  /** Stops a job's agent (if it runs), killing it after a while. */
+  private async haltJob(id: string): Promise<void> {
+    const l = this.jobs.get(id);
+    const child = l?.proc;
+    if (!l || !child) return;
+    if (child.connected) child.send('stop');
+    const timer = new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 10_000).unref());
+    if ((await Promise.race([l.exited, timer])) === 'timeout' && child.pid) killTree(child.pid);
+    await l.exited;
+  }
+
+  removeInstallJob(id: string): Promise<InstallDeleteResponse> {
+    return this.installBusy.run(id, async () => {
+      const i = this.stockedInstalls.get(id);
+      if (!i?.job) return { removed: false };
+      await this.haltJob(id);
+      this.jobs.delete(id);
+      i.job = null;
+      rmSync(path.join(this.installRoot(id), 'home'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      this.save();
+      return { removed: true };
+    });
+  }
+
+  removeOwnInstall(id: string): Promise<InstallDeleteResponse> {
+    return this.busy.run(id, async () => {
+      const dir = path.join(this.dir(id), 'install');
+      if (!existsSync(dir)) return { removed: false };
+      const s = this.stored.get(id);
+      if (s && s.spec.install === undefined) throw installConflict('install-in-use', `Server ${id}'s own install is mounted by server ${id}: it still runs from it`, 'id');
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      return { removed: true };
+    });
+  }
+
+  removeInstall(id: string): Promise<InstallDeleteResponse> {
+    return this.installBusy.run(id, () =>
+      this.creating.run(async () => {
+        const i = this.stockedInstalls.get(id);
+        if (!i) return { removed: false };
+        if (i.job) throw installConflict('install-busy', `Install ${id} has a job: remove the job first`, 'id');
+        const users = this.mountedBy(id);
+        if (users.length) throw installConflict('install-in-use', `Install ${id} is mounted by ${users.map((u) => `server ${u}`).join(', ')}`, 'id');
+        this.stockedInstalls.delete(id);
+        this.save();
+        rmSync(this.installRoot(id), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+        return { removed: true };
+      }),
+    );
   }
 
   start(id: string): Promise<ServerContainer> {
@@ -349,7 +634,8 @@ export class FakeBackend implements Backend {
     // Like Docker: a port someone else holds fails the start.
     if (!(await bindTcp(s.agentPort))) throw conflict(`Agent port ${s.agentPort} is already in use on this host`);
     for (const p of s.spec.ports) if (!(await isFree(p.host, p.proto))) throw conflict(`Bind for 127.0.0.1:${p.host} failed: port is already allocated`);
-    for (const sub of ['data', 'install', 'steam']) mkdirSync(path.join(this.dir(id), sub), { recursive: true });
+    // Its own volumes: no install of its own on a shared one (HST-09).
+    for (const sub of s.spec.install === undefined ? ['data', 'install', 'steam'] : ['data', 'steam']) mkdirSync(path.join(this.dir(id), sub), { recursive: true });
     s.running = true;
     this.save();
     const child = spawn(process.execPath, ['--import', 'tsx', AGENT_ENTRY], {

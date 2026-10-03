@@ -5,13 +5,18 @@
  * Measured on TShock 6.2.1 (docs/verification/terraria-1.4.5.8.md, "Mods
  * and plugins"): TShock loads `ServerPlugins/*.dll` next to `TShock.Server`
  * (the install folder), at start only, and ignores a broken `.dll` without a
- * word. An update replaces the install folder, so the plugins are kept in
- * the data folder and copied into `ServerPlugins` before every start:
- *   - `tshock/plugins/<name>.dll`: enabled, copied at the next start;
- *   - `tshock/plugins/disabled/<name>.dll`: disabled, kept, not copied;
- *   - `ServerPlugins/.gsp-plugins.json`: what the agent copied there at the
- *     last start (so it removes only its own, never TShock's `TShockAPI.dll`,
- *     and can tell which plugin files the server runs with).
+ * word; it also loads the `.dll` files directly in the folder
+ * `-additionalplugins` names, never its subfolders
+ * (docs/verification/shared-installs.md). The install may be shared and
+ * read-only (HST-09), so the plugins stay in the data folder and TShock is
+ * pointed at them:
+ *   - `tshock/plugins/<name>.dll`: enabled, loaded at the next start;
+ *   - `tshock/plugins/disabled/<name>.dll`: disabled, kept, not loaded;
+ *   - `<agent state>/tshock-plugins.json`: the plugin files the server
+ *     started with (so the panel can tell which changes wait for a restart);
+ *   - `ServerPlugins/.gsp-plugins.json`: an older agent's record of the
+ *     copies it put there; those copies are removed at the next start of a
+ *     server's own install (or by an install job copying one).
  * Release links are GitHub release assets, downloaded by the server's agent
  * (D11) over HTTPS, following redirects only to GitHub's asset host.
  */
@@ -24,10 +29,12 @@ export const PLUGINS = {
   disabled: 'tshock/plugins/disabled',
   /** Where the panel writes an upload before the agent takes it (data root; no backup or editable folder covers it). */
   uploads: '.gsp-uploads/plugins',
-  /** Where TShock loads plugins from, in its install folder. */
+  /** Where TShock loads its own plugins from, in its install folder. */
   serverPlugins: 'ServerPlugins',
-  /** The agent's record of the plugins it copied into `ServerPlugins`. */
+  /** An older agent's record of the plugins it copied into `ServerPlugins` (before shared installs). */
   record: '.gsp-plugins.json',
+  /** The agent's record of the plugin files the server started with, in the agent's own folder. */
+  startRecord: 'tshock-plugins.json',
 } as const;
 
 /** A plugin file's ending. */

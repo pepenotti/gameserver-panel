@@ -60,6 +60,10 @@ export const TERRARIA_META: AdapterMeta = {
       name: { en: 'tModLoader', es: 'tModLoader' },
       runtime: 'steam',
       capabilities: [...COMMON, 'mods:workshop'],
+      // HST-09: tModLoader writes its logs next to tModLoader.dll (its working directory) and won't start
+      // without them; a link to the server's data (whose target the agent makes first) lets it run from a
+      // read-only install (measured on v2026.07.3.0, docs/verification/shared-installs.md).
+      install: { mode: 'shared', redirects: [{ path: 'tmodloader-*/tModLoader-Logs', to: '/data/tModLoader-Logs' }] },
       // Its players need tModLoader, at the server's tModLoader version, with the same mods (PRD §7).
       join: {
         client: { name: { en: 'tModLoader', es: 'tModLoader' }, sameVersion: true },
@@ -88,6 +92,10 @@ export const TERRARIA_META: AdapterMeta = {
   capabilities: [...COMMON],
   // `exit` saved and stopped in 1–2.2 s (a large world the slowest); players and slow disks add.
   stopBudgetMs: 60_000,
+  // HST-09, D12: vanilla and TShock run from a read-only install as they are (TShock loading its plugins
+  // from the server's data with -additionalplugins); tModLoader with its logs redirected (its flavour's).
+  // Measured on 1.4.5.8, TShock 6.2.1, tModLoader v2026.07.3.0 (docs/verification/shared-installs.md).
+  install: { mode: 'shared' },
   // SRV-08: the address, then the port, each asked on its own; a password set in the launch settings is
   // asked for after that (the test client was, packet 37). Only a test client joined, through a
   // published port that differed from the one inside (docs/verification/terraria-1.4.5.8.md).

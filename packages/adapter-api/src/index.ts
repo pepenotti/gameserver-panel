@@ -21,6 +21,10 @@ import type {
   FileKind,
   FileStat,
   InstalledInfo,
+  InstallKey,
+  InstallRedirect,
+  InstallSharing,
+  InstallSharingMode,
   JobKind,
   JobResult,
   PackRequest,
@@ -28,6 +32,7 @@ import type {
   RootId,
   RuntimeFamily,
   ServerFilesErrorCode,
+  SharedInstallMarker,
   VersionInfo,
   VersionsResponse,
 } from '@gsp/shared';
@@ -35,6 +40,8 @@ import type {
 export type { AgentStatus, CommandResponse, FormatId, InstalledInfo, JobKind, JobResult, Lang, OptionMeta, Permission, Scalar, VersionInfo, VersionsResponse };
 // The file shapes are the agent API's (`/v1/fs/*`, `/v1/archive/*`, D11), so the wire and the contract can't drift.
 export type { DirEntry, FileKind, FileStat, PackRequest, RootId, RuntimeFamily, ServerFilesErrorCode };
+// Shared installs (HST-09, D12): what an adapter declares and what an install job leaves.
+export type { InstallKey, InstallRedirect, InstallSharing, InstallSharingMode, SharedInstallMarker };
 
 // =================================================================== common
 
@@ -113,6 +120,12 @@ export interface Flavour {
    * steps of its own; `steps` replaces the list whole).
    */
   join?: Partial<JoinDecl>;
+  /**
+   * How installs of this flavour are shared (HST-09, D12), when it isn't the
+   * adapter's `AdapterMeta.install` (a flavour whose game writes into its
+   * install somewhere the others don't: a log folder next to its binaries).
+   */
+  install?: InstallSharing;
 }
 
 /** A license the owner must accept before a game may run (D6): what the `eula` capability means. */
@@ -145,6 +158,15 @@ export interface AdapterMeta {
    * it, flavour by flavour (`Flavour.join`).
    */
   join?: JoinDecl;
+  /**
+   * How its installs are shared (HST-09, D12), as measured
+   * (docs/verification/shared-installs.md): `shared` once its servers were
+   * run from a read-only install, with the paths it writes inside its
+   * install redirected into the server's data; `own` until then. A flavour
+   * may declare its own (`Flavour.install`). Every adapter declares it, for
+   * itself or for each of its flavours: the contract suites check it.
+   */
+  install?: InstallSharing;
 }
 
 /**
@@ -301,6 +323,13 @@ export interface RuntimeCtx {
    * otherwise, and for games without an agreement.
    */
   eulaAccepted?: boolean;
+  /**
+   * The install root is a shared install mounted read-only (HST-09, D12):
+   * nothing may be written there, not even by `prepare` (the agent never
+   * installs or updates it; install jobs do). Absent or false: the server's
+   * own install, or an install job's.
+   */
+  sharedInstall?: boolean;
   /** A line in the server's agent log (redacted by the agent). */
   log(line: string): void;
 }
@@ -411,7 +440,12 @@ export interface ExecResult {
  * job). Adapters pass their own app ids; the agent knows none.
  */
 export interface SteamCmd {
-  /** `app_update <appId> [-beta <branch>] [validate]` into the install root. */
+  /**
+   * `app_update <appId> -beta <branch> [validate]` into the install root.
+   * The branch is always named, `public` for null: steamcmd keeps an
+   * install on the branch it was installed from when none is named
+   * (measured: docs/verification/shared-installs.md, "Branch switches").
+   */
   appUpdate(o: { appId: string; branch: string | null; validate: boolean }): Promise<JobResult>;
   /** Branches and build ids from `app_info_print` (what is installed is the adapter's `installed()`). */
   branches(o: { appId: string }): Promise<VersionInfo[]>;
@@ -536,6 +570,23 @@ export interface RuntimeAdapter<P = unknown> {
    * start the installed build if that fails; null = start as is.
    */
   installOnStart?(ctx: RuntimeCtx, p: P): 'required' | 'update' | null;
+  /**
+   * What is installed, as the identity of a shared install (HST-09, D12):
+   * the flavour, version, build and branch, stable for as long as the files
+   * are (a Steam game's own version line, learnt at its first boot, is no
+   * part of it). Null when nothing whole is installed. The install job
+   * writes it into the shared-install marker; the panel keeps it, so
+   * servers asking for the same thing share one install.
+   */
+  installKey?(ctx: RuntimeCtx): InstallKey | null;
+  /**
+   * An install job's step after a successful `install()`, for what the game
+   * does to its install on a first start and can't do read-only (Minecraft's
+   * bundler unpacks its libraries into the install): run here, once, with
+   * the install still writable. It never starts a server. Absent: nothing to
+   * do.
+   */
+  warmUp?(ctx: InstallCtx, p: P): Promise<JobResult>;
   /** Versions the server can be pinned to (a job: steamcmd output goes to the log). */
   versions?(ctx: InstallCtx, p: P): Promise<VersionsResponse>;
   /** Before every start: files the agent owns (ports, the control secret) are enforced here. */

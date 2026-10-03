@@ -1,15 +1,17 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
-import { ORCHESTRATOR_API_VERSION, SERVER_ID_PATTERN, type HealthResponse, type HostInfo } from '@gsp/shared';
+import { INSTALL_ID_PATTERN, ORCHESTRATOR_API_VERSION, SERVER_ID_PATTERN, type HealthResponse, type HostInfo } from '@gsp/shared';
 import type { Backend } from './backend';
 import { badRequest, notFound, OrchError } from './errors';
 import type { Policy } from './policy';
-import { parseEmpty, parseSpec, parseStop } from './spec';
+import { parseEmpty, parseInstallJobSpec, parseInstallPutOptions, parseSpec, parseStop } from './spec';
 
 const MAX_BODY = 64 * 1024;
 /** `/v1/servers/:id` and `/v1/servers/:id/<action>`, matched on the raw path (no dot-segment folding). */
 const SERVER_ROUTE = /^\/v1\/servers\/([^/]*)(?:\/([^/]*))?$/;
-const ACTIONS: ReadonlySet<string> = new Set(['start', 'stop', 'restart', 'stats']);
+/** `/v1/installs/:id` and `/v1/installs/:id/job` (HST-09), matched the same way. */
+const INSTALL_ROUTE = /^\/v1\/installs\/([^/]*)(?:\/([^/]*))?$/;
+const ACTIONS: ReadonlySet<string> = new Set(['start', 'stop', 'restart', 'stats', 'install']);
 
 export interface OrchestratorServerOptions {
   backend: Backend;
@@ -110,6 +112,35 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
       return [200, await o.backend.list()];
     }
 
+    if (path === '/v1/installs') {
+      if (method !== 'GET') throw methodNotAllowed();
+      noQuery();
+      noBody();
+      return [200, await o.backend.installs()];
+    }
+    const im = INSTALL_ROUTE.exec(path);
+    if (im) {
+      const [, iid = '', sub] = im;
+      if (sub !== undefined && sub !== 'job') throw notFound('No such route');
+      if (!INSTALL_ID_PATTERN.test(iid)) throw badRequest('The install id must be i, then 8-31 of a-z and 0-9', 'id');
+      if (sub === 'job') {
+        if (method !== 'DELETE') throw methodNotAllowed();
+        noQuery();
+        noBody();
+        return [200, await o.backend.removeInstallJob(iid)];
+      }
+      if (method === 'PUT') {
+        const src = parseInstallPutOptions(query, iid);
+        return [200, await o.backend.putInstall(parseInstallJobSpec(body, iid, o.policy), src)];
+      }
+      if (method === 'DELETE') {
+        noQuery();
+        noBody();
+        return [200, await o.backend.removeInstall(iid)];
+      }
+      throw methodNotAllowed();
+    }
+
     const m = SERVER_ROUTE.exec(path);
     if (!m) throw notFound('No such route');
     const [, id = '', action] = m;
@@ -128,6 +159,12 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
       throw methodNotAllowed();
     }
     noQuery();
+    if (action === 'install') {
+      // HST-09: a server's own install volume, left over after it moved to a shared install.
+      if (method !== 'DELETE') throw methodNotAllowed();
+      noBody();
+      return [200, await o.backend.removeOwnInstall(id)];
+    }
     if (action === 'stats') {
       if (method !== 'GET') throw methodNotAllowed();
       noBody();

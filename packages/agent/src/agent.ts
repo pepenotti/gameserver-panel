@@ -20,12 +20,29 @@ import type {
 } from '@gsp/adapter-api';
 import { MAX_RELS, RootedFiles, segments, ServerFilesError, type HotCopy } from '@gsp/archive';
 import { makeRedactor } from '@gsp/formats';
-import type { AgentStatus, AlertKind, CommandResponse, ControlKind, JobInfo, JobKind, PublicLaunch, ServerState } from '@gsp/shared';
+import {
+  installSharingOf,
+  type AgentInstallMode,
+  type AgentInstallRefusal,
+  type AgentInstallStatus,
+  type AgentStatus,
+  type AlertKind,
+  type CommandResponse,
+  type ControlKind,
+  type InstallKey,
+  type InstallSharing,
+  type JobInfo,
+  type JobKind,
+  type PublicLaunch,
+  type ServerState,
+  type SharedInstallMarker,
+} from '@gsp/shared';
 import type { AgentConfig } from './config';
 import type { EventHub } from './events';
 import { GameRun } from './game';
 import { linkSelection } from './hot-select';
 import { makeDownload, makeExec, makeExtract, makeFetch } from './install-tools';
+import { linkRedirect, makeRedirectTargets, measureInstall, readSharedMarker, removeSharedMarker, resolveRedirect, writeSharedMarker } from './shared-install';
 import type { StateStore } from './state-store';
 import { diskStats, ProcessSampler } from './stats';
 import { SteamcmdDriver } from './steamcmd';
@@ -34,8 +51,53 @@ export class AgentError extends Error {
   constructor(
     readonly code: 'bad-request' | 'conflict' | 'locked' | 'unavailable' | 'not-found',
     message: string,
+    /** Refused because of how the server is installed (HST-09): `AgentError.install` on the wire. */
+    readonly install?: AgentInstallRefusal,
   ) {
     super(message);
+  }
+}
+
+/** What an install job refuses (HST-09): it never runs the game or writes files through the file API. */
+export const INSTALL_JOB_REFUSAL = 'This is an install job: it installs, and never starts the game, runs its commands or writes its files';
+
+/**
+ * The server's files as the agent serves them (D11), where a lookup in the
+ * install root that meets a link answers "not there" instead of refusing
+ * (HST-09): an install's links are its redirects into the server's data,
+ * never followed (what is behind one is reached through the data root), and
+ * a lookup there (the Workshop source's, say) expects a folder or nothing.
+ */
+class AgentFiles extends RootedFiles {
+  private static throughLink(root: string, e: unknown): boolean {
+    return root === 'install' && e instanceof ServerFilesError && e.code === 'outside-root' && /Symbolic links are not followed/.test(e.message);
+  }
+
+  override async stat(root: string, rel: string) {
+    try {
+      return await super.stat(root, rel);
+    } catch (e) {
+      if (AgentFiles.throughLink(root, e)) return null;
+      throw e;
+    }
+  }
+
+  override async list(root: string, rel: string) {
+    try {
+      return await super.list(root, rel);
+    } catch (e) {
+      if (AgentFiles.throughLink(root, e)) return [];
+      throw e;
+    }
+  }
+
+  override async read(root: string, rel: string, o: { maxBytes?: number } = {}) {
+    try {
+      return await super.read(root, rel, o);
+    } catch (e) {
+      if (AgentFiles.throughLink(root, e)) return null;
+      throw e;
+    }
   }
 }
 
@@ -63,6 +125,13 @@ const FATAL_SHOWN = 300;
 /** The watchdog's reason for giving up (SRV-07), with the last fatal line of the run it gave up on when there was one. */
 function crashLoopFailure(message: string, lastFatal: string | undefined): string {
   return lastFatal ? `${message}. Last error: ${lastFatal}` : message;
+}
+
+/** What is installed, in a few words, for people (`install-mismatch`). */
+function describeInstalled(i: InstalledInfo | null): string {
+  if (!i) return 'nothing whole';
+  const parts = [i.channel, i.version, i.build === undefined ? undefined : `build ${i.build}`].filter((x): x is string => typeof x === 'string' && x !== '');
+  return parts.length ? parts.join(' ') : 'an install it can name no version of';
 }
 
 /** The environment adapters and the game see: the agent's, minus its token (mods run inside the game). */
@@ -109,6 +178,10 @@ export class Agent {
   private lastExit: AgentStatus['lastExit'] = null;
   private failure: string | null = null;
   private installedInfo: InstalledInfo | null = null;
+  /** The shared-install marker at the install root (HST-09), read with `installedInfo`. */
+  private sharedMarker: SharedInstallMarker | null = null;
+  /** On a shared install: the last start refused because the launch wants another install. */
+  private mismatch: AgentInstallStatus['mismatch'] = null;
   private players: AgentStatus['players'] = null;
   private controlError: string | null = null;
   private channelKind: ControlKind = 'none';
@@ -145,7 +218,7 @@ export class Agent {
    * `/v1/archive/*`): the adapter's roots, `install` read-only, never the
    * agent's own state folder; packs are hot while the game runs.
    */
-  readonly files: RootedFiles;
+  readonly files: AgentFiles;
 
   constructor(
     private readonly cfg: AgentConfig,
@@ -158,7 +231,32 @@ export class Agent {
     this.params = this.loadLaunch();
     if (this.params !== null) this.channelKind = this.channelOf(this.params);
     this.redact = this.makeRedactor();
-    this.files = new RootedFiles({ roots: () => this.roots(), hidden: [cfg.stateDir], hot: () => this.hotCopy() });
+    this.files = new AgentFiles({ roots: () => this.roots(), hidden: [cfg.stateDir], hot: () => this.hotCopy() });
+  }
+
+  // ---------------------------------------------------------- shared installs
+
+  /** How this agent's server is installed (HST-09, `AgentInstallMode`). */
+  installMode(): AgentInstallMode {
+    return this.cfg.mode === 'install-job' ? 'job' : this.cfg.installShared ? 'shared' : 'own';
+  }
+
+  /** How the server's game (its flavour's, else its adapter's) shares its installs. */
+  private sharing(): InstallSharing {
+    return installSharingOf(this.adapter.meta, this.cfg.flavour);
+  }
+
+  /** Refuses what an install job never does (HST-09). */
+  private notInJob(): void {
+    if (this.cfg.mode === 'install-job') throw new AgentError('conflict', INSTALL_JOB_REFUSAL, 'install-job');
+  }
+
+  /** The install's identity: the adapter's `installKey()`, else what `installed()` says. */
+  private installKey(): InstallKey | null {
+    const ctx = this.runtimeCtx();
+    if (this.adapter.installKey) return this.adapter.installKey(ctx);
+    const i = this.adapter.installed(ctx);
+    return i ? { flavour: this.cfg.flavour, version: i.version, build: i.build ?? null, branch: i.channel ?? null } : null;
   }
 
   private loadLaunch(): unknown {
@@ -205,6 +303,7 @@ export class Agent {
       tools: { steamcmd: this.cfg.steamcmd, launcher: this.cfg.launcher ?? undefined, home: this.cfg.home },
       env: agentEnv(),
       eulaAccepted: this.eulaAccepted,
+      ...(this.cfg.installShared ? { sharedInstall: true } : {}),
       log: (line) => this.log(line),
     };
   }
@@ -271,6 +370,10 @@ export class Agent {
     this.statusTimer = setInterval(() => this.emitState(), 15_000);
     this.statusTimer.unref();
     const s = this.store.get();
+    if (this.cfg.mode === 'install-job') {
+      this.log('Install job: this agent installs, and never starts the game (HST-09).');
+      return;
+    }
     if (s.desired === 'running' && this.params !== null) {
       this.log(`Resuming: the server was running before the agent restarted.`);
       this.start(undefined, undefined).catch((e: Error) => this.log(`Autostart failed: ${e.message}`));
@@ -319,6 +422,7 @@ export class Agent {
       process: this.sampler.sample(this.run?.pid ?? null),
       disks: diskStats([roots.data, roots.install]),
       now: new Date().toISOString(),
+      install: { mode: this.installMode(), sharing: this.sharing(), marker: this.sharedMarker, mismatch: this.mismatch },
     };
   }
 
@@ -438,6 +542,7 @@ export class Agent {
   // ------------------------------------------------------------------- start
 
   start(launch: unknown, lockId: string | undefined): Promise<void> {
+    this.notInJob();
     const eula = launch === undefined ? undefined : this.eulaOf(launch);
     const p = launch === undefined ? undefined : this.parseLaunchInput(launch);
     this.checkLock(lockId);
@@ -466,6 +571,24 @@ export class Agent {
         need = this.adapter.installOnStart(this.runtimeCtx(), p);
       } catch (e) {
         return this.fail('start-failed', `Could not check the install: ${(e as Error).message}`);
+      }
+    }
+    if (this.cfg.installShared) {
+      // A shared install (HST-09) is read-only here: installs and updates come from install jobs.
+      this.readInstalled();
+      if (!this.sharedMarker) return this.fail('start-failed', "This server's shared install isn't finished: no install job wrote its marker");
+      if (need === 'required') {
+        const message = `install-mismatch: this server's shared install holds ${describeInstalled(this.installedInfo)}, and its launch asks for another; it moves to an install that fits through the panel`;
+        this.mismatch = { installed: this.installedInfo, message };
+        return this.fail('start-failed', message);
+      }
+      if (need === 'update') this.log('Not updating at start: this server runs from a shared install, which install jobs update.');
+      need = null;
+      this.mismatch = null;
+      try {
+        makeRedirectTargets(this.roots().data, this.sharedMarker.redirects.length ? this.sharedMarker.redirects : (this.sharing().redirects ?? []));
+      } catch (e) {
+        return this.fail('start-failed', `Could not prepare the start: ${(e as Error).message}`);
       }
     }
     if (need) {
@@ -678,6 +801,7 @@ export class Agent {
   // -------------------------------------------------------------------- stop
 
   stop(opts: { timeoutMs?: number; reason?: string }, lockId: string | undefined): Promise<void> {
+    this.notInJob();
     this.checkLock(lockId);
     this.store.update({ desired: 'stopped' });
     if (this.restartTimer) {
@@ -698,11 +822,13 @@ export class Agent {
   }
 
   async restart(lockId: string | undefined): Promise<void> {
+    this.notInJob();
     await this.stop({ reason: 'restart' }, lockId);
     await this.start(undefined, lockId);
   }
 
   kill(lockId: string | undefined): void {
+    this.notInJob();
     this.checkLock(lockId);
     this.store.update({ desired: 'stopped' });
     if (!this.run) return;
@@ -742,6 +868,7 @@ export class Agent {
 
   /** `POST /v1/command`. `rcon` on the wire is the adapter's control channel. */
   async command(cmd: string, via: 'rcon' | 'stdin' | undefined): Promise<CommandResponse> {
+    this.notInJob();
     const c = cmd.trim();
     if (!c || c.length > 1000 || /[\r\n\0]/.test(c)) throw new AgentError('bad-request', 'Command must be a single line of up to 1000 characters');
     const run = this.run;
@@ -865,6 +992,7 @@ export class Agent {
    * once; then the backup fails, as JSON. `after` always runs.
    */
   async pack(req: PackRequest): Promise<AsyncIterable<Buffer>> {
+    this.notInJob();
     const select = this.adapter.hotCopy?.select;
     const hot = this.hotCopy();
     if (!select || !hot || this.state !== 'running' || typeof req !== 'object' || req === null || req.root !== 'data') return this.files.pack(req);
@@ -906,6 +1034,7 @@ export class Agent {
 
   /** `POST /v1/save`: the adapter saves the running world; `ok: false` when it didn't finish within `timeoutMs`. */
   async save(timeoutMs = 20_000): Promise<JobResult> {
+    this.notInJob();
     const save = this.adapter.save;
     if (!save) throw new AgentError('not-found', 'This game has no save command');
     const run = this.run;
@@ -939,6 +1068,7 @@ export class Agent {
     } catch {
       this.installedInfo = null;
     }
+    this.sharedMarker = readSharedMarker(this.roots().install);
   }
 
   private beginJob(kind: JobKind, message: string): JobInfo {
@@ -961,7 +1091,10 @@ export class Agent {
       try {
         let result: JobResult;
         try {
+          // An install job (HST-09): an install being written is no finished one, whatever a copy brought along.
+          if (this.cfg.mode === 'install-job') removeSharedMarker(this.roots().install);
           result = this.adapter.install ? await this.adapter.install(this.installCtx(job), p, { validate }) : { ok: false, error: 'This game has no installer' };
+          if (result.ok && this.cfg.mode === 'install-job') result = await this.finishSharedInstall(job, p);
         } catch (e) {
           result = { ok: false, error: (e as Error).message };
         }
@@ -974,8 +1107,59 @@ export class Agent {
     });
   }
 
+  /**
+   * An install job's steps after the adapter's install (HST-09, D12): its
+   * warm-up (what a read-only server can't do on its first start), the
+   * redirect links into the server's data, then the size and the
+   * shared-install marker, written last. Never starts the game.
+   */
+  private async finishSharedInstall(job: JobInfo, p: unknown): Promise<JobResult> {
+    const ctx = this.installCtx(job);
+    const root = ctx.roots.install;
+    if (this.adapter.warmUp) {
+      ctx.progress(null, 'Warming up the install');
+      const r = await this.adapter.warmUp(ctx, p);
+      if (!r.ok) return { ok: false, error: `Warm-up failed: ${r.error ?? 'unknown error'}` };
+    }
+    const sharing = this.sharing();
+    const made: { path: string; to: string }[] = [];
+    for (const r of sharing.redirects ?? []) {
+      const paths = resolveRedirect(root, r);
+      if (paths.length === 0) this.log(`Redirect ${r.path}: no such folder in this install; nothing to link.`);
+      for (const rel of paths) {
+        linkRedirect(root, ctx.roots.data, rel, r);
+        made.push({ path: rel, to: r.to });
+        this.log(`Redirect: ${rel} now leads to ${r.to} in each server's data.`);
+      }
+    }
+    const key = this.installKey();
+    if (!key) return { ok: false, error: 'The install finished, but the game says nothing whole is installed' };
+    ctx.progress(null, 'Measuring the install');
+    const size = await measureInstall(root);
+    const marker: SharedInstallMarker = {
+      schema: 1,
+      adapter: this.adapter.meta.id,
+      flavour: this.cfg.flavour,
+      mode: sharing.mode,
+      key,
+      installed: this.adapter.installed(this.runtimeCtx()),
+      redirects: made,
+      bytes: size.bytes,
+      files: size.files,
+      agentVersion: this.cfg.version,
+      finishedAt: new Date().toISOString(),
+    };
+    writeSharedMarker(root, marker);
+    ctx.progress(100, `Shared install ready: ${size.files} files, ${size.bytes} bytes`);
+    this.log(`Shared install ready: ${size.files} files, ${size.bytes} bytes.`);
+    return { ok: true };
+  }
+
   /** `POST /v1/install`: install, update or validate while the server is stopped; `launch` picks other params than the stored ones. */
   install(opts: { validate: boolean; launch?: unknown }, lockId: string | undefined): Promise<JobResult> {
+    // A shared install is read-only here: a new or updated install comes from an install job (HST-09).
+    if (this.cfg.installShared) throw new AgentError('conflict', 'This server runs from a shared install: installs, updates and validation come from install jobs', 'shared-install');
+    if (this.cfg.mode === 'install-job' && this.sharing().mode === 'own') throw new AgentError('conflict', "This game's installs aren't shared: each server installs its own", 'install-job');
     const p = opts.launch === undefined ? undefined : this.parseLaunchInput(opts.launch);
     this.checkLock(lockId);
     if (!this.adapter.install) throw new AgentError('not-found', 'This game has no installer');
@@ -1006,6 +1190,7 @@ export class Agent {
 
   /** `POST /v1/actions/:name`. Actions with a job kind run as jobs, one at a time. */
   async action(name: string, input: unknown): Promise<unknown> {
+    this.notInJob();
     const actions = this.adapter.actions ?? {};
     const action = Object.hasOwn(actions, name) ? actions[name] : undefined;
     if (!action) throw new AgentError('not-found', `No action "${name}"`);

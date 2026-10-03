@@ -30,6 +30,8 @@ export interface DockerContainerSummary {
   Labels: Labels;
   State: string;
   Ports: { IP?: string; PrivatePort: number; PublicPort?: number; Type: string }[] | null;
+  /** What it mounts: a named volume's name (`Name`), where, and whether writable. */
+  Mounts?: { Type: string; Name?: string; Destination: string; RW: boolean }[] | null;
 }
 
 export interface DockerContainer {
@@ -38,7 +40,7 @@ export interface DockerContainer {
   Name: string;
   /** Content id (`sha256:…`) of the image it was created from: what `Config.Image` resolved to then. */
   Image: string;
-  Config: { Image: string; Labels: Labels };
+  Config: { Image: string; Labels: Labels; Env?: string[] | null };
   State: { Status: string; Running: boolean; StartedAt: string; FinishedAt: string; ExitCode: number };
   HostConfig: { PortBindings: Record<string, { HostIp?: string; HostPort?: string }[] | null> | null };
   NetworkSettings: { Networks: Record<string, { NetworkID?: string }> | null };
@@ -61,6 +63,7 @@ export interface DockerImage {
 export interface DockerVolume {
   Name: string;
   Labels: Labels;
+  CreatedAt?: string;
 }
 
 export interface DockerInfo {
@@ -105,7 +108,22 @@ export class DockerClient {
   }
 
   /** Status and parsed body; rejects only when Docker can't be reached (`unavailable`). */
-  raw(method: string, path: string, o: DockerCall = {}): Promise<{ status: number; data: unknown }> {
+  async raw(method: string, path: string, o: DockerCall = {}): Promise<{ status: number; data: unknown }> {
+    const r = await this.bytes(method, path, o);
+    const text = r.body.toString('utf8');
+    let data: unknown = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+    return { status: r.status, data };
+  }
+
+  /** Status and the body as it came (an archive); rejects only when Docker can't be reached (`unavailable`). */
+  bytes(method: string, path: string, o: DockerCall = {}): Promise<{ status: number; body: Buffer }> {
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(o.query ?? {})) if (v !== undefined) params.set(k, String(v));
     const qs = params.size ? `?${params.toString()}` : '';
@@ -127,18 +145,7 @@ export class DockerClient {
             if (size > MAX_RESPONSE_BYTES) req.destroy(new Error('Docker answered with too much data'));
             else chunks.push(c);
           });
-          res.on('end', () => {
-            const text = Buffer.concat(chunks).toString('utf8');
-            let data: unknown = null;
-            if (text) {
-              try {
-                data = JSON.parse(text);
-              } catch {
-                data = text;
-              }
-            }
-            resolve({ status: res.statusCode ?? 0, data });
-          });
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks) }));
           res.on('error', (e) => reject(unavailable(`Docker connection failed: ${e.message}`)));
         },
       );

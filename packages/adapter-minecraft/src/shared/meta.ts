@@ -53,6 +53,10 @@ export const MINECRAFT_META: AdapterMeta = {
   ],
   // A stop took 1.2–4 s on a small world; Paper allows its chunk system up to 60 s per dimension.
   stopBudgetMs: 120_000,
+  // HST-09, D12: every loader runs from a read-only install (measured on 26.3 / 26.2,
+  // docs/verification/shared-installs.md); vanilla and Fabric once the install job's warm-up has
+  // unpacked Mojang's bundler (the runtime's `warmUp`), Paper as its install step leaves it.
+  install: { mode: 'shared' },
   eula: {
     name: { en: 'Minecraft End User License Agreement (EULA)', es: 'Contrato de licencia de usuario final (EULA) de Minecraft' },
     // The link the game's own eula.txt gives.

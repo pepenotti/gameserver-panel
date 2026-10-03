@@ -93,6 +93,16 @@ describe('install before start', () => {
     expect(h.events.filter((e) => e.event.type === 'job' && e.event.job.kind === 'install' && e.event.result?.ok)).toHaveLength(2);
   });
 
+  it('moves a server from a beta branch back to public: steamcmd is told -beta public, or it stays on the beta (HST-09, UPD-02)', async () => {
+    h = await makeHarness();
+    expect(await h.agent.install({ validate: false, launch: envelope({ branch: 'legacy41' }) }, undefined)).toEqual({ ok: true });
+    expect(h.agent.status().installedInfo).toMatchObject({ channel: 'legacy41' });
+    // The fake keeps an install on its beta when no branch is named, as steamcmd was measured to.
+    expect(await h.agent.install({ validate: false, launch: envelope({ branch: 'public' }) }, undefined)).toEqual({ ok: true });
+    expect(h.agent.status().installedInfo).toMatchObject({ channel: 'public' });
+    expect(h.logs().filter((l) => l.includes('already up to date'))).toEqual([]);
+  });
+
   it('updates on start when asked, and starts the installed build if the update fails', async () => {
     h = await makeHarness();
     await h.agent.start(launch, undefined);

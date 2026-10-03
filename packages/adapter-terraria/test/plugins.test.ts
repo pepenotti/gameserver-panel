@@ -1,9 +1,11 @@
 // TShock's plugins (MOD-06): the runtime's actions next to the files (add by
 // upload or by a release link the agent downloads itself, with every
-// address checked and the size capped; enable, disable, remove), the copy
-// into ServerPlugins before each start, and the panel half's first checks.
-// The fake download services stand in for GitHub (a release download
-// redirects to the asset host), the fake TShock server loads what was copied.
+// address checked and the size capped; enable, disable, remove), the record
+// of what the server starts with (TShock loads the enabled ones from the data
+// folder: nothing goes into its install, which may be shared, HST-09), and
+// the panel half's first checks. The fake download services stand in for
+// GitHub (a release download redirects to the asset host), the fake TShock
+// server loads what -additionalplugins names.
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -203,15 +205,18 @@ describe('enable, disable, remove (MOD-06)', () => {
   });
 });
 
-describe('before every start: the enabled plugins in ServerPlugins (MOD-06)', () => {
-  it("copies the enabled ones, removes its own that are no longer enabled, never touches TShock's, and knows what the server runs with", async () => {
+describe('before every start: TShock loads the enabled plugins from the data folder (MOD-06, HST-09)', () => {
+  it('writes nothing into the install, and records which plugin files the server starts with, for the restart badge', async () => {
     const c = (ctx = testCtx({ env: { GAME_FLAVOUR: 'tshock' } }));
     const sp = installTshock(c);
     await add(c, { upload: upload(c, fakePlugin('A'), 'dll'), name: 'A.dll' });
     await add(c, { upload: upload(c, fakePlugin('B'), 'dll'), name: 'B.dll' });
     await act(c, PLUGIN_ACTIONS.set, { name: 'B.dll', enabled: false });
     await tr.prepare(c, p);
-    expect(readdirSync(sp).filter((f) => !f.startsWith('.')).sort()).toEqual(['A.dll', 'TShockAPI.dll']);
+    // TShock's install as it was installed: its own plugin, nothing of the panel's (it may be shared, read-only).
+    expect(readdirSync(sp)).toEqual(['TShockAPI.dll']);
+    expect(readdirSync(data(c, 'tshock', 'plugins')).sort()).toEqual(['A.dll', 'disabled']);
+    expect(Object.keys(JSON.parse(readFileSync(path.join(c.stateDir, PLUGINS.startRecord), 'utf8')).files as object)).toEqual(['A.dll']);
     expect(await list(c)).toEqual([
       ['A.dll', true, true],
       ['B.dll', false, false],
@@ -224,7 +229,7 @@ describe('before every start: the enabled plugins in ServerPlugins (MOD-06)', ()
       ['B.dll', true, false],
     ]);
     await tr.prepare(c, p);
-    expect(readdirSync(sp).filter((f) => !f.startsWith('.')).sort()).toEqual(['B.dll', 'TShockAPI.dll']);
+    expect(readdirSync(sp)).toEqual(['TShockAPI.dll']);
     expect(await list(c)).toEqual([
       ['A.dll', false, false],
       ['B.dll', true, true],
@@ -232,27 +237,54 @@ describe('before every start: the enabled plugins in ServerPlugins (MOD-06)', ()
     expect(readFileSync(path.join(sp, 'TShockAPI.dll'), 'utf8')).toBe('FAKE TShockAPI 6.2.1\n');
   });
 
-  it('copies them again after an update replaced the install folder, and a plugin with TShock’s own name is left out with a log line', async () => {
+  it("removes the copies an older agent put in ServerPlugins from a server's own install, never TShock's own, and leaves a shared install alone", async () => {
+    const c = (ctx = testCtx({ env: { GAME_FLAVOUR: 'tshock' } }));
+    const sp = installTshock(c);
+    await add(c, { upload: upload(c, fakePlugin('A'), 'dll'), name: 'A.dll' });
+    // What an agent from before shared installs left: its copy, and its record of it.
+    const legacy = () => {
+      writeFileSync(path.join(sp, 'A.dll'), fakePlugin('A'));
+      writeFileSync(path.join(sp, PLUGINS.record), JSON.stringify({ schema: 1, files: { 'A.dll': 'x' } }));
+    };
+    legacy();
+    // A shared install is read-only: said, and left as it is.
+    await tr.prepare({ ...c, sharedInstall: true }, p);
+    expect(readdirSync(sp).sort()).toEqual([PLUGINS.record, 'A.dll', 'TShockAPI.dll'].sort());
+    expect(c.logs.some((l) => /older agent .* it is shared, read-only/.test(l))).toBe(true);
+    // The server's own install: its copies go, TShock's own stays.
+    await tr.prepare(c, p);
+    expect(readdirSync(sp)).toEqual(['TShockAPI.dll']);
+    // So does an install job copying such an install (migration), in its warm-up.
+    legacy();
+    expect(await tr.warmUp!({ ...c, onLine: () => undefined, progress: () => undefined }, p)).toEqual({ ok: true });
+    expect(readdirSync(sp)).toEqual(['TShockAPI.dll']);
+  });
+
+  it('says so when a plugin has the name of one of TShock’s own, and adds nothing to the install after an update replaced it', async () => {
     const c = (ctx = testCtx({ env: { GAME_FLAVOUR: 'tshock' } }));
     installTshock(c);
     await add(c, { upload: upload(c, fakePlugin('A'), 'dll'), name: 'A.dll' });
     // A plugin put there by hand with TShock's own name (the add refuses one while TShock is installed).
     writeFileSync(data(c, 'tshock', 'plugins', 'TShockAPI.dll'), fakePlugin('Impostor'));
     await tr.prepare(c, p);
-    // An update: the whole install folder is replaced.
+    expect(c.logs.some((l) => /TShockAPI\.dll has the name of one of TShock's own/.test(l))).toBe(true);
+    // An update: the whole install folder is replaced; the plugins stay where they are.
     rmSync(path.join(c.roots.install, 'tshock-v6.2.1'), { recursive: true });
     const sp = installTshock(c);
-    expect(readdirSync(sp)).toEqual(['TShockAPI.dll']);
     await tr.prepare(c, p);
-    expect(readdirSync(sp).filter((f) => !f.startsWith('.')).sort()).toEqual(['A.dll', 'TShockAPI.dll']);
-    expect(readFileSync(path.join(sp, 'TShockAPI.dll'), 'utf8')).toBe('FAKE TShockAPI 6.2.1\n');
-    expect(c.logs.some((l) => /TShockAPI\.dll was not copied: TShock's own install has a plugin of that name/.test(l))).toBe(true);
+    expect(readdirSync(sp)).toEqual(['TShockAPI.dll']);
+    expect(await list(c)).toEqual([
+      ['A.dll', true, true],
+      ['TShockAPI.dll', true, true],
+    ]);
   });
 
-  it('the fake TShock loads what was copied: the load line for the plugin, nothing for an assembly that is none', async () => {
+  it('the fake TShock loads what is enabled in the data folder: the load line for the plugin, nothing for an assembly that is none or a disabled one', async () => {
     const c = (ctx = testCtx({ env: { GAME_FLAVOUR: 'tshock' }, ports: { game: await freePort(), rest: await freePort() } }));
     installTshock(c);
     await add(c, { upload: upload(c, makeZip([{ name: 'HelloPlugin.dll', data: fakePlugin('HelloPlugin', '1.1.0') }, { name: 'HelloLib.dll', data: fakeAssembly('HelloLib') }]), 'zip'), name: 'hello.zip' });
+    await add(c, { upload: upload(c, fakePlugin('Sleepy'), 'dll'), name: 'Sleepy.dll' });
+    await act(c, PLUGIN_ACTIONS.set, { name: 'Sleepy.dll', enabled: false });
     await tr.prepare(c, p);
     const cmd = tr.command(c, p);
     const out: string[] = [];

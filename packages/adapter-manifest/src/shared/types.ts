@@ -109,6 +109,14 @@ export interface SteamGameManifest {
   notes?: { id: string; text: I18n; doc?: string }[];
   /** How players join (SRV-08): the adapter contract's `JoinDecl`, with settings named as in `settings`. */
   join?: ManifestJoin;
+  /**
+   * Whether its install can be shared (HST-09, D12): `shared` once the game
+   * was measured running from a read-only install (the adapter's
+   * `InstallSharing` mode `shared`, else `own`), and the paths it writes
+   * inside its install, redirected into each server's data
+   * (`InstallRedirect`: a path in the install, a target under `/data/`).
+   */
+  install?: { shared: boolean; redirects?: { path: string; to: string }[] };
 }
 
 /** A launch setting (`settings`), or a key of a config file (`config.files`). */

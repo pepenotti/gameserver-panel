@@ -32,6 +32,87 @@ let players = (process.env.FAKE_PZ_PLAYERS ?? '').split(',').filter(Boolean);
 const log = (cat, msg) => process.stdout.write(`LOG  : ${cat.padEnd(12)} f:0 st:1,000> ${msg}\n`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ---------------------------------------------------------------- a shared install (HST-09)
+// The game runs from its install folder (the working directory). An install an install job finished
+// carries the shared-install marker, and servers mount it read-only: the fake treats every install
+// with the marker as read-only (a real read-only mount, as in the fake images, fails the same way).
+// A write that lands outside the install through a link in it (a redirect into the data folder)
+// goes through; through a link whose target is missing, it fails on its own (measured).
+const SHARED_MARKER = '.gsp-shared-install.json';
+function readOnlyAt(target) {
+  let p = path.resolve(target);
+  for (;;) {
+    try {
+      fs.lstatSync(p);
+      break;
+    } catch {
+      const up = path.dirname(p);
+      if (up === p) return false;
+      p = up;
+    }
+  }
+  let real;
+  try {
+    real = fs.realpathSync(p);
+  } catch {
+    return false;
+  }
+  for (let d = real; ; d = path.dirname(d)) {
+    if (fs.existsSync(path.join(d, SHARED_MARKER))) return true;
+    if (path.dirname(d) === d) return false;
+  }
+}
+function writeInstallFile(file, text) {
+  if (readOnlyAt(file)) throw Object.assign(new Error(`EROFS: read-only file system, open '${file}'`), { code: 'EROFS' });
+  // Where it lands, through a link on the way (the OS follows it; Node on Windows can't make a folder
+  // through a junction itself). A link whose target is missing fails here, as it does for the game.
+  let have = path.resolve(file);
+  while (!fs.existsSync(have) && path.dirname(have) !== have) {
+    try {
+      fs.lstatSync(have);
+      break; // a link whose target is missing
+    } catch {
+      have = path.dirname(have);
+    }
+  }
+  const real = path.join(fs.realpathSync(have), path.relative(have, path.resolve(file)));
+  fs.mkdirSync(path.dirname(real), { recursive: true });
+  fs.writeFileSync(real, text);
+}
+
+/**
+ * The game's own Workshop download of the ini's WorkshopItems at every start, into its install
+ * folder's `steamapps/workshop` (measured on 42.21.0, docs/verification/shared-installs.md): with
+ * the folder read-only (or redirected to a missing target), Steam can't, and the game dies with a
+ * NullPointerException and exit 0. The fake downloads nothing real: one mod.info per item.
+ */
+async function workshopItems(ini) {
+  const ids = (ini.WorkshopItems ?? '').split(';').map((s) => s.trim()).filter(Boolean);
+  if (ids.length === 0) return true;
+  const ws = path.join(process.cwd(), 'steamapps', 'workshop');
+  for (const id of ids) {
+    log('General', `Workshop: item state CheckItemState -> DownloadPending ID=${id}`);
+    try {
+      writeInstallFile(path.join(ws, 'content', '108600', id, 'mods', `Mod${id}`, '42', 'mod.info'), `name=Mod ${id}\nid=Mod${id}\nversionMin=42.0\n`);
+      writeInstallFile(path.join(ws, `appworkshop_108600.acf`), `"AppWorkshop"\n{\n\t"appid"\t\t"108600"\n}\n`);
+    } catch {
+      process.stderr.write('src/clientdll/contentupdatecontext.cpp (2036) : Staging library folder not found\n');
+      process.stderr.write('src/clientdll/contentupdatecontext.cpp (2037) : Install library folder not found\n');
+      log('General', `Workshop: item state DownloadPending -> Fail ID=${id}`);
+      process.stderr.write('Exception in thread "main" LOG  : General      f:0 st:1,000> java.lang.NullPointerException\n');
+      process.stderr.write('LOG  : General      f:0 st:1,000> \tat zombie.network.GameServerWorkshopItems.Install(GameServerWorkshopItems.java:248)\n');
+      log('General', 'Shutdown handling started');
+      log('Network', 'Server exited');
+      await sleep(50);
+      process.exit(0);
+    }
+    log('General', `Workshop: item state CheckItemState -> Ready ID=${id}`);
+    log('General', `Workshop: ${id} installed to ${fs.realpathSync(path.join(ws, 'content', '108600', id))}`);
+    log('Mod', `loading Mod${id}`);
+  }
+  return true;
+}
+
 function readIni() {
   const file = path.join(cacheDir, 'Server', `${serverName}.ini`);
   const out = {};
@@ -214,6 +295,7 @@ if (scenario === 'admin-prompt' || (!adminPassword && !fs.existsSync(dbFile))) {
     db.close();
     log('General', 'admin password changed via -adminpassword option');
   }
+  await workshopItems(ini);
   await sleep(bootMs);
   if (scenario !== 'never-ready') {
     log('Network', '*** SERVER STARTED ****');

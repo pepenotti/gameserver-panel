@@ -29,6 +29,14 @@ const DESCRIPTIONS = {
 };
 const args = process.argv.slice(2);
 const fail = process.env.FAKE_STEAMCMD_FAIL;
+/** The beta branch an install is on (its app manifest's BetaKey), or null. */
+function betaKeyOf(dir, appId) {
+  try {
+    return /"BetaKey"\s+"([^"]+)"/.exec(fs.readFileSync(path.join(dir, 'steamapps', `appmanifest_${appId}.acf`), 'utf8'))?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
 let installDir = '.';
 const out = (l) => process.stdout.write(`${l}\n`);
 
@@ -45,9 +53,21 @@ for (let i = 0; i < args.length; i++) {
   } else if (a === '+app_update') {
     const appId = args[++i];
     let branch = 'public';
+    let named = false;
     while (args[i + 1] && !args[i + 1].startsWith('+')) {
       const o = args[++i];
-      if (o === '-beta') branch = args[++i];
+      if (o === '-beta') {
+        branch = args[++i];
+        named = true;
+      }
+    }
+    // Measured (docs/verification/shared-installs.md, "Branch switches"): without -beta, an install
+    // of a beta branch stays on it, and steamcmd says it is up to date.
+    // Named, public is written down too (`"BetaKey" "public"`, measured).
+    const kept = named ? null : betaKeyOf(installDir, appId);
+    if (kept && kept !== 'public') {
+      out(`Success! App '${appId}' already up to date.`);
+      continue;
     }
     if (fail === 'missing-config') {
       out(`ERROR! Failed to install app '${appId}' (Missing configuration)`);
@@ -77,7 +97,7 @@ for (let i = 0; i < args.length; i++) {
     fs.writeFileSync(path.join(installDir, 'data', 'scripts', 'server', 'server.lua'), '-- fake\n');
     fs.writeFileSync(
       path.join(installDir, 'steamapps', `appmanifest_${appId}.acf`),
-      `"AppState"\n{\n\t"appid"\t\t"${appId}"\n\t"Universe"\t\t"1"\n\t"name"\t\t"Avorion Dedicated Server"\n\t"StateFlags"\t\t"4"\n\t"installdir"\t\t"AvorionServer"\n\t"SizeOnDisk"\t\t"191405119"\n\t"buildid"\t\t"${buildId}"\n\t"InstalledDepots"\n\t{\n\t\t"565061"\n\t\t{\n\t\t\t"manifest"\t\t"3169308613424354701"\n\t\t\t"size"\t\t"36957350"\n\t\t}\n\t}\n\t"UserConfig"\n\t{\n${branch === 'public' ? '' : `\t\t"BetaKey"\t\t"${branch}"\n`}\t}\n\t"MountedConfig"\n\t{\n\t}\n}\n`,
+      `"AppState"\n{\n\t"appid"\t\t"${appId}"\n\t"Universe"\t\t"1"\n\t"name"\t\t"Avorion Dedicated Server"\n\t"StateFlags"\t\t"4"\n\t"installdir"\t\t"AvorionServer"\n\t"SizeOnDisk"\t\t"191405119"\n\t"buildid"\t\t"${buildId}"\n\t"InstalledDepots"\n\t{\n\t\t"565061"\n\t\t{\n\t\t\t"manifest"\t\t"3169308613424354701"\n\t\t\t"size"\t\t"36957350"\n\t\t}\n\t}\n\t"UserConfig"\n\t{\n${branch === 'public' && !named ? '' : `\t\t"BetaKey"\t\t"${branch}"\n`}\t}\n\t"MountedConfig"\n\t{\n\t}\n}\n`,
     );
     out(`Success! App '${appId}' fully installed.`);
   } else if (a === '+app_info_update') i++;

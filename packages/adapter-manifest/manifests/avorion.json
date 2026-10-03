@@ -186,6 +186,7 @@
     ]
   },
   "broadcast": "/say {arg}",
+  "install": { "shared": true },
   "notes": [
     {
       "id": "settings-stopped-only",

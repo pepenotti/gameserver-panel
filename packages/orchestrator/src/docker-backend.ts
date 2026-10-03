@@ -1,8 +1,25 @@
-import { isServerId, type ApplyOptions, type ContainerState, type CpuArch, type DeleteResponse, type HostInfo, type ServerContainer, type ServerSpec, type ServerStats } from '@gsp/shared';
+import {
+  isInstallId,
+  isServerId,
+  type ApplyOptions,
+  type ContainerState,
+  type CpuArch,
+  type DeleteResponse,
+  type HostInfo,
+  type InstallDeleteResponse,
+  type InstallInfo,
+  type InstallJob,
+  type InstallJobSpec,
+  type ServerContainer,
+  type ServerSpec,
+  type ServerStats,
+  type SharedInstallMarker,
+} from '@gsp/shared';
 import { IdLocks, Mutex, type Backend } from './backend';
-import { agentUrl, DEFAULT_STOP_TIMEOUT_SEC, DERIVATION, derivationOf, derivationState, LABEL, names, planContainer, VOLUME_KINDS, type ContainerPlan, type Derivation, type StackContext } from './derive';
+import { AGENT_PORT, agentUrl, DEFAULT_STOP_TIMEOUT_SEC, DERIVATION, derivationOf, derivationState, imageName, installNames, LABEL, names, planContainer, VOLUME_KINDS, type ContainerPlan, type Derivation, type StackContext } from './derive';
 import { DockerError, labelFilter, type DockerClient, type DockerContainer, type DockerContainerSummary, type DockerImage, type DockerInfo, type DockerNetwork, type DockerStats, type DockerVolume, type Labels } from './docker';
-import { conflict, notFound, OrchError, refused, unavailable } from './errors';
+import { conflict, installConflict, notFound, OrchError, refused, unavailable } from './errors';
+import { firstTarFile, gameMismatch, installGameOf, installVolumeLabels, MARKER_PATH, MAX_INSTALL_JOBS, parseMarker, planInstallJob, planProbe, serverMismatch, type CopySource, type InstallGame } from './installs';
 import type { Policy } from './policy';
 
 /** Compose labels that find the panel container of this stack (it joins every server's network). */
@@ -59,6 +76,8 @@ function fromDocker(e: DockerError): OrchError {
  */
 export class DockerBackend implements Backend {
   private readonly busy = new IdLocks();
+  /** One change at a time per install (its job, its removal). */
+  private readonly installBusy = new IdLocks();
   private readonly creating = new Mutex();
   private readonly docker: DockerClient;
   private readonly stack: string;
@@ -220,6 +239,279 @@ export class DockerBackend implements Backend {
     );
   }
 
+  // ------------------------------------------------------------ shared installs (HST-09, D12)
+
+  installs(): Promise<InstallInfo[]> {
+    return this.guard(async () => {
+      const found = await this.docker.call<{ Volumes: DockerVolume[] | null }>('GET', '/volumes', { query: { filters: labelFilter(`${LABEL.stack}=${this.stack}`, LABEL.install) } });
+      const all = await this.allContainers();
+      const out: InstallInfo[] = [];
+      for (const v of found.Volumes ?? []) {
+        const id = v.Labels?.[LABEL.install];
+        if (!isInstallId(id) || v.Name !== installNames(this.stack, id).volume) continue;
+        const game = installGameOf(v.Labels, this.stack, id);
+        if (game) out.push(await this.describeInstall(id, game, v, all));
+      }
+      return out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    });
+  }
+
+  putInstall(spec: InstallJobSpec, src: CopySource | null): Promise<InstallInfo> {
+    const plan = planInstallJob(spec, this.o.ctx, src);
+    const id = spec.id;
+    return this.guard(() =>
+      this.installBusy.run(id, async () => {
+        const existing = await this.jobContainer(id);
+        if (existing) {
+          // The same job asked again (a retried request): as it is. Anything else waits for it to go.
+          if (existing.Config.Labels?.[LABEL.specHash] !== plan.specHash) throw installConflict('install-busy', `Install ${id} has a job already: remove it first`, 'id');
+          return this.installInfo(id);
+        }
+        if ((await this.latestImageId(plan.image)) === '') throw unavailable(`The image ${plan.image} is not built on this host`);
+        await this.creating.run(async () => {
+          const jobs = (await this.stackContainers()).filter((c) => c.Labels?.[LABEL.job] !== undefined);
+          if (jobs.length >= MAX_INSTALL_JOBS) throw conflict(`At most ${MAX_INSTALL_JOBS} install jobs run at once on this host`, 'id');
+          const vol = await this.docker.find<DockerVolume>(`/volumes/${plan.volume}`);
+          if (vol) {
+            const game = installGameOf(vol.Labels, this.stack, id);
+            if (!game || vol.Name !== plan.volume) throw refused('id', `Volume ${plan.volume} exists but is not this stack's install ${id}`);
+            const why = gameMismatch(game, spec);
+            if (why) throw refused('id', `Install ${id} was made for another game: ${why}`);
+            if (src) throw conflict(`Install ${id} exists already: a copy goes into a new install`, 'id');
+          }
+          const users = await this.mountersOf(plan.volume);
+          if (users.length) throw installConflict('install-in-use', `Install ${id} is mounted by ${users.join(', ')}: a job never writes an install a server reads`, 'id');
+          if (src) await this.checkCopySource(spec, src);
+          if (!vol) await this.docker.call('POST', '/volumes/create', { body: { Name: plan.volume, Driver: 'local', Labels: installVolumeLabels(this.stack, spec) } });
+          if (plan.home) await this.freshJobHome(id, plan.home);
+          if (plan.network) {
+            await this.ensureJobNetwork(id, plan.network);
+            await this.attachPanel(plan.network);
+          }
+          const r = await this.docker.raw('POST', '/containers/create', { query: { name: plan.name }, body: plan.body });
+          if (r.status === 404) throw unavailable(`The image ${plan.image} is not built on this host`);
+          if (r.status < 200 || r.status >= 300) throw new DockerError(r.status, (r.data as { message?: string } | null)?.message ?? `Docker answered ${r.status}`);
+          await this.docker.call('POST', `/containers/${plan.name}/start`, { ok: [204, 304] });
+        });
+        return this.installInfo(id);
+      }),
+    );
+  }
+
+  removeInstallJob(id: string): Promise<InstallDeleteResponse> {
+    return this.guard(() =>
+      this.installBusy.run(id, async () => {
+        const n = installNames(this.stack, id);
+        const c = await this.jobContainer(id);
+        const net = await this.docker.find<DockerNetwork>(`/networks/${n.network}`);
+        if (net && (net.Name !== n.network || !this.ownsInstallObject(net.Labels, id))) throw refused('id', `Network ${n.network} exists but is not this stack's install ${id}`);
+        const home = await this.docker.find<DockerVolume>(`/volumes/${n.home}`);
+        if (home && !this.ownsInstallObject(home.Labels, id)) throw refused('id', `Volume ${n.home} exists but is not this stack's install ${id}`);
+        // Killed where it stands: an install it leaves half-written has no marker, so no server mounts it.
+        if (c) await this.docker.call('DELETE', `/containers/${c.Id}`, { query: { force: true } });
+        if (net) await this.removeNetwork(net);
+        if (home) await this.docker.call('DELETE', `/volumes/${home.Name}`, { ok: [204, 404] });
+        return { removed: c !== null || net !== null || home !== null };
+      }),
+    );
+  }
+
+  removeInstall(id: string): Promise<InstallDeleteResponse> {
+    return this.guard(() =>
+      this.installBusy.run(id, () =>
+        this.creating.run(async () => {
+          const n = installNames(this.stack, id);
+          const v = await this.docker.find<DockerVolume>(`/volumes/${n.volume}`);
+          if (!v) return { removed: false };
+          if (v.Name !== n.volume || !installGameOf(v.Labels, this.stack, id)) throw refused('id', `Volume ${n.volume} exists but is not this stack's install ${id}`);
+          if (await this.jobContainer(id)) throw installConflict('install-busy', `Install ${id} has a job: remove the job first`, 'id');
+          await this.removeProbe(id);
+          // Read from Docker, not the caller: any container (a stopped server too) keeps it.
+          const users = await this.mountersOf(n.volume);
+          if (users.length) throw installConflict('install-in-use', `Install ${id} is mounted by ${users.join(', ')}`, 'id');
+          await this.docker.call('DELETE', `/volumes/${n.volume}`);
+          return { removed: true };
+        }),
+      ),
+    );
+  }
+
+  removeOwnInstall(id: string): Promise<InstallDeleteResponse> {
+    return this.guard(() =>
+      this.busy.run(id, () =>
+        this.creating.run(async () => {
+          const name = names(this.stack, id).volume('install');
+          const v = await this.docker.find<DockerVolume>(`/volumes/${name}`);
+          if (!v) return { removed: false };
+          if (v.Name !== name || !this.owned(v.Labels, id) || v.Labels?.[LABEL.volume] !== 'install') throw refused('id', `Volume ${name} exists but is not this stack's server ${id}`);
+          const users = await this.mountersOf(name);
+          if (users.length) throw installConflict('install-in-use', `Server ${id}'s own install is mounted by ${users.join(', ')}: it still runs from it`, 'id');
+          await this.docker.call('DELETE', `/volumes/${name}`);
+          return { removed: true };
+        }),
+      ),
+    );
+  }
+
+  /** The game an install volume of this stack holds; refused when it is missing (`missing`) or not this stack's install. */
+  private async installVolume(id: string, field: string, o: { missing: string }): Promise<InstallGame> {
+    const n = installNames(this.stack, id);
+    const v = await this.docker.find<DockerVolume>(`/volumes/${n.volume}`);
+    if (!v) throw refused(field, o.missing);
+    const game = installGameOf(v.Labels, this.stack, id);
+    if (!game || v.Name !== n.volume) throw refused(field, `Volume ${n.volume} exists but is not this stack's install ${id}`);
+    return game;
+  }
+
+  /** A copy reads a finished install of the same game, or the own install of a stopped server of the same game. */
+  private async checkCopySource(spec: InstallJobSpec, src: CopySource): Promise<void> {
+    if ('install' in src) {
+      const game = await this.installVolume(src.install, 'from', { missing: `Install ${src.install} does not exist in this stack` });
+      const why = gameMismatch(game, spec);
+      if (why) throw refused('from', `Install ${src.install} can't be copied into ${spec.id}: ${why}`);
+      if (await this.jobContainer(src.install)) throw installConflict('install-busy', `Install ${src.install} has a job: nothing copies it before its job is removed`, 'from');
+      if (!(await this.readMarker(src.install, game))) throw installConflict('install-not-ready', `No install job finished install ${src.install}: nothing copies it`, 'from');
+      return;
+    }
+    const sid = src.server;
+    const volume = names(this.stack, sid).volume('install');
+    const v = await this.docker.find<DockerVolume>(`/volumes/${volume}`);
+    if (!v) throw refused('fromServer', `Server ${sid} has no install volume of its own`);
+    if (!this.owned(v.Labels, sid) || v.Labels?.[LABEL.volume] !== 'install') throw refused('fromServer', `Volume ${volume} exists but is not this stack's server ${sid}`);
+    // The server's container says which game its install holds.
+    const c = await this.container(sid);
+    if (!c) throw refused('fromServer', `Server ${sid} has no container to tell which game its install holds`);
+    const env = new Map((c.Config.Env ?? []).map((e) => [e.slice(0, e.indexOf('=')), e.slice(e.indexOf('=') + 1)]));
+    const image = `gsp/${imageName(spec.runtime, spec.variant, this.o.ctx.allowFake)}:${this.o.ctx.imageTag}`;
+    if (env.get('GAME_ADAPTER') !== spec.env.GAME_ADAPTER || (env.get('GAME_FLAVOUR') ?? null) !== (spec.env.GAME_FLAVOUR ?? null) || c.Config.Image !== image) {
+      throw refused('fromServer', `Server ${sid} runs ${env.get('GAME_ADAPTER') ?? '?'}${env.get('GAME_FLAVOUR') ? `/${env.get('GAME_FLAVOUR')}` : ''} in ${c.Config.Image}, not what install ${spec.id} is for`);
+    }
+    if (c.State.Running) throw installConflict('server-running', `Server ${sid} is running: its install is copied once it is stopped`, 'fromServer');
+  }
+
+  /** This stack's job container of an install, null when there is none; refused when its name is taken by anything else. */
+  private async jobContainer(id: string): Promise<DockerContainer | null> {
+    const name = installNames(this.stack, id).job;
+    const c = await this.docker.find<DockerContainer>(`/containers/${name}/json`);
+    if (!c) return null;
+    const kind = c.Config.Labels?.[LABEL.job];
+    if (c.Name !== `/${name}` || !this.ownsInstallObject(c.Config.Labels, id) || (kind !== 'install' && kind !== 'copy')) throw refused('id', `Container ${name} exists but is not this stack's job of install ${id}`);
+    return c;
+  }
+
+  private ownsInstallObject(labels: Labels, id: string): boolean {
+    return labels?.[LABEL.stack] === this.stack && labels[LABEL.install] === id;
+  }
+
+  /** Every container on this host, any project's (who mounts a volume, which ports are taken). */
+  private allContainers(): Promise<DockerContainerSummary[]> {
+    return this.docker.call<DockerContainerSummary[]>('GET', '/containers/json', { query: { all: true } });
+  }
+
+  /** Who mounts a volume, running or not: this stack's servers by id, anything else by its name. */
+  private async mountersOf(volume: string, all?: DockerContainerSummary[]): Promise<string[]> {
+    const out: string[] = [];
+    for (const s of all ?? (await this.allContainers())) {
+      if (!(s.Mounts ?? []).some((m) => m.Name === volume)) continue;
+      const sid = this.serverIdOf(s);
+      out.push(sid ? `server ${sid}` : `container ${(s.Names[0] ?? s.Id).replace(/^\//, '')}`);
+    }
+    return out.sort();
+  }
+
+  private async installInfo(id: string): Promise<InstallInfo> {
+    const n = installNames(this.stack, id);
+    const v = await this.docker.find<DockerVolume>(`/volumes/${n.volume}`);
+    const game = v && v.Name === n.volume ? installGameOf(v.Labels, this.stack, id) : null;
+    if (!v || !game) throw notFound(`Install ${id} does not exist in this stack`);
+    return this.describeInstall(id, game, v, await this.allContainers());
+  }
+
+  private async describeInstall(id: string, game: InstallGame, v: DockerVolume, all: DockerContainerSummary[]): Promise<InstallInfo> {
+    const mountedBy = all.flatMap((s) => {
+      const sid = this.serverIdOf(s);
+      return sid && (s.Mounts ?? []).some((m) => m.Name === v.Name) ? [sid] : [];
+    });
+    const c = await this.jobContainer(id);
+    return { id, ...game, volume: v.Name, createdAt: v.CreatedAt ?? null, mountedBy: [...new Set(mountedBy)].sort(), job: c ? this.describeJob(c) : null };
+  }
+
+  private describeJob(c: DockerContainer): InstallJob {
+    const status = c.State.Status;
+    const state = (STATES.has(status) ? status : status === 'removing' ? 'exited' : 'dead') as InstallJob['state'];
+    const kind = c.Config.Labels?.[LABEL.job] === 'copy' ? 'copy' : 'install';
+    const from = c.Config.Labels?.[LABEL.jobFrom] ?? '';
+    return {
+      kind,
+      state,
+      startedAt: time(c.State.StartedAt),
+      finishedAt: time(c.State.FinishedAt),
+      exitCode: state === 'exited' || state === 'dead' ? c.State.ExitCode : null,
+      image: c.Config.Image,
+      agentUrl: kind === 'install' ? `http://${c.Name.slice(1)}:${AGENT_PORT}` : null,
+      from: from === '' ? null : from,
+    };
+  }
+
+  /**
+   * An install's shared-install marker (HST-09), read through a probe: a
+   * container of the install's own image that mounts it read-only and is
+   * never started, removed again at once. Null when there is none.
+   */
+  private async readMarker(id: string, game: InstallGame): Promise<SharedInstallMarker | null> {
+    const probe = planProbe(this.stack, id, game, this.o.ctx);
+    if ((await this.latestImageId(probe.body.Image)) === '') throw unavailable(`The image ${probe.body.Image} is not built on this host`);
+    await this.removeProbe(id);
+    const r = await this.docker.raw('POST', '/containers/create', { query: { name: probe.name }, body: probe.body });
+    if (r.status < 200 || r.status >= 300) throw new DockerError(r.status, (r.data as { message?: string } | null)?.message ?? `Docker answered ${r.status}`);
+    try {
+      const a = await this.docker.bytes('GET', `/containers/${probe.name}/archive`, { query: { path: MARKER_PATH } });
+      if (a.status === 404) return null;
+      if (a.status !== 200) throw new DockerError(a.status, `Docker answered ${a.status} reading install ${id}'s marker`);
+      return parseMarker(firstTarFile(a.body));
+    } finally {
+      await this.docker.call('DELETE', `/containers/${probe.name}`, { query: { force: true }, ok: [204, 404] });
+    }
+  }
+
+  /** A probe left behind (a crash between its create and its removal), only when it is this stack's probe of the install. */
+  private async removeProbe(id: string): Promise<void> {
+    const name = installNames(this.stack, id).probe;
+    const c = await this.docker.find<DockerContainer>(`/containers/${name}/json`);
+    if (!c) return;
+    if (c.Name !== `/${name}` || !this.ownsInstallObject(c.Config.Labels, id) || c.Config.Labels?.[LABEL.probe] !== '1') throw refused('install', `Container ${name} exists but is not this stack's probe of install ${id}`);
+    await this.docker.call('DELETE', `/containers/${c.Id}`, { query: { force: true }, ok: [204, 404] });
+  }
+
+  /** A fresh HOME for an install job (seeded from the image at its first mount): what an earlier job left is dropped. */
+  private async freshJobHome(id: string, name: string): Promise<void> {
+    const v = await this.docker.find<DockerVolume>(`/volumes/${name}`);
+    if (v && !this.ownsInstallObject(v.Labels, id)) throw refused('id', `Volume ${name} exists but is not this stack's install ${id}`);
+    if (v) await this.docker.call('DELETE', `/volumes/${name}`, { ok: [204, 404] });
+    await this.docker.call('POST', '/volumes/create', { body: { Name: name, Driver: 'local', Labels: { [LABEL.stack]: this.stack, [LABEL.install]: id, [LABEL.volume]: 'job-home' } } });
+  }
+
+  /** An install job's own bridge network: egress for its downloads, and the panel's way to its agent (NFR-03). */
+  private async ensureJobNetwork(id: string, name: string): Promise<void> {
+    const net = await this.docker.find<DockerNetwork>(`/networks/${name}`);
+    if (net) {
+      if (net.Name !== name || !this.ownsInstallObject(net.Labels, id)) throw refused('id', `Network ${name} exists but is not this stack's install ${id}`);
+      return;
+    }
+    await this.docker.call('POST', '/networks/create', {
+      body: { Name: name, Driver: 'bridge', Internal: false, Attachable: false, EnableIPv6: false, Labels: { [LABEL.stack]: this.stack, [LABEL.install]: id } },
+    });
+  }
+
+  /** Disconnects whatever is still attached (the panel), then removes the network. */
+  private async removeNetwork(net: DockerNetwork): Promise<void> {
+    const full = await this.docker.find<DockerNetwork>(`/networks/${net.Id}`);
+    for (const attached of Object.keys(full?.Containers ?? {})) {
+      await this.docker.call('POST', `/networks/${net.Id}/disconnect`, { body: { Container: attached, Force: true } });
+    }
+    await this.docker.call('DELETE', `/networks/${net.Id}`, { ok: [204, 404] });
+  }
+
   // ------------------------------------------------------------------ helpers
 
   private owned(labels: Labels, id: string): boolean {
@@ -337,7 +629,24 @@ export class DockerBackend implements Backend {
       const found = await this.docker.find<DockerVolume>(`/volumes/${v.name}`);
       if (found && !this.owned(found.Labels, spec.id)) throw refused('id', `Volume ${v.name} exists but is not this stack's server ${spec.id}`);
     }
+    if (plan.install) await this.checkSharedInstall(spec, plan.install.id);
     await this.checkPorts(spec, existing?.Id);
+  }
+
+  /**
+   * A server mounts a shared install (HST-09, D12) only when it is this
+   * stack's, holds the server's game, flavour and image, has no job (never
+   * a half-written install) and a job finished it (its shared-install
+   * marker, read through a probe, names the same game).
+   */
+  private async checkSharedInstall(spec: ServerSpec, id: string): Promise<void> {
+    const game = await this.installVolume(id, 'install', { missing: `Install ${id} does not exist in this stack` });
+    const why = serverMismatch(game, spec);
+    if (why) throw refused('install', `Install ${id} doesn't fit server ${spec.id}: ${why}`);
+    if (await this.jobContainer(id)) throw installConflict('install-busy', `Install ${id} has a job: no server mounts it before its job is removed`);
+    const marker = await this.readMarker(id, game);
+    if (!marker) throw installConflict('install-not-ready', `No install job finished install ${id} (it has no shared-install marker): no server mounts it`);
+    if (marker.adapter !== game.adapter || marker.flavour !== game.flavour) throw refused('install', `Install ${id}'s marker names ${marker.adapter}${marker.flavour ? `/${marker.flavour}` : ''}, not what its volume was made for`);
   }
 
   /**

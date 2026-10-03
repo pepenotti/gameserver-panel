@@ -1,6 +1,7 @@
 // Checks every suite runs on an adapter's metadata. Registers tests; call it
 // inside a describe block.
 import { expect, it } from 'vitest';
+import { redirectProblem } from '@gsp/shared';
 import type { AdapterMeta, I18n } from '../index';
 
 export function expectI18n(value: I18n, what: string): void {
@@ -81,6 +82,23 @@ export function metaTests(meta: AdapterMeta): void {
     expect(meta.eula, 'the agreement the eula capability means').toBeDefined();
     expectI18n(meta.eula!.name, 'agreement name');
     expect(new URL(meta.eula!.url).protocol).toBe('https:');
+  });
+
+  it('meta: declares how its installs are shared, for itself or each flavour, with redirects inside the install to the data root (HST-09, D12)', () => {
+    const declared = [...(meta.install ? [['the adapter', meta.install] as const] : []), ...meta.flavours.flatMap((f) => (f.install ? [[`flavour ${f.id}`, f.install] as const] : []))];
+    if (!meta.install) {
+      expect(meta.flavours.length, 'no install sharing declared (AdapterMeta.install)').toBeGreaterThan(0);
+      for (const f of meta.flavours) expect(f.install, `install sharing of flavour ${f.id}`).toBeDefined();
+    }
+    for (const [who, s] of declared) {
+      expect(['shared', 'copy', 'own'], `install mode of ${who}`).toContain(s.mode);
+      if (s.mode !== 'shared') expect(s.redirects ?? [], `redirects of ${who}, whose installs aren't shared`).toEqual([]);
+      for (const r of s.redirects ?? []) expect(redirectProblem(r), `redirect ${r.path} of ${who}`).toBeNull();
+      expectUnique(
+        (s.redirects ?? []).map((r) => r.path),
+        `redirect paths of ${who}`,
+      );
+    }
   });
 
   it('meta: memory and stop budget are sane', () => {

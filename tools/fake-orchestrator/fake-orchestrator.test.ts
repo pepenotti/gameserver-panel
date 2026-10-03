@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createOrchestratorServer, listenOnSocket, type Policy } from '@gsp/orchestrator';
-import type { AgentStatus, ServerContainer, ServerSpec } from '@gsp/shared';
+import type { AgentStatus, InstallInfo, ServerContainer, ServerSpec } from '@gsp/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import { request, socketPath, TOKEN } from '../../packages/orchestrator/test/helpers';
 import { agentEnvFrom, FakeBackend } from './backend';
@@ -189,6 +189,62 @@ describe('the fake orchestrator (dev loop, M2)', () => {
     expect(await request(r.socket, 'PUT', '/v1/servers/pz-3', { body: spec('pz-3', b! + 2) })).toMatchObject({ status: 403, body: { code: 'refused', field: 'id' } });
     expect(await request(r.socket, 'POST', '/v1/servers/nope/start')).toMatchObject({ status: 404 });
     expect(await request(r.socket, 'GET', '/v1/servers/pz/stats')).toMatchObject({ status: 200, body: { id: 'pz', memLimitBytes: 2048 * 1024 * 1024 } });
+  });
+});
+
+describe('shared installs in the fake orchestrator (HST-09, D12)', () => {
+  it('runs an install job, then a server on its install; copies it; refuses what the real one refuses', { timeout: 120_000 * SCALE }, async () => {
+    const r = await rig();
+    const IID = 'i0123456789abcdef';
+    const COPY = 'ifedcba9876543210';
+    const job = { id: IID, runtime: 'steam', env: { AGENT_TOKEN, GAME_ADAPTER: 'pz', TZ: 'UTC' } };
+    const put = await request(r.socket, 'PUT', `/v1/installs/${IID}`, { body: job });
+    expect(put).toMatchObject({ status: 200, body: { id: IID, adapter: 'pz', flavour: null, runtime: 'steam', mountedBy: [], job: { kind: 'install', state: 'running', from: null } } });
+    const jobUrl = (put.body as InstallInfo).job!.agentUrl!;
+    await waitFor('the job agent', async () => ((await agent(jobUrl, 'GET', '/v1/health')) as { ok?: boolean }).ok);
+    const [game] = await freeUdpPorts(1);
+    const onInstall = { ...spec('pz', game!), install: IID };
+    // Never mounted while its job runs, nor once a job ended without finishing it.
+    expect(await request(r.socket, 'PUT', '/v1/servers/pz', { body: onInstall })).toMatchObject({ status: 409, body: { reason: 'install-busy', field: 'install' } });
+    expect(await agent(jobUrl, 'POST', '/v1/start', { launch })).toMatchObject({ install: 'install-job' });
+    await agent(jobUrl, 'PUT', '/v1/launch', launch);
+    expect(await agent(jobUrl, 'POST', '/v1/install', {})).toEqual({ ok: true });
+    expect(((await agent(jobUrl, 'GET', '/v1/status')) as AgentStatus).install).toMatchObject({ mode: 'job', marker: { adapter: 'pz', key: { branch: 'public' } } });
+    expect(await request(r.socket, 'DELETE', `/v1/installs/${IID}/job`)).toEqual({ status: 200, body: { removed: true } });
+    await expect(fetch(`${jobUrl}/v1/health`)).rejects.toThrow();
+
+    // A server on it: told it is shared, runs.
+    const srv = await request(r.socket, 'PUT', '/v1/servers/pz', { body: onInstall });
+    expect(srv).toMatchObject({ status: 200 });
+    const url = (srv.body as ServerContainer).agentUrl;
+    await request(r.socket, 'POST', '/v1/servers/pz/start');
+    await waitFor('the agent', async () => ((await agent(url, 'GET', '/v1/health')) as { ok?: boolean }).ok);
+    await agent(url, 'POST', '/v1/start', { launch });
+    const running = await waitFor('the game', async () => {
+      const s = (await agent(url, 'GET', '/v1/status')) as AgentStatus;
+      return s.state === 'running' ? s : null;
+    });
+    expect(running.install).toMatchObject({ mode: 'shared', marker: { adapter: 'pz' } });
+    expect(await agent(url, 'POST', '/v1/install', {})).toMatchObject({ install: 'shared-install' });
+    expect(await request(r.socket, 'GET', '/v1/installs')).toMatchObject({ status: 200, body: [{ id: IID, mountedBy: ['pz'], job: null }] });
+    expect(await request(r.socket, 'DELETE', `/v1/installs/${IID}`)).toMatchObject({ status: 409, body: { reason: 'install-in-use' } });
+    expect(await request(r.socket, 'PUT', `/v1/installs/${IID}`, { body: job })).toMatchObject({ status: 409, body: { reason: 'install-in-use' } });
+    expect(await request(r.socket, 'PUT', '/v1/servers/pz', { body: { ...onInstall, env: { ...onInstall.env, GAME_ADAPTER: 'minecraft' } } })).toMatchObject({ status: 403, body: { field: 'install' } });
+
+    // A copy of it (an update starts there), finished at once here; the next job runs on the copy.
+    const copy = await request(r.socket, 'PUT', `/v1/installs/${COPY}?from=${IID}`, { body: { ...job, id: COPY } });
+    expect(copy).toMatchObject({ status: 200, body: { id: COPY, job: { kind: 'copy', state: 'exited', exitCode: 0, agentUrl: null, from: IID } } });
+    expect(existsSync(path.join(r.dir, 'installs', COPY, 'install', 'steamapps', 'appmanifest_380870.acf'))).toBe(true);
+    expect(await request(r.socket, 'DELETE', `/v1/installs/${COPY}/job`)).toEqual({ status: 200, body: { removed: true } });
+
+    // It never had an install of its own here; one of a server that runs from it is refused.
+    expect(await request(r.socket, 'DELETE', '/v1/servers/pz/install')).toEqual({ status: 200, body: { removed: false } });
+    // The server goes; its install stays until it is removed itself.
+    expect(await request(r.socket, 'DELETE', '/v1/servers/pz?removeVolumes=true')).toEqual({ status: 200, body: { removed: true, volumesRemoved: true } });
+    expect(existsSync(path.join(r.dir, 'installs', IID, 'install'))).toBe(true);
+    for (const id of [IID, COPY]) expect(await request(r.socket, 'DELETE', `/v1/installs/${id}`)).toEqual({ status: 200, body: { removed: true } });
+    expect(existsSync(path.join(r.dir, 'installs', IID))).toBe(false);
+    expect(await request(r.socket, 'GET', '/v1/installs')).toEqual({ status: 200, body: [] });
   });
 });
 

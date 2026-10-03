@@ -519,6 +519,8 @@ restore the backup into it.
 its own, so a server changes branch by moving to another install.
 
 **Status:** Measured with Avorion's `previous` branch, Oct 2026; expected for every Steam game.
+Fixed in M7 (shared installs, runtime side): the agent now always names the branch to steamcmd,
+`public` included.
 
 ### Old versions stay on disk until you remove them
 
@@ -560,3 +562,37 @@ writes its settings and logs there, so every server has a home folder of its own
 the runtime image.
 
 **Status:** Measured, Oct 2026 (204 MB per server).
+
+### A server on a shared install can't update or check its own game files
+
+**Affects:** every game, once a server runs from a shared install.
+
+**What you'll notice:** an update, a version change or a file check (Steam's "validate") of such
+a server goes through a new install of that version, made once by an install job; the server
+itself refuses (`shared-install`). A start whose settings ask for another version than its
+install holds fails with `install-mismatch` until the server is moved to an install that fits.
+A Steam game's "update when it starts" setting does nothing there: updates come as new installs.
+
+**Why:** the install is mounted read-only in every server on it, so one server can't change the
+files the others run. steamcmd needs the install writable to update or check it (on a read-only
+one, `validate` fails after about 2 minutes, measured).
+
+**Workaround:** none needed: the panel makes the new install and moves each server at its next
+start (UPD-03).
+
+**Status:** Measured (steamcmd on a read-only install, Oct 2026); the agent's refusals are tested.
+
+### TShock loads plugins from the server's data folder
+
+**Affects:** TShock servers, once the panel's agent is of M7.
+
+**What you'll notice:** nothing changes on the Plugins page. TShock's own `ServerPlugins` folder in
+its install holds only TShock's plugins; the panel's are loaded from `tshock/plugins` in the
+server's data (not from `tshock/plugins/disabled`). Copies an older agent put in `ServerPlugins`
+are removed at the server's next start. A plugin file named like one of TShock's own
+(`TShockAPI.dll`), put there by hand, now sits next to TShock's and the log says so.
+
+**Why:** the install may be shared and read-only, so nothing is copied into it; TShock's
+`-additionalplugins` option loads the plugins in a folder (not its subfolders).
+
+**Status:** Measured with TShock 6.2.1 and a real plugin, Oct 2026.

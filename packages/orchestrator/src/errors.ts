@@ -1,4 +1,4 @@
-import type { OrchestratorError, OrchestratorErrorCode } from '@gsp/shared';
+import type { InstallRefusal, OrchestratorError, OrchestratorErrorCode } from '@gsp/shared';
 
 const STATUS: Record<OrchestratorErrorCode, number> = {
   unauthorized: 401,
@@ -19,13 +19,14 @@ export class OrchError extends Error {
     message: string,
     readonly field?: string,
     status?: number,
+    readonly reason?: InstallRefusal,
   ) {
     super(message);
     this.status = status ?? STATUS[code];
   }
 
   body(): OrchestratorError {
-    return this.field === undefined ? { error: this.message, code: this.code } : { error: this.message, code: this.code, field: this.field };
+    return { error: this.message, code: this.code, ...(this.field === undefined ? {} : { field: this.field }), ...(this.reason === undefined ? {} : { reason: this.reason }) };
   }
 }
 
@@ -35,3 +36,5 @@ export const badRequest = (message: string, field?: string) => new OrchError('ba
 export const conflict = (message: string, field?: string) => new OrchError('conflict', message, field);
 export const notFound = (message: string) => new OrchError('not-found', message);
 export const unavailable = (message: string) => new OrchError('unavailable', message);
+/** An install's state stands in the way (HST-09): it is mounted, its job exists, no job finished it, its server runs. */
+export const installConflict = (reason: InstallRefusal, message: string, field = 'install') => new OrchError('conflict', message, field, undefined, reason);

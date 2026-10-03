@@ -127,6 +127,10 @@ export function runtimeAdapterSuite<P>(adapter: RuntimeAdapter<P>, opts: Runtime
       const missing = NEEDS.filter(([need, key]) => need.some((c) => caps.has(c)) && adapter[key] === undefined).map(([, , what]) => what);
       expect(missing).toEqual([]);
       if (adapter.installOnStart) expect(adapter.install, 'installOnStart() without install()').toBeDefined();
+      // HST-09: a game whose installs are shared says what an install is, for every flavour that shares.
+      const shares = [adapter.meta.install, ...adapter.meta.flavours.map((f) => f.install)].some((s) => s && s.mode !== 'own');
+      if (shares && adapter.install) expect(adapter.installKey, 'installKey() for shared installs').toBeDefined();
+      if (adapter.warmUp) expect(adapter.install, 'warmUp() without install()').toBeDefined();
     });
 
     it.runIf(adapter.consoleLine !== undefined)('turns a typed console line into one line the game takes', () => {
@@ -231,14 +235,23 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
     it('finds nothing installed in empty roots', () => {
       expect(adapter.installed(ctx)).toBeNull();
       if (adapter.installOnStart) expect(adapter.installOnStart(ctx, p)).toBe('required');
+      if (adapter.installKey) expect(adapter.installKey(ctx)).toBeNull();
     });
 
     it.runIf(adapter.install !== undefined)(
-      'installs, then reports what is installed',
+      'installs, then reports what is installed and what the install is (HST-09), and warms it up as an install job would',
       async () => {
         expect(await adapter.install!(ctx, p, { validate: false })).toMatchObject({ ok: true });
         expect(adapter.installed(ctx)).not.toBeNull();
         if (adapter.installOnStart) expect(adapter.installOnStart(ctx, p)).not.toBe('required');
+        if (adapter.installKey) {
+          const key = adapter.installKey(ctx);
+          expect(key, 'installKey() once installed').not.toBeNull();
+          for (const f of ['flavour', 'version', 'build', 'branch'] as const) expect(key![f] === null || typeof key![f] === 'string', `installKey().${f}`).toBe(true);
+          expect(Object.values(key!).some((v) => v !== null), 'installKey() names something').toBe(true);
+          expect(adapter.installKey(ctx), 'installKey() is stable').toEqual(key);
+        }
+        if (adapter.warmUp) expect(await adapter.warmUp(ctx, p)).toMatchObject({ ok: true });
       },
       testMs,
     );

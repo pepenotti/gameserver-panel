@@ -13,7 +13,7 @@ import { parseMinecraftLaunch, type MinecraftLaunch } from '../shared/launch';
 import { MC_PATTERNS, parseLogLine, parsePlayerList, stripFormatting } from '../shared/log';
 import { MINECRAFT_META } from '../shared/meta';
 import { managedProperties, prepare } from './files';
-import { install, installedInfo, installNeeded, listVersions, readMarker } from './install';
+import { install, installedInfo, installKey, installNeeded, listVersions, readMarker, warmUp } from './install';
 import { javaCommand } from './java';
 
 export type { MinecraftLaunch };
@@ -105,6 +105,8 @@ export const minecraftRuntimeAdapter: RuntimeAdapter<MinecraftLaunch> = {
   installed: installedInfo,
   install,
   installOnStart: installNeeded,
+  installKey,
+  warmUp,
   versions: listVersions,
 
   prepare,

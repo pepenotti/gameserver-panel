@@ -208,6 +208,7 @@
     "listFiles": { "ban": "banned", "allow": "permitted", "admin": "admins", "target": "steamId", "stoppedOnly": true },
     "banTargets": ["steamId"]
   },
+  "install": { "shared": true },
   "notes": [
     {
       "id": "no-console",

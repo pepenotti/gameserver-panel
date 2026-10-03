@@ -14,7 +14,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { InstallCtx, InstalledInfo, JobResult, RuntimeCtx, VersionsResponse } from '@gsp/adapter-api';
+import type { InstallCtx, InstalledInfo, InstallKey, JobResult, RuntimeCtx, VersionsResponse } from '@gsp/adapter-api';
 import { INSTALL_MARKER, LOADER_JARS, type InstallMarker, type MinecraftVersionInfo } from '../shared/install';
 import { channelAllows, isPaperChannel, LOADERS, type MinecraftLaunch, type PaperChannel } from '../shared/launch';
 import { fabricGames, fabricLoadersFor, fabricStableLoader, mojangReleases, paperVersions } from '../shared/versions';
@@ -60,6 +60,39 @@ export function installedInfo(ctx: RuntimeCtx): InstalledInfo | null {
   if (!m || !existsSync(path.join(ctx.roots.install, m.jar))) return null;
   const build = m.loader === 'paper' ? String(m.build) : m.loader === 'fabric' ? (m.loaderVersion ?? undefined) : undefined;
   return { version: m.version, channel: m.loader, ...(build ? { build } : {}) };
+}
+
+/**
+ * `installKey()` (HST-09): the loader, the Minecraft version, and the build
+ * that pins it (Paper's build, Fabric's loader version; vanilla has none).
+ */
+export function installKey(ctx: RuntimeCtx): InstallKey | null {
+  const m = readMarker(ctx);
+  if (!m || !existsSync(path.join(ctx.roots.install, m.jar))) return null;
+  const build = m.loader === 'paper' ? String(m.build) : m.loader === 'fabric' ? m.loaderVersion : null;
+  return { flavour: m.loader, version: m.version, build, branch: null };
+}
+
+/**
+ * `warmUp()`, in an install job (HST-09, D12): vanilla and Fabric unpack
+ * Mojang's bundler (the server's own jar and its libraries) into the install
+ * at their first start, which a read-only install can't take (measured:
+ * "Failed to extract server libraries", a crash loop). `--help` on Mojang's
+ * jar unpacks exactly those files and exits 0 without starting a server
+ * (measured on 26.3: 3.3 s, 40 files, docs/verification/shared-installs.md);
+ * then both ran read-only. Paper's install step leaves everything in place.
+ */
+export async function warmUp(ctx: InstallCtx, p: MinecraftLaunch): Promise<JobResult> {
+  if (p.loader === 'paper') return { ok: true };
+  const m = readMarker(ctx);
+  if (!m || !existsSync(path.join(ctx.roots.install, 'server.jar'))) return { ok: false, error: "Minecraft's server jar is not installed" };
+  if (!ctx.exec) return { ok: false, error: 'This agent cannot run the warm-up: InstallCtx.exec is missing' };
+  const root = ctx.roots.install;
+  ctx.progress(null, "Unpacking Mojang's server libraries (the first start's unpack, done once)");
+  const r = await ctx.exec([...javaCommand(ctx, m.jre), `-DbundlerRepoDir=${root}`, '-jar', path.join(root, 'server.jar'), '--help'], { cwd: root, timeoutMs: 10 * 60_000 });
+  if (r.code !== 0) return { ok: false, error: `The server jar's unpack failed (${r.signal ? `signal ${r.signal}` : `exit ${r.code}`})` };
+  if (!existsSync(path.join(root, 'libraries'))) return { ok: false, error: 'The server jar unpacked no libraries' };
+  return { ok: true };
 }
 
 /**
