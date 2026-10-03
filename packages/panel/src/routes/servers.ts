@@ -6,6 +6,7 @@ import { actor, HttpError, principal, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
 import type { ServerContext } from '../servers/context';
 import type { ContainerPendingReason } from '../servers/registry';
+import { serverInstallView, type ServerInstallView } from './installs';
 
 /** A server in `GET /api/servers` (SRV-02). */
 export interface ServerSummary {
@@ -42,6 +43,8 @@ export interface ServerSummary {
    * start). Null for games without one.
    */
   eula: EulaSummary | null;
+  /** What it runs from (HST-09): a shared install, its progress while one is being made, a move waiting for its next start; null for the stack's own server. */
+  install: ServerInstallView | null;
 }
 
 /** A game's agreement on a server (D6). */
@@ -113,7 +116,7 @@ function eulaOf(s: ServerContext, deps: Pick<Deps, 'users'>): EulaSummary | null
   return { name: agreement.name, url: agreement.url, acceptedAt: e.at, acceptedBy: e.by === null ? null : (deps.users.byId(e.by)?.username ?? null) };
 }
 
-function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 'servers' | 'users'>): ServerSummary | null {
+function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 'servers' | 'users' | 'serverRows'>): ServerSummary | null {
   const who = principal(user);
   const grants = deps.grants.forUser(user.id);
   const role = roleOn(who, grants, s.id);
@@ -139,6 +142,7 @@ function summary(s: ServerContext, user: UserRow, deps: Pick<Deps, 'grants' | 's
     role,
     permissions: permissionsOn(who, grants, s.id),
     eula: eulaOf(s, deps),
+    install: serverInstallView(deps, s),
   };
 }
 

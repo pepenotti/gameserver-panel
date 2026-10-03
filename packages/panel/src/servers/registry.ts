@@ -12,6 +12,7 @@ import type { PanelEnv } from '../env';
 import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
 import type { PanelBus } from '../ops/bus';
+import type { InstallPlan } from '../routes/installs';
 import { launchBodyProblem, launchRefusal } from '../routes/server';
 import { capabilitiesOf } from '../server/handle';
 import { ServerSettings } from '../settings';
@@ -184,6 +185,10 @@ export interface ServerRegistry {
   moveInstall(id: string, o?: StartPrep): Promise<void>;
   /** Its launch settings changed (UPD-02): the install they want now is found or made, beside the running one, and waits for the server's next start. */
   launchChanged(id: string, by: Actor): void;
+  /** The servers that use an install: those that run from it, wait for it, or still mount it. */
+  installUsers(installId: string): string[];
+  /** What creating a server of this game, flavour and launch would do about its files (the create form). */
+  installPlan(adapter: PanelAdapter, flavour: string | null, launch: Record<string, unknown>): Promise<InstallPlan>;
   /** The owner removes an install no server uses (HST-09), after confirming. */
   removeInstall(id: string, by: Actor, ip?: string | null): Promise<void>;
   /** The owner removes a server's own install volume left over after it moved to a shared install, after confirming. */
@@ -718,8 +723,7 @@ export class DbServerRegistry implements ServerRegistry {
     else void this.installs.run(next.id, this.jobLaunch(id), { by, serverId: id }).catch(() => undefined);
   }
 
-  /** The servers that use an install: those that run from it, wait for it, or still mount it. */
-  private usersOf(installId: string): string[] {
+  installUsers(installId: string): string[] {
     return this.d.rows
       .list()
       .filter((r) => r.installId === installId || r.spec?.install === installId)
@@ -727,8 +731,30 @@ export class DbServerRegistry implements ServerRegistry {
   }
 
   async removeInstall(id: string, by: Actor, ip: string | null = null): Promise<void> {
-    await this.installs.remove(id, this.usersOf(id), by, ip);
+    await this.installs.remove(id, this.installUsers(id), by, ip);
     this.changed();
+  }
+
+  async installPlan(adapter: PanelAdapter, flavour: string | null, launch: Record<string, unknown>): Promise<InstallPlan> {
+    const own: InstallPlan = { mode: 'own', bytes: null, servers: 0 };
+    if (!this.shares(adapter, flavour) || !(await this.installs.available().catch(() => false))) return own;
+    let wanted: InstallWanted;
+    try {
+      wanted = adapter.install!.wanted(launch, { flavour });
+    } catch (e) {
+      throw new HttpError(400, 'invalid-options', (e as Error).message, { message: (e as Error).message, ...(launchRefusal(e) ?? {}) });
+    }
+    const game = this.gameOf(adapter, flavour);
+    const found = this.installs.find(game, wanted);
+    if (found) return { mode: 'existing', bytes: found.bytes, servers: this.installUsers(found.id).length };
+    const pending = this.installs.pending(game, wanted);
+    if (pending) return { mode: 'installing', bytes: null, servers: this.installUsers(pending.id).length };
+    // About as big as the newest install of the same game and flavour, when there is one.
+    const like = this.installs
+      .list()
+      .filter((r) => r.state === 'ready' && r.adapter === game.adapter && r.flavour === game.flavour && r.bytes !== null)
+      .sort((a, b) => (b.readyAt ?? '').localeCompare(a.readyAt ?? ''))[0];
+    return { mode: 'download', bytes: like?.bytes ?? null, servers: 0 };
   }
 
   async removeLeftover(serverId: string, by: Actor, ip: string | null = null): Promise<void> {

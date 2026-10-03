@@ -15,6 +15,7 @@ import { backupRoutes } from './routes/backups';
 import { configRoutes } from './routes/config';
 import { connectionRoutes, hostAddressRoutes } from './routes/connection';
 import { fileRoutes } from './routes/files';
+import { installRoutes, serverInstallRoutes } from './routes/installs';
 import { metaRoutes } from './routes/meta';
 import { modRoutes } from './routes/mods';
 import { pluginRoutes } from './routes/plugins';
@@ -94,6 +95,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
   userRoutes(app, deps);
   notificationRoutes(app, deps);
   hostAddressRoutes(app, deps);
+  installRoutes(app, deps);
   serverListRoutes(app, deps);
   wsRoutes(app, deps);
 
@@ -104,6 +106,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}): Pro
     metaRoutes(s, deps);
     connectionRoutes(s, deps);
     serverRoutes(s, deps);
+    serverInstallRoutes(s, deps);
     configRoutes(s, deps);
     fileRoutes(s, deps);
     proposalRoutes(s, deps);
