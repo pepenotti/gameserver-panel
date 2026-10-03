@@ -64,8 +64,20 @@ function readOnlyAt(target) {
 }
 function writeInstallFile(file, text) {
   if (readOnlyAt(file)) throw Object.assign(new Error(`EROFS: read-only file system, open '${file}'`), { code: 'EROFS' });
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, text);
+  // Where it lands, through a link on the way (the OS follows it; Node on Windows can't make a folder
+  // through a junction itself). A link whose target is missing fails here, as it does for the game.
+  let have = path.resolve(file);
+  while (!fs.existsSync(have) && path.dirname(have) !== have) {
+    try {
+      fs.lstatSync(have);
+      break; // a link whose target is missing
+    } catch {
+      have = path.dirname(have);
+    }
+  }
+  const real = path.join(fs.realpathSync(have), path.relative(have, path.resolve(file)));
+  fs.mkdirSync(path.dirname(real), { recursive: true });
+  fs.writeFileSync(real, text);
 }
 
 /**

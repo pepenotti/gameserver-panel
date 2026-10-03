@@ -71,6 +71,8 @@ export async function makeHarness(overrides: Partial<AgentConfig> = {}, o: { ada
     port: 0,
     adapter: 'pz',
     flavour: null,
+    mode: 'server',
+    installShared: false,
     installDir: path.join(dir, 'install'),
     dataDir: path.join(dir, 'data'),
     stateDir: path.join(dir, 'state'),
