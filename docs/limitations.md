@@ -672,6 +672,25 @@ next start (at once when stopped). The old copy stays until the owner removes it
 
 **Status:** Expected.
 
+### One server's update reaches every server on the same files
+
+**Affects:** every game, servers sharing game files, whatever each one's update policy.
+
+**What you'll notice:** when one server updates (its own policy, or someone pressing "Update now"),
+every other server on the same files gets "applies at next start": a stopped one moves to the new
+version at once, a running one at its next start (a scheduled restart included), each after a safety
+backup. A server set to "only notify" moves too, at its next start; its policy only decides that it
+isn't stopped for the update.
+
+**Why:** the new version is downloaded once for every server on the old one (UPD-03); a server
+staying behind would keep the old files on disk for itself.
+
+**Workaround:** to keep a server on an older version, pin that version in its launch settings
+(where the game has versions to pin); it then keeps an install of that version.
+
+**Status:** Expected (tested against the fake orchestrator; seen on the real stack with a file
+check, which works the same way).
+
 ### At most four game installs are made at once
 
 **Affects:** every game.
