@@ -93,6 +93,8 @@ interface Rig {
   deps: Deps;
   app: FastifyInstance;
   owner: Client;
+  /** The fake orchestrator's last lines (its agents' and jobs' output), for a failure's message. */
+  logs: string[];
 }
 
 let rig: Rig;
@@ -100,7 +102,12 @@ let rig: Rig;
 beforeAll(async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-vh-e2e-'));
   const policy: Policy = { hostPorts: [[1024, 65535]], maxMemMb: 16_384, maxServers: 5, allowFake: true };
+  const logs: string[] = [];
   const backend = new FakeBackend({
+    log: (l) => {
+      logs.push(l);
+      if (logs.length > 300) logs.shift();
+    },
     stateDir: path.join(dir, 'orch'),
     policy,
     agentPorts: await freeTcp(3),
@@ -144,7 +151,7 @@ beforeAll(async () => {
   const app = await buildApp(deps);
   await deps.servers.start();
   const { client: owner } = await ownerReady({ app } as TestPanel);
-  rig = { dir, backend, orch, db, deps, app, owner };
+  rig = { dir, backend, orch, db, deps, app, owner, logs };
 }, 60_000 * SCALE);
 
 afterAll(async () => {
@@ -185,7 +192,13 @@ const running = (id: string) =>
 async function agentUp(id: string): Promise<void> {
   // A new server's game is installed first, by an install job of its own (HST-09): its container comes once that is
   // ready, which a busy machine may take a while to do. Waited for on its own, as the start that installed it used to be.
-  await until(`${id}'s install`, () => !rig.deps.servers.awaitingInstall(id));
+  const install = () => rig.deps.servers.installs.get(rig.deps.serverRows.get(id)?.installId ?? '');
+  // A failure says what the install and the fake orchestrator's agents said.
+  const said = () => `${JSON.stringify(install())} ${JSON.stringify(rig.deps.servers.installs.progress(install()?.id ?? ''))}\n${rig.logs.slice(-60).join('\n')}`;
+  await until(`${id}'s install`, () => !rig.deps.servers.awaitingInstall(id) || install()?.state === 'failed').catch((e: Error) => {
+    throw new Error(`${e.message}: ${said()}`, { cause: e });
+  });
+  if (install()?.state === 'failed') throw new Error(`${id}'s install failed: ${said()}`);
   await until(`${id}'s agent`, async () => (await srv(id).agent.status().catch(() => null)) !== null);
   if (!srv(id).feed.connected) (srv(id).agent as AgentClient).startStream();
   await until(`${id}'s events`, () => srv(id).feed.connected);
