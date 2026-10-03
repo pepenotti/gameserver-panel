@@ -10,6 +10,14 @@ const fail = process.env.FAKE_STEAMCMD_FAIL;
 const buildId = process.env.FAKE_BUILDID ?? '24909800';
 let installDir = '.';
 const out = (l) => process.stdout.write(`${l}\n`);
+/** The beta branch an install is on (its app manifest's BetaKey), or null. */
+function betaKeyOf(dir, appId) {
+  try {
+    return /"BetaKey"\s+"([^"]+)"/.exec(fs.readFileSync(path.join(dir, 'steamapps', `appmanifest_${appId}.acf`), 'utf8'))?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
 
 out('Redirecting stderr to \'/home/node/Steam/logs/stderr.txt\'');
 out('Loading Steam API...OK');
@@ -20,9 +28,19 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '+app_update') {
     const appId = args[++i];
     let branch = 'public';
+    let named = false;
     while (args[i + 1] && !args[i + 1].startsWith('+')) {
       const opt = args[++i];
-      if (opt === '-beta') branch = args[++i];
+      if (opt === '-beta') {
+        branch = args[++i];
+        named = true;
+      }
+    }
+    // Measured on Avorion (docs/verification/shared-installs.md, "Branch switches"): without -beta, an
+    // install of a beta branch stays on it, and steamcmd says it is up to date.
+    if (!named && ![null, 'public'].includes(betaKeyOf(installDir, appId))) {
+      out(`Success! App '${appId}' already up to date.`);
+      continue;
     }
     if (fail === 'timeout') {
       out(`Error! App '${appId}' state is 0x602 after update job.`);

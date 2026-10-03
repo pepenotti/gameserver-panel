@@ -78,12 +78,16 @@ async function withRetries(attempts: number, fn: () => Promise<SteamcmdRunResult
   return last!;
 }
 
-/** `+app_update` arguments; a null branch is Steam's default (`public`) one. */
+/**
+ * `+app_update` arguments; a null branch is Steam's default (`public`) one.
+ * The branch is always named, `public` too: without `-beta`, steamcmd keeps
+ * an install on the beta branch it was installed from and says it is up to
+ * date (measured: docs/verification/shared-installs.md, "Branch switches").
+ */
 export function installArgs(installDir: string, appId: string, branch: string | null, validate: boolean): string[] {
   if (!APP_ID.test(appId)) throw new Error('Invalid app id');
   if (branch !== null && !BRANCH.test(branch)) throw new Error('Invalid branch name');
-  const update = ['+app_update', appId];
-  if (branch !== null) update.push('-beta', branch);
+  const update = ['+app_update', appId, '-beta', branch ?? 'public'];
   if (validate) update.push('validate');
   // force_install_dir must come before login.
   return ['+force_install_dir', installDir, '+login', 'anonymous', ...update, '+quit'];

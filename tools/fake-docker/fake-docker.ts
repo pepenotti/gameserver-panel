@@ -28,9 +28,9 @@ export interface FakeContainer {
   Name: string;
   /** Content id of the image it was created from (`Config.Image` as it resolved then), like Docker's inspect. */
   Image: string;
-  Config: { Image: string; Labels: Labels; Env: string[] };
+  Config: { Image: string; Labels: Labels; Env: string[]; Cmd?: string[] | null };
   State: { Status: string; Running: boolean; StartedAt: string; FinishedAt: string; ExitCode: number };
-  HostConfig: Record<string, unknown> & { PortBindings: Record<string, Binding[]>; Mounts?: { Source?: string }[] };
+  HostConfig: Record<string, unknown> & { PortBindings: Record<string, Binding[]>; Mounts?: { Source?: string; Target?: string; ReadOnly?: boolean }[] };
   NetworkSettings: { Networks: Record<string, { NetworkID: string }> };
   /** The `POST /containers/create` body, as received. */
   createBody?: unknown;
@@ -49,6 +49,14 @@ export interface FakeVolume {
   Name: string;
   Driver: string;
   Labels: Labels;
+  CreatedAt: string;
+  /**
+   * What the volume holds, by path from its root (`/`-separated), for
+   * `GET /containers/{id}/archive` of a path a container mounts it at
+   * (the orchestrator reads a shared install's marker that way). A test
+   * fills it; nothing else is modelled.
+   */
+  files: Map<string, string>;
 }
 
 export interface FakeDocker {
@@ -70,7 +78,7 @@ export interface FakeDocker {
   failNext(method: string, path: RegExp, status: number, message: string): void;
   addContainer(o: { name: string; image?: string; labels?: Labels; running?: boolean; ports?: { container: number; host: number; proto: 'tcp' | 'udp' }[]; id?: string; networks?: string[] }): FakeContainer;
   addNetwork(o: { name: string; labels?: Labels }): FakeNetwork;
-  addVolume(o: { name: string; labels?: Labels }): FakeVolume;
+  addVolume(o: { name: string; labels?: Labels; files?: Record<string, string> }): FakeVolume;
   close(): Promise<void>;
 }
 
@@ -92,6 +100,27 @@ function labelFilters(q: Record<string, string>): string[] {
   const f = JSON.parse(q.filters) as { label?: string[] | Record<string, boolean> };
   if (!f.label) return [];
   return Array.isArray(f.label) ? f.label : Object.keys(f.label).filter((k) => (f.label as Record<string, boolean>)[k]);
+}
+
+/** A ustar archive of one file, as Docker's archive endpoint answers. */
+function tarOf(name: string, data: Buffer): Buffer {
+  const header = Buffer.alloc(512);
+  const field = (off: number, len: number, value: string) => header.write(value, off, len, 'ascii');
+  field(0, 100, name);
+  field(100, 8, '0000644\0');
+  field(108, 8, '0001750\0');
+  field(116, 8, '0001750\0');
+  field(124, 12, `${data.length.toString(8).padStart(11, '0')}\0`);
+  field(136, 12, `${Math.floor(Date.now() / 1000).toString(8).padStart(11, '0')}\0`);
+  header.fill(' ', 148, 156);
+  field(156, 1, '0');
+  field(257, 6, 'ustar\0');
+  field(263, 2, '00');
+  let sum = 0;
+  for (const b of header) sum += b;
+  field(148, 8, `${sum.toString(8).padStart(6, '0')}\0 `);
+  const pad = Buffer.alloc((512 - (data.length % 512)) % 512);
+  return Buffer.concat([header, data, pad, Buffer.alloc(1024)]);
 }
 
 function matchesLabels(labels: Labels, filters: string[]): boolean {
@@ -121,7 +150,16 @@ export async function startFakeDocker(): Promise<FakeDocker> {
         })
       : [];
 
-  const summary = (c: FakeContainer) => ({ Id: c.Id, Names: [c.Name], Image: c.Config.Image, Labels: c.Config.Labels, State: c.State.Status, Ports: publishedPorts(c) });
+  const summary = (c: FakeContainer) => ({
+    Id: c.Id,
+    Names: [c.Name],
+    Image: c.Config.Image,
+    Labels: c.Config.Labels,
+    State: c.State.Status,
+    Ports: publishedPorts(c),
+    // As Docker lists them: a named volume's name, where it is mounted, and whether it is writable.
+    Mounts: (c.HostConfig.Mounts ?? []).map((m) => ({ Type: 'volume', Name: m.Source ?? '', Destination: m.Target ?? '', RW: m.ReadOnly !== true })),
+  });
 
   function attach(net: FakeNetwork, c: FakeContainer): void {
     net.Containers[c.Id] = { Name: c.Name.slice(1) };
@@ -177,7 +215,7 @@ export async function startFakeDocker(): Promise<FakeDocker> {
       return n;
     },
     addVolume(o) {
-      const v: FakeVolume = { Name: o.name, Driver: 'local', Labels: o.labels ?? {} };
+      const v: FakeVolume = { Name: o.name, Driver: 'local', Labels: o.labels ?? {}, CreatedAt: now(), files: new Map(Object.entries(o.files ?? {})) };
       volumes.set(v.Name, v);
       return v;
     },
@@ -210,7 +248,7 @@ export async function startFakeDocker(): Promise<FakeDocker> {
         Id: newId(),
         Name: `/${name}`,
         Image: fd.imageId(image),
-        Config: { Image: image, Labels: (b.Labels as Labels) ?? {}, Env: (b.Env as string[]) ?? [] },
+        Config: { Image: image, Labels: (b.Labels as Labels) ?? {}, Env: (b.Env as string[]) ?? [], Cmd: (b.Cmd as string[] | undefined) ?? null },
         State: { Status: 'created', Running: false, StartedAt: NO_TIME, FinishedAt: NO_TIME, ExitCode: 0 },
         HostConfig: { ...hc, PortBindings: hc.PortBindings ?? {} },
         NetworkSettings: { Networks: {} },
@@ -219,6 +257,20 @@ export async function startFakeDocker(): Promise<FakeDocker> {
       containers.set(c.Id, c);
       if (net) attach(net, c);
       return new Reply(201, { Id: c.Id, Warnings: [] });
+    }
+    if (method === 'GET' && (m = /^\/containers\/([^/]+)\/archive$/.exec(path))) {
+      // `docker cp` out of a container, created or running: one file of a volume it mounts, as a tar.
+      const c = findContainer(decodeURIComponent(m[1] ?? ''));
+      if (!c) return noSuch('container', m[1] ?? '');
+      const want = q.path ?? '';
+      for (const mt of c.HostConfig.Mounts ?? []) {
+        const target = (mt.Target ?? '').replace(/\/$/, '');
+        if (!target || !want.startsWith(`${target}/`)) continue;
+        const text = volumes.get(mt.Source ?? '')?.files.get(want.slice(target.length + 1));
+        if (text === undefined) break;
+        return new Reply(200, tarOf(want.slice(want.lastIndexOf('/') + 1), Buffer.from(text, 'utf8')));
+      }
+      return new Reply(404, { message: `Could not find the file ${want} in container ${c.Name.slice(1)}` });
     }
     if ((m = /^\/containers\/([^/]+)\/(json|start|stop|restart|stats)$/.exec(path)) || (m = /^\/containers\/([^/]+)()$/.exec(path))) {
       const c = findContainer(decodeURIComponent(m[1] ?? ''));
@@ -305,16 +357,21 @@ export async function startFakeDocker(): Promise<FakeDocker> {
     }
 
     // ---- volumes
+    const volumeJson = (v: FakeVolume) => ({ Name: v.Name, Driver: v.Driver, Labels: v.Labels, CreatedAt: v.CreatedAt, Mountpoint: `/var/lib/docker/volumes/${v.Name}/_data`, Scope: 'local' });
+    if (method === 'GET' && path === '/volumes') {
+      const filters = labelFilters(q);
+      return new Reply(200, { Volumes: [...volumes.values()].filter((v) => matchesLabels(v.Labels, filters)).map(volumeJson), Warnings: null });
+    }
     if (method === 'POST' && path === '/volumes/create') {
       const name = String(b.Name ?? '');
       const v = volumes.get(name) ?? fd.addVolume({ name, labels: (b.Labels as Labels) ?? {} });
-      return new Reply(201, v);
+      return new Reply(201, volumeJson(v));
     }
     if ((m = /^\/volumes\/([^/]+)$/.exec(path))) {
       const name = decodeURIComponent(m[1] ?? '');
       const v = volumes.get(name);
       if (!v) return noSuch('volume', name);
-      if (method === 'GET') return new Reply(200, v);
+      if (method === 'GET') return new Reply(200, volumeJson(v));
       if (method === 'DELETE') {
         const user = [...containers.values()].find((c) => (c.HostConfig.Mounts ?? []).some((mt) => mt.Source === name));
         if (user) return new Reply(409, { message: `remove ${name}: volume is in use - [${user.Id}]` });
@@ -359,6 +416,9 @@ export async function startFakeDocker(): Promise<FakeDocker> {
       if (reply.body === undefined) {
         res.writeHead(reply.status);
         res.end();
+      } else if (Buffer.isBuffer(reply.body)) {
+        res.writeHead(reply.status, { 'content-type': 'application/x-tar' });
+        res.end(reply.body);
       } else if (typeof reply.body === 'string') {
         res.writeHead(reply.status, { 'content-type': 'text/plain' });
         res.end(reply.body);

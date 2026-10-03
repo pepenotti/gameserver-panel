@@ -805,30 +805,64 @@ function findMods() {
  */
 function serverPlugins() {
   const root = env.GAME_INSTALL_DIR || env.FAKE_TERRARIA_INSTALL_DIR;
-  if (!root || !fs.existsSync(root)) return [];
-  const home = fs.readdirSync(root).map((d) => path.join(root, d)).find((d) => fs.existsSync(path.join(d, 'TShock.Server')));
-  const dir = home && path.join(home, 'ServerPlugins');
-  if (!dir || !fs.existsSync(dir)) return [];
+  const home = root && fs.existsSync(root) ? fs.readdirSync(root).map((d) => path.join(root, d)).find((d) => fs.existsSync(path.join(d, 'TShock.Server'))) : undefined;
+  // `-additionalplugins <folder>` loads the plugins directly in that folder too, never its subfolders
+  // (measured on TShock 6.2.1: docs/verification/shared-installs.md).
+  const dirs = [home && path.join(home, 'ServerPlugins'), arg('-additionalplugins')].filter((d) => d && fs.existsSync(d));
   const found = [];
-  for (const f of fs.readdirSync(dir).sort()) {
-    if (!f.toLowerCase().endsWith('.dll')) continue;
-    let text;
-    try {
-      text = fs.readFileSync(path.join(dir, f), 'latin1');
-    } catch {
-      continue;
+  for (const dir of dirs) {
+    for (const f of fs.readdirSync(dir).sort()) {
+      if (!f.toLowerCase().endsWith('.dll')) continue;
+      let text;
+      try {
+        if (!fs.statSync(path.join(dir, f)).isFile()) continue;
+        text = fs.readFileSync(path.join(dir, f), 'latin1');
+      } catch {
+        continue;
+      }
+      const m = /FAKE-TSHOCK-PLUGIN name=(\S+) version=(\S+) author=(\S+)/.exec(text);
+      if (text.startsWith('MZ') && m) found.push({ name: m[1], version: m[2], author: m[3] });
     }
-    const m = /FAKE-TSHOCK-PLUGIN name=(\S+) version=(\S+) author=(\S+)/.exec(text);
-    if (text.startsWith('MZ') && m) found.push({ name: m[1], version: m[2], author: m[3] });
   }
   return found;
+}
+
+// A shared install (HST-09): an install an install job finished carries the shared-install marker,
+// and servers mount it read-only, so the fake treats an install with the marker as read-only (a real
+// read-only mount, as in the fake images, fails the same way). A write that lands outside the
+// install through a link in it (a redirect into the data folder) goes through.
+const SHARED_MARKER = '.gsp-shared-install.json';
+function readOnlyAt(target) {
+  let p = path.resolve(target);
+  for (;;) {
+    try {
+      fs.lstatSync(p);
+      break;
+    } catch {
+      const up = path.dirname(p);
+      if (up === p) return false;
+      p = up;
+    }
+  }
+  let real;
+  try {
+    real = fs.realpathSync(p);
+  } catch {
+    return false;
+  }
+  for (let d = real; ; d = path.dirname(d)) {
+    if (fs.existsSync(path.join(d, SHARED_MARKER))) return true;
+    if (path.dirname(d) === d) return false;
+  }
 }
 
 // ------------------------------------------------------------------ boot
 async function boot() {
   if (tml) {
     // measured: tModLoader writes its logs into <working directory>/tModLoader-Logs and gives up without it
+    // (read-only, or a link to a target that is missing: docs/verification/shared-installs.md)
     try {
+      if (readOnlyAt(path.join(cwd, 'tModLoader-Logs'))) throw new Error('EROFS');
       fs.mkdirSync(path.join(cwd, 'tModLoader-Logs'), { recursive: true });
       fs.writeFileSync(path.join(cwd, 'tModLoader-Logs', 'server.log'), `[00:00:00.000] [Main Thread/INFO] [tML]: Starting tModLoader server ${TERRARIA}+${TML.replace(/(\d+)\.(\d+)\./, (_m, a, b) => `${a}.${b.padStart(2, '0')}.`)} (FAKE)\n`);
     } catch {
