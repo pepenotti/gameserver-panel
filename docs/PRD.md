@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.29 |
+| Status | Draft 0.30 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -166,7 +166,7 @@ Each can move into scope later through [change control](#14-change-control).
   Terraria and tModLoader keep their bans in memory: the panel lifts a ban
   while the server is stopped. TShock loads plugins only at start and skips
   one it can't load without a word; the panel keeps them in the server's data
-  and puts the enabled ones in place before each start. tModLoader takes each
+  and TShock loads the enabled ones from there. tModLoader takes each
   Workshop mod from the newest folder built for its version.
 - **Valheim:** it has no server console: the panel stops it with a signal (it
   saves first), can't warn players in game or ask it to save, and its running
@@ -358,7 +358,7 @@ on their own; only AST-05 is the assistant itself.
 | ID | Area | Requirement |
 |---|---|---|
 | NFR-01 | Security | At least zomboid-server's controls, listed below. |
-| NFR-02 | Security | The **orchestrator** is the only component with Docker access, and its API is narrow (see D3). Every server container gets `cap_drop: ALL`, `no-new-privileges`, a non-root user and a memory limit. It is never privileged, never on the host network, and has no host mounts beyond its own volumes and the install of its game version, mounted read-only. Install jobs are built the same way and publish no ports. Images come from an allowlist. An upgrade never loosens a container: one kept across an orchestrator release is one this stack's orchestrator created from the same spec, and a release that closes a security gap in how containers are built recreates every container built before it at once, even while its game runs, and says so in the audit log. |
+| NFR-02 | Security | The **orchestrator** is the only component with Docker access, and its API is narrow (see D3). Every server container gets `cap_drop: ALL`, `no-new-privileges`, a non-root user and a memory limit. It is never privileged, never on the host network, and has no host mounts beyond its own volumes and the install of its game version, mounted read-only. Install jobs are built the same way and publish no ports, each with a memory limit of its own (1 GiB) and a network of its own that only the panel joins. Images come from an allowlist. An upgrade never loosens a container: one kept across an orchestrator release is one this stack's orchestrator created from the same spec, and a release that closes a security gap in how containers are built recreates every container built before it at once, even while its game runs, and says so in the audit log. |
 | NFR-03 | Isolation | Each server gets its own internal network. A game container can't reach the panel, the orchestrator or another server. The panel and the orchestrator listen on unix sockets in volumes only they (and the TLS proxy, for the panel) mount, and the orchestrator has no network at all. A game server can still reach the public HTTPS address like any internet client. |
 | NFR-04 | Reliability | Graceful stop with a time budget per game; state survives restarts; watchdogs per server. |
 | NFR-05 | Portability | Linux, Windows and macOS through Docker, on x86-64 and ARM64, within each adapter's declared architectures (HST-05). Nothing in the core depends on the host OS. |
@@ -611,3 +611,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.27 | 2026-10-02 | SRV-08 and HST-08 built: a "How to join" card per server with copy and share, the host's public and home addresses with an on-demand detect; each game declares how players join, verified only where a real client joined (Minecraft so far). |
 | 0.28 | 2026-10-03 | The owner joined real servers locally: Minecraft (all three loaders), Terraria vanilla and TShock, Project Zomboid; their join facts are verified (SRV-08). M3 and M6 accepted; M5 accepted except a tModLoader client join. Shared installs (HST-09, D12) come first in M7 (Q16); Counter-Strike 2 is the first game after v1, with plugins as a second step (Q17, Q18; §7). |
 | 0.29 | 2026-10-03 | M7-0 fact-finding for shared installs (`docs/verification/shared-installs.md`, `fixtures/shared-installs`): every game runs from a read-only install, three with a fix (Minecraft's bundler unpacked by the install job; tModLoader's logs and Project Zomboid's Workshop downloads redirected into the server's data); install jobs, install volumes and the `install` pending reason (D3, D12, HST-09, SRV-05, UPD-01, UPD-03, NFR-02, BAK-01); a beta branch is named to steamcmd explicitly. |
+| 0.30 | 2026-10-03 | M7-A: shared installs built below the panel (install jobs and volumes, read-only mounts, agent modes, every game's declaration), checked on real servers; NFR-02 names the jobs' own memory limit and network; TShock loads plugins from the server's data (§7). |

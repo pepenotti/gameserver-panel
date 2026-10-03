@@ -59,6 +59,7 @@ only with a console). `packages/adapter-manifest/test/schema.test.ts` loads ever
 | `broadcast` | A console template (`/say {arg}`): the in-game countdowns and messages (CON-03). |
 | `notes` | What people should know, EN/ES, each with its `limitations.md#…` entry; shown on the create form and the server's pages. |
 | `join` | How players join (SRV-08), for every server's connection info: the `port` they type (published, following no other), the `format` (`host:port`, or `separate` fields; `defaultPort` when the client assumes one), `where` in the game it is typed, the `client` and whether it must match the server's version (`sameVersion`), `steps` (each shown while a `setting` or a config `file`'s `key` `equals` a value), the `password` (a secret setting, or a secret key of a config file), and `verified` with its `source`: true only when a real client joined that way (D5); a `note` says what isn't measured yet. |
+| `install` | How the game's install is shared (HST-09, D12): `shared` (one install per game, version and branch, mounted read-only by every server on it), `copy` or `own`; and `redirects`: paths the game writes inside its install while it runs, each linked by the install job to a folder in the server's data (`{ "path": "...", "to": "/data/..." }`; a folder name may use `*`, the last segment must be literal). Measure it first (`docs/verification/shared-installs.md`): run the game from a read-only install and list what it writes. |
 
 ### Placeholders
 
