@@ -25,15 +25,15 @@ export type InstallSharingMode = 'shared' | 'copy' | 'own';
 /**
  * A path the game writes inside its install while it runs (measured), made
  * a symbolic link into the server's data by the install job, so the game
- * writes there instead (tModLoader's logs, Project Zomboid's Workshop
- * downloads). Each server's agent creates the target before every start: a
+ * writes there instead (a log folder next to its binaries, its own
+ * downloads of mods). Each server's agent creates the target before every start: a
  * link whose target is missing fails like no link (measured).
  */
 export interface InstallRedirect {
   /**
    * Relative to the install root, `/`-separated, no `.` or `..` segments.
    * A folder above the linked path may hold `*` (any characters but `/`)
-   * when its name depends on the version (Terraria's `tmodloader-*`): the
+   * when its name depends on the version (`server-*`): the
    * job links the path in every plain folder that matches.
    */
   path: string;
@@ -56,7 +56,7 @@ export interface InstallSharing {
 export interface InstallKey {
   /** The flavour installed; null for games without flavours. */
   flavour: string | null;
-  /** What was installed, in the launch's terms (a Minecraft version, a Terraria release); null when the build says it all (Steam). */
+  /** What was installed, in the launch's terms (a game version, a release tag); null when the build says it all (Steam). */
   version: string | null;
   /** The build of it (a Steam build id, a Paper build, a Fabric loader version); null when the version says it all. */
   build: string | null;

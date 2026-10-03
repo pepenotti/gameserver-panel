@@ -123,7 +123,7 @@ export interface Flavour {
   /**
    * How installs of this flavour are shared (HST-09, D12), when it isn't the
    * adapter's `AdapterMeta.install` (a flavour whose game writes into its
-   * install somewhere the others don't: tModLoader's logs).
+   * install somewhere the others don't: a log folder next to its binaries).
    */
   install?: InstallSharing;
 }
