@@ -1,0 +1,9 @@
+# TShock started by hand with the agent's own command line plus -additionalplugins /data/plugins (Bagger.dll in it), the install read-only; only the lines that show the plugins and the result kept.
+# argv: /opt/game/tshock-v6.2.1/TShock.Server -port 7777 -maxplayers 8 -world /data/Worlds/gspffinst.wld -autocreate 1 -worldname gspffinst -banlist /data/banlist.txt -config /data/serverconfig.txt -savedirectory /data -configpath /data/tshock -logpath /data/tshock/logs -crashdir /data/tshock/crashes -additionalplugins /data/plugins
+# cwd: /data
+Error Logging Enabled.
+[Server API] Info Plugin TShock v6.2.1.0 (by The TShock Team) initiated.
+[Server API] Info Plugin Bagger v1.3.1 (by Soofa) initiated.
+Server started
+# [88.5 s] ready; typing: exit
+# [90.6 s] exit code 0 signal null

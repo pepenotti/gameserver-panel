@@ -1,0 +1,16 @@
+# Files a read-write start with one Workshop mod wrote in HOME.
+f	6854	./Steam/config/config.vdf
+f	22457	./Steam/depotcache/108600_3034682092588621407.manifest
+f	727	./Steam/logs/appinfo_log.txt
+f	969	./Steam/logs/configstore_log.txt
+f	742	./Steam/logs/connection_log.txt
+f	5591	./Steam/logs/connection_log_16261.txt
+f	3425	./Steam/logs/content_log.txt
+f	130	./Steam/logs/systemaudiomanager.txt
+f	131	./Steam/logs/systemdisplaymanager.txt
+f	129	./Steam/logs/systemdockmanager.txt
+f	201	./Steam/logs/systemmanager.txt
+f	268	./Steam/logs/systemperfmanager.txt
+f	130	./Steam/logs/systemperfreporting.txt
+f	1305	./Steam/logs/workshop_log.txt
+f	754	./Steam/userdata/<account>/ugcmsgcache/e3320e3f06e3f90514b6de7e7b9826db4c8ddd30.cachedmsg

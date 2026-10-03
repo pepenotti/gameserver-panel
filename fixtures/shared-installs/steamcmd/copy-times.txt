@@ -1,0 +1,7 @@
+# Local copies (cp -a, the source read-only, the new volume mounted at /opt/game).
+Avorion 2.5.11 install (A) copied into a new volume (B): 1576 ms
+183653041	/a
+183653041	/b
+exit 0
+Project Zomboid install copied into a new volume: 41359 ms
+7206116309	/opt/game

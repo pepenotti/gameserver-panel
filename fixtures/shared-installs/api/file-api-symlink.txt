@@ -1,0 +1,9 @@
+# The agent's file API on a read-only install whose steamapps/workshop is a symlink to /data/.workshop/steamapps/workshop.
+POST /v1/fs/stat {"root":"install","rel":"steamapps/workshop"}
+{"status":403,"data":{"error":"Symbolic links are not followed: steamapps/workshop","code":"bad-request","reason":"outside-root"}}
+POST /v1/fs/list {"root":"install","rel":"steamapps"}
+{"status":200,"data":{"entries":[{"name":"appmanifest_380870.acf","kind":"file","size":895,"mtimeMs":1791007163877.2178},{"name":"downloading","kind":"dir","size":4096,"mtimeMs":1791007163777.0886},{"name":"temp","kind":"dir","size":4096,"mtimeMs":1791007163577.1833},{"name":"workshop","kind":"symlink","size":34,"mtimeMs":1791009303300.1187}]}}
+POST /v1/fs/list {"root":"install","rel":"steamapps/workshop/content"}
+{"status":403,"data":{"error":"Symbolic links are not followed: steamapps/workshop/content","code":"bad-request","reason":"outside-root"}}
+POST /v1/fs/stat {"root":"data","rel":".workshop/steamapps/workshop/content/108600/2544353492"}
+{"status":200,"data":{"stat":{"kind":"dir","size":4096,"mtimeMs":1791009598485.3567}}}

@@ -1,0 +1,17 @@
+# The install volume after its install job: entries to depth 1 (d: folder, with the bytes and number of files under it; f: file; l: link).
+f       95976               ./ProjectZomboid64
+f         359               ./ProjectZomboid64.json
+d    65685216      2 files  ./java/
+d   201684629    271 files  ./jre64/
+f       16280               ./libpzexe_jni64.so
+f      388288               ./libsteam_api.so
+f     7633256               ./libsteamwebrtc.so
+d      359100     62 files  ./license/
+d    73449656     14 files  ./linux64/
+d  6807692095  38826 files  ./media/
+f        2165               ./pzexe.jar
+f         675               ./start-server.sh
+f        3183               ./stdlib.lua
+f           8               ./steam_appid.txt
+d         895      1 files  ./steamapps/
+f    49104528               ./steamclient.so

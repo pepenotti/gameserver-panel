@@ -1,0 +1,36 @@
+== state stopped
+[agent] Starting: /usr/share/dotnet/dotnet /opt/game/tmodloader-v2026.07.3.0/tModLoader.dll -server -nosteam -port 7777 -maxplayers 8 -world /data/Worlds/gspffinst.wld -autocreate 1 -worldname gspffinst -banlist /data/banlist.txt -config /data/serverconfig.txt -tmlsavedirectory /data -steamworkshopfolder /data/.workshop/steamapps/workshop
+== state starting
+[err] Failed to init logging
+[err] 
+[err] System.IO.DirectoryNotFoundException: Could not find a part of the path '/opt/game/tmodloader-v2026.07.3.0/tModLoader-Logs'.
+[err]    at System.IO.Enumeration.FileSystemEnumerator`1.CreateDirectoryHandle(String path, Boolean ignoreNotFound)
+[err]    at System.IO.Enumeration.FileSystemEnumerator`1.Init()
+[err]    at System.IO.Enumeration.FileSystemEnumerable`1..ctor(String directory, FindTransform transform, EnumerationOptions options, Boolean isNormalized)
+[err]    at System.IO.Enumeration.FileSystemEnumerableFactory.UserFiles(String directory, String expression, EnumerationOptions options)
+[err]    at System.IO.Directory.InternalEnumeratePaths(String path, String searchPattern, SearchTarget searchTarget, EnumerationOptions options)
+[err]    at System.IO.Directory.GetFiles(String path, String searchPattern, EnumerationOptions enumerationOptions)
+[err]    at Terraria.ModLoader.Logging.GetFreeLogFileName(List`1 baseLogNames, Boolean roll) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 171
+[err]    at Terraria.ModLoader.Logging.InitLogPaths(LogFile logFile) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 161
+[err]    at Terraria.ModLoader.Logging.Init(LogFile logFile) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 61
+[out] tModLoader v2026.7.3.0 Fatal Error
+!! fatal: tModLoader v2026.7.3.0 Fatal Error
+[agent] [fatal] tModLoader v2026.7.3.0 Fatal Error
+[out] Failed to init logging
+[out] 
+[out] System.IO.DirectoryNotFoundException: Could not find a part of the path '/opt/game/tmodloader-v2026.07.3.0/tModLoader-Logs'.
+[out]    at System.IO.Enumeration.FileSystemEnumerator`1.CreateDirectoryHandle(String path, Boolean ignoreNotFound)
+[out]    at System.IO.Enumeration.FileSystemEnumerator`1.Init()
+[out]    at System.IO.Enumeration.FileSystemEnumerable`1..ctor(String directory, FindTransform transform, EnumerationOptions options, Boolean isNormalized)
+[out]    at System.IO.Enumeration.FileSystemEnumerableFactory.UserFiles(String directory, String expression, EnumerationOptions options)
+[out]    at System.IO.Directory.InternalEnumeratePaths(String path, String searchPattern, SearchTarget searchTarget, EnumerationOptions options)
+[out]    at System.IO.Directory.GetFiles(String path, String searchPattern, EnumerationOptions enumerationOptions)
+[out]    at Terraria.ModLoader.Logging.GetFreeLogFileName(List`1 baseLogNames, Boolean roll) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 171
+[out]    at Terraria.ModLoader.Logging.InitLogPaths(LogFile logFile) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 161
+[out]    at Terraria.ModLoader.Logging.Init(LogFile logFile) in D:\a\tModLoader\tModLoader\src\tModLoader\Terraria\ModLoader\Logging.cs:line 61
+[out] 
+[out] A Natives.log file containing error information has been generated in
+[out] /opt/game/tmodloader-v2026.07.3.0/tModLoader-Logs
+[out] (You will need to share this file if asking for help)
+[agent] Server process exited (code 1, signal none) unexpectedly
+# … 42 lines cut …

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "loader": "vanilla",
+  "version": "26.3",
+  "javaMajor": 25,
+  "jre": 25,
+  "jar": "server.jar",
+  "build": null,
+  "channel": null,
+  "loaderVersion": null,
+  "installerVersion": null,
+  "sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c",
+  "sha256": null,
+  "installedAt": "2026-10-03T06:04:38.135Z"
+}

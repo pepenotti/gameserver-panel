@@ -1,0 +1,22 @@
+# The warm-up's own output (stdout and stderr): the bundler's unpack, then the server's option list. The UnknownHostException is --network none's (the container's own name doesn't resolve).
+Unpacking 26.3/server-26.3.jar (versions:26.3) to /opt/game/versions/26.3/server-26.3.jar
+Unpacking at/yawk/lz4/lz4-java/1.10.1/lz4-java-1.10.1.jar (libraries:at.yawk.lz4:lz4-java:1.10.1) to /opt/game/libraries/at/yawk/lz4/lz4-java/1.10.1/lz4-java-1.10.1.jar
+Unpacking com/azure/azure-json/1.4.0/azure-json-1.4.0.jar (libraries:com.azure:azure-json:1.4.0) to /opt/game/libraries/com/azure/azure-json/1.4.0/azure-json-1.4.0.jar
+Unpacking com/github/oshi/oshi-core/6.9.0/oshi-core-6.9.0.jar (libraries:com.github.oshi:oshi-core:6.9.0) to /opt/game/libraries/com/github/oshi/oshi-core/6.9.0/oshi-core-6.9.0.jar
+Unpacking com/google/code/gson/gson/2.14.0/gson-2.14.0.jar (libraries:com.google.code.gson:gson:2.14.0) to /opt/game/libraries/com/google/code/gson/gson/2.14.0/gson-2.14.0.jar
+Unpacking com/google/guava/failureaccess/1.0.3/failureaccess-1.0.3.jar (libraries:com.google.guava:failureaccess:1.0.3) to /opt/game/libraries/com/google/guava/failureaccess/1.0.3/failureaccess-1.0.3.jar
+# … 34 lines cut …
+Starting net.minecraft.server.Main
+2026-10-03T06:30:29.069467389Z ServerMain ERROR Could not determine local host name
+java.net.UnknownHostException: jdk.internal.util.Exceptions$NonSocketInfo@<container>: Temporary failure in name resolution
+	at java.base/java.net.InetAddress.getLocalHost(Unknown Source)
+# … 32 lines cut …
+Option                 Description                                         
+------                 -----------                                         
+--bonusChest                                                               
+--demo                                                                     
+--eraseCache                                                               
+--forceUpgrade                                                             
+--help                                                                     
+# … 12 lines cut …
+exit 0 in 3331 ms

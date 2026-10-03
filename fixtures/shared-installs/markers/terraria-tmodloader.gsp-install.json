@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "flavour": "tmodloader",
+  "version": "v2026.07.3.0",
+  "terraria": "1.4.4",
+  "channel": "stable",
+  "folder": "tmodloader-v2026.07.3.0",
+  "sha256": "6f51610f4b0f167d1620d0e8c83264ba14e047421e97d9f8053eb40e3d764e1a",
+  "verified": true,
+  "installedAt": "2026-10-03T06:06:56.419Z"
+}

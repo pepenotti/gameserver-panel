@@ -1,0 +1,9 @@
+# The install volume after its install job: entries to depth 3 (d: folder, with the bytes and number of files under it; f: file; l: link).
+f         405               ./.gsp-install.json
+f         616               ./fabric-server-launch.jar
+d     3907777      7 files  ./libraries/
+d     3524060      2 files  ./libraries/net/
+d     3524060      2 files  ./libraries/net/fabricmc/
+d      383717      5 files  ./libraries/org/
+d      383717      5 files  ./libraries/org/ow2/
+f    62294556               ./server.jar

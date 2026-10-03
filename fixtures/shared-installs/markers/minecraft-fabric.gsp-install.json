@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "loader": "fabric",
+  "version": "26.3",
+  "javaMajor": 25,
+  "jre": 25,
+  "jar": "fabric-server-launch.jar",
+  "build": null,
+  "channel": null,
+  "loaderVersion": "0.19.5",
+  "installerVersion": "1.1.2",
+  "sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c",
+  "sha256": "61e035bf7bf70153e127440ce34de47c9036f0a2d0c65d1529454bd35ceefe4f",
+  "installedAt": "2026-10-03T06:05:51.208Z"
+}

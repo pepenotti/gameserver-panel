@@ -1,0 +1,15 @@
+# The read-write run: the agent's plugin record, nothing by TShock.
+before: 55 entries (101565217	. 98M	. 34); after: 56 entries (101565250	. 98M	. 35)
+created 1, deleted 0, changed 0, touched only 0, folders whose listing changed 1
+
+## created (1)
+f         33 ./tshock-v6.2.1/ServerPlugins/.gsp-plugins.json
+
+## deleted (0)
+
+## changed (0)
+
+## touched (mtime only) (0)
+
+## folders whose mtime changed (1)
+./tshock-v6.2.1/ServerPlugins

@@ -1,0 +1,19 @@
+# The read-write run: two starts.
+before: 1331 entries (173801846	. 170M	. 942); after: 1336 entries (173830815	. 170M	. 945)
+created 5, deleted 0, changed 0, touched only 0, folders whose listing changed 1
+
+## created (5)
+d       4096 ./tmodloader-v2026.07.3.0/tModLoader-Logs
+d       4096 ./tmodloader-v2026.07.3.0/tModLoader-Logs/Old
+f      23655 ./tmodloader-v2026.07.3.0/tModLoader-Logs/Old/2026-10-03-1.zip
+f        437 ./tmodloader-v2026.07.3.0/tModLoader-Logs/environment-server.log
+f       4877 ./tmodloader-v2026.07.3.0/tModLoader-Logs/server.log
+
+## deleted (0)
+
+## changed (0)
+
+## touched (mtime only) (0)
+
+## folders whose mtime changed (1)
+./tmodloader-v2026.07.3.0
