@@ -1,8 +1,12 @@
 /**
  * TShock's plugins next to the files (MOD-06): the runtime's actions that
  * list, add, enable, disable and remove them in the data folder, and the
- * copy into TShock's `ServerPlugins` before every start (`syncServerPlugins`).
- * Layout and limits: `shared/plugins.ts`.
+ * step before every start (`syncServerPlugins`) that records which plugin
+ * files the server starts with. TShock loads the enabled ones from the data
+ * folder itself (`-additionalplugins`, not its subfolders, so the disabled
+ * ones stay unloaded): nothing is copied into its install, which may be a
+ * shared one, read-only (HST-09; measured on TShock 6.2.1,
+ * docs/verification/shared-installs.md). Layout and limits: `shared/plugins.ts`.
  *
  * An add takes an upload the panel wrote into the uploads folder, or
  * downloads a release link itself (D11), with every address checked
@@ -76,24 +80,24 @@ function pluginFiles(dir: string): Found[] {
   return out;
 }
 
-// ------------------------------------------------------------------ ServerPlugins and the record
+// ------------------------------------------------------------------ the record, and ServerPlugins
 
-interface CopyRecord {
+interface PluginRecord {
   schema: 1;
-  /** Plugin file name → SHA-256 of what was copied. */
+  /** Plugin file name → SHA-256 of the file. */
   files: Record<string, string>;
 }
 
-/** The installed TShock's `ServerPlugins` folder; null when TShock isn't installed. */
+/** The installed TShock's `ServerPlugins` folder (its own plugins); null when TShock isn't installed. */
 function serverPluginsOf(ctx: RuntimeCtx): string | null {
   const e = installedEntry(ctx);
   return e && e.marker.flavour === 'tshock' ? path.join(e.folder, PLUGINS.serverPlugins) : null;
 }
 
-function readRecord(dir: string | null): CopyRecord {
-  if (dir === null) return { schema: 1, files: {} };
+function readRecordFile(file: string | null): PluginRecord {
+  if (file === null) return { schema: 1, files: {} };
   try {
-    const r = JSON.parse(readFileSync(path.join(dir, PLUGINS.record), 'utf8')) as Partial<CopyRecord>;
+    const r = JSON.parse(readFileSync(file, 'utf8')) as Partial<PluginRecord>;
     const files = r && typeof r.files === 'object' && r.files !== null ? Object.fromEntries(Object.entries(r.files).filter(([k, v]) => isPluginName(k) && typeof v === 'string')) : {};
     return { schema: 1, files };
   } catch {
@@ -101,54 +105,69 @@ function readRecord(dir: string | null): CopyRecord {
   }
 }
 
-/** TShock's own plugins (`TShockAPI.dll`): what its install put in `ServerPlugins`, lower case. */
-function ownNames(dir: string | null, record: CopyRecord): Set<string> {
+/** Which plugin files the server started with: the agent's record, in its own folder (`RuntimeCtx.stateDir`). */
+const startRecordFile = (ctx: RuntimeCtx) => path.join(ctx.stateDir, PLUGINS.startRecord);
+
+/** The record an agent from before shared installs left in `ServerPlugins`, of the plugins it copied there. */
+const legacyRecordFile = (dir: string | null) => (dir === null ? null : path.join(dir, PLUGINS.record));
+
+/** TShock's own plugins (`TShockAPI.dll`): what its install put in `ServerPlugins` (an older agent's copies aside), lower case. */
+function ownNames(dir: string | null): Set<string> {
   if (dir === null) return new Set();
-  const ours = new Set(Object.keys(record.files).map(lower));
-  return new Set(pluginFiles(dir).map((f) => lower(f.name)).filter((n) => !ours.has(n)));
+  const copies = new Set(Object.keys(readRecordFile(legacyRecordFile(dir)).files).map(lower));
+  return new Set(pluginFiles(dir).map((f) => lower(f.name)).filter((n) => !copies.has(n)));
 }
 
 /**
- * Before every start of a TShock server: the enabled plugins copied into
- * `ServerPlugins` (an update replaced the install folder, and with it
- * whatever was there), the ones the agent copied before and that are no
- * longer enabled removed, TShock's own left alone, and the record of what
- * is there now written. Stale uploads go too.
+ * The plugin copies an agent from before shared installs put in TShock's
+ * `ServerPlugins` (named by its record there), and that record, removed: the
+ * plugins now load from the data folder, and a copy left there would load
+ * twice. Only a writable install is touched (a server's own, or an install
+ * job's copy of one: `warmUp`); returns what it removed.
+ */
+export function removeLegacyPluginCopies(ctx: RuntimeCtx): string[] {
+  const dir = serverPluginsOf(ctx);
+  const record = legacyRecordFile(dir);
+  if (dir === null || record === null || lstat(record) === null) return [];
+  if (ctx.sharedInstall) {
+    ctx.log(`TShock's install holds plugin copies of an older agent (${PLUGINS.serverPlugins}/${PLUGINS.record}), and it is shared, read-only: they load besides the data folder's.`);
+    return [];
+  }
+  const removed: string[] = [];
+  for (const name of Object.keys(readRecordFile(record).files)) {
+    const target = path.join(dir, name);
+    if (lstat(target)?.isFile()) {
+      rmSync(target, { force: true });
+      removed.push(name);
+    }
+  }
+  rmSync(record, { force: true });
+  if (removed.length) ctx.log(`Plugins load from the data folder now: removed the copies an older agent put in ${PLUGINS.serverPlugins} (${removed.join(', ')}).`);
+  return removed;
+}
+
+/**
+ * Before every start of a TShock server: an older agent's copies in its
+ * install removed, and the record of the plugin files it starts with (from
+ * the folder `-additionalplugins` names) written, so the panel can tell
+ * which changes wait for a restart (MOD-06). Stale uploads go too. Nothing
+ * is written into the install.
  */
 export function syncServerPlugins(ctx: RuntimeCtx): void {
   removeStaleUploads(ctx);
-  const dir = serverPluginsOf(ctx);
-  if (dir === null) return;
-  const st = lstat(dir);
-  if (st && (st.isSymbolicLink() || !st.isDirectory())) throw new Error(`${PLUGINS.serverPlugins} in TShock's install folder is not a plain folder: reinstall TShock`);
-  mkdirSync(dir, { recursive: true });
-  const record = readRecord(dir);
-  const enabled = pluginFiles(data(ctx, PLUGINS.enabled));
-  const wanted = new Set(enabled.map((f) => f.name));
-  const removed: string[] = [];
-  for (const name of Object.keys(record.files)) {
-    if (wanted.has(name)) continue;
-    const target = path.join(dir, name);
-    if (lstat(target)?.isDirectory() === false) rmSync(target, { force: true });
-    removed.push(name);
+  removeLegacyPluginCopies(ctx);
+  const own = ownNames(serverPluginsOf(ctx));
+  const next: PluginRecord = { schema: 1, files: {} };
+  for (const f of pluginFiles(data(ctx, PLUGINS.enabled))) {
+    if (own.has(lower(f.name))) ctx.log(`Plugin ${f.name} has the name of one of TShock's own: TShock may load only one of the two.`);
+    next.files[f.name] = sha256Of(f.file);
   }
-  const own = ownNames(dir, record);
-  const next: CopyRecord = { schema: 1, files: {} };
-  for (const f of enabled) {
-    if (own.has(lower(f.name))) {
-      ctx.log(`Plugin ${f.name} was not copied: TShock's own install has a plugin of that name.`);
-      continue;
-    }
-    const target = path.join(dir, f.name);
-    const tmp = path.join(dir, `.${f.name}.gsp-tmp`);
-    copyFileSync(f.file, tmp);
-    renameSync(tmp, target);
-    next.files[f.name] = sha256Of(target);
-  }
-  writeFileSync(path.join(dir, `${PLUGINS.record}.tmp`), `${JSON.stringify(next, null, 2)}\n`);
-  renameSync(path.join(dir, `${PLUGINS.record}.tmp`), path.join(dir, PLUGINS.record));
-  const copied = Object.keys(next.files);
-  if (copied.length || removed.length) ctx.log(`Plugins in ServerPlugins: ${copied.length ? copied.join(', ') : 'none of the panel’s'}${removed.length ? ` (no longer: ${removed.join(', ')})` : ''}.`);
+  const file = startRecordFile(ctx);
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(`${file}.tmp`, `${JSON.stringify(next, null, 2)}\n`);
+  renameSync(`${file}.tmp`, file);
+  const loaded = Object.keys(next.files);
+  if (loaded.length) ctx.log(`Plugins TShock loads from the data folder: ${loaded.join(', ')}.`);
 }
 
 function removeStaleUploads(ctx: RuntimeCtx): void {
@@ -169,7 +188,7 @@ function removeStaleUploads(ctx: RuntimeCtx): void {
 
 /** Every plugin in the data folder, enabled or not, and whether the server runs with that very file. */
 export function listPlugins(ctx: RuntimeCtx): PluginFile[] {
-  const record = readRecord(serverPluginsOf(ctx));
+  const record = readRecordFile(startRecordFile(ctx));
   const one = (f: Found, enabled: boolean): PluginFile => {
     const sha256 = sha256Of(f.file);
     return { name: f.name, enabled, active: record.files[f.name] === sha256, size: f.st.size, sha256, mtimeMs: Math.round(f.st.mtimeMs) };
@@ -296,7 +315,7 @@ export async function addPlugins(ctx: InstallCtx, input: AddInput): Promise<Plug
     }
     const r = await unpack(ctx, file, name, staging);
     if (!r.ok) return r;
-    const own = ownNames(serverPluginsOf(ctx), readRecord(serverPluginsOf(ctx)));
+    const own = ownNames(serverPluginsOf(ctx));
     const taken = r.plugins.find((p) => own.has(lower(p.name)));
     if (taken) return fail('name-taken', `TShock's own install has a plugin named ${taken.name}`);
     const placed = place(ctx, r.plugins);

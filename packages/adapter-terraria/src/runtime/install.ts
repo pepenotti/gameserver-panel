@@ -17,7 +17,7 @@
 import { createHash } from 'node:crypto';
 import { chmodSync, createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { InstallCtx, InstalledInfo, JobResult, RuntimeCtx, VersionsResponse } from '@gsp/adapter-api';
+import type { InstallCtx, InstalledInfo, InstallKey, JobResult, RuntimeCtx, VersionsResponse } from '@gsp/adapter-api';
 import { DOWNLOAD_SOURCES, ENTRY, INSTALL_MARKER, REPOS, VANILLA_PINS, type InstallMarker, type TerrariaVersionInfo } from '../shared/install';
 import { FLAVOURS, vanillaId, type TerrariaFlavour, type TerrariaLaunch } from '../shared/launch';
 import { githubRelease, githubReleases, sourceUrls, tmlChannel, tmlTerraria, tmlVersions, tshockAsset, tshockTerraria, tshockVersions, vanillaVersions, type GithubRelease, type Get } from '../shared/versions';
@@ -75,6 +75,12 @@ export function installedInfo(ctx: RuntimeCtx): InstalledInfo | null {
   const printed = ctx.state.gameVersion;
   const version = m.flavour === 'tmodloader' && m.terraria && printed?.startsWith(`${m.terraria}.`) ? printed : m.terraria;
   return { version, channel: m.flavour, build: m.version };
+}
+
+/** `installKey()` (HST-09): the flavour and what was installed (vanilla's version, TShock's or tModLoader's release tag). */
+export function installKey(ctx: RuntimeCtx): InstallKey | null {
+  const e = installedEntry(ctx);
+  return e ? { flavour: e.marker.flavour, version: e.marker.version, build: null, branch: null } : null;
 }
 
 /**

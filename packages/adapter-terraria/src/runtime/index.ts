@@ -6,34 +6,46 @@
  * hot-copied with `save`. Every fact comes from
  * docs/verification/terraria-1.4.5.8.md and fixtures/terraria/1.4.5.8.
  */
-import type { ControlHandle, FileRoots, LaunchCommand, LineSignal, PlayerList, RuntimeAction, RuntimeAdapter, RuntimeCtx } from '@gsp/adapter-api';
+import { existsSync } from 'node:fs';
+import type { ControlHandle, FileRoots, InstallCtx, JobResult, LaunchCommand, LineSignal, PlayerList, RuntimeAction, RuntimeAdapter, RuntimeCtx } from '@gsp/adapter-api';
 import { WORKSHOP_DOWNLOAD, workshopDownloadAction } from '@gsp/source-workshop/runtime';
 import { DATA } from '../shared/install';
+import { PLUGINS } from '../shared/plugins';
 import { parseTerrariaLaunch, type TerrariaLaunch } from '../shared/launch';
 import { bare, display, FATAL, parsePlaying, playingDone, TR_PATTERNS } from '../shared/log';
 import { TERRARIA_META, TML_WORKSHOP_APP_ID } from '../shared/meta';
 import { dataPath, port, prepare as prepareFiles, worldFile } from './files';
-import { install, installedEntry, installedInfo, installNeeded, listVersions } from './install';
-import { PLUGIN_RUNTIME_ACTIONS, syncServerPlugins } from './plugins';
+import { install, installedEntry, installedInfo, installKey, installNeeded, listVersions } from './install';
+import { PLUGIN_RUNTIME_ACTIONS, removeLegacyPluginCopies, syncServerPlugins } from './plugins';
 import { progressOf } from './progress';
 import { restPlayerList, TSHOCK_ACTIONS } from './rest';
 
 export type { TerrariaLaunch };
 export { managedServerConfig, setServerConfig, tshockConfig } from './files';
 export { readMarker } from './install';
-export { addPlugins, listPlugins, PLUGIN_RUNTIME_ACTIONS, removePlugin, setPlugin, syncServerPlugins } from './plugins';
+export { addPlugins, listPlugins, PLUGIN_RUNTIME_ACTIONS, removeLegacyPluginCopies, removePlugin, setPlugin, syncServerPlugins } from './plugins';
 export { clearSourceCache } from './sources';
 export { restBans, restPlayers, TSHOCK_ACTIONS, type RestBan, type RestPlayer } from './rest';
 
 /**
  * Before every start: the data folders and the files the agent owns, and
- * for TShock its enabled plugins copied into `ServerPlugins` (MOD-06: an
- * update replaces the install folder, and TShock loads plugins at start
- * only).
+ * for TShock the folder it loads the enabled plugins from and the record of
+ * which it starts with (MOD-06: TShock loads plugins at start only; they
+ * stay in the data folder, the install may be shared and read-only, HST-09).
  */
 export async function prepare(ctx: RuntimeCtx, p: TerrariaLaunch): Promise<void> {
   await prepareFiles(ctx, p);
   if (p.flavour === 'tshock') syncServerPlugins(ctx);
+}
+
+/**
+ * An install job's step after the install (HST-09): for TShock, an older
+ * agent's plugin copies removed from the install (a server's own install
+ * the job copied, at migration); they would load besides the data folder's.
+ */
+export async function warmUp(ctx: InstallCtx, p: TerrariaLaunch): Promise<JobResult> {
+  if (p.flavour === 'tshock') removeLegacyPluginCopies(ctx);
+  return { ok: true };
 }
 
 /**
@@ -158,7 +170,21 @@ export function command(ctx: RuntimeCtx, p: TerrariaLaunch): LaunchCommand {
   const bin = launcher ?? [e.entry];
   if (p.flavour === 'tshock') {
     return {
-      argv: [...bin, ...gameFlags(ctx, p), '-savedirectory', data, '-configpath', dataPath(ctx, DATA.tshock), '-logpath', dataPath(ctx, DATA.tshockLogs), '-crashdir', dataPath(ctx, DATA.tshockCrashes)],
+      argv: [
+        ...bin,
+        ...gameFlags(ctx, p),
+        '-savedirectory',
+        data,
+        '-configpath',
+        dataPath(ctx, DATA.tshock),
+        '-logpath',
+        dataPath(ctx, DATA.tshockLogs),
+        '-crashdir',
+        dataPath(ctx, DATA.tshockCrashes),
+        // The enabled plugins, from the data folder (not its subfolders: the disabled ones stay unloaded), once
+        // a plugin was ever added (the folder exists).
+        ...(existsSync(dataPath(ctx, PLUGINS.enabled)) ? ['-additionalplugins', dataPath(ctx, PLUGINS.enabled)] : []),
+      ],
       cwd: data,
       // The single-file app host unpacks a native library; HOME is read-only.
       env: { DOTNET_BUNDLE_EXTRACT_BASE_DIR: '/tmp/dotnet-bundle', DOTNET_CLI_TELEMETRY_OPTOUT: '1' },
@@ -177,6 +203,8 @@ export const terrariaRuntimeAdapter: RuntimeAdapter<TerrariaLaunch> = {
   installed: installedInfo,
   install,
   installOnStart: installNeeded,
+  installKey,
+  warmUp,
   versions: listVersions,
 
   prepare,

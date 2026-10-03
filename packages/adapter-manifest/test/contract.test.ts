@@ -56,6 +56,10 @@ describe('Avorion from its manifest (M6, D4, PRD §7)', () => {
     ]);
   });
 
+  it('shares its install: it ran read-only as it is (HST-09, D12, docs/verification/shared-installs.md)', () => {
+    expect(runtime.meta.install).toEqual({ mode: 'shared' });
+  });
+
   it('supports what Avorion measured: a slash console, saves, running backups, players, kicks, bans, broadcasts, branches (PLY-01, PLY-03, BAK-02, UPD-02)', () => {
     expect(runtime.meta.capabilities).toEqual(['stdinConsole', 'broadcast', 'save', 'hotBackup', 'players', 'playerHistory', 'kick', 'ban', 'branches', 'updateCheck']);
   });

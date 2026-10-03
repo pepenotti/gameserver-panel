@@ -11,6 +11,7 @@ import type {
   ControlHandle,
   InstallCtx,
   InstalledInfo,
+  InstallKey,
   JobResult,
   LaunchCommand,
   LineSignal,
@@ -93,6 +94,16 @@ export function installed(ctx: RuntimeCtx): InstalledInfo | null {
   try {
     const m = parseAppManifest(readFileSync(path.join(ctx.roots.install, 'steamapps', `appmanifest_${appId(ctx)}.acf`), 'utf8'));
     return { version: ctx.state.gameVersion, channel: m.branch, build: m.buildId };
+  } catch {
+    return null;
+  }
+}
+
+/** A shared install's identity (HST-09): the Steam branch and build from the app manifest (the version line is learnt per server). */
+export function installKey(ctx: RuntimeCtx): InstallKey | null {
+  try {
+    const m = parseAppManifest(readFileSync(path.join(ctx.roots.install, 'steamapps', `appmanifest_${appId(ctx)}.acf`), 'utf8'));
+    return { flavour: null, version: null, build: m.buildId, branch: m.branch };
   } catch {
     return null;
   }
@@ -237,12 +248,13 @@ export const pzRuntimeAdapter: RuntimeAdapter<PzLaunch> = {
   secrets: (p, st) => [p.adminPassword, st.controlSecret],
 
   installed,
+  installKey,
 
   async install(ctx, p, { validate }): Promise<JobResult> {
     const driver = steam(ctx);
     ctx.progress(null, `${validate ? 'Validating' : 'Installing/updating'} (${p.branch})`);
-    // Steam's default branch is `public`: no -beta for it.
-    return driver.appUpdate({ appId: appId(ctx), branch: p.branch === 'public' ? null : p.branch, validate });
+    // Always named, public too: steamcmd keeps an install on a beta branch otherwise (measured).
+    return driver.appUpdate({ appId: appId(ctx), branch: p.branch, validate });
   },
 
   installOnStart(ctx, p) {

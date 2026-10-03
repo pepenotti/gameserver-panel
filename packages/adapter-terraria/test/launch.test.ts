@@ -88,12 +88,28 @@ describe('the command per flavour (SRV-01, NFR-04)', () => {
     expect(cmd.argv.join(' ')).not.toContain('secret1');
   });
 
-  it('TShock: its app host with its config, log and crash folders in the data root, and a bundle folder in /tmp', () => {
+  it('TShock: its app host with its config, log and crash folders and its plugins in the data root, and a bundle folder in /tmp (MOD-06, HST-09)', () => {
     const c = installed('tshock', 'v6.2.1', 'tshock-v6.2.1', 'TShock.Server');
     const d = c.roots.data;
-    const cmd = tr.command(c, parseTerrariaLaunch({ ...base, flavour: 'tshock', version: 'v6.2.1' }));
+    const launch = parseTerrariaLaunch({ ...base, flavour: 'tshock', version: 'v6.2.1' });
+    // No plugin was ever added: no plugin folder to name.
+    expect(tr.command(c, launch).argv).not.toContain('-additionalplugins');
+    mkdirSync(path.join(d, 'tshock', 'plugins'), { recursive: true });
+    const cmd = tr.command(c, launch);
     expect(cmd.argv[0]).toBe(path.join(c.roots.install, 'tshock-v6.2.1', 'TShock.Server'));
-    expect(cmd.argv.slice(-8)).toEqual(['-savedirectory', d, '-configpath', path.join(d, 'tshock'), '-logpath', path.join(d, 'tshock', 'logs'), '-crashdir', path.join(d, 'tshock', 'crashes')]);
+    expect(cmd.argv.slice(-10)).toEqual([
+      '-savedirectory',
+      d,
+      '-configpath',
+      path.join(d, 'tshock'),
+      '-logpath',
+      path.join(d, 'tshock', 'logs'),
+      '-crashdir',
+      path.join(d, 'tshock', 'crashes'),
+      // The enabled plugins load from the data folder (not its disabled/ subfolder): nothing goes into the install.
+      '-additionalplugins',
+      path.join(d, 'tshock', 'plugins'),
+    ]);
     expect(cmd.cwd).toBe(d);
     expect(cmd.env).toEqual({ DOTNET_BUNDLE_EXTRACT_BASE_DIR: '/tmp/dotnet-bundle', DOTNET_CLI_TELEMETRY_OPTOUT: '1' });
     // The REST token lives in its config, never on the command line (TShock logs it to ServerLog.txt).

@@ -259,6 +259,9 @@ describe('install and versions (UPD-01…03)', () => {
     mkdirSync(path.join(ctx.roots.install, 'steamapps'));
     copyFileSync(path.join(FIXTURES, 'steamcmd', 'appmanifest_896660.acf'), path.join(ctx.roots.install, 'steamapps', 'appmanifest_896660.acf'));
     expect(vh.installed(ctx)).toEqual({ version: '1.0.16', channel: 'public', build: '25527701' });
+    // HST-09: shared (it ran read-only as it is, measured), named by branch and build.
+    expect(vh.meta.install).toEqual({ mode: 'shared' });
+    expect(vh.installKey!(ctx)).toEqual({ flavour: null, version: null, build: '25527701', branch: 'public' });
     expect(vh.installOnStart!(ctx, launch())).toBeNull();
     expect(vh.installOnStart!(ctx, launch({ updateOnStart: true }))).toBe('update');
     expect(vh.installOnStart!(ctx, launch({ branch: 'default_old' }))).toBe('required');
@@ -267,7 +270,7 @@ describe('install and versions (UPD-01…03)', () => {
     await vh.install!(install, launch(), { validate: true });
     await vh.install!(install, launch({ branch: 'default_old' }), { validate: false });
     expect(calls).toEqual([
-      { appId: '896660', branch: null, validate: true },
+      { appId: '896660', branch: 'public', validate: true },
       { appId: '896660', branch: 'default_old', validate: false },
     ]);
     expect((await vh.versions!(install, launch())).versions.map((v) => v.id)).toEqual(['public', 'default_old']);

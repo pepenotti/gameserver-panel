@@ -119,6 +119,30 @@ describe('install: TShock and tModLoader from GitHub (UPD-01)', () => {
   });
 });
 
+describe('shared installs (HST-09, D12)', () => {
+  it("shares every flavour's install, tModLoader's with its log folder redirected into the data, as measured", () => {
+    expect(tr.meta.install).toEqual({ mode: 'shared' });
+    expect(Object.fromEntries(tr.meta.flavours.map((f) => [f.id, f.install ?? null]))).toEqual({
+      vanilla: null,
+      tshock: null,
+      tmodloader: { mode: 'shared', redirects: [{ path: 'tmodloader-*/tModLoader-Logs', to: '/data/tModLoader-Logs' }] },
+    });
+  });
+
+  it.each([
+    ['vanilla', '1.4.5.8'],
+    ['tshock', 'v6.2.1'],
+    ['tmodloader', 'v2026.07.3.0'],
+  ] as const)('%s: an install is named by its flavour and release', async (flavour, version) => {
+    const c = newCtx();
+    expect(tr.installKey!(c)).toBeNull();
+    await tr.install!(c, launch({ flavour, version }), { validate: false });
+    expect(tr.installKey!(c)).toEqual({ flavour, version, build: null, branch: null });
+    // Nothing to warm up but TShock's leftovers from an older agent (none here).
+    expect(await tr.warmUp!(c, launch({ flavour, version }))).toEqual({ ok: true });
+  });
+});
+
 describe('install failures leave what was installed (UPD-01)', () => {
   it('refuses downloads that are not what was published, and missing ones', async () => {
     const bad = await startFakeDownloads({ fail: 'bad-checksum' });

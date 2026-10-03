@@ -236,10 +236,16 @@ export function manifestRuntimeAdapter(m: SteamGameManifest, hooks: ManifestRunt
 
     installed,
 
+    // A shared install's identity (HST-09): the Steam branch and build (the version line is learnt per server).
+    installKey(ctx) {
+      const i = installed(ctx);
+      return i ? { flavour: null, version: null, build: i.build ?? null, branch: i.channel ?? null } : null;
+    },
+
     async install(ctx, p, { validate }) {
       ctx.progress(null, `${validate ? 'Validating' : 'Installing/updating'} (${p.branch})`);
-      // Steam's default branch is `public`: no -beta for it.
-      return steam(ctx).appUpdate({ appId: m.steam.appId, branch: p.branch === 'public' ? null : p.branch, validate });
+      // Always named, public too: steamcmd keeps an install on a beta branch otherwise (measured).
+      return steam(ctx).appUpdate({ appId: m.steam.appId, branch: p.branch, validate });
     },
 
     installOnStart(ctx, p) {

@@ -158,8 +158,9 @@ function readOnlyAt(target) {
  * (`--help`) unpacks them once instead.
  */
 function bundler() {
-  if (fs.existsSync(repo('libraries').abs)) return;
+  // What it unpacks first (Fabric's installer puts its own libraries in the same folder before).
   const v = repo(path.join('versions', VERSION, `server-${VERSION}.jar`));
+  if (fs.existsSync(v.abs)) return;
   out(`Unpacking ${VERSION}/server-${VERSION}.jar (versions:${VERSION}) to ${v.shown}`);
   if (readOnlyAt(repo('versions').abs)) {
     out(`java.nio.file.FileSystemException: ${repo('versions').shown}: Read-only file system`);

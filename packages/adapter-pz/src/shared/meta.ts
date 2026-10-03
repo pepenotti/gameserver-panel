@@ -40,6 +40,11 @@ export const PZ_META: AdapterMeta = {
     'updateCheck',
   ],
   stopBudgetMs: 180_000,
+  // HST-09, D12: measured on 42.21.0 (docs/verification/shared-installs.md): it runs from a read-only
+  // install, except that it downloads the server's Workshop mods into its install at every start; the
+  // install job links that folder into the server's data (the agent's Workshop cache), and the agent
+  // makes the target before each start.
+  install: { mode: 'shared', redirects: [{ path: 'steamapps/workshop', to: '/data/.workshop/steamapps/workshop' }] },
   // SRV-08: players type the game port (UDP 16261 by default); the game also uses the next one, which is
   // forwarded with it. The join password and whether accounts must exist first are the server ini's
   // `Password` and `Open` (the game's own descriptions). No client has joined a server of this panel

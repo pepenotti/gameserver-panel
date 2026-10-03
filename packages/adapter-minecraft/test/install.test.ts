@@ -197,6 +197,46 @@ describe('install failures leave what was installed (UPD-01)', () => {
   });
 });
 
+describe('shared installs (HST-09, D12)', () => {
+  it('shares every loader, and names an install by its loader, version and pinning build', async () => {
+    expect(mc.meta.install).toEqual({ mode: 'shared' });
+    expect(mc.meta.flavours.map((f) => f.install)).toEqual([undefined, undefined, undefined]);
+    const c = newCtx();
+    expect(mc.installKey!(c)).toBeNull();
+    await mc.install!(c, launch({ loader: 'vanilla' }), { validate: false });
+    expect(mc.installKey!(c)).toEqual({ flavour: 'vanilla', version: '26.3', build: null, branch: null });
+    const paper = newCtx();
+    await mc.install!(paper, launch({ loader: 'paper', version: '26.2' }), { validate: false });
+    expect(mc.installKey!(paper)).toEqual({ flavour: 'paper', version: '26.2', build: String(readMarker(paper)!.build), branch: null });
+    paper.cleanup();
+    const fabric = newCtx();
+    await mc.install!(fabric, launch({ loader: 'fabric' }), { validate: false });
+    expect(mc.installKey!(fabric)).toEqual({ flavour: 'fabric', version: '26.3', build: readMarker(fabric)!.loaderVersion, branch: null });
+    fabric.cleanup();
+  });
+
+  it.each(['vanilla', 'fabric'] as const)("%s: the install job's warm-up unpacks Mojang's bundler into the install, with --help on its jar, never starting a server", async (loader) => {
+    const c = newCtx();
+    const p = launch({ loader });
+    await mc.install!(c, p, { validate: false });
+    expect(existsSync(inInstall(c, 'versions/26.3/server-26.3.jar'))).toBe(false);
+    expect(await mc.warmUp!(c, p)).toEqual({ ok: true });
+    // What the first start would have unpacked, measured: versions/<v>/server-<v>.jar and the libraries.
+    expect(existsSync(inInstall(c, 'versions/26.3/server-26.3.jar'))).toBe(true);
+    expect(existsSync(inInstall(c, 'libraries'))).toBe(true);
+    expect(c.lines).toContain('Option                 Description');
+    // No world, no server files: nothing but the install.
+    expect(existsSync(path.join(c.roots.data, 'world'))).toBe(false);
+    expect(existsSync(inInstall(c, 'world'))).toBe(false);
+  });
+
+  it('Paper: nothing to warm up (its install step leaves everything in place); nothing installed: refused', async () => {
+    const c = newCtx();
+    expect(await mc.warmUp!(c, launch({ loader: 'paper', version: '26.2' }))).toEqual({ ok: true });
+    expect(await mc.warmUp!(c, launch({ loader: 'vanilla' }))).toMatchObject({ ok: false, error: expect.stringContaining('not installed') });
+  });
+});
+
 describe('versions (UPD-02, Q11, Q13)', () => {
   const ids = (r: { versions: { id: string }[] }) => r.versions.map((v) => v.id);
 
