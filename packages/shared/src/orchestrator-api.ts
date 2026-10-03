@@ -33,6 +33,7 @@
  *   PUT    /v1/installs/:id               InstallJobSpec → InstallInfo   (the install job; `InstallPutOptions` for a copy job)
  *   DELETE /v1/installs/:id/job           → InstallDeleteResponse   (the job, its network and HOME; the install stays)
  *   DELETE /v1/installs/:id               → InstallDeleteResponse   (the install; refused while anything mounts it or a job exists)
+ *   DELETE /v1/servers/:id/install        → InstallDeleteResponse   (a server's own install volume, left over once it moved to a shared install; refused while mounted)
  */
 
 /** Version of this contract; `GET /v1/health` reports the one the orchestrator speaks. */

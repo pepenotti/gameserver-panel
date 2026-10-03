@@ -320,6 +320,25 @@ describe('copy jobs (HST-09, UPD-03, D12)', () => {
     ]);
   });
 
+  it("removes a server's own install volume once it moved to a shared install, never while it still runs from it, never its data", async () => {
+    const s = await setup();
+    await s.backend.apply(spec({ ports: [] }));
+    const own = `${STACK}-srv-pz-install`;
+    expect(await rejection(s.backend.removeOwnInstall('pz'))).toMatchObject({ code: 'conflict', field: 'id', reason: 'install-in-use', message: expect.stringContaining('still runs from it') });
+    // Adopted by a copy, finished by a job, then the server moves to it (its container is recreated).
+    await s.backend.putInstall(jobSpec(), { server: 'pz' });
+    await s.backend.removeInstallJob(IID);
+    s.fd.volumes.get(VOL)!.files.set(SHARED_INSTALL_MARKER, marker());
+    await s.backend.apply(onInstall({ ports: [] }));
+    expect(s.fd.volumes.has(own)).toBe(true);
+    expect(await s.backend.removeOwnInstall('pz')).toEqual({ removed: true });
+    expect([...s.fd.volumes.keys()].sort()).toEqual([VOL, `${STACK}-srv-pz-data`, `${STACK}-srv-pz-steam`].sort());
+    expect(await s.backend.removeOwnInstall('pz')).toEqual({ removed: false });
+    // Another stack's volume under that name is never touched.
+    s.fd.addVolume({ name: `${STACK}-srv-pz2-install`, labels: { 'gsp.stack': 'gsp-s2', 'gsp.server': 'pz2', 'gsp.volume': 'install' } });
+    expect(await rejection(s.backend.removeOwnInstall('pz2'))).toMatchObject({ code: 'refused', field: 'id' });
+  });
+
   it('takes one source, by name, never the install itself', () => {
     const q = (s: string) => parseInstallPutOptions(new URLSearchParams(s), IID);
     expect(q('')).toBeNull();
@@ -397,6 +416,11 @@ describe('the install routes (HST-09, D3)', () => {
       expect(await call('DELETE', `/v1/installs/${IID}/job`)).toEqual({ status: 200, body: { removed: true } });
       expect(await call('DELETE', `/v1/installs/${IID}`)).toEqual({ status: 200, body: { removed: true } });
       expect(await call('GET', '/v1/installs')).toEqual({ status: 200, body: [] });
+      // A server's own install volume: DELETE only, no query or body.
+      expect(await call('DELETE', '/v1/servers/pz/install')).toEqual({ status: 200, body: { removed: false } });
+      expect(await call('POST', '/v1/servers/pz/install')).toMatchObject({ status: 405 });
+      expect(await call('DELETE', '/v1/servers/pz/install?force=true')).toMatchObject({ status: 400 });
+      expect(await call('DELETE', '/v1/servers/pz/install', { token: null })).toMatchObject({ status: 401 });
     } finally {
       await new Promise((r) => server.close(r));
     }

@@ -40,6 +40,12 @@ export interface Backend {
   removeInstallJob(id: string): Promise<InstallDeleteResponse>;
   /** The install's volume; refused while a job exists or anything mounts it. */
   removeInstall(id: string): Promise<InstallDeleteResponse>;
+  /**
+   * A server's own install volume (`id` a server id), left over once the
+   * server moved to a shared install (migration); refused while anything
+   * mounts it (the server still runs from it). Its other volumes stay.
+   */
+  removeOwnInstall(id: string): Promise<InstallDeleteResponse>;
 }
 
 /** One change at a time per server: a second one while the first runs is a `conflict`. */

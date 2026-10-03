@@ -593,6 +593,17 @@ export class FakeBackend implements Backend {
     });
   }
 
+  removeOwnInstall(id: string): Promise<InstallDeleteResponse> {
+    return this.busy.run(id, async () => {
+      const dir = path.join(this.dir(id), 'install');
+      if (!existsSync(dir)) return { removed: false };
+      const s = this.stored.get(id);
+      if (s && s.spec.install === undefined) throw installConflict('install-in-use', `Server ${id}'s own install is mounted by server ${id}: it still runs from it`, 'id');
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      return { removed: true };
+    });
+  }
+
   removeInstall(id: string): Promise<InstallDeleteResponse> {
     return this.installBusy.run(id, () =>
       this.creating.run(async () => {
@@ -623,7 +634,8 @@ export class FakeBackend implements Backend {
     // Like Docker: a port someone else holds fails the start.
     if (!(await bindTcp(s.agentPort))) throw conflict(`Agent port ${s.agentPort} is already in use on this host`);
     for (const p of s.spec.ports) if (!(await isFree(p.host, p.proto))) throw conflict(`Bind for 127.0.0.1:${p.host} failed: port is already allocated`);
-    for (const sub of ['data', 'install', 'steam']) mkdirSync(path.join(this.dir(id), sub), { recursive: true });
+    // Its own volumes: no install of its own on a shared one (HST-09).
+    for (const sub of s.spec.install === undefined ? ['data', 'install', 'steam'] : ['data', 'steam']) mkdirSync(path.join(this.dir(id), sub), { recursive: true });
     s.running = true;
     this.save();
     const child = spawn(process.execPath, ['--import', 'tsx', AGENT_ENTRY], {

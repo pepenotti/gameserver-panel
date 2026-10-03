@@ -336,6 +336,23 @@ export class DockerBackend implements Backend {
     );
   }
 
+  removeOwnInstall(id: string): Promise<InstallDeleteResponse> {
+    return this.guard(() =>
+      this.busy.run(id, () =>
+        this.creating.run(async () => {
+          const name = names(this.stack, id).volume('install');
+          const v = await this.docker.find<DockerVolume>(`/volumes/${name}`);
+          if (!v) return { removed: false };
+          if (v.Name !== name || !this.owned(v.Labels, id) || v.Labels?.[LABEL.volume] !== 'install') throw refused('id', `Volume ${name} exists but is not this stack's server ${id}`);
+          const users = await this.mountersOf(name);
+          if (users.length) throw installConflict('install-in-use', `Server ${id}'s own install is mounted by ${users.join(', ')}: it still runs from it`, 'id');
+          await this.docker.call('DELETE', `/volumes/${name}`);
+          return { removed: true };
+        }),
+      ),
+    );
+  }
+
   /** The game an install volume of this stack holds; refused when it is missing (`missing`) or not this stack's install. */
   private async installVolume(id: string, field: string, o: { missing: string }): Promise<InstallGame> {
     const n = installNames(this.stack, id);

@@ -11,7 +11,7 @@ const MAX_BODY = 64 * 1024;
 const SERVER_ROUTE = /^\/v1\/servers\/([^/]*)(?:\/([^/]*))?$/;
 /** `/v1/installs/:id` and `/v1/installs/:id/job` (HST-09), matched the same way. */
 const INSTALL_ROUTE = /^\/v1\/installs\/([^/]*)(?:\/([^/]*))?$/;
-const ACTIONS: ReadonlySet<string> = new Set(['start', 'stop', 'restart', 'stats']);
+const ACTIONS: ReadonlySet<string> = new Set(['start', 'stop', 'restart', 'stats', 'install']);
 
 export interface OrchestratorServerOptions {
   backend: Backend;
@@ -159,6 +159,12 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
       throw methodNotAllowed();
     }
     noQuery();
+    if (action === 'install') {
+      // HST-09: a server's own install volume, left over after it moved to a shared install.
+      if (method !== 'DELETE') throw methodNotAllowed();
+      noBody();
+      return [200, await o.backend.removeOwnInstall(id)];
+    }
     if (action === 'stats') {
       if (method !== 'GET') throw methodNotAllowed();
       noBody();

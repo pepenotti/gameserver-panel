@@ -237,6 +237,8 @@ describe('shared installs in the fake orchestrator (HST-09, D12)', () => {
     expect(existsSync(path.join(r.dir, 'installs', COPY, 'install', 'steamapps', 'appmanifest_380870.acf'))).toBe(true);
     expect(await request(r.socket, 'DELETE', `/v1/installs/${COPY}/job`)).toEqual({ status: 200, body: { removed: true } });
 
+    // It never had an install of its own here; one of a server that runs from it is refused.
+    expect(await request(r.socket, 'DELETE', '/v1/servers/pz/install')).toEqual({ status: 200, body: { removed: false } });
     // The server goes; its install stays until it is removed itself.
     expect(await request(r.socket, 'DELETE', '/v1/servers/pz?removeVolumes=true')).toEqual({ status: 200, body: { removed: true, volumesRemoved: true } });
     expect(existsSync(path.join(r.dir, 'installs', IID, 'install'))).toBe(true);
