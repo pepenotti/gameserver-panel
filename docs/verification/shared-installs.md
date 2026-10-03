@@ -37,7 +37,10 @@ token, the way the panel drives it:
   deleted or only touched.
 
 After every run: `find -newermt <start>` over each volume (what the run wrote, by path), and
-`docker diff` of the container (writes outside the volumes and `/tmp`: none in any run).
+`docker diff` of the container (writes outside the volumes and `/tmp`: none in any run). The
+redirect symlinks and the Minecraft warm-up below were made in the install volume by a short
+helper container (the same image and hardening, no network) standing in for the install job,
+which doesn't do either yet.
 
 **What ran.**
 | Game, flavour | Build | Installed from |
@@ -194,7 +197,7 @@ names the Java major the image must have.
 | Fact | Value | How verified |
 |---|---|---|
 | An update beside the old install | A new volume, filled by a job: a fresh download (Avorion public: 56.9 MB downloaded, 29 s), or a local copy of the old install then steamcmd on the copy (Avorion `previous` → public: copy 1.6 s, then 15 792 864 bytes downloaded in 16 s). The old volume is never touched, so servers still on it keep running. | The app manifests' `BytesToDownload`; `steamcmd/branch-switch.txt`, `steamcmd/copy-times.txt` |
-| Does steamcmd rewrite files in place? | No. On the copy, the 10 changed files (44 MB: `bin/AvorionServer`, `bin/ServerRunner`, `data/checksums.db`, `data/scripts/scripts.db`, five Lua scripts, the app manifest) got **new inodes**; 856 unchanged files kept theirs, with their sizes and times; 2 release notes were added; nothing was deleted. A process holding an old file open keeps the old content. | Inode, size and time of every file before and after: `steamcmd/update-inodes.txt` |
+| Does steamcmd rewrite files in place? | No. On the copy, the 10 changed files (44 MB: `bin/AvorionServer`, `bin/ServerRunner`, `data/checksums.db`, `data/scripts/scripts.db`, five Lua scripts, the app manifest) got **new inodes**; 856 unchanged files kept theirs, with their sizes and times; 2 release notes were added; nothing was deleted. So a process holding an old file open keeps the old content. | Inode, size and time of every file before and after: `steamcmd/update-inodes.txt` |
 | Branch switches | `app_update 565060` (no `-beta`) on an install of the `previous` branch: `Success! App '565060' already up to date.`, still `BetaKey previous`, build 21146556. `-beta public`: moved to build 22295362, `BetaKey public`. | `steamcmd/branch-switch.txt` |
 | Minecraft and Terraria | An update is a new download into a new folder; today's install code empties the install root first (`clearInstallRoot`, and Terraria removes every other folder), so on a shared install it can only run in a new volume, never on the one servers use. | Reading the install code (`adapter-minecraft`, `adapter-terraria`) |
 | Minecraft's first-start unpack after an update | A new version brings a new `server.jar`, so the warm-up must run again in the new install's job. *Expected* (from finding 2; not run across versions). | — |
@@ -214,6 +217,11 @@ Measured above, listed here for phase 2 (each is a code change, not a game's lim
 | Minecraft's and Terraria's install code | Empties the install root before unpacking the new files: only ever right in a fresh volume. | Reading the code |
 
 ### Not covered here
+- The full read-only sequence for three of them: tModLoader with its logs redirected was started
+  and stopped (`stop` saves), without a separate save or running backup; TShock read-only ran by
+  hand, without the agent (a start and `exit`, which saves); Valheim has no save command. The
+  read-write runs of tModLoader and TShock went through every step (tModLoader's running backup
+  named folders its layout doesn't have and copied nothing; its save ran).
 - Players: no client joined a server on a shared install (nothing in these facts depends on one).
 - Two **game servers** running from one install at the same time: one game server ran at a time;
   only a second agent container mounted the install read-only while a game ran from it.
