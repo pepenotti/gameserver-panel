@@ -2,8 +2,8 @@
 // panel, its 2FA codes and its report. The run against a real stack is
 // recorded in docs/verification/smoke.md.
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { duration, formatReport, isLoopback, panelUrl, parseArgs, parseEnv, totp, totpStep } from './smoke.mjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { duration, formatReport, isLoopback, panelUrl, parseArgs, parseEnv, reachable, totp, totpStep } from './smoke.mjs';
 
 describe('the smoke test’s options (M7, HST-05)', () => {
   it('defaults to a small vanilla Terraria server with a fresh id, from this checkout’s .env', () => {
@@ -102,5 +102,54 @@ describe('the smoke test’s report', () => {
     expect(formatReport({ url: 'https://localhost:8443', adapter: 'pz', flavour: null, serverId: 'smoke-1', steps: ok, ok: true, ms: 5000 }).split('\n').at(-1)).toBe('PASS: 5 of 5 steps passed in 5.0 s');
     expect(duration(59_949)).toBe('59.9 s');
     expect(duration(60_000)).toBe('1 min 0 s');
+  });
+});
+
+describe('the smoke test waits for a stack that is still starting', () => {
+  const failing = (code: string) => Object.assign(new Error(`write ${code}`), { code });
+  /** A panel whose answers are scripted, one per call; then 200. */
+  const scripted = (answers: (number | Error)[]) => {
+    const calls: string[] = [];
+    return {
+      calls,
+      raw: async (_m: 'GET', p: string) => {
+        calls.push(p);
+        const a = answers.shift() ?? 200;
+        if (a instanceof Error) throw a;
+        return { status: a };
+      },
+    };
+  };
+  const clock = () => {
+    let now = 0;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(now);
+    return async (ms: number) => {
+      now += ms;
+      vi.setSystemTime(now);
+    };
+  };
+  afterEach(() => vi.useRealTimers());
+
+  it('retries while Caddy makes its certificate or the panel starts, then goes on', async () => {
+    const panel = scripted([failing('ECONNREFUSED'), failing('EPROTO'), failing('ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'), 502, 401]);
+    expect(await reachable(panel, 60_000, clock())).toBe(4000);
+    expect(panel.calls).toEqual(Array(5).fill('/api/session'));
+  });
+
+  it('does not wait for a panel that already answers', async () => {
+    expect(await reachable(scripted([200]), 60_000, clock())).toBe(0);
+  });
+
+  it('gives up after its time, saying what it last saw', async () => {
+    const panel = scripted(Array(100).fill(failing('ECONNREFUSED')));
+    await expect(reachable(panel, 5000, clock())).rejects.toThrow("the panel didn't answer within 5.0 s: write ECONNREFUSED");
+    expect(panel.calls).toHaveLength(6);
+  });
+
+  it('does not retry what waiting cannot fix', async () => {
+    const panel = scripted([failing('ENOTFOUND')]);
+    await expect(reachable(panel, 60_000, clock())).rejects.toThrow('write ENOTFOUND');
+    expect(panel.calls).toHaveLength(1);
   });
 });

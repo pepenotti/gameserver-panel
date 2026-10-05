@@ -373,6 +373,33 @@ export class Panel {
 // ------------------------------------------------------------- sign-in
 
 /**
+ * Waits until the panel answers through its front door; returns how long that
+ * took. Right after `stack.mjs up -d` Caddy may still be making its
+ * certificate (a TLS alert) or the panel still starting (connection refused,
+ * a 502 from Caddy); those are retried every second. Any other answer, or the
+ * same failure after `timeoutMs`, ends the wait: the caller then sees it.
+ * @param {{ raw(method: 'GET', p: string): Promise<{ status: number }> }} panel
+ * @param {number} [timeoutMs]
+ * @param {(ms: number) => Promise<void>} [wait]
+ */
+export async function reachable(panel, timeoutMs = 60_000, wait = (ms) => new Promise((r) => setTimeout(r, ms))) {
+  const t0 = Date.now();
+  for (;;) {
+    let notYet;
+    try {
+      const r = await panel.raw('GET', '/api/session');
+      if (![502, 503, 504].includes(r.status)) return Date.now() - t0;
+      notYet = new Error(`the panel answered ${r.status}`);
+    } catch (e) {
+      notYet = /** @type {Error & { code?: string }} */ (e);
+      if (!/^(ECONNREFUSED|ECONNRESET|EPROTO|EPIPE|ERR_SSL_)/.test(notYet.code ?? '')) throw notYet;
+    }
+    if (Date.now() - t0 >= timeoutMs) throw new Error(`the panel didn't answer within ${duration(timeoutMs)}: ${notYet.message}`);
+    await wait(1000);
+  }
+}
+
+/**
  * @typedef {{ username?: string; password?: string; totpSecret?: string; recoveryCodes?: string[]; lastStep?: number | null; cookie?: string | null }} Saved
  */
 
@@ -681,8 +708,10 @@ async function main() {
   let report;
   const t0 = Date.now();
   try {
+    const waited = await reachable(panel);
     const how = await signIn(panel, env, o.stateFile);
-    const signedIn = { name: 'sign in', ok: true, ms: Date.now() - t0, detail: `${how}${panel.tlsChecked ? '' : '; certificate not checked (this computer)'}` };
+    const notes = [how, waited >= 1000 ? `the panel answered after ${duration(waited)}` : '', panel.tlsChecked ? '' : 'certificate not checked (this computer)'];
+    const signedIn = { name: 'sign in', ok: true, ms: Date.now() - t0, detail: notes.filter(Boolean).join('; ') };
     report = await smoke(o, panel, env);
     report.steps.unshift(signedIn);
     report.ms += signedIn.ms;
