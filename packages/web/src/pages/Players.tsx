@@ -5,6 +5,7 @@ import { IconAlertTriangle, IconBan, IconDots, IconUserPlus } from '@tabler/icon
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHostAddresses, type AddressView } from '../api/host';
 import { useServerApi } from '../api/server';
 import { useLive } from '../api/live';
 import type { BanTarget, Need } from '../api/meta';
@@ -39,7 +40,10 @@ interface PlayersResponse {
   whitelist: { enabled: boolean | null; usernames: string[] } | null;
   /** Who holds a level above the lowest, where the game lists them. */
   levelHolders: { username: string; level: string }[] | null;
+  /** A ban of an address names one player's (their own address arrives, or is expected to). */
   ipBansTrustworthy: boolean;
+  /** Whether players' addresses reach the game here (HST-07); absent from an older panel. */
+  addresses?: AddressView;
 }
 
 interface Session {
@@ -64,6 +68,7 @@ export function Players() {
   const sapi = useServerApi();
   const { meta, has, l } = useMeta();
   const q = useQuery({ queryKey: ['players', sapi.sid], queryFn: () => sapi<PlayersResponse>('GET', '/players'), refetchInterval: 30_000 });
+  const hostAddresses = useHostAddresses();
   const history = useQuery({ queryKey: ['players', 'history', sapi.sid], queryFn: () => sapi<Session[]>('GET', '/players/history?limit=50'), enabled: canRole('accounts.view') && has('playerHistory') });
   const [dialog, setDialog] = useState<Dialog>(null);
   const [reason, setReason] = useState('');
@@ -105,10 +110,18 @@ export function Players() {
   const unbanStopped = meta?.stoppedOnly?.includes('unban') === true;
   const steamIds = !!q.data?.accounts?.some((a) => a.steamId);
   const targetLabel: Record<BanTarget, string> = { username: t('players.byName'), steamId: t('players.steamId'), ip: t('players.byIp'), uuid: t('players.byUuid'), account: t('players.byAccount') };
-  /** Before a ban of an address: behind Docker Desktop (untrustworthy addresses) everyone shares one, so it is a warning. */
+  /**
+   * Before a ban of an address: behind Docker Desktop (untrustworthy addresses) everyone shares one, so it is a
+   * warning; where the host's trait says so (HST-07), with its docs/limitations.md entry.
+   */
   const addressWarning = byAddress && (
     <Alert color={q.data?.ipBansTrustworthy ? 'yellow' : 'red'} variant="light" icon={<IconAlertTriangle />}>
       {q.data?.ipBansTrustworthy ? t('players.addressBanNote') : t('players.addressBanWarning')}
+      {q.data?.addresses === 'hidden' && hostAddresses && (
+        <Text size="xs" c="dimmed" mt={4}>
+          {t('host.addresses.doc', { doc: hostAddresses.doc })}
+        </Text>
+      )}
     </Alert>
   );
 

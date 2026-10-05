@@ -108,4 +108,42 @@ export const TERRARIA_META: AdapterMeta = {
     verified: true,
     source: 'The owner joined real vanilla and TShock servers from Join via IP on this PC, 2026-10-03 (docs/verification/terraria-1.4.5.8.md)',
   },
+  // HST-07: TShock's settings that act on the address a player joins from (keys under `Settings` in
+  // tshock/config.json). Behind Docker Desktop every player arrives from the relay's address
+  // (docs/limitations.md); what each does with that one address wasn't measured.
+  perAddress: [
+    {
+      id: 'whitelist',
+      file: 'tshock-config',
+      key: 'Settings.EnableWhitelist',
+      flavours: ['tshock'],
+      text: {
+        en: 'TShock’s whitelist lists addresses: where every player arrives from one address, it lets everyone in or nobody.',
+        es: 'La lista blanca de TShock lista direcciones: donde todos los jugadores llegan desde una dirección, deja entrar a todos o a nadie.',
+      },
+      doc: 'limitations.md#players-addresses-are-hidden-behind-docker-desktop',
+    },
+    {
+      id: 'kick-proxy-users',
+      file: 'tshock-config',
+      key: 'Settings.KickProxyUsers',
+      flavours: ['tshock'],
+      text: {
+        en: 'TShock turns away players it takes for proxy users by their address; whether it takes the shared relay address for one hasn’t been checked.',
+        es: 'TShock rechaza a los jugadores que considera usuarios de proxy por su dirección; no se comprobó si toma por uno la dirección compartida del relevo.',
+      },
+      doc: 'limitations.md#players-addresses-are-hidden-behind-docker-desktop',
+    },
+    {
+      id: 'geoip',
+      file: 'tshock-config',
+      key: 'Settings.EnableGeoIP',
+      flavours: ['tshock'],
+      text: {
+        en: 'The country TShock names comes from the address: where addresses are hidden, it is the relay’s (a private address), not the player’s.',
+        es: 'El país que nombra TShock sale de la dirección: donde las direcciones quedan ocultas, es la del relevo (una dirección privada), no la del jugador.',
+      },
+      doc: 'limitations.md#players-addresses-are-hidden-behind-docker-desktop',
+    },
+  ],
 };

@@ -33,6 +33,13 @@ the same change that finds it.
   *Expected, not yet measured.*
 - **TShock's `KickProxyUsers`** (on by default) has not been checked against
   the relay's address. *Unverified.*
+- **Minecraft's `prevent-proxy-connections`** (off by default) is expected to
+  turn every player away when it is on: the game asks Mojang whether a player
+  joins from the address they signed in from, and sees the relay's.
+  *Expected, not yet measured.*
+- **TShock's whitelist** (`EnableWhitelist`) lists addresses, so it lets
+  everyone in or nobody; **TShock's GeoIP** names the relay's private address
+  instead of the player's country. *Expected, not yet measured.*
 
 **Why:** Docker Desktop relays each incoming connection into its virtual
 machine, so the game sees the relay's address instead of the player's. Docker
@@ -45,8 +52,16 @@ Desktop has no setting that keeps the real address.
   - TShock: ban by name, client id or account.
 - For a Terraria server other people join, use **TShock** rather than vanilla
   or tModLoader.
-- The panel tells you before an address ban when it can see that every player
-  shares one address.
+- The panel knows when it runs on Docker Desktop: the orchestrator asks Docker
+  (HST-07), whatever `.env` says. It then says so on the host page (**This
+  computer**), in the ban dialogs before an address ban, above the activity
+  log's addresses and the signed-in devices, and on a game's settings that act
+  per address (the ones above).
+- On Docker Engine the host page says the addresses are expected to arrive but
+  not yet measured. Once you have checked that they do (two players from
+  different places show different addresses), set `CLIENT_IP_TRUSTWORTHY=true`
+  in `.env` and the notes go away. When the orchestrator can't say, the
+  panel warns as if the addresses were hidden.
 
 **Fixes:**
 - **Run the stack on Linux with Docker Engine.** Docker Engine's port
@@ -57,7 +72,9 @@ Desktop has no setting that keeps the real address.
 
 **Status:** Measured on Windows 11 with Docker Desktop (Engine 29.7.2), Sept
 2026. The Minecraft and Terraria test servers and the panel's activity log
-all saw the relay's address.
+all saw the relay's address. The panel's detection of Docker Desktop on
+Windows is measured too (Oct 2026); on macOS it reads Docker Desktop's own
+socket path, *expected*, not measured.
 
 ### The panel's visitors are hidden the same way
 
@@ -138,8 +155,11 @@ reason. The panel won't create servers it can't run.
 
 Minecraft's server is Java and is expected to run on ARM64.
 
-**Status:** The refusal is tested. Minecraft on a real ARM64 host is
-*expected*, and is measured in M7.
+The host page lists this limitation on an ARM host.
+
+**Status:** The refusal is tested end to end, the orchestrator reading an ARM
+host from a fake Docker. Minecraft on a real ARM64 host is *expected*, and is
+measured in M7.
 
 ### macOS is documented but untested
 
@@ -196,6 +216,30 @@ reset when the allowance runs out. Checks resume on their own.
 
 **Status:** Measured (the limit, and that a "not modified" answer still
 counts).
+
+### The host page's numbers are a few seconds old
+
+**Affects:** the host page (**This computer**), for the owner and admins on every server.
+
+**What you'll notice:**
+- CPU and memory are one sample per running server, taken again every few seconds while the page is
+  open. CPU is in percent of one core: a server busy on two cores shows 200%. Memory leaves out
+  the page cache the kernel can drop, as Docker's own `docker stats` does.
+- Disk sizes are measured by Docker at most every 30 seconds, because measuring reads every file of
+  every volume: a download in progress grows on the page with a delay. While Docker is measuring
+  for someone else, the page keeps the last sizes and says when they were measured.
+- The memory warning adds up the servers' limits only. The panel, the orchestrator, the web proxy
+  and each game download running (1 GiB at most each) take memory too.
+- On Docker Desktop, "the memory Docker has" is its virtual machine's, not the computer's (see
+  "Game servers share Docker's memory, not your PC's"), and disk sizes are inside its virtual disk.
+
+**Why:** the numbers come from Docker (HST-03); asking it more often would slow it down for the
+servers.
+
+**Status:** By design. Measured on Windows 11 with Docker Desktop (Engine 29.7.2), Oct 2026: a
+running vanilla Terraria server's memory agreed with `docker stats`, its shared install's size with
+what its install job counted (59 MB), and a fresh overview took about a second (Docker's stats
+sample).
 
 ## Project Zomboid
 
@@ -527,14 +571,15 @@ Fixed in M7 (shared installs, runtime side): the agent now always names the bran
 **Affects:** every game, once installs are shared.
 
 **What you'll notice:** after an update, the version servers used before stays on disk until no
-server uses it and you confirm its removal on the host page. Sizes, measured: Project Zomboid
+server uses it and you confirm its removal in **Panel settings**. Sizes, measured: Project Zomboid
 7.2 GB, Valheim 2.2 GB, Paper 237 MB, Avorion 191 MB, tModLoader 174 MB, Fabric and vanilla
 Minecraft about 135 MB, TShock 102 MB, vanilla Terraria 59 MB.
 
 **Why:** a running server keeps its version until its next start, and the panel never deletes a
 version on its own.
 
-**Workaround:** remove versions no server uses from the host page.
+**Workaround:** remove versions no server uses in **Panel settings**, under **Game files**; the
+host page (**This computer**) shows what each server's game files take.
 
 **Status:** Expected (the sizes are measured).
 

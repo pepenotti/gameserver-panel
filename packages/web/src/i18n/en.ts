@@ -17,6 +17,7 @@ import discord from './en/discord';
 import errors from './en/errors';
 import eula from './en/eula';
 import files from './en/files';
+import host from './en/host';
 import hostSettings from './en/hostSettings';
 import mods from './en/mods';
 import nav from './en/nav';
@@ -52,6 +53,7 @@ export const en = {
   servers,
   create,
   eula,
+  host,
   hostSettings,
   connection,
   config,

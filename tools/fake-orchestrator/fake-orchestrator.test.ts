@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import dgram from 'node:dgram';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type http from 'node:http';
 import net from 'node:net';
 import os from 'node:os';
@@ -314,6 +314,30 @@ describe('a release that derives containers differently, in the fake orchestrato
     // And an ordinary change, not kept: recreated too.
     again.backend.changeDerivation();
     expect(await request(again.socket, 'PUT', '/v1/servers/pz', { body: spec('pz', game!) })).toMatchObject({ status: 200, body: { state: 'created', derivation: 'current' } });
+  });
+});
+
+describe('the host and what it takes, in the fake orchestrator (HST-03, HST-05, HST-07)', () => {
+  it("says it is the host it is told to be, and measures each server's folders in place of its volumes", async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'gsp-fake-orch-'));
+    try {
+      const plain = new FakeBackend({ stateDir: path.join(dir, 'plain'), policy, agentPorts: await freePorts(1), controlPorts: await freePorts(2) });
+      expect((await plain.host()).traits).toMatchObject({ docker: 'engine', addressesVisible: 'expected' });
+      const b = new FakeBackend({ stateDir: path.join(dir, 'told'), policy, agentPorts: await freePorts(1), controlPorts: await freePorts(6), host: { arch: 'arm64', traits: { docker: 'desktop', platform: 'macos', addressesVisible: false } } });
+      expect(await b.host()).toMatchObject({ arch: 'arm64', traits: { docker: 'desktop', platform: 'macos', addressesVisible: false } });
+      await b.apply({ id: 'fk', runtime: 'steam', env: { AGENT_TOKEN, GAME_ADAPTER: 'pz', TZ: 'UTC' }, ports: [], memoryMb: 2048 });
+      mkdirSync(path.join(dir, 'told', 'fk', 'data', 'world'), { recursive: true });
+      writeFileSync(path.join(dir, 'told', 'fk', 'data', 'world', 'map.bin'), Buffer.alloc(1000));
+      const u = await b.usage();
+      expect(u.servers).toEqual([{ id: 'fk', state: 'created', stats: null }]);
+      expect(u.volumes).toEqual([
+        { name: 'fk/data', use: 'data', server: 'fk', install: null, bytes: 1000 },
+        { name: 'fk/install', use: 'install', server: 'fk', install: null, bytes: 0 },
+        { name: 'fk/steam', use: 'steam', server: 'fk', install: null, bytes: 0 },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

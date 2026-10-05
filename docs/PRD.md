@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.31 |
+| Status | Draft 0.32 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -304,7 +304,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | ID | P | Requirement |
 |---|---|---|
 | SCH-01 | P0 | Per-server schedules: restarts with a quiet backup, backups, update checks. |
-| SCH-02 | P1 | Stagger jobs so servers don't restart or back up at the same moment. |
+| SCH-02 | P1 | Stagger jobs so servers don't restart or back up at the same moment. Scheduled restarts, backups and the updates a policy applies take turns on the host: one at a time, with a rest of a few minutes (the owner's setting) before another server's job; each server's restart and backup times move by a fixed offset of its own, a few minutes from its id, and its pages show the planned times. A job a person starts never waits for the turn. What waited, and why, is in the activity log. |
 | SCH-03 | P0 | Discord webhooks with per-event switches in EN/ES. One host webhook; each server may override it with its own webhook, language and event switches. Every message names its server. |
 
 ### 8.9 Accounts, permissions, audit — ACC
@@ -321,11 +321,11 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 |---|---|---|
 | HST-01 | P0 | One Docker Compose stack for the panel, the orchestrator and the TLS proxy. Game servers are containers the orchestrator creates. A product upgrade reaches every server: a server whose runtime image was rebuilt moves to it at its game's next start (at once when its game is stopped), never while its game runs. |
 | HST-02 | P0 | HTTPS with a self-signed certificate, or Let's Encrypt through DuckDNS, as in zomboid-server. |
-| HST-03 | P1 | Host overview: CPU, memory and disk per server and in total. |
+| HST-03 | P1 | Host overview: CPU, memory and disk per server and in total, on the host page (Q9), refreshed every few seconds; disk sizes are Docker's own measure, taken at most every 30 seconds. |
 | HST-04 | P2 | Import an existing zomboid-server deployment: world, settings, mods, backups and panel users. (The live server stays on zomboid-server for now; Q7.) |
 | HST-05 | P0 | **Runs on the main operating systems through Docker:** Linux (Docker Engine), Windows 10/11 (Docker Desktop or Docker Engine in WSL) and macOS (Docker Desktop). x86-64 and ARM64 hosts work. Adapters declare the CPU architectures they support, and the panel won't create a server the host can't run natively; it says why instead. |
 | HST-06 | P0 | A setup and operations guide for each of Linux, Windows and macOS, with firewall and router notes. |
-| HST-07 | P0 | The panel knows what its host can't do and says so where it matters: the orchestrator reports the host's traits (CPU architecture, the memory Docker gives it, and whether players' addresses reach the games, which they don't through Docker Desktop's port relay), the host page lists the limitations that apply, and each affected feature (address bans, per-address game settings, addresses in the activity log) shows its own note. |
+| HST-07 | P0 | The panel knows what its host can't do and says so where it matters: the orchestrator reports the host's traits from Docker (CPU architecture, the memory Docker gives it, Docker Desktop or Docker Engine and on which system, and whether players' addresses reach the games: not through Docker Desktop's port relay; expected but not yet measured on Docker Engine, until the owner confirms it with `CLIENT_IP_TRUSTWORTHY`), the host page lists the limitations that apply, and each affected feature (address bans, the game settings an adapter declares as acting per address, addresses in the activity log and the signed-in devices) shows its own note. |
 | HST-08 | P0 | Public address: the owner sets the name friends use to reach this host, a DNS name (by default the DuckDNS name the panel already uses for HTTPS, when there is one) or an IP address, and optionally the host's address on the home network (by default the panel's `LAN_IP` when it is a private address). A "detect" button asks one fixed public service for this host's public IP, only when the owner presses it (NFR-09). Every server's connection info (SRV-08) uses these. |
 | HST-09 | P0 | Shared installs (D12): a game's server files are downloaded once per game, flavour and version, and every server on that version mounts them read-only, so a second server never downloads them again. An update installs the new version beside the old one and each server moves to it at its next start; a version no server uses is removed after the owner confirms. The panel settings page shows each install, its size and the servers using it (listing needs `host.view`, removal `host.settings`). The install job runs as its own short-lived container with the same hardening as a server; the panel shows its progress on the server's page and the host page. Installs are never backed up. |
 
@@ -407,8 +407,10 @@ NFR-01's controls, carried over from zomboid-server:
   Each adapter names its image; a flavour may name another one.
 - **Orchestrator.** A small service that holds the Docker socket. It creates,
   starts, stops and removes server containers, volumes and networks from a
-  fixed, validated spec, and does nothing else. It is reachable only by the
-  panel and authenticates with a token.
+  fixed, validated spec, and does nothing else. It also reports, read-only,
+  the host's traits and what its own stack's servers and volumes use
+  (`/v1/host`, `/v1/host/usage`), never another stack's. It is reachable only
+  by the panel and authenticates with a token.
 - **Adapter contract** (`packages/adapter-api`): capabilities, install, launch,
   control, readiness, players, settings schema, backups (paths and the
   running-server method), reset scopes, mod sources, EN/ES strings.
@@ -614,3 +616,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.29 | 2026-10-03 | M7-0 fact-finding for shared installs (`docs/verification/shared-installs.md`, `fixtures/shared-installs`): every game runs from a read-only install, three with a fix (Minecraft's bundler unpacked by the install job; tModLoader's logs and Project Zomboid's Workshop downloads redirected into the server's data); install jobs, install volumes and the `install` pending reason (D3, D12, HST-09, SRV-05, UPD-01, UPD-03, NFR-02, BAK-01); a beta branch is named to steamcmd explicitly. |
 | 0.30 | 2026-10-03 | M7-A: shared installs built below the panel (install jobs and volumes, read-only mounts, agent modes, every game's declaration), checked on real servers; NFR-02 names the jobs' own memory limit and network; TShock loads plugins from the server's data (§7). |
 | 0.31 | 2026-10-05 | M7-B: shared installs through the panel (create, update once from a copy, move at the next start, migrate existing servers by a local copy, owner-only removal, the host's installs on the settings page); SRV-01 and UPD-03 say how; Q19 answered. |
+| 0.32 | 2026-10-05 | M7-C: the host page (HST-03) with the memory over-commit warning (SRV-05); the host's traits read from Docker and the limitations that apply, and notes on address bans, the activity log, signed-in devices and the per-address settings games declare (HST-07, UX-04); an ARM host refuses x86-only games end to end (HST-05); the orchestrator reports its stack's usage (D3). M7-D: scheduled jobs take turns on the host with a fixed offset per server (SCH-02); the smoke test (`scripts/smoke.mjs`) passes on Windows with Docker Desktop; setup and operations guides for Windows, Linux and macOS, the macOS one untested (HST-06). |

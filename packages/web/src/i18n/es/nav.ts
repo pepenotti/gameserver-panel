@@ -15,6 +15,7 @@ export default {
   audit: 'Registro de actividad',
   profile: 'Mi cuenta',
   logout: 'Cerrar sesión',
+  host: 'Esta computadora',
   hostSettings: 'Ajustes del panel',
   serverSection: 'Servidor',
   panelSection: 'Panel',

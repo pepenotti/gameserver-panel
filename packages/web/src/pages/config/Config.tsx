@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { localize } from '../../api/meta';
 import { useServerApi } from '../../api/server';
+import { PerAddressNote } from '../../components/AddressNote';
 import { formatDateTime, useErrorText } from '../../lib/format';
 import { getProposal, propose, useConfigMeta, useFileLabel, type ConfigMeta, type FileDecl, type Proposal, type ProposalPreview, type Value } from './api';
 import { ConfigFiles } from './ConfigFiles';
@@ -38,6 +39,7 @@ function FormTab({ file, meta }: { file: FileDecl; meta: ConfigMeta }) {
           {localize(file.note, i18n.language)}
         </Alert>
       )}
+      <PerAddressNote fileId={file.id} />
       {(file.managedKeys.length > 0 || file.restartKeys === '*') && (
         <Alert variant="light" color="blue" icon={<IconInfoCircle />}>
           {[file.restartKeys === '*' ? t('config.restartAllNote') : '', file.managedKeys.length > 0 ? t('config.managedNote') : ''].filter(Boolean).join(' ')}

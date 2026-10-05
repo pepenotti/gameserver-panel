@@ -57,6 +57,8 @@ export interface FakeVolume {
    * fills it; nothing else is modelled.
    */
   files: Map<string, string>;
+  /** What `GET /system/df` says it takes, bytes (-1: Docker couldn't measure it). */
+  size: number;
 }
 
 export interface FakeDocker {
@@ -65,7 +67,8 @@ export interface FakeDocker {
   containers: Map<string, FakeContainer>;
   networks: Map<string, FakeNetwork>;
   volumes: Map<string, FakeVolume>;
-  info: { Architecture: string; NCPU: number; MemTotal: number; ServerVersion: string; OperatingSystem: string };
+  /** `GET /info`: a Linux Docker Engine unless a test makes it another host (Docker Desktop's operating system, kernel and label). */
+  info: { Architecture: string; NCPU: number; MemTotal: number; ServerVersion: string; OperatingSystem: string; KernelVersion: string; Labels: string[] };
   /** Images that exist; null: every image does. */
   images: Set<string> | null;
   /** The content id an image name resolves to now (`sha256:…`), made up on first use. */
@@ -78,7 +81,7 @@ export interface FakeDocker {
   failNext(method: string, path: RegExp, status: number, message: string): void;
   addContainer(o: { name: string; image?: string; labels?: Labels; running?: boolean; ports?: { container: number; host: number; proto: 'tcp' | 'udp' }[]; id?: string; networks?: string[] }): FakeContainer;
   addNetwork(o: { name: string; labels?: Labels }): FakeNetwork;
-  addVolume(o: { name: string; labels?: Labels; files?: Record<string, string> }): FakeVolume;
+  addVolume(o: { name: string; labels?: Labels; files?: Record<string, string>; size?: number }): FakeVolume;
   close(): Promise<void>;
 }
 
@@ -172,7 +175,7 @@ export async function startFakeDocker(): Promise<FakeDocker> {
     containers,
     networks,
     volumes,
-    info: { Architecture: 'x86_64', NCPU: 8, MemTotal: 16 * 1024 ** 3, ServerVersion: '29.0.0-fake', OperatingSystem: 'Fake Linux' },
+    info: { Architecture: 'x86_64', NCPU: 8, MemTotal: 16 * 1024 ** 3, ServerVersion: '29.0.0-fake', OperatingSystem: 'Fake Linux', KernelVersion: '6.8.0-fake-generic', Labels: [] },
     images: null,
     imageId(name) {
       let id = imageIds.get(name);
@@ -215,7 +218,7 @@ export async function startFakeDocker(): Promise<FakeDocker> {
       return n;
     },
     addVolume(o) {
-      const v: FakeVolume = { Name: o.name, Driver: 'local', Labels: o.labels ?? {}, CreatedAt: now(), files: new Map(Object.entries(o.files ?? {})) };
+      const v: FakeVolume = { Name: o.name, Driver: 'local', Labels: o.labels ?? {}, CreatedAt: now(), files: new Map(Object.entries(o.files ?? {})), size: o.size ?? 0 };
       volumes.set(v.Name, v);
       return v;
     },
@@ -359,6 +362,11 @@ export async function startFakeDocker(): Promise<FakeDocker> {
 
     // ---- volumes
     const volumeJson = (v: FakeVolume) => ({ Name: v.Name, Driver: v.Driver, Labels: v.Labels, CreatedAt: v.CreatedAt, Mountpoint: `/var/lib/docker/volumes/${v.Name}/_data`, Scope: 'local' });
+    if (method === 'GET' && path === '/system/df') {
+      // Every volume on the host, whoever made it, with the size Docker measured (`type=volume`: volumes only).
+      const Volumes = [...volumes.values()].map((v) => ({ ...volumeJson(v), UsageData: { Size: v.size, RefCount: [...containers.values()].filter((c) => (c.HostConfig.Mounts ?? []).some((mt) => mt.Source === v.Name)).length } }));
+      return new Reply(200, q.type === 'volume' ? { LayersSize: 0, Images: null, Containers: null, Volumes, BuildCache: null } : { LayersSize: 0, Images: [], Containers: [], Volumes, BuildCache: [] });
+    }
     if (method === 'GET' && path === '/volumes') {
       const filters = labelFilters(q);
       return new Reply(200, { Volumes: [...volumes.values()].filter((v) => matchesLabels(v.Labels, filters)).map(volumeJson), Warnings: null });

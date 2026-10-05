@@ -154,6 +154,13 @@ export interface AdapterMeta {
   /** What people should know about the game before relying on a feature (UX-04), shown with its servers. */
   notes?: AdapterNote[];
   /**
+   * The game's settings that act on the address a player joins from (HST-07):
+   * a limit per address, a check of it, a list of addresses. Where the
+   * host hides players' addresses (Docker Desktop), they treat every player
+   * as one, and the panel says so where the setting is edited.
+   */
+  perAddress?: PerAddressSetting[];
+  /**
    * How players join its servers (SRV-08), for every server's connection
    * info. Every adapter declares it: the panel adapter contract suite checks
    * it, flavour by flavour (`Flavour.join`).
@@ -176,6 +183,25 @@ export interface AdapterMeta {
  */
 export interface AdapterNote {
   id: string;
+  text: I18n;
+  doc?: string;
+}
+
+/**
+ * A game setting that acts per player address (HST-07, `AdapterMeta.perAddress`):
+ * where it is (a config file the panel half declares, and its key there, as
+ * the file's form or text names it), for which flavours, and what it does
+ * when every player arrives from one address, in a line; `doc` names its
+ * docs/limitations.md entry (`limitations.md#<anchor>`).
+ */
+export interface PerAddressSetting {
+  id: string;
+  /** The `ConfigFileDecl.id` of its file. */
+  file: string;
+  /** Its key in that file (a dotted path in nested formats). */
+  key: string;
+  /** Only servers of these flavours have it; none: every server of the game. */
+  flavours?: string[];
   text: I18n;
   doc?: string;
 }

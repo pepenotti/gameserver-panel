@@ -16,7 +16,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 - Errors are `{"error": "<code>", …}`; the web translates the codes (`packages/web/src/i18n/*/errors.ts`).
 - Request shapes: `?` marks optional properties.
 
-## Host (37 routes)
+## Host (39 routes)
 
 | Method | Path | Access | Request |
 |---|---|---|---|
@@ -48,6 +48,8 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | GET | `/api/host/address` | `host.settings` | — |
 | PUT | `/api/host/address` | `host.settings` | `body { public: string \| null, home: string \| null }` |
 | POST | `/api/host/address/detect` | `host.settings` | — |
+| GET | `/api/host/overview` | `host.view` | — |
+| GET | `/api/host/traits` | `server.view` (or on some servers: answer narrowed to them) | — |
 | GET | `/api/host/installs` | `host.view` | — |
 | DELETE | `/api/host/installs/:id` | `host.settings` | `params { id: string }` |
 | DELETE | `/api/host/own-installs/:sid` | `host.settings` | `params { sid: string }` |

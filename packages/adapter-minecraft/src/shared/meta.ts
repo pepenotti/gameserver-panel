@@ -86,4 +86,29 @@ export const MINECRAFT_META: AdapterMeta = {
     verified: true,
     source: 'M3 acceptance run, 2026-09-28: the owner joined a real 26.3 server from Direct Connection at 127.0.0.1:<published port> (docs/verification/minecraft-26.3.md)',
   },
+  // HST-07: settings that act on the address a player joins from. Behind Docker Desktop every player
+  // arrives from the relay's address (docs/limitations.md); what each does then is expected, not measured.
+  perAddress: [
+    {
+      id: 'connection-throttle',
+      file: 'bukkit',
+      key: 'settings.connection-throttle',
+      flavours: ['paper'],
+      text: {
+        en: 'Paper turns away a player who joins within this many milliseconds of another from the same address (4000 by default). Where every player arrives from one address, a second player joining that soon is refused; -1 turns it off.',
+        es: 'Paper rechaza a un jugador que entra a menos de estos milisegundos de otro desde la misma dirección (4000 por defecto). Donde todos los jugadores llegan desde una dirección, se rechaza a un segundo jugador que entra tan pronto; -1 lo desactiva.',
+      },
+      doc: 'limitations.md#players-addresses-are-hidden-behind-docker-desktop',
+    },
+    {
+      id: 'prevent-proxy-connections',
+      file: 'properties',
+      key: 'prevent-proxy-connections',
+      text: {
+        en: 'On, the game asks Mojang whether a player joins from the address they signed in from. Where players’ addresses are hidden, the game sees another address and is expected to turn everyone away: keep it off.',
+        es: 'Activado, el juego le pregunta a Mojang si un jugador entra desde la dirección con la que inició sesión. Donde las direcciones de los jugadores quedan ocultas, el juego ve otra dirección y se espera que rechace a todos: dejalo desactivado.',
+      },
+      doc: 'limitations.md#players-addresses-are-hidden-behind-docker-desktop',
+    },
+  ],
 };

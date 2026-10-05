@@ -138,6 +138,16 @@ export interface AdapterNote {
   doc?: string;
 }
 
+/** A game setting that acts per player address (the contract's `PerAddressSetting`, HST-07): its file and key, the flavours that have it, what it does then. */
+export interface PerAddressSetting {
+  id: string;
+  file: string;
+  key: string;
+  flavours?: string[];
+  text: I18n;
+  doc?: string;
+}
+
 /** An adapter's refusal of a launch setting, as the panel passes it on (`field`, `text`); null for any other error details. */
 export function launchRefusalOf(extra: Record<string, unknown>): { field: string; text: I18n } | null {
   const { field, text } = extra as { field?: unknown; text?: { en?: unknown; es?: unknown } };
@@ -157,6 +167,8 @@ export interface Meta {
     capabilities: Capability[];
     /** What people should know about the game (UX-04). */
     notes?: AdapterNote[];
+    /** Its settings that act on the address a player joins from (HST-07); absent from an older panel. */
+    perAddress?: PerAddressSetting[];
   };
   server: { id?: string; name?: string; gameName: string; flavour: string | null };
   capabilities: Capability[];

@@ -6,6 +6,7 @@ import {
   type CpuArch,
   type DeleteResponse,
   type HostInfo,
+  type HostUsage,
   type InstallDeleteResponse,
   type InstallInfo,
   type InstallJob,
@@ -13,12 +14,15 @@ import {
   type ServerContainer,
   type ServerSpec,
   type ServerStats,
+  type ServerUsage,
   type SharedInstallMarker,
+  type VolumeUsage,
 } from '@gsp/shared';
 import { IdLocks, Mutex, type Backend } from './backend';
 import { AGENT_PORT, agentUrl, DEFAULT_STOP_TIMEOUT_SEC, DERIVATION, derivationOf, derivationState, imageName, installNames, LABEL, names, planContainer, VOLUME_KINDS, type ContainerPlan, type Derivation, type StackContext } from './derive';
-import { DockerError, labelFilter, type DockerClient, type DockerContainer, type DockerContainerSummary, type DockerImage, type DockerInfo, type DockerNetwork, type DockerStats, type DockerVolume, type Labels } from './docker';
+import { DockerError, labelFilter, type DockerClient, type DockerContainer, type DockerContainerSummary, type DockerDfVolume, type DockerImage, type DockerInfo, type DockerNetwork, type DockerStats, type DockerVolume, type Labels } from './docker';
 import { conflict, installConflict, notFound, OrchError, refused, unavailable } from './errors';
+import { traitsOf, volumeUseOf } from './host';
 import { firstTarFile, gameMismatch, installGameOf, installVolumeLabels, MARKER_PATH, MAX_INSTALL_JOBS, parseMarker, planInstallJob, planProbe, serverMismatch, type CopySource, type InstallGame } from './installs';
 import type { Policy } from './policy';
 
@@ -35,6 +39,21 @@ const RUNTIME_IMAGE = /^gsp\/[a-z0-9][a-z0-9-]{0,63}:[A-Za-z0-9_][A-Za-z0-9_.-]{
 /** An image name's content id now, '' when it names none; one lookup per name. */
 type ImageIds = (name: string) => Promise<string>;
 
+/**
+ * How long an answer of Docker's disk usage is kept (HST-03): measuring
+ * walks every file of every volume on the host, and Docker runs one such
+ * walk at a time.
+ */
+export const DISK_USAGE_TTL_MS = 30_000;
+/** How long one measure may take: a big install is many files. */
+const DISK_USAGE_TIMEOUT_MS = 120_000;
+
+/** This stack's volumes as last measured, and when (ms since the epoch). */
+interface DiskSample {
+  volumes: VolumeUsage[];
+  at: number;
+}
+
 export interface DockerBackendOptions {
   docker: DockerClient;
   ctx: StackContext;
@@ -43,6 +62,9 @@ export interface DockerBackendOptions {
   derivation?: Derivation;
   /** What it did that people should know about (a container recreated for a security fix). */
   log?: (line: string) => void;
+  /** How long a disk-usage answer is kept (default `DISK_USAGE_TTL_MS`), and the clock it is kept by (tests). */
+  diskUsageTtlMs?: number;
+  now?: () => number;
 }
 
 function archOf(a: string): CpuArch {
@@ -82,6 +104,9 @@ export class DockerBackend implements Backend {
   private readonly docker: DockerClient;
   private readonly stack: string;
   private readonly derivation: Derivation;
+  /** The last disk-usage answer, and the measure under way (one at a time). */
+  private disk: DiskSample | null = null;
+  private measuring: Promise<DiskSample | null> | null = null;
 
   constructor(private readonly o: DockerBackendOptions) {
     this.docker = o.docker;
@@ -105,8 +130,73 @@ export class DockerBackend implements Backend {
   host(): Promise<HostInfo> {
     return this.guard(async () => {
       const info = await this.docker.call<DockerInfo>('GET', '/info');
-      return { arch: archOf(info.Architecture), cpus: info.NCPU, memBytes: info.MemTotal, dockerVersion: info.ServerVersion, os: info.OperatingSystem };
+      return { arch: archOf(info.Architecture), cpus: info.NCPU, memBytes: info.MemTotal, dockerVersion: info.ServerVersion, os: info.OperatingSystem, traits: traitsOf(info) };
     });
+  }
+
+  usage(): Promise<HostUsage> {
+    return this.guard(async () => {
+      const [servers, disk] = await Promise.all([this.serverUsage(), this.diskUsage()]);
+      return { at: new Date(this.now()).toISOString(), servers, volumes: disk?.volumes ?? null, volumesAt: disk ? new Date(disk.at).toISOString() : null };
+    });
+  }
+
+  private now(): number {
+    return this.o.now?.() ?? Date.now();
+  }
+
+  /** Each server container of this stack, and one stats sample of each that runs (side by side: Docker takes a second for each). */
+  private async serverUsage(): Promise<ServerUsage[]> {
+    const found = (await this.stackContainers()).flatMap((s) => {
+      const id = this.serverIdOf(s);
+      return id ? [{ id, s }] : [];
+    });
+    const out = await Promise.all(
+      found.map(async ({ id, s }): Promise<ServerUsage> => {
+        const state = (STATES.has(s.State) ? s.State : s.State === 'removing' ? 'exited' : 'dead') as ServerUsage['state'];
+        if (state !== 'running') return { id, state, stats: null };
+        // Gone or stopped since the listing: no sample, which is no failure.
+        const r = await this.docker.raw('GET', `/containers/${s.Id}/stats`, { query: { stream: false } });
+        return { id, state, stats: r.status === 200 && r.data !== null && typeof r.data === 'object' ? statsOf(id, r.data as DockerStats) : null };
+      }),
+    );
+    return out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }
+
+  /**
+   * This stack's volumes and their sizes: kept `diskUsageTtlMs`, measured
+   * once at a time; when a measure fails (Docker runs another one, or
+   * can't answer), the last one stands, however old (its time says so).
+   */
+  private async diskUsage(): Promise<DiskSample | null> {
+    const ttl = this.o.diskUsageTtlMs ?? DISK_USAGE_TTL_MS;
+    if (this.disk && this.now() - this.disk.at < ttl) return this.disk;
+    this.measuring ??= this.measureDisk().finally(() => {
+      this.measuring = null;
+    });
+    return (await this.measuring) ?? this.disk;
+  }
+
+  private async measureDisk(): Promise<DiskSample | null> {
+    let r: { status: number; data: unknown };
+    try {
+      r = await this.docker.raw('GET', '/system/df', { query: { type: 'volume' }, timeoutMs: DISK_USAGE_TIMEOUT_MS });
+    } catch {
+      return null;
+    }
+    if (r.status < 200 || r.status >= 300) return null;
+    const volumes: VolumeUsage[] = [];
+    for (const v of (r.data as { Volumes?: DockerDfVolume[] | null } | null)?.Volumes ?? []) {
+      if (!v || typeof v.Name !== 'string') continue;
+      // Only this stack's, by its labels and its name; never another stack's or anyone else's.
+      const use = volumeUseOf(v, this.stack);
+      if (!use) continue;
+      const size = v.UsageData?.Size;
+      volumes.push({ name: v.Name, ...use, bytes: typeof size === 'number' && Number.isFinite(size) && size >= 0 ? size : null });
+    }
+    volumes.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    this.disk = { volumes, at: this.now() };
+    return this.disk;
   }
 
   list(): Promise<ServerContainer[]> {

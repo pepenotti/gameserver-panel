@@ -6,6 +6,7 @@ export default {
   target: 'Target',
   detail: 'Details',
   result: 'Result',
+  address: 'Address',
   ok: 'OK',
   failed: 'Failed',
   loadMore: 'Load older',

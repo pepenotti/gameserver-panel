@@ -15,7 +15,8 @@
  * bodies. Every non-2xx answer is an `OrchestratorError`.
  *
  *   GET    /v1/health                     → HealthResponse
- *   GET    /v1/host                       → HostInfo
+ *   GET    /v1/host                       → HostInfo            (with the host's traits, HST-07)
+ *   GET    /v1/host/usage                 → HostUsage           (this stack's servers and volumes now, HST-03)
  *   GET    /v1/servers                    → ServerContainer[]   (only this stack's containers)
  *   PUT    /v1/servers/:id?keepImage=false&keepDerivation=false ServerSpec → ServerContainer   (idempotent create or recreate; volumes kept; `ApplyOptions`)
  *   POST   /v1/servers/:id/start          → ServerContainer
@@ -97,6 +98,88 @@ export interface HostInfo {
   hostPorts?: PortRangeInfo[];
   /** `ORCH_MAX_MEM_MB`: the most memory one server may be given, MiB (SRV-05). */
   maxMemMb?: number;
+  /** What the host can't do, as far as Docker tells (HST-07); an orchestrator older than this field leaves it out. */
+  traits?: HostTraits;
+}
+
+/** How Docker runs on the host: Docker Desktop (a virtual machine behind a port relay) or Docker Engine. */
+export type DockerKind = 'desktop' | 'engine';
+
+/** The host's operating system, as Docker shows it. */
+export type HostPlatform = 'windows' | 'macos' | 'linux';
+
+/**
+ * The host's traits (HST-07), derived by the orchestrator from Docker's
+ * `/info` alone, never from the caller. Only these words are reported:
+ * none of Docker's own values (its labels may name the owner's account).
+ */
+export interface HostTraits {
+  /** Docker Desktop when `/info` says so (its operating system, or its own label); Docker Engine otherwise. */
+  docker: DockerKind;
+  /**
+   * `windows` for a WSL 2 kernel (Docker Desktop's backend, or Docker
+   * Engine inside WSL) or Docker Desktop's Windows pipe; `macos` for Docker
+   * Desktop's macOS socket; `linux` for Docker Engine elsewhere (or Docker
+   * Desktop's Linux socket); null when Docker Desktop's doesn't say.
+   */
+  platform: HostPlatform | null;
+  /**
+   * Whether players' addresses reach the games (and the panel's visitors'
+   * the panel): `false` behind Docker Desktop's port relay (measured on
+   * Windows, docs/limitations.md); `'expected'` on Docker Engine, whose
+   * port forwarding is expected to keep them but isn't measured yet (M7);
+   * `true` only once measured on this kind of host. Never guessed true.
+   */
+  addressesVisible: boolean | 'expected';
+}
+
+/**
+ * `GET /v1/host/usage`: what this stack's servers use now (HST-03, SRV-05),
+ * and never anything of another stack. Taking it reads Docker only: one
+ * stats sample per running server, and the disk use of this stack's
+ * volumes (Docker's `/system/df`, which walks every file, so its answer is
+ * kept a little while).
+ */
+export interface HostUsage {
+  at: string;
+  /** Every server container of this stack, by id (no `missing` ones: a server without a container has nothing to measure). */
+  servers: ServerUsage[];
+  /**
+   * The disk each volume of this stack takes, filtered by this stack's
+   * labels and names; null when Docker couldn't measure it now (another
+   * disk-usage run in progress, an answer it couldn't give).
+   */
+  volumes: VolumeUsage[] | null;
+  /** When `volumes` were measured; null with them. */
+  volumesAt: string | null;
+}
+
+export interface ServerUsage {
+  id: string;
+  state: Exclude<ContainerState, 'missing'>;
+  /** One sample while it runs (CPU, memory); null otherwise, or when Docker couldn't take one. */
+  stats: ServerStats | null;
+}
+
+/**
+ * What a volume of this stack holds: a server's own `data`, `install` (its
+ * own install, before or without shared installs) or `steam` (its HOME);
+ * a `shared-install` (HST-09); an install job's `job-home`; or the stack's
+ * own (`stack`: the Compose project's volumes, the panel's database and the
+ * proxy's certificates among them).
+ */
+export type VolumeUse = 'data' | 'install' | 'steam' | 'shared-install' | 'job-home' | 'stack';
+
+export interface VolumeUsage {
+  /** Its Docker volume. */
+  name: string;
+  use: VolumeUse;
+  /** Its server (`data`, `install`, `steam`); null otherwise. */
+  server: string | null;
+  /** Its install (`shared-install`, `job-home`); null otherwise. */
+  install: string | null;
+  /** Bytes Docker measured; null when it didn't. */
+  bytes: number | null;
 }
 
 /** The port every server's agent listens on inside its container: never published, and no game port may take it. */

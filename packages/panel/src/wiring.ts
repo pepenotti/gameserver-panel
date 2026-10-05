@@ -22,6 +22,8 @@ import type { Db } from './db/db';
 import { secretEnvName, type PanelEnv } from './env';
 import { AgentServerFiles } from './files/agent';
 import { HostAddress } from './host/address';
+import { HostOverviewService } from './host/overview';
+import { HostTraitsCache } from './host/traits';
 import type { AgentFeed, Deps } from './http/deps';
 import { ModsService } from './mods/service';
 import { DISCORD_OVERRIDE_KEY, DiscordNotifier, type DiscordOverride } from './notifier/discord';
@@ -314,6 +316,7 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     const missing = s.handle.missingSecrets();
     if (missing.length && !isManaged(s.row) && env.agentUrl) throw new Error(`${missing.map(secretEnvName).join(', ')} must be set (secrets the ${s.adapter.meta.id} adapter needs)`);
   }
+  const hostTraits = new HostTraitsCache({ orchestrator, clientIpTrustworthy: env.clientIpTrustworthy });
 
   return {
     env,
@@ -337,5 +340,7 @@ export function createPanelDeps(o: PanelDepsOptions): Deps {
     hostJobs: new HostJobs({ audit, backupPanelDb: () => backupPanelDb(db, env.backupDir) }),
     choices: new LaunchChoicesService({ version: env.version, fetch: o.downloads?.fetch, env: o.downloads?.env }),
     hostAddress: new HostAddress({ settings, env, fetch: o.detect?.fetch }),
+    hostTraits,
+    hostOverview: new HostOverviewService({ deps: { servers, serverRows, orchestrator, adapters, env }, traits: hostTraits }),
   };
 }

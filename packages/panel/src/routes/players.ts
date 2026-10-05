@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { allowed, by, HttpError, srvOf } from '../http/context';
 import type { Deps } from '../http/deps';
+import { addressesTrustworthy } from '../host/traits';
 
 const username = { type: 'string', minLength: 1, maxLength: 32 } as const;
 const reason = { type: 'string', maxLength: 200 } as const;
@@ -31,6 +32,8 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
   app.get('/players', { config: { permission: 'players.view', capability: 'players' } }, async (req) => {
     const { players } = srvOf(req);
     const full = allowed(req, 'accounts.view');
+    // HST-07: whether players' addresses reach the game here (the host's trait, or the owner's word), for the notes on address bans.
+    const addresses = await deps.hostTraits.addresses();
     return {
       online: players.onlineNow(),
       // Accounts, SteamIDs, bans, the whitelist and who holds a level are for operators and up.
@@ -38,7 +41,9 @@ export function playerRoutes(app: FastifyInstance, deps: Deps): void {
       bans: full ? await players.bans() : null,
       whitelist: full ? await players.whitelist() : null,
       levelHolders: full ? await players.levelHolders() : null,
-      ipBansTrustworthy: deps.env.clientIpTrustworthy,
+      // A ban of an address names one player's: their own address arrives (or is expected to, on Docker Engine).
+      ipBansTrustworthy: addressesTrustworthy(addresses),
+      addresses,
     };
   });
 

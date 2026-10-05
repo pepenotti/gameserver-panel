@@ -291,6 +291,17 @@ export function panelAdapterCoreSuite<S>(adapter: PanelAdapter<S>, opts: PanelCo
       expect(problems).toEqual([]);
     });
 
+    it('settings that act per player address are in config files declared for their flavours (HST-07)', () => {
+      const problems: string[] = [];
+      for (const s of adapter.meta.perAddress ?? []) {
+        const flavours = s.flavours ?? (adapter.meta.flavours.length ? adapter.meta.flavours.map((f) => f.id) : [null]);
+        for (const flavour of flavours) {
+          if (!adapter.config.files({ ...server(), flavour }).some((f) => f.id === s.file)) problems.push(`${s.id}: no file ${s.file}${flavour === null ? '' : ` for ${flavour}`}`);
+        }
+      }
+      expect(problems).toEqual([]);
+    });
+
     it('announces every countdown in both languages; broadcasts are commands', () => {
       const canShow = caps().has('broadcast');
       for (const lang of LANGS) {

@@ -21,6 +21,7 @@ import { Schedules } from './pages/Schedules';
 import { Config } from './pages/config/Config';
 import { Console } from './pages/Console';
 import { CreateServer } from './pages/CreateServer';
+import { Host } from './pages/Host';
 import { HostSettings } from './pages/HostSettings';
 import { Server } from './pages/Server';
 import { Home, Servers } from './pages/Servers';
@@ -81,6 +82,7 @@ const HOST_PAGES: Record<string, ReactNode> = {
   '/servers': <Servers />,
   '/users': <Users />,
   '/audit': <Audit />,
+  '/host': <Host />,
   '/settings': <HostSettings />,
 };
 

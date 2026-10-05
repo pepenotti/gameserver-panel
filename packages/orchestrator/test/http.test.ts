@@ -29,6 +29,7 @@ describe('the orchestrator API (D3, NFR-02, NFR-03)', () => {
     const routes: [string, string][] = [
       ['GET', '/v1/health'],
       ['GET', '/v1/host'],
+      ['GET', '/v1/host/usage'],
       ['GET', '/v1/servers'],
       ['PUT', '/v1/servers/pz'],
       ['POST', '/v1/servers/pz/start'],
@@ -48,9 +49,20 @@ describe('the orchestrator API (D3, NFR-02, NFR-03)', () => {
     expect(stack.fd.calls.length).toBe(before);
   });
 
-  it('reports its health, version and API version, and the host', async () => {
+  it('reports its health, version and API version, and the host with its traits (HST-07)', async () => {
     expect(await call('GET', '/v1/health')).toEqual({ status: 200, body: { ok: true, version: '1.2.3-test', api: ORCHESTRATOR_API_VERSION } });
-    expect(await call('GET', '/v1/host')).toMatchObject({ status: 200, body: { arch: 'amd64', cpus: 8 } });
+    expect(await call('GET', '/v1/host')).toMatchObject({ status: 200, body: { arch: 'amd64', cpus: 8, traits: { docker: 'engine', platform: 'linux', addressesVisible: 'expected' } } });
+  });
+
+  it("reports what this stack's servers and volumes take, reading only: no body, no query, GET alone (HST-03)", async () => {
+    const before = stack.fd.writes().length;
+    expect(await call('GET', '/v1/host/usage')).toMatchObject({ status: 200, body: { servers: [], volumes: [], at: expect.stringMatching(/^\d{4}-/) as unknown } });
+    expect(stack.fd.writes().length).toBe(before);
+    expect(await call('GET', '/v1/host/usage?all=true')).toMatchObject({ status: 400, body: { code: 'bad-request' } });
+    expect(await call('GET', '/v1/host/usage', { body: {} })).toMatchObject({ status: 400, body: { code: 'bad-request' } });
+    expect(await call('POST', '/v1/host/usage')).toMatchObject({ status: 405 });
+    expect(await call('DELETE', '/v1/host/usage')).toMatchObject({ status: 405 });
+    for (const path of ['/v1/host/usage/x', '/v1/host/df', '/v1/host/', '/v1/system/df']) expect(await call('GET', path), path).toMatchObject({ status: 404, body: { code: 'not-found' } });
   });
 
   it("tells the panel which host ports servers may publish and how much memory one may have, from its own settings (SRV-01, SRV-05)", async () => {
