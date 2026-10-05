@@ -72,7 +72,9 @@ Desktop has no setting that keeps the real address.
 
 **Status:** Measured on Windows 11 with Docker Desktop (Engine 29.7.2), Sept
 2026. The Minecraft and Terraria test servers and the panel's activity log
-all saw the relay's address.
+all saw the relay's address. The panel's detection of Docker Desktop on
+Windows is measured too (Oct 2026); on macOS it reads Docker Desktop's own
+socket path, *expected*, not measured.
 
 ### The panel's visitors are hidden the same way
 
@@ -234,7 +236,10 @@ counts).
 **Why:** the numbers come from Docker (HST-03); asking it more often would slow it down for the
 servers.
 
-**Status:** By design.
+**Status:** By design. Measured on Windows 11 with Docker Desktop (Engine 29.7.2), Oct 2026: a
+running vanilla Terraria server's memory agreed with `docker stats`, its shared install's size with
+what its install job counted (59 MB), and a fresh overview took about a second (Docker's stats
+sample).
 
 ## Project Zomboid
 
