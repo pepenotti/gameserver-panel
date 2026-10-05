@@ -7,6 +7,7 @@ import { api } from '../api/http';
 import { useServers } from '../api/server';
 import { useSession } from '../api/session';
 import type { AuditEntry } from '../api/types';
+import { AddressNote } from '../components/AddressNote';
 import { formatDateTime } from '../lib/format';
 
 const PAGE = 100;
@@ -70,7 +71,9 @@ export function Audit() {
           <TextInput placeholder={t('audit.filter')} aria-label={t('audit.filter')} value={filter} onChange={(e) => setFilter(e.currentTarget.value)} w={{ base: '100%', xs: 220 }} />
         </Group>
       </Group>
-      <Table.ScrollContainer minWidth={820}>
+      {/* HST-07: where every visitor arrives from one address, the address column tells nobody apart. */}
+      <AddressNote />
+      <Table.ScrollContainer minWidth={920}>
         <Table striped fz="sm">
           <Table.Thead>
             <Table.Tr>
@@ -80,6 +83,7 @@ export function Audit() {
               <Table.Th>{t('audit.action')}</Table.Th>
               <Table.Th>{t('audit.target')}</Table.Th>
               <Table.Th>{t('audit.detail')}</Table.Th>
+              <Table.Th>{t('audit.address')}</Table.Th>
               <Table.Th>{t('audit.result')}</Table.Th>
             </Table.Tr>
           </Table.Thead>
@@ -97,6 +101,9 @@ export function Audit() {
                   <Text size="xs" lineClamp={2} title={r.detail ?? ''}>
                     {r.detail ?? ''}
                   </Text>
+                </Table.Td>
+                <Table.Td ff="monospace" fz="xs">
+                  {r.ip ?? ''}
                 </Table.Td>
                 <Table.Td>
                   <Badge color={r.ok ? 'green' : 'red'} variant="light" size="sm">

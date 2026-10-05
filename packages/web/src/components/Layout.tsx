@@ -5,6 +5,7 @@ import {
   IconArchive,
   IconCalendarTime,
   IconChevronDown,
+  IconCpu,
   IconGauge,
   IconHistory,
   IconLogout,
@@ -62,6 +63,8 @@ export const HOST_NAV: NavItem[] = [
   { to: '/servers', label: 'nav.servers', icon: IconServer2 },
   { to: '/users', label: 'nav.users', icon: IconUsers, permission: 'users.manage', hostOnly: true },
   { to: '/audit', label: 'nav.audit', icon: IconHistory, permission: 'audit.view' },
+  // HST-03, HST-07: what the servers use of this computer, and what it can't do (Q9: those who see the host overview).
+  { to: '/host', label: 'nav.host', icon: IconCpu, permission: 'host.view', hostOnly: true },
   { to: '/settings', label: 'nav.hostSettings', icon: IconAdjustments, permission: 'notifications.manage', hostOnly: true },
 ];
 

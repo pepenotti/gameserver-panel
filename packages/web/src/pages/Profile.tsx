@@ -9,6 +9,7 @@ import { api } from '../api/http';
 import { useServers } from '../api/server';
 import { useSession } from '../api/session';
 import type { DeviceSession } from '../api/types';
+import { AddressNote } from '../components/AddressNote';
 import { LangSwitch } from '../components/LangSwitch';
 import { useErrorText, useRelative } from '../lib/format';
 import { ChangePasswordForm } from './auth/ChangePassword';
@@ -128,6 +129,8 @@ export function Profile() {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+        {/* HST-07: the devices' addresses, where every visitor arrives from one. */}
+        <AddressNote />
       </Card>
 
       <Modal opened={enrolOpen} onClose={enrol.close} title={t('auth.enrolTitle')} centered>

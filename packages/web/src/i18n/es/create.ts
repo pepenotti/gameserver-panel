@@ -7,7 +7,7 @@ export default {
   hostUnknown: 'El panel no pudo preguntarle a esta computadora qué juegos puede correr. Podés intentarlo igual: si no puede correr el juego, la creación falla.',
   noGames: 'Este panel no tiene juegos para crear servidores.',
   gameLine: '{{ports}} puerto(s) para jugadores · {{memory}} MiB por defecto',
-  archUnsupported: 'Necesita un procesador {{arch}}; esta computadora tiene {{host}}.',
+  archUnsupported: 'Solo funciona con procesadores {{arch}}; el de esta computadora es {{host}}.',
   flavour: 'Variante',
   naming: 'Nombre',
   nameHelp: 'Lo que todos ven en el panel y en los mensajes de Discord. Lo podés cambiar después.',

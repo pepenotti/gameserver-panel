@@ -10,6 +10,7 @@ import { formatFor, type ParseIssue } from '@gsp/formats';
 import { ApiError } from '../../api/http';
 import { localize } from '../../api/meta';
 import { useServerApi } from '../../api/server';
+import { PerAddressNote } from '../../components/AddressNote';
 import { CodeEditor, type CodeEditorHandle } from '../../components/CodeEditor';
 import { useErrorText } from '../../lib/format';
 import { getContent, issueIn, propose, useFileLabel, type FileContent, type FileIssue, type FilesView, type ProposalPreview, type ReadonlyReason, type TreeEntry } from './api';
@@ -225,6 +226,7 @@ function FileEditor({ id, onDirty, stoppedOnly = false }: { id: string; onDirty:
           {localize(content.note, i18n.language)}
         </Alert>
       )}
+      <PerAddressNote fileId={id} />
       {content.managedKeys.length > 0 && (
         <Text size="xs" c="dimmed">
           {t('files.managedNote', { keys: content.managedKeys.join(', ') })}

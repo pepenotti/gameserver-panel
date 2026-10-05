@@ -13,6 +13,7 @@ export default {
   audit: 'Activity log',
   profile: 'My account',
   logout: 'Sign out',
+  host: 'This computer',
   hostSettings: 'Panel settings',
   serverSection: 'Server',
   panelSection: 'Panel',

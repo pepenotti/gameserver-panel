@@ -13,6 +13,7 @@ import { useSession } from '../api/session';
 import { AgreementLink } from '../components/Eula';
 import { LaunchField, launchDefault, launchKey } from '../components/LaunchField';
 import { formatBytes, useErrorText } from '../lib/format';
+import { archKey } from '../lib/host';
 import { planLine } from '../lib/installs';
 import { GameNotes } from '../components/GameNotes';
 import { choosablePorts, createErrorField, followersOf, formatRanges, idProblem, MAX_PORT, maxGameMemory, MIN_PORT, nameProblem, portProblem, publishedPorts, slugify, suggestPorts, type CreateField } from '../lib/servers';
@@ -38,7 +39,12 @@ function launchDefaults(a: AdapterSummary, maxGameMb: number | null): Launch {
 /** Why this host can't run a game (HST-05), or null. */
 function useUnsupported(host: AdaptersResponse['host']): (a: AdapterSummary) => string | null {
   const { t } = useTranslation();
-  return (a) => (a.supported === false ? t('create.archUnsupported', { arch: a.arch.join(', '), host: host?.arch ?? '?' }) : null);
+  // Plain names (x86-64, ARM), not Docker's.
+  const name = (arch: string) => {
+    const key = archKey(arch);
+    return key ? t(key) : arch;
+  };
+  return (a) => (a.supported === false ? t('create.archUnsupported', { arch: a.arch.map(name).join(', '), host: host ? name(host.arch) : '?' }) : null);
 }
 
 /**

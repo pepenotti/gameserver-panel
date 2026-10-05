@@ -8,6 +8,7 @@ export default {
   target: 'Sobre',
   detail: 'Detalle',
   result: 'Resultado',
+  address: 'Dirección',
   ok: 'OK',
   failed: 'Falló',
   loadMore: 'Ver anteriores',

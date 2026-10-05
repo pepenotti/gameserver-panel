@@ -5,7 +5,7 @@ export default {
   hostUnknown: 'The panel could not ask this computer which games it can run. You can still try: creating fails if it cannot run the game.',
   noGames: 'This panel has no games to create servers from.',
   gameLine: '{{ports}} port(s) for players · {{memory}} MiB by default',
-  archUnsupported: 'Needs a {{arch}} processor; this computer has {{host}}.',
+  archUnsupported: 'Runs on {{arch}} processors only; this computer’s is {{host}}.',
   flavour: 'Variant',
   naming: 'Name',
   nameHelp: 'What everyone sees in the panel and in Discord messages. You can change it later.',
