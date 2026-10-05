@@ -176,7 +176,7 @@ export function Host() {
                   : t('host.cpu.usedNoHost', { percent: formatPercent(cpu.percent, lang) })}
               </Text>
             )}
-            <Text size="sm">{t('host.cpu.limits', { cpus: cpu.limitsCpus, unlimited: cpu.unlimited })}</Text>
+            <Text size="sm">{cpu.limitsCpus > 0 ? t('host.cpu.limits', { cpus: cpu.limitsCpus, unlimited: cpu.unlimited }) : t('host.cpu.noLimits')}</Text>
             <Text size="xs" c="dimmed">
               {t('host.cpu.note')}
             </Text>
