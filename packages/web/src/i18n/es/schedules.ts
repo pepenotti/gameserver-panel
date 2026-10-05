@@ -29,4 +29,14 @@ export default {
   },
   saved: 'Programación guardada.',
   minutes: '{{n}} min',
+  staggered: 'Los reinicios y las copias de este servidor se hacen {{n}} min después de los horarios de acá, para que los servidores de esta computadora no empiecen todos a la vez. Los horarios de “Próximo” ya lo incluyen.',
+  notStaggered: 'Los reinicios y las copias de este servidor se hacen en los horarios de acá.',
+  takeTurns: 'Los reinicios, las copias y las actualizaciones de todos los servidores se turnan: mientras corre el de otro servidor, este espera y empieza un par de minutos después de que termine. Lo que alguien hace a mano nunca espera.',
+  waiting: 'Esperando su turno: {{jobs}}',
+  jobs: {
+    restart: 'reinicio',
+    backup: 'copia de seguridad',
+    update: 'actualización del juego',
+    mods: 'actualización de mods',
+  },
 } satisfies Translations['schedules'];
