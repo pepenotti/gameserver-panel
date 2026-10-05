@@ -27,4 +27,14 @@ export default {
   },
   saved: 'Schedules saved.',
   minutes: '{{n}} min',
+  staggered: 'This server’s restarts and backups run {{n}} min after the times set here, so the servers on this computer don’t all start theirs at once. The times shown as “Next” include it.',
+  notStaggered: 'This server’s restarts and backups run at the times set here.',
+  takeTurns: 'Restarts, backups and updates of all servers take turns: while another server’s job runs, this one waits, then starts a couple of minutes after it ends. A job someone starts by hand never waits.',
+  waiting: 'Waiting for its turn: {{jobs}}',
+  jobs: {
+    restart: 'restart',
+    backup: 'backup',
+    update: 'game update',
+    mods: 'mod update',
+  },
 } as const;

@@ -94,8 +94,9 @@ describe('schedules', () => {
     const cur = ((await c.get('/api/servers/default/schedules')).json() as { settings: Record<string, unknown> }).settings;
     const bad = await c.req('PUT', '/api/servers/default/schedules', { ...cur, timezone: 'Mars/Olympus' });
     expect(bad.json()).toMatchObject({ error: 'invalid-schedule' });
-    const ok = (await c.req('PUT', '/api/servers/default/schedules', { ...cur, timezone: 'America/New_York', restarts: { enabled: true, times: ['05:30'], countdownSec: 300, backupWhileStopped: true } })).json() as { next: { restart: string } };
-    expect(new Date(ok.next.restart).getUTCMinutes()).toBe(30);
+    const ok = (await c.req('PUT', '/api/servers/default/schedules', { ...cur, timezone: 'America/New_York', restarts: { enabled: true, times: ['05:30'], countdownSec: 300, backupWhileStopped: true } })).json() as { next: { restart: string; offsetMinutes: number } };
+    // The time it names, moved by the server's offset (SCH-02).
+    expect(new Date(ok.next.restart).getUTCMinutes()).toBe((30 + ok.next.offsetMinutes) % 60);
     // The dashboard shows the same next restart.
     expect(((await c.get('/api/servers/default/status')).json() as { nextRestart: string }).nextRestart).toBe(ok.next.restart);
   });
@@ -208,7 +209,7 @@ describe('per server (M2): schedules, operations and Discord (SCH-01, SCH-03, SR
     expect(p.srv.scheduler.config().backups.enabled).toBe(true);
     two.scheduler.reload();
     p.srv.scheduler.reload();
-    expect(new Date(two.scheduler.nextRuns().restart!).getUTCMinutes()).toBe(15);
+    expect(new Date(two.scheduler.nextRuns().restart!).getUTCMinutes()).toBe(15 + two.scheduler.nextRuns().offsetMinutes);
     expect(two.scheduler.nextRuns().backup).toBeNull();
     expect(p.srv.scheduler.nextRuns().backup).not.toBeNull();
     two.scheduler.stop();

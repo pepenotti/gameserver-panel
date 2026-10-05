@@ -33,6 +33,7 @@ import { MASK } from '../src/config/service';
 import { openDb, type Db } from '../src/db/db';
 import type { PanelEnv } from '../src/env';
 import type { Deps } from '../src/http/deps';
+import { shiftTime, STAGGER_DEFAULTS, staggerOffset } from '../src/scheduler/gate';
 import type { ServerContext } from '../src/servers/context';
 import { createPanelDeps } from '../src/wiring';
 import { FakeFeed, fakeAgent, noNetwork, ORIGIN, OWNER, ownerReady, type Client, type TestPanel } from './harness';
@@ -494,8 +495,10 @@ describe('Terraria end to end, through the fake orchestrator and the fake server
       };
       const pzNext = await schedule('pz-e2e', '04:00');
       const trNext = await schedule('tr-vanilla', '06:15');
-      expect(new Date(pzNext).toISOString()).toMatch(/T04:00:00/);
-      expect(new Date(trNext).toISOString()).toMatch(/T06:15:00/);
+      // The time each names, moved by its server's own offset (SCH-02).
+      const planned = (id: string, time: string) => `T${shiftTime(time, staggerOffset(id, STAGGER_DEFAULTS.spreadMinutes))}:00`;
+      expect(new Date(pzNext).toISOString()).toContain(planned('pz-e2e', '04:00'));
+      expect(new Date(trNext).toISOString()).toContain(planned('tr-vanilla', '06:15'));
       const list = (await owner.get('/api/servers')).json() as { id: string; adapter: string; state: string; nextRestart: string | null }[];
       expect(list.filter((s) => ['pz-e2e', 'tr-vanilla'].includes(s.id))).toEqual([
         expect.objectContaining({ id: 'tr-vanilla', adapter: 'terraria', state: 'running', nextRestart: trNext }),

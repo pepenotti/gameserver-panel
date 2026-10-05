@@ -21,11 +21,35 @@ interface ScheduleSettings {
   gameUpdates: { enabled: boolean; checkEveryMinutes: number; apply: Policy };
   modUpdates: { enabled: boolean; checkEveryMinutes: number; apply: Policy };
 }
+type HeavyJob = 'restart' | 'backup' | 'update' | 'mods';
 interface NextRuns {
+  /** Planned times: what the schedule says plus this server's offset (SCH-02). */
   restart: string | null;
   backup: string | null;
   gameCheck: string | null;
   modCheck: string | null;
+  offsetMinutes: number;
+  waiting: { job: HeavyJob; plannedAt: string }[];
+}
+
+/** How this server's jobs share the host with the others' (SCH-02): its offset, and what waits for its turn now. */
+function Stagger({ next }: { next: NextRuns | undefined }) {
+  const { t } = useTranslation();
+  if (!next) return null;
+  return (
+    <Stack gap={4}>
+      <Text size="sm" c="dimmed">
+        {next.offsetMinutes > 0 ? t('schedules.staggered', { n: next.offsetMinutes }) : t('schedules.notStaggered')} {t('schedules.takeTurns')}
+      </Text>
+      {next.waiting.length > 0 && (
+        <Group gap="xs">
+          <Badge variant="light" color="yellow">
+            {t('schedules.waiting', { jobs: next.waiting.map((w) => t(`schedules.jobs.${w.job}`)).join(', ') })}
+          </Badge>
+        </Group>
+      )}
+    </Stack>
+  );
 }
 /** Update checks, each shown only when the server's game has what it checks. */
 const UPDATE_CHECKS: ['gameUpdates' | 'modUpdates', Need][] = [
@@ -89,6 +113,7 @@ export function Schedules() {
   return (
     <Stack maw={820}>
       <Title order={2}>{t('schedules.title')}</Title>
+      <Stagger next={q.data?.next} />
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <Select label={t('schedules.timezone')} data={Array.from(new Set([s.timezone, ...ZONES]))} value={s.timezone} onChange={(v) => v && setS({ ...s, timezone: v })} searchable disabled={!editable} allowDeselect={false} />
         <Stack gap={4}>
