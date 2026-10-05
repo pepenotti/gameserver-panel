@@ -73,6 +73,24 @@ export function metaTests(meta: AdapterMeta): void {
     }
   });
 
+  it('meta: settings that act per player address name their file, key and flavours, worded in both languages (HST-07)', () => {
+    const settings = meta.perAddress ?? [];
+    expectUnique(
+      settings.map((s) => s.id),
+      'per-address setting ids',
+    );
+    const flavours = new Set(meta.flavours.map((f) => f.id));
+    for (const s of settings) {
+      expect(s.id).toMatch(/^[a-z][a-z0-9-]{0,63}$/);
+      expect(s.file, `per-address ${s.id} file`).toMatch(/^[a-z][a-z0-9-]{0,63}$/);
+      expect(s.key.trim(), `per-address ${s.id} key`).not.toBe('');
+      expectI18n(s.text, `per-address ${s.id}`);
+      if (s.doc !== undefined) expect(s.doc, `per-address ${s.id} doc`).toMatch(/^limitations\.md#[a-z0-9-]+$/);
+      for (const f of s.flavours ?? []) expect(flavours.has(f), `per-address ${s.id} names flavour ${f}`).toBe(true);
+      if (s.flavours) expect(s.flavours.length, `per-address ${s.id} flavours`).toBeGreaterThan(0);
+    }
+  });
+
   it('meta: an EULA names its agreement, and only an EULA does (D6)', () => {
     const caps = [...meta.capabilities, ...meta.flavours.flatMap((f) => f.capabilities ?? [])];
     if (!caps.includes('eula')) {
