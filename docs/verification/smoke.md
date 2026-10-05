@@ -85,9 +85,59 @@ the slot's backups folder was empty. At the end of the work the slot's stack was
 `node scripts/stack.mjs clean` and its images (`gsp/*:s5`) with `docker rmi`. No other stack was
 touched.
 
-## Linux, Docker Engine — to be recorded
+## Linux, Docker Engine — 2026-10-05
 
-Run the same way on Linux (Docker Engine inside WSL counts), from a checkout of the branch:
+**Setup.** Ubuntu 26.04 LTS in WSL 2 (kernel 6.18, default NAT networking) with Docker Engine
+29.8.2 from Docker's apt repository, installed in the distribution itself: its own engine, not
+Docker Desktop's (amd64, 12 CPUs, 15.6 GiB). Node 24.21 from nodejs.org. A fresh clone of `main`
+in the distribution's own file system, a development slot's stack
+(`node scripts/worktree-env.mjs --slot 7`: ports on 127.0.0.1 only) with `SERVER_IMAGE_VARIANT`
+empty and `ORCH_ALLOW_FAKE=0`, images built from `c3fa879` (2 min 17 s, the first build on that
+engine), the script from `ab3a23f`. Command: `node scripts/smoke.mjs`, run as the distribution's
+normal user (user id 1000, in the `docker` group).
+
+**Result: pass.**
+
+```
+Smoke test of https://wt7.localhost:30743: terraria vanilla, server smoke-ba3e83
+  ok    sign in           1.4 s  signed in (new password set, 2FA enrolled); the panel answered after 1.0 s; certificate not checked (this computer)
+  ok    create            0.1 s  ports TCP 30750
+  ok    game files        6.0 s  version 1.4.5.8, 56 MB, shared install
+  ok    start            36.2 s  running, version 1.4.5.8
+  ok    back up           2.0 s  terraria-smoke-ba3e83-20261005T160122Z-manual.tar.zst, 1.1 MB, parts world, settings
+  ok    stop              2.0 s  stopped
+  ok    restore           2.0 s  terraria-smoke-ba3e83-20261005T160122Z-manual.tar.zst, every part
+  ok    start again       6.0 s  running, version 1.4.5.8
+  ok    delete            2.9 s  stopped, removed with its backups, install iab67bcad6a2fa54a removed
+PASS: 9 of 9 steps passed in 58.8 s
+```
+
+**What the earlier runs found (both fixed on `main` before this run).**
+1. *Signing in right after `up -d`:* the first run failed at once with a TLS alert
+   (`tlsv1 alert internal error`): Caddy was still making its local certificate, about a second
+   after the stack came up. The script now waits up to a minute for the panel to answer through
+   its front door (connection refused, TLS alerts and Caddy's 502/503/504 are retried) and says
+   how long it waited; above, 1.0 s.
+2. *A folder Docker made:* Docker Engine runs as root and creates a missing bind-mount folder as
+   root. The slot's backups folder (`.tmp/backups`) didn't exist yet, so Docker made it, and
+   `.tmp` with it, owned by root: the panel (user 1000) couldn't have written a backup there, and
+   the script couldn't save `.tmp/smoke-owner.json` after it had already set a new owner password,
+   which locked it out of that stack (its database was dropped and the run repeated).
+   `worktree-env.mjs` now makes the backups folder itself, and the script saves its state before
+   the panel changes anything. Docker Desktop makes such folders as the signed-in user, which is
+   why the Windows runs never saw this. A production host follows `docs/runbook-linux.md` step 5
+   (make the backups folder, owned by user 1000) for the same reason.
+
+**The host page on Docker Engine** (`GET /api/host/traits` and `/api/host/overview` on the same
+stack): `docker: engine`, platform `windows` (the WSL kernel), players' addresses `expected`
+(not yet measured, as HST-07 says for Docker Engine), and the limitations
+`addresses-expected`, `wsl-mirrored` and `windows-ports`.
+
+**Left behind: nothing.** The slot's stack was removed with `node scripts/stack.mjs
+clean` and its images with `docker rmi`; afterwards that engine listed no container,
+volume, image or network of its own beyond Docker's defaults.
+
+To run it again on Linux, from a checkout:
 
 ```bash
 node scripts/worktree-env.mjs --slot N            # a free slot; or init-env.mjs for a stack of its own
@@ -98,5 +148,4 @@ node scripts/smoke.mjs
 node scripts/stack.mjs clean && docker rmi gsp/orchestrator:sN gsp/panel:sN gsp/caddy:sN gsp/native:sN
 ```
 
-Only Node 24 is needed for the script itself (no `npm ci`). Record the report here, with the
-distribution, Docker Engine's version and the commit.
+Only Node 24 is needed for the script itself (no `npm ci`).
