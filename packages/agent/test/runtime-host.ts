@@ -7,7 +7,7 @@ import type { LiveGame, RuntimeHost } from '@gsp/adapter-api/testing/runtime-sui
 import { GameRun } from '../src/game';
 import { makeDownload, makeExec, makeExtract, makeFetch } from '../src/install-tools';
 import { SteamcmdDriver } from '../src/steamcmd';
-import { freePort } from './helpers';
+import { freePortsFor } from './ports';
 
 function baseEnv(): Record<string, string | undefined> {
   const { AGENT_TOKEN: _token, ...rest } = process.env;
@@ -42,9 +42,8 @@ export function agentHost(tools: { launcher: string[]; steamcmd: string[] }, o: 
       const roots = { data: path.join(dir, 'data'), install: path.join(dir, 'install') };
       mkdirSync(roots.data, { recursive: true });
       mkdirSync(roots.install, { recursive: true });
-      // Free ports, as the panel gives them; a port that follows another gets its base's number plus its offset.
-      const ports: Record<string, number> = {};
-      for (const decl of adapter.meta.ports) ports[decl.id] = decl.follows ? ports[decl.follows.id]! + decl.follows.offset : await freePort();
+      // Free ports, as the panel gives them, each on its own protocol (a UDP port taken while TCP's is free fails Avorion's start).
+      const ports = await freePortsFor(adapter.meta.ports);
       const home = path.join(dir, 'home');
       const noop = () => undefined;
       const get = makeFetch({ userAgent: 'gameserver-panel/test', baseDelayMs: 50 });
