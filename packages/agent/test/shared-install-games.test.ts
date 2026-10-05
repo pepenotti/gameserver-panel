@@ -17,7 +17,8 @@ import { SHARED_INSTALL_MARKER } from '@gsp/shared';
 import { startFakeDownloads as startMinecraft, type FakeDownloads as McDownloads } from '../../../tools/fake-minecraft/downloads.mjs';
 import { startFakeDownloads as startTerraria, type FakeDownloads as TrDownloads } from '../../../tools/fake-terraria/downloads.mjs';
 import type { AgentConfig } from '../src/config';
-import { fakeSteamcmd, freePort, makeHarness, TIME_SCALE, tools, type Harness } from './helpers';
+import { fakeSteamcmd, makeHarness, TIME_SCALE, tools, type Harness } from './helpers';
+import { freePortsFor } from './ports';
 
 const fake = (game: string, kind: 'server' | 'steamcmd' = 'server') => [process.execPath, path.join(tools, '..', `fake-${game}`, `${kind}.mjs`)];
 
@@ -105,13 +106,6 @@ const GAMES: Game[] = [
       ]),
 ];
 
-/** Free ports for every port the adapter declares (one following another gets its number plus the offset). */
-async function portsFor(a: RuntimeAdapter): Promise<Record<string, number>> {
-  const out: Record<string, number> = {};
-  for (const d of a.meta.ports) out[d.id] = d.follows ? out[d.follows.id]! + d.follows.offset : await freePort();
-  return out;
-}
-
 const strip = (g: Game) => (a: RuntimeAdapter): RuntimeAdapter => {
   if (g.without === 'warmUp') return { ...a, warmUp: undefined };
   if (g.without !== 'redirects') return a;
@@ -122,7 +116,7 @@ const strip = (g: Game) => (a: RuntimeAdapter): RuntimeAdapter => {
 async function harnessFor(g: Game, over: Partial<AgentConfig>): Promise<Harness> {
   const a = runtimeAdapter(g.adapter);
   const h = await makeHarness(
-    { adapter: g.adapter, flavour: g.flavour, launcher: g.launcher, steamcmd: g.steamcmd ?? fakeSteamcmd, ports: await portsFor(a), readyTimeoutMs: 20_000 * TIME_SCALE, stopTimeoutMs: 10_000 * TIME_SCALE, ...over },
+    { adapter: g.adapter, flavour: g.flavour, launcher: g.launcher, steamcmd: g.steamcmd ?? fakeSteamcmd, ports: await freePortsFor(a.meta.ports), readyTimeoutMs: 20_000 * TIME_SCALE, stopTimeoutMs: 10_000 * TIME_SCALE, ...over },
     { adapter: strip(g) },
   );
   harnesses.push(h);

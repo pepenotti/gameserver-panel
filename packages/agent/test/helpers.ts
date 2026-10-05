@@ -1,5 +1,4 @@
 import { mkdtempSync, rmSync } from 'node:fs';
-import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +10,10 @@ import { Agent } from '../src/agent';
 import type { AgentConfig } from '../src/config';
 import { EventHub } from '../src/events';
 import { StateStore } from '../src/state-store';
+import { freePort } from './ports';
+
+// A free TCP port (`freePort()`); a game's declared ports come from `freePortsFor`, which checks each on its own protocol.
+export { freePort };
 
 export const tools = fileURLToPath(new URL('../../../tools/fake-pz/', import.meta.url));
 export const fakeServer = [process.execPath, path.join(tools, 'server.mjs')];
@@ -21,17 +24,6 @@ export const fakeSteamcmd = [process.execPath, path.join(tools, 'steamcmd.mjs')]
  * several worktrees testing at once: TEST_TIME_SCALE=2 doubles them.
  */
 export const TIME_SCALE = Number(process.env.TEST_TIME_SCALE) || 1;
-
-export function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const s = net.createServer();
-    s.once('error', reject);
-    s.listen(0, '127.0.0.1', () => {
-      const port = (s.address() as net.AddressInfo).port;
-      s.close(() => resolve(port));
-    });
-  });
-}
 
 export const launch: PzLaunch = {
   serverName: 'testsrv',
