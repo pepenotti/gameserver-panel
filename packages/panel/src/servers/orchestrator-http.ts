@@ -1,5 +1,20 @@
 import http from 'node:http';
-import { isServerId, type ApplyOptions, type DeleteResponse, type HealthResponse, type HostInfo, type OrchestratorError, type ServerContainer, type ServerSpec, type ServerStats } from '@gsp/shared';
+import {
+  isInstallId,
+  isServerId,
+  type ApplyOptions,
+  type DeleteResponse,
+  type HealthResponse,
+  type HostInfo,
+  type InstallDeleteResponse,
+  type InstallInfo,
+  type InstallJobSpec,
+  type InstallPutOptions,
+  type OrchestratorError,
+  type ServerContainer,
+  type ServerSpec,
+  type ServerStats,
+} from '@gsp/shared';
 import { OrchestratorCallError, type OrchestratorClient } from './orchestrator';
 
 export interface OrchestratorHttpOptions {
@@ -62,7 +77,7 @@ export class OrchestratorHttp implements OrchestratorClient {
             return;
           }
           const err = (typeof data === 'object' && data !== null ? data : {}) as Partial<OrchestratorError>;
-          reject(new OrchestratorCallError(status, err.code ?? 'internal', err.error ?? `Orchestrator error ${status}`, err.field));
+          reject(new OrchestratorCallError(status, err.code ?? 'internal', err.error ?? `Orchestrator error ${status}`, err.field, err.reason));
         });
         res.on('error', (e) => reject(new OrchestratorCallError(503, 'unreachable', `Orchestrator connection failed: ${e.message}`)));
       });
@@ -119,6 +134,44 @@ export class OrchestratorHttp implements OrchestratorClient {
   /** Stops a running container first (the default stop timeout). */
   async remove(id: string, o: { removeVolumes: boolean }): Promise<DeleteResponse> {
     return this.call('DELETE', `${this.server(id)}?removeVolumes=${o.removeVolumes ? 'true' : 'false'}`, undefined, DEFAULT_STOP_SEC * 1000);
+  }
+
+  // ------------------------------------------------------------ shared installs (HST-09, D12)
+
+  /** `/v1/installs/<id>[/job]`; an id outside the contract never makes a request. */
+  private install(id: string, job = false): string {
+    if (!isInstallId(id)) throw new OrchestratorCallError(400, 'bad-request', 'Not an install id', 'id');
+    return job ? `/v1/installs/${id}/job` : `/v1/installs/${id}`;
+  }
+
+  async installs(): Promise<InstallInfo[]> {
+    return this.call('GET', '/v1/installs');
+  }
+
+  async putInstall(spec: InstallJobSpec, o: InstallPutOptions = {}): Promise<InstallInfo> {
+    const query = new URLSearchParams();
+    if (o.from !== undefined) {
+      if (!isInstallId(o.from)) throw new OrchestratorCallError(400, 'bad-request', 'Not an install id', 'from');
+      query.set('from', o.from);
+    }
+    if (o.fromServer !== undefined) {
+      if (!isServerId(o.fromServer)) throw new OrchestratorCallError(400, 'bad-request', 'Not a server id', 'fromServer');
+      query.set('fromServer', o.fromServer);
+    }
+    return this.call('PUT', `${this.install(spec.id)}${query.size ? `?${query}` : ''}`, spec);
+  }
+
+  /** Kills the job where it stands: an unfinished install has no marker, so nothing mounts it. */
+  async removeInstallJob(id: string): Promise<InstallDeleteResponse> {
+    return this.call('DELETE', this.install(id, true));
+  }
+
+  async removeInstall(id: string): Promise<InstallDeleteResponse> {
+    return this.call('DELETE', this.install(id));
+  }
+
+  async removeOwnInstall(serverId: string): Promise<InstallDeleteResponse> {
+    return this.call('DELETE', this.server(serverId, 'install'));
   }
 }
 

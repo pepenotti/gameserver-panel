@@ -14,7 +14,7 @@ import { TERRARIA_META } from '../shared/meta';
 import { TERRARIA_BACKUP_PARTS, TERRARIA_RESETS } from './backups';
 import { terrariaPanelConfig } from './config';
 import { TERRARIA_CONSOLE_CATALOG } from './console';
-import { TERRARIA_LAUNCH_DEFAULTS, TERRARIA_LAUNCH_SCHEMA, TERRARIA_WARNINGS, terrariaChoices, terrariaToAgent, type TerrariaLaunchSettings } from './launch';
+import { TERRARIA_LAUNCH_DEFAULTS, TERRARIA_LAUNCH_SCHEMA, TERRARIA_WARNINGS, terrariaChoices, terrariaToAgent, terrariaWanted, type TerrariaLaunchSettings } from './launch';
 import { terrariaAnnounce, terrariaBroadcast, terrariaSend } from './messages';
 import { terrariaPlayersOf } from './players';
 import { tshockPlugins } from './plugins';
@@ -25,7 +25,7 @@ export type { TerrariaLaunchSettings };
 export { TERRARIA_BACKUP_PARTS, TERRARIA_RESETS } from './backups';
 export { terrariaManagedValues } from './config';
 export { TERRARIA_CONSOLE_CATALOG } from './console';
-export { CHOICES_TTL_MS, clearChoicesCache, parseTerrariaLaunchSettings, TERRARIA_LAUNCH_DEFAULTS, TERRARIA_LAUNCH_SCHEMA, TERRARIA_WARNINGS, terrariaChoices, terrariaToAgent } from './launch';
+export { CHOICES_TTL_MS, clearChoicesCache, parseTerrariaLaunchSettings, TERRARIA_LAUNCH_DEFAULTS, TERRARIA_LAUNCH_SCHEMA, TERRARIA_WARNINGS, terrariaChoices, terrariaToAgent, terrariaWanted } from './launch';
 export { SAY_MAX, sayText, terrariaAnnounce, terrariaBroadcast, terrariaSend } from './messages';
 export { consolePlayers, LEFT_MS, parseBanlist, terrariaPlayersOf, terrariaRefused, tshockPlayers, unbanChanges } from './players';
 export { SERVERCONFIG_GROUPS, SERVERCONFIG_MANAGED, SERVERCONFIG_SCHEMA, SERVERCONFIG_TML_MANAGED, SERVERCONFIG_TML_SCHEMA } from './serverconfig';
@@ -54,4 +54,5 @@ export const terrariaPanelAdapter: PanelAdapter<TerrariaLaunchSettings> = {
   plugins: [tshockPlugins],
   updates: { check: terrariaCheckUpdate },
   consoleCatalog: TERRARIA_CONSOLE_CATALOG,
+  install: { wanted: terrariaWanted },
 };

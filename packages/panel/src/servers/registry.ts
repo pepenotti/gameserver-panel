@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import type { Capability, PanelAdapter } from '@gsp/adapter-api';
 import type { AgentApi } from '../agent/client';
-import { changedDerivation, isServerId, newerImage, type HostInfo, type ServerContainer, type ServerSpec } from '@gsp/shared';
+import { changedDerivation, installSharingOf, isServerId, newerImage, type HostInfo, type InstallWanted, type LaunchEnvelope, type ServerContainer, type ServerSpec } from '@gsp/shared';
 import { SYSTEM, type Actor, type Audit } from '../audit';
 import { syncRoleWithGrants, type ServerGrants } from '../auth/grants';
 import type { Users } from '../auth/users';
@@ -12,12 +12,14 @@ import type { PanelEnv } from '../env';
 import { HttpError } from '../http/context';
 import type { AgentFeed } from '../http/deps';
 import type { PanelBus } from '../ops/bus';
+import type { InstallPlan } from '../routes/installs';
 import { launchBodyProblem, launchRefusal } from '../routes/server';
 import { capabilitiesOf } from '../server/handle';
 import { ServerSettings } from '../settings';
 import type { ServerContext } from './context';
+import { InstallManager, installRefusal, type InstallGame, type InstallProgress, type InstallRow } from './installs';
 import { OrchestratorCallError, type OrchestratorClient } from './orchestrator';
-import { AGENT_TOKEN_SECRET, buildSpec, planPorts, redactSpec, takenPorts } from './spec';
+import { AGENT_TOKEN_SECRET, buildSpec, planPorts, redactSpec, runtimeOf, takenPorts } from './spec';
 import { DEFAULT_SERVER_ID, type ServerPatch, type ServerRow, type ServersStore } from './store';
 
 /** What SRV-01 asks for when a server is created. */
@@ -86,9 +88,34 @@ const FORCED_STOP_SEC = 10;
  * `settings` changed (new memory or CPU limits, and the like), its runtime
  * `image` was rebuilt since it was created, or the orchestrator now builds
  * containers another way (`derivation`); the last two come with a product
- * upgrade.
+ * upgrade. `install`: it moves to another install (HST-09, UPD-03: an
+ * update's, the one a changed version wants, or a shared one in place of
+ * its own install).
  */
-export type ContainerPendingReason = 'settings' | 'image' | 'derivation';
+export type ContainerPendingReason = 'settings' | 'image' | 'derivation' | 'install';
+
+/** What `prepareStart` and the install moves are told. */
+export interface StartPrep {
+  /** Where it is, for the operation that waits on it (an install's progress, 0-100 when known). */
+  step?(step: string, progress: number | null): void;
+  /** A safety backup was just taken (UPD-04): a move to another install doesn't take another. */
+  backedUp?: boolean;
+  /**
+   * The move is what was asked (the "move to a shared install" action): a
+   * server whose own install can't be adopted fails it, instead of starting
+   * on its own install as a start does.
+   */
+  strict?: boolean;
+}
+
+/**
+ * What an update or a file check of a server needs (UPD-03, HST-09):
+ * `own`: the server has its own install, which its agent updates as before;
+ * `current`: its shared install already holds the newest (nothing to do);
+ * `move`: a ready install waits for it, made now if it had to be: it moves
+ * at its next start (at once when its game is stopped).
+ */
+export type UpdatePlan = 'own' | 'current' | 'move';
 
 /** What `reconcile` changed to bring containers in line with the servers table (SRV-06). */
 export interface ReconcileReport {
@@ -128,11 +155,44 @@ export interface ServerRegistry {
    */
   followLaunch(id: string, launch: Record<string, unknown>, by: Actor, ip?: string | null): Promise<void>;
   /**
-   * Before a server's game starts: a container whose settings changed,
-   * whose runtime image was rebuilt since, or that the orchestrator now
-   * builds another way, is recreated first, and its agent waited for.
+   * Before a server's game starts: its shared install made ready (waited
+   * for, or its failed job run again; HST-09), a server on its own install
+   * moved to a shared one (adopted by a local copy), then a container whose
+   * settings changed, whose runtime image was rebuilt since, that the
+   * orchestrator now builds another way, or that moves to another install
+   * (after a safety backup, UPD-04), is recreated first, and its agent
+   * waited for.
    */
-  prepareStart(id: string): Promise<void>;
+  prepareStart(id: string, o?: StartPrep): Promise<void>;
+  /** Shared installs (HST-09, D12): the installs and their jobs. */
+  readonly installs: InstallManager;
+  /** Whether a server waits for its install before it has a container (a server just created, its game being installed). */
+  awaitingInstall(id: string): boolean;
+  /**
+   * An update or a file check of a server (UPD-03, UPD-04): on a shared
+   * install, the install it moves to is made once, now, beside the one it
+   * runs (a local copy, then the install job on it: only what changed is
+   * downloaded), and every server on the old one whose launch it fits moves
+   * to it at its next start (at once when its game is stopped).
+   */
+  prepareUpdate(id: string, o: StartPrep & { validate: boolean }): Promise<UpdatePlan>;
+  /**
+   * Puts a server whose game is stopped on its shared install now (the
+   * "move to a shared install" action, HST-09): a server on its own
+   * install is adopted, a failed install is run again, a waiting move
+   * happens (after a safety backup). 409 `server-running` while it runs.
+   */
+  moveInstall(id: string, o?: StartPrep): Promise<void>;
+  /** Its launch settings changed (UPD-02): the install they want now is found or made, beside the running one, and waits for the server's next start. */
+  launchChanged(id: string, by: Actor): void;
+  /** The servers that use an install: those that run from it, wait for it, or still mount it. */
+  installUsers(installId: string): string[];
+  /** What creating a server of this game, flavour and launch would do about its files (the create form). */
+  installPlan(adapter: PanelAdapter, flavour: string | null, launch: Record<string, unknown>): Promise<InstallPlan>;
+  /** The owner removes an install no server uses (HST-09), after confirming. */
+  removeInstall(id: string, by: Actor, ip?: string | null): Promise<void>;
+  /** The owner removes a server's own install volume left over after it moved to a shared install, after confirming. */
+  removeLeftover(serverId: string, by: Actor, ip?: string | null): Promise<void>;
   /** Whether a server's container waits to be recreated (`ContainerPendingReason`) at its game's next start. */
   containerPending(id: string): boolean;
   /** Why it waits; none when it doesn't. */
@@ -188,12 +248,20 @@ export interface RegistryDeps {
   agentFor(row: ServerRow, target: AgentTarget): AgentParts;
   /** One server's context, from its row, where its agent answers, its agent client, and the registry's hooks (wiring.ts). */
   build(row: ServerRow, target: AgentTarget, agent: AgentParts, hooks: ServerHooks): ServerContext;
+  /** An install job's agent at its address, with the job's own token (HST-09). */
+  jobAgent(url: string, token: string): AgentApi;
+  /** How often install jobs are looked at, ms (tests: quicker). */
+  installPollMs?: number;
 }
 
 /** What a server's context calls back into the registry for. */
 export interface ServerHooks {
-  /** Before its game starts (`Control.startAgent`): a container waiting for changed settings is recreated first (SRV-05). */
-  beforeStart(): Promise<void>;
+  /** Before its game starts (`Control.startAgent`): its install made ready, and a container waiting for changed settings or another install recreated first (SRV-05, HST-09). */
+  beforeStart(o?: StartPrep): Promise<void>;
+  /** An update or a file check (`Control.update`): what it takes on a shared install (`UpdatePlan`). */
+  prepareUpdate(o: StartPrep & { validate: boolean }): Promise<UpdatePlan>;
+  /** Moves the stopped server onto the install that waits for it now. */
+  moveInstall(o?: StartPrep): Promise<void>;
 }
 
 /** Game states in which recreating the container would stop someone's game (or an install). */
@@ -207,7 +275,30 @@ const RECREATED_WITH: Record<ContainerPendingReason, string> = {
   settings: 'with its changed settings',
   image: 'on a newer runtime image',
   derivation: 'the way this panel version builds containers',
+  install: 'on another install',
 };
+
+/** What a server's container waits for, field by field (`containerPendingReasons` lists them). */
+interface Pending {
+  settings: boolean;
+  /** Another shared install than the one it mounts. */
+  install: boolean;
+  /** Its own install, moved to a shared one at its next start (a server from before shared installs). */
+  migrate: boolean;
+  image: boolean;
+  derivation: boolean;
+}
+
+/** A spec without its install: what changes besides the install. */
+function withoutInstall(spec: ServerSpec): ServerSpec {
+  const { install: _install, ...rest } = spec;
+  return rest;
+}
+
+/** Where an install's job is, as an operation's step and progress. */
+function reportInstall(o: StartPrep, p: InstallProgress | null): void {
+  o.step?.(p?.phase === 'copy' ? 'copying' : 'installing', p?.progress ?? null);
+}
 
 /** The audit log's word for a container recreated at once because it was built before a security fix (NFR-02). */
 const SECURITY_RECREATED = 'container recreated at once for a security fix in how containers are built, without waiting for its game to stop (a running game starts again in it)';
@@ -302,12 +393,16 @@ export class DbServerRegistry implements ServerRegistry {
   /** Servers whose container the orchestrator would build another way now, as it last said (SRV-06). */
   private readonly olderDerivation = new Set<string>();
   private readonly running = new Set<ServerContext>();
+  /** Servers without a container until their install is ready (just created, their game being installed: HST-09). */
+  private readonly awaiting = new Set<string>();
   private order: string[] = [];
   private live = false;
   private retry: NodeJS.Timeout | null = null;
   private queue: Promise<unknown> = Promise.resolve();
+  readonly installs: InstallManager;
 
   constructor(private readonly d: RegistryDeps) {
+    this.installs = new InstallManager({ db: d.db, orchestrator: d.orchestrator, audit: d.audit, jobAgent: d.jobAgent, tz: d.tz, pollMs: d.installPollMs, settled: (id, r) => this.installSettled(id, r) });
     for (const row of d.rows.list()) this.contexts.set(row.id, this.build(row));
     this.order = d.rows.list().map((r) => r.id);
   }
@@ -345,14 +440,345 @@ export class DbServerRegistry implements ServerRegistry {
       agent = this.d.agentFor(row, target);
       this.agents.set(row.id, agent);
     }
-    return this.d.build(row, target, agent, { beforeStart: () => this.prepareStart(row.id) });
+    return this.d.build(row, target, agent, {
+      beforeStart: (o) => this.prepareStart(row.id, o),
+      prepareUpdate: (o) => this.prepareUpdate(row.id, o),
+      moveInstall: (o) => this.moveInstall(row.id, o),
+    });
   }
 
-  /** The spec a row asks for, with its agent token (from its secrets). */
-  private specOf(row: ServerRow): ServerSpec {
+  /**
+   * The spec a row asks for, with its agent token (from its secrets); with
+   * `install`, on that install (or its own, for null) instead of the one
+   * the row wants.
+   */
+  private specOf(row: ServerRow, o: { install?: string | null } = {}): ServerSpec {
     const token = this.d.rows.secrets(row.id)[AGENT_TOKEN_SECRET];
     if (!token) throw new Error('no agent token stored');
-    return buildSpec(row, this.d.adapterFor(row.adapter), { agentToken: token, tz: this.d.tz, variant: this.d.env.serverImageVariant });
+    const r = o.install === undefined ? row : { ...row, installId: o.install };
+    return buildSpec(r, this.d.adapterFor(row.adapter), { agentToken: token, tz: this.d.tz, variant: this.d.env.serverImageVariant });
+  }
+
+  // ------------------------------------------------------------ installs (HST-09, D12)
+
+  /** The game a server of `adapter` and `flavour` installs, as its spec names its image. */
+  private gameOf(adapter: PanelAdapter, flavour: string | null): InstallGame {
+    return { adapter: adapter.meta.id, flavour, runtime: runtimeOf(adapter, flavour), variant: this.d.env.serverImageVariant ?? null };
+  }
+
+  /** Whether servers of this game (or flavour) run from shared installs: declared shared, and the panel half says what a launch wants. */
+  private shares(adapter: PanelAdapter, flavour: string | null): boolean {
+    return installSharingOf(adapter.meta, flavour).mode === 'shared' && typeof adapter.install?.wanted === 'function';
+  }
+
+  /** What a server's stored launch settings want installed; null for a game whose installs aren't shared, or settings its adapter can't read. */
+  private wantedOf(id: string): InstallWanted | null {
+    const ctx = this.contexts.get(id);
+    if (!ctx || !this.shares(ctx.adapter, ctx.row.flavour)) return null;
+    try {
+      return ctx.adapter.install!.wanted(ctx.handle.launchSettings(), { flavour: ctx.row.flavour });
+    } catch {
+      return null;
+    }
+  }
+
+  /** The launch an install job of this server's game is driven with: the server's own. */
+  private jobLaunch(id: string): LaunchEnvelope {
+    const ctx = this.contexts.get(id);
+    if (!ctx) throw new HttpError(404, 'server-not-found');
+    return ctx.handle.launchEnvelope();
+  }
+
+  awaitingInstall(id: string): boolean {
+    return this.awaiting.has(id);
+  }
+
+  /**
+   * An install the manager ran settled. Servers that waited for it now run
+   * from what it became (another install, when that one holds the same
+   * files); those still without a container get one; those whose game is
+   * stopped and that now wait to move, move (SRV-05: at once when stopped).
+   */
+  private installSettled(id: string, result: InstallRow | null): void {
+    if (result) {
+      for (const row of this.d.rows.list()) if (row.installId === id && result.id !== id) this.d.rows.setInstall(row.id, result.id);
+      for (const row of this.d.rows.list()) {
+        if (row.installId !== result.id || !row.spec) continue;
+        if (this.awaiting.has(row.id)) void this.exclusive(() => this.applyAwaiting(row.id)).catch(() => undefined);
+        else if ((row.spec.install ?? null) !== result.id) void this.moveIfStopped(row.id);
+      }
+    }
+    this.d.bus.emit({ type: 'access', userId: null });
+  }
+
+  /**
+   * The container of a server that waited for its install, now that it is
+   * ready: created from its row and started, its agent's events followed
+   * at once. Nothing when it doesn't wait, or its install isn't ready.
+   */
+  private async applyAwaiting(id: string): Promise<void> {
+    if (!this.awaiting.has(id)) return;
+    const row = this.d.rows.get(id);
+    if (!row) {
+      this.awaiting.delete(id);
+      return;
+    }
+    const inst = row.installId ? this.installs.get(row.installId) : null;
+    if (row.installId && inst?.state !== 'ready') return;
+    try {
+      await this.applySpec(row);
+    } catch (e) {
+      this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: `its install is ready, but its container couldn't be created: ${(e as Error).message}`, ok: false });
+      throw e;
+    }
+    this.awaiting.delete(id);
+    const ctx = this.contexts.get(id);
+    if (ctx && this.running.has(ctx)) this.agents.get(id)?.stream?.start();
+    this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: 'container created: its install is ready' });
+    this.changed();
+  }
+
+  /**
+   * The install a server runs from, ready and fitting what its launch
+   * wants: a launch changed since (another version) gets the install it
+   * wants now (found, waited for, or made); one being installed is waited
+   * for; one whose job failed runs again. Throws 409 `install-failed` with
+   * the job's reason.
+   */
+  private async readyInstall(id: string, o: StartPrep): Promise<void> {
+    let row = this.d.rows.get(id);
+    const ctx = this.contexts.get(id);
+    if (!row?.installId || !ctx) return;
+    const game = this.gameOf(ctx.adapter, row.flavour);
+    const wanted = this.wantedOf(id);
+    const inst = this.installs.get(row.installId);
+    if (wanted && (!inst || (inst.state === 'ready' && !this.installs.fits(inst, game, wanted)))) {
+      const next = this.installs.find(game, wanted) ?? this.installs.pending(game, wanted) ?? this.installs.begin(game, wanted, SYSTEM, id);
+      this.d.rows.setInstall(id, next.id);
+      row = this.d.rows.get(id)!;
+    }
+    const target = this.installs.get(row.installId!);
+    if (target?.state === 'ready') return;
+    const timer = setInterval(() => reportInstall(o, this.installs.progress(row!.installId!)), 1000);
+    reportInstall(o, null);
+    try {
+      await this.installs.ensureReady(row.installId!, () => this.jobLaunch(id), { by: SYSTEM, serverId: id });
+    } catch (e) {
+      const message = (e as Error).message;
+      throw new HttpError(409, 'install-failed', message, { message });
+    } finally {
+      clearInterval(timer);
+    }
+  }
+
+  /** Whether a server on its own install moves to a shared one at its next start: its game shares installs, and this orchestrator has them. */
+  private migrates(row: ServerRow): boolean {
+    if (!row.spec || row.installId !== null || row.spec.install !== undefined || !this.installs.knownAvailable) return false;
+    const adapter = this.adapterOrNull(row.adapter);
+    return !!adapter && this.shares(adapter, row.flavour);
+  }
+
+  /**
+   * A server on its own install moves to a shared one (HST-09: migration,
+   * never while its game runs): its container is stopped, its own install
+   * copied into a new install (no download), the install job runs on the
+   * copy (it finds the game installed: its finishing steps only), and the
+   * server is put on it, or on an install that already holds the same
+   * files. Its own install volume stays, a left-over the owner removes
+   * after confirming; its data is never touched. When the move fails the
+   * server keeps its own install and starts as before; with `strict`, the
+   * failure is the caller's.
+   */
+  private async migrate(id: string, o: StartPrep, strict: boolean): Promise<void> {
+    const ctx = this.contexts.get(id);
+    const row = this.d.rows.get(id);
+    if (!ctx || !row) return;
+    if (await this.gameActive(id)) throw new HttpError(409, 'server-running');
+    const wanted = this.wantedOf(id);
+    if (!wanted) {
+      // Settings its adapter can't read: it stays on its own install (a start then says what is wrong with them).
+      if (strict) throw new HttpError(400, 'invalid-options', "The server's launch settings can't be read");
+      return;
+    }
+    const game = this.gameOf(ctx.adapter, row.flavour);
+    const launch = this.jobLaunch(id);
+    o.step?.('migrating', null);
+    // Its own install is copied while nothing can write it: the container stops (its game already is).
+    try {
+      await this.d.orchestrator.stop(id);
+    } catch (e) {
+      throw orchestratorError(e);
+    }
+    const fresh = this.installs.begin(game, wanted, SYSTEM, id, `server:${id}`);
+    const timer = setInterval(() => reportInstall(o, this.installs.progress(fresh.id)), 1000);
+    let inst: InstallRow;
+    try {
+      inst = await this.installs.run(fresh.id, launch, { by: SYSTEM, serverId: id });
+    } catch (e) {
+      clearInterval(timer);
+      await this.installs.discard(fresh.id).catch(() => undefined);
+      // It keeps its own install: its container runs again as it was.
+      await this.d.orchestrator.start(id).catch(() => undefined);
+      const message = (e as Error).message;
+      this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.install.move', detail: { from: 'own', error: message }, ok: false });
+      if (strict) throw new HttpError(409, 'install-failed', message, { message });
+      return;
+    }
+    clearInterval(timer);
+    this.d.rows.setInstall(id, inst.id);
+    // Its own install volume, as big as what was copied from it, stays until the owner removes it.
+    this.installs.store.addLeftover(id, { bytes: inst.bytes, files: inst.files });
+    await this.exclusive(() => this.applySpec(this.d.rows.get(id)!));
+    this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.install.move', target: inst.id, detail: { from: 'own', to: inst.id, key: inst.key, leftover: true } });
+    this.changed();
+    await this.agentBack(id);
+  }
+
+  /** The safety backup before a server moves to another install (UPD-04): a copy of its data while its game is stopped, when it has any. */
+  private async safetyBackup(id: string, o: StartPrep): Promise<void> {
+    const ctx = this.contexts.get(id);
+    if (!ctx || !(await ctx.backups.hasData())) return;
+    o.step?.('safety-backup', null);
+    await ctx.backups.create({ trigger: 'pre-update', hot: false });
+  }
+
+  /**
+   * A server whose game is stopped and that waits to move to another
+   * install moves now, as an operation of its own (after a safety backup);
+   * one whose game runs, or that is busy, moves at its next start.
+   */
+  private async moveIfStopped(id: string): Promise<void> {
+    const ctx = this.contexts.get(id);
+    if (!ctx || ctx.ops.busy || !this.pendingOf(id)?.install || (await this.gameActive(id))) return;
+    try {
+      ctx.ops.start('update', null, async (op) => {
+        await this.prepareStart(id, { step: (step, progress) => op.step(step, { progress }) });
+      });
+    } catch {
+      // Another operation started meanwhile: it moves at its next start.
+    }
+  }
+
+  async prepareUpdate(id: string, o: StartPrep & { validate: boolean }): Promise<UpdatePlan> {
+    const row = this.d.rows.get(id);
+    const ctx = this.contexts.get(id);
+    if (!row?.spec || !ctx || !row.installId) return 'own';
+    if (this.awaiting.has(id)) throw new HttpError(409, 'install-pending', "The server's install is still being made");
+    const current = row.spec.install ?? null;
+    const target = this.installs.get(row.installId);
+    // Already waiting to move (another server's update made it): the move is the update.
+    if (!o.validate && target?.state === 'ready' && row.installId !== current) return 'move';
+    const game = this.gameOf(ctx.adapter, row.flavour);
+    const wanted = this.wantedOf(id);
+    if (!wanted) throw new HttpError(400, 'invalid-options', "The server's launch settings can't be read");
+    if (!o.validate) {
+      const newer = this.installs.find(game, wanted);
+      if (newer && newer.id !== current && newer.id !== row.installId) {
+        this.d.rows.setInstall(id, newer.id);
+        return 'move';
+      }
+    }
+    // Made now, once: from a copy of the install it runs (steamcmd then downloads only what changed), with its launch.
+    const from = current ?? row.installId;
+    const same = o.validate ? null : this.installs.pending(game, wanted, from);
+    const fresh = same ?? this.installs.begin(game, wanted, SYSTEM, id, from);
+    const timer = setInterval(() => reportInstall(o, this.installs.progress(fresh.id)), 1000);
+    reportInstall(o, null);
+    let made: InstallRow;
+    try {
+      made = await this.installs.run(fresh.id, this.jobLaunch(id), { by: SYSTEM, serverId: id, validate: o.validate });
+    } catch (e) {
+      const message = (e as Error).message;
+      throw new HttpError(409, 'install-failed', message, { message });
+    } finally {
+      clearInterval(timer);
+    }
+    if (made.id === from) return 'current';
+    // The new install replaces the old one: new servers get it, and every server on the old one whose launch it fits moves to it.
+    this.installs.supersede(from, made.id);
+    for (const r of this.d.rows.list()) {
+      if (r.id === id || (r.installId !== from && (r.spec?.install ?? null) !== from)) continue;
+      const w = this.wantedOf(r.id);
+      const adapter = this.adapterOrNull(r.adapter);
+      if (!w || !adapter || !this.installs.fits(made, this.gameOf(adapter, r.flavour), w)) continue;
+      this.d.rows.setInstall(r.id, made.id);
+      void this.moveIfStopped(r.id);
+    }
+    this.d.rows.setInstall(id, made.id);
+    this.changed();
+    return 'move';
+  }
+
+  async moveInstall(id: string, o: StartPrep = {}): Promise<void> {
+    const row = this.d.rows.get(id);
+    if (!row?.spec) throw new HttpError(409, 'server-unmanaged');
+    if (await this.gameActive(id)) throw new HttpError(409, 'server-running');
+    await this.prepareStart(id, { ...o, strict: true });
+  }
+
+  launchChanged(id: string, by: Actor): void {
+    const row = this.d.rows.get(id);
+    const ctx = this.contexts.get(id);
+    if (!row?.installId || !ctx) return;
+    const wanted = this.wantedOf(id);
+    const inst = this.installs.get(row.installId);
+    if (!wanted || !inst) return;
+    const game = this.gameOf(ctx.adapter, row.flavour);
+    if (this.installs.fits(inst, game, wanted)) return;
+    // Another version (UPD-02): the install it wants, found or made now beside the one it runs; it moves at its next start.
+    const next = this.installs.find(game, wanted) ?? this.installs.pending(game, wanted) ?? this.installs.begin(game, wanted, by, id);
+    this.d.rows.setInstall(id, next.id);
+    this.changed();
+    if (next.state === 'ready') void this.moveIfStopped(id);
+    else void this.installs.run(next.id, this.jobLaunch(id), { by, serverId: id }).catch(() => undefined);
+  }
+
+  installUsers(installId: string): string[] {
+    return this.d.rows
+      .list()
+      .filter((r) => r.installId === installId || r.spec?.install === installId)
+      .map((r) => r.id);
+  }
+
+  async removeInstall(id: string, by: Actor, ip: string | null = null): Promise<void> {
+    await this.installs.remove(id, this.installUsers(id), by, ip);
+    this.changed();
+  }
+
+  async installPlan(adapter: PanelAdapter, flavour: string | null, launch: Record<string, unknown>): Promise<InstallPlan> {
+    const own: InstallPlan = { mode: 'own', bytes: null, servers: 0 };
+    if (!this.shares(adapter, flavour) || !(await this.installs.available().catch(() => false))) return own;
+    let wanted: InstallWanted;
+    try {
+      wanted = adapter.install!.wanted(launch, { flavour });
+    } catch (e) {
+      throw new HttpError(400, 'invalid-options', (e as Error).message, { message: (e as Error).message, ...(launchRefusal(e) ?? {}) });
+    }
+    const game = this.gameOf(adapter, flavour);
+    const found = this.installs.find(game, wanted);
+    if (found) return { mode: 'existing', bytes: found.bytes, servers: this.installUsers(found.id).length };
+    const pending = this.installs.pending(game, wanted);
+    if (pending) return { mode: 'installing', bytes: null, servers: this.installUsers(pending.id).length };
+    // About as big as the newest install of the same game and flavour, when there is one.
+    const like = this.installs
+      .list()
+      .filter((r) => r.state === 'ready' && r.adapter === game.adapter && r.flavour === game.flavour && r.bytes !== null)
+      .sort((a, b) => (b.readyAt ?? '').localeCompare(a.readyAt ?? ''))[0];
+    return { mode: 'download', bytes: like?.bytes ?? null, servers: 0 };
+  }
+
+  async removeLeftover(serverId: string, by: Actor, ip: string | null = null): Promise<void> {
+    if (!this.installs.store.leftovers().some((l) => l.serverId === serverId)) throw new HttpError(404, 'leftover-not-found');
+    let removed: boolean;
+    try {
+      removed = (await this.d.orchestrator.removeOwnInstall(serverId)).removed;
+    } catch (e) {
+      throw installRefusal(e) ?? orchestratorError(e);
+    }
+    const left = this.installs.store.leftovers().find((l) => l.serverId === serverId);
+    this.installs.store.dropLeftover(serverId);
+    this.d.audit.log({ actor: by, ip, serverId, action: 'install.remove', target: `server:${serverId}`, detail: { own: true, removed, bytes: left?.bytes ?? null } });
+    this.changed();
   }
 
   private async host(): Promise<HostInfo> {
@@ -432,40 +858,77 @@ export class DbServerRegistry implements ServerRegistry {
   }
 
   containerPendingReasons(id: string): ContainerPendingReason[] {
+    const p = this.pendingOf(id);
+    if (!p) return [];
+    const out: ContainerPendingReason[] = [];
+    if (p.settings) out.push('settings');
+    if (p.image) out.push('image');
+    if (p.derivation) out.push('derivation');
+    if (p.install || p.migrate) out.push('install');
+    return out;
+  }
+
+  /** What a server's container waits for; null when it has none to wait for (the stack's own server, one waiting for its install). */
+  private pendingOf(id: string): Pending | null {
     const row = this.d.rows.get(id);
-    if (!row?.spec) return [];
+    if (!row?.spec || this.awaiting.has(id)) return null;
     let wanted: ServerSpec;
     try {
       wanted = this.specOf(row);
     } catch {
       // Nothing to recreate it from.
-      return [];
+      return null;
     }
-    const out: ContainerPendingReason[] = [];
-    if (!sameSpec(wanted, row.spec)) out.push('settings');
-    if (this.olderImage.has(id)) out.push('image');
-    if (this.olderDerivation.has(id)) out.push('derivation');
-    return out;
+    return {
+      settings: !sameSpec(withoutInstall(wanted), withoutInstall(row.spec)),
+      // Another install than the one it mounts (one still being made is waited for at its next start).
+      install: row.installId !== null && (wanted.install ?? null) !== (row.spec.install ?? null),
+      migrate: this.migrates(row),
+      image: this.olderImage.has(id),
+      derivation: this.olderDerivation.has(id),
+    };
   }
 
-  async prepareStart(id: string): Promise<void> {
+  async prepareStart(id: string, o: StartPrep = {}): Promise<void> {
     if (!this.d.rows.get(id)?.spec) return;
     // A runtime image rebuilt, or an orchestrator upgraded, since the orchestrator last said (without a panel restart)
     // waits too. Not queued: with nothing waiting (the usual case) the start isn't held up behind another server's
     // creation or removal.
     await this.refreshContainers();
-    if (!this.containerPending(id)) return;
+    // Its install first (HST-09): ready and fitting its launch, or a shared one in place of its own.
+    await this.readyInstall(id, o);
+    const p0 = this.pendingOf(id);
+    if (p0?.migrate) await this.migrate(id, o, o.strict === true);
+    if (!this.awaiting.has(id) && !this.containerPending(id)) return;
+    const moves = this.pendingOf(id)?.install === true;
+    // The safety backup before it moves to another install (UPD-04), while nothing runs and outside the queue.
+    if (moves && !o.backedUp && !(await this.gameActive(id))) await this.safetyBackup(id, o);
     const applied = await this.exclusive(async () => {
+      if (this.awaiting.has(id)) {
+        await this.applyAwaiting(id);
+        return !this.awaiting.has(id);
+      }
       const row = this.d.rows.get(id);
-      const reasons = this.containerPendingReasons(id);
+      const p = this.pendingOf(id);
+      // A move to a shared install that failed leaves nothing to recreate: it starts on its own install.
+      const reasons = this.containerPendingReasons(id).filter((r) => r !== 'install' || p?.install);
       if (!row?.spec || reasons.length === 0) return false;
       // Pressed while it runs: the agent says so; the change keeps waiting.
       if (await this.gameActive(id)) return false;
+      const from = row.spec.install ?? null;
+      o.step?.('recreating', null);
       await this.applySpec(row);
       this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.reconcile', detail: `container recreated ${reasons.map((r) => RECREATED_WITH[r]).join(' and ')} before the game started` });
+      if (p?.install) {
+        const to = this.installs.get(row.installId ?? '');
+        this.d.audit.log({ actor: SYSTEM, serverId: id, action: 'server.install.move', target: row.installId, detail: { from: from ?? 'own', to: row.installId, key: to?.key ?? null } });
+      }
       return true;
     });
-    if (applied) await this.agentBack(id);
+    if (applied) {
+      this.changed();
+      await this.agentBack(id);
+    }
   }
 
   private activate(ctx: ServerContext): void {
@@ -560,6 +1023,29 @@ export class DbServerRegistry implements ServerRegistry {
     // Free ports where this install lets servers publish (SRV-01), next to every other server's.
     const ports = planPorts(adapter, input.ports, takenPorts(rows.list(), (a) => this.adapterOrNull(a), panelPorts(this.d.env)), host.hostPorts);
 
+    // HST-09: the shared install it runs from: one that holds what its launch wants, one being installed for that
+    // (it waits for it), or a new one, installed in the background. A game whose installs aren't shared, or an
+    // orchestrator without shared installs, keeps installs of its own.
+    let target: InstallRow | null = null;
+    if (this.shares(adapter, flavour)) {
+      let shared: boolean;
+      try {
+        shared = await this.installs.available();
+      } catch (e) {
+        throw orchestratorError(e);
+      }
+      if (shared) {
+        let wanted: InstallWanted;
+        try {
+          wanted = adapter.install!.wanted(launch, { flavour });
+        } catch (e) {
+          throw new HttpError(400, 'invalid-options', (e as Error).message, { message: (e as Error).message, ...(launchRefusal(e) ?? {}) });
+        }
+        const game = this.gameOf(adapter, flavour);
+        target = this.installs.find(game, wanted) ?? this.installs.pending(game, wanted) ?? this.installs.begin(game, wanted, input.by, id);
+      }
+    }
+
     const userId = input.by.user?.id ?? null;
     const draft: ServerRow = {
       id,
@@ -577,32 +1063,47 @@ export class DbServerRegistry implements ServerRegistry {
       createdAt: '',
       createdBy: userId,
       sort: Math.max(0, ...rows.list().map((r) => r.sort)) + 1,
+      installId: target?.id ?? null,
     };
     const spec = buildSpec(draft, adapter, { agentToken: secrets[AGENT_TOKEN_SECRET]!, tz: this.d.tz, variant: this.d.env.serverImageVariant });
     // The row is the wanted state: written first, so a crash before the container exists is repaired by reconcile.
     const row = rows.insert({ ...draft, spec: redactSpec(spec) }, secrets);
     if (input.launch) new ServerSettings(this.d.db, id).setRaw('launch', launch);
 
-    let applied = false;
-    try {
-      let c = this.seen(await orchestrator.apply(spec));
-      applied = true;
-      if (c.state !== 'running') c = this.seen(await orchestrator.start(id));
-      this.agentUrls.set(id, c.agentUrl);
-    } catch (e) {
-      if (applied) await orchestrator.remove(id, { removeVolumes: true }).catch(() => undefined);
-      rows.purge(id);
-      const err = orchestratorError(e);
-      audit.log({ actor: input.by, ip: input.ip ?? null, serverId: id, action: 'server.create', detail: { adapter: adapter.meta.id, error: err.code }, ok: false });
-      throw err;
+    // An install still being made: the container comes once it is ready (`installSettled`); a start waits for it.
+    const waits = target !== null && target.state !== 'ready';
+    if (waits) this.awaiting.add(id);
+    else {
+      let applied = false;
+      try {
+        let c = this.seen(await orchestrator.apply(spec));
+        applied = true;
+        if (c.state !== 'running') c = this.seen(await orchestrator.start(id));
+        this.agentUrls.set(id, c.agentUrl);
+      } catch (e) {
+        if (applied) await orchestrator.remove(id, { removeVolumes: true }).catch(() => undefined);
+        rows.purge(id);
+        const err = orchestratorError(e);
+        audit.log({ actor: input.by, ip: input.ip ?? null, serverId: id, action: 'server.create', detail: { adapter: adapter.meta.id, error: err.code }, ok: false });
+        throw err;
+      }
     }
 
     const ctx = this.build(row);
     this.contexts.set(id, ctx);
     this.activate(ctx);
-    audit.log({ actor: input.by, ip: input.ip ?? null, serverId: id, action: 'server.create', target: name, detail: { adapter: adapter.meta.id, flavour, ports, memLimitMb, cpus: row.cpus } });
+    audit.log({
+      actor: input.by,
+      ip: input.ip ?? null,
+      serverId: id,
+      action: 'server.create',
+      target: name,
+      detail: { adapter: adapter.meta.id, flavour, ports, memLimitMb, cpus: row.cpus, install: target ? { id: target.id, ready: !waits } : 'own' },
+    });
     if (eulaAccepted) this.auditEula(input.by, input.ip ?? null, row);
     this.changed();
+    // Its install's job runs (or is running) in the background, with this server's launch.
+    if (waits) void this.installs.run(target!.id, ctx.handle.launchEnvelope(), { by: input.by, serverId: id }).catch(() => undefined);
     return ctx;
   }
 
@@ -734,7 +1235,9 @@ export class DbServerRegistry implements ServerRegistry {
     const busy = ctx.ops.busy;
     if (busy && !o.force) throw new HttpError(409, 'busy', undefined, { op: busy });
     let state = ctx.feed.status_?.state;
-    if (managed && !o.force) {
+    // Still waiting for its install (HST-09): no container, no game, no data yet; its install stays for others.
+    const bare = this.awaiting.has(id);
+    if (managed && !o.force && !bare) {
       // What its game is doing now, from its agent. An agent that can't be reached can't say (nor
       // take the final backup): only the owner's forced removal goes on without it.
       const live = await ctx.agent.status().catch(() => null);
@@ -749,7 +1252,7 @@ export class DbServerRegistry implements ServerRegistry {
     // taken is skipped, and the answer and the audit log say why.
     let finalBackup: string | null = null;
     let finalBackupError: string | null = null;
-    if (managed && o.keepBackups && o.finalBackup !== false) {
+    if (managed && !bare && o.keepBackups && o.finalBackup !== false) {
       try {
         if (busy) throw new Error(`Another operation (${busy.kind}) is still running on this server`);
         const b = await ctx.ops.run('backup', o.by.user?.username ?? null, (op) => ctx.flows.backupNow(op, 'final'));
@@ -783,6 +1286,7 @@ export class DbServerRegistry implements ServerRegistry {
     this.agents.delete(id);
     this.olderImage.delete(id);
     this.olderDerivation.delete(id);
+    this.awaiting.delete(id);
     const holders = this.d.grants.forServer(id).map((g) => g.userId);
     rows.purge(id);
     // Accounts that lose a grant may lose their highest role with it.
@@ -831,12 +1335,20 @@ export class DbServerRegistry implements ServerRegistry {
     const why = new Map<string, string>();
     for (const row of managed) {
       try {
+        const before = containers.find((c) => c.id === row.id);
+        // HST-09: a server without a container whose install is still being made gets one once it is ready (a
+        // restart of the panel runs the job again: `start`); nothing to bring back meanwhile.
+        if (!before && row.installId !== null && this.installs.get(row.installId)?.state !== 'ready') {
+          this.awaiting.add(row.id);
+          continue;
+        }
+        this.awaiting.delete(row.id);
         // Rebuilt from the row, so new limits, a changed time zone or a newer panel's spec reach the container,
         // and so do a runtime image rebuilt since it was created (a product upgrade, HST-01) and an orchestrator
-        // that now builds containers another way (SRV-06)…
-        const wanted = this.specOf(row);
+        // that now builds containers another way (SRV-06)… on the install it has: a move to another install
+        // waits for its next start through the panel, after a safety backup (UPD-03, UPD-04).
+        const wanted = this.specOf(row, { install: before ? (row.spec!.install ?? null) : row.installId });
         const asItWas: ServerSpec = { ...row.spec!, env: { ...row.spec!.env, AGENT_TOKEN: wanted.env.AGENT_TOKEN } };
-        const before = containers.find((c) => c.id === row.id);
         if (before) {
           this.agentUrls.set(row.id, before.agentUrl);
           this.seen(before);
@@ -892,10 +1404,31 @@ export class DbServerRegistry implements ServerRegistry {
     this.live = true;
     // `default` doesn't wait for the orchestrator.
     for (const ctx of this.list()) if (ctx.row.spec === null) this.activate(ctx);
+    // Whether this orchestrator has shared installs (HST-09); one that can't be asked now is asked again at the next create.
+    await this.installs.available().catch(() => false);
     const report = await this.reconcile();
     for (const ctx of this.list()) this.activate(ctx);
+    this.resumeInstalls();
     this.retryFailed(report, 15_000);
     return report;
+  }
+
+  /**
+   * Install jobs a restart of the panel interrupted run again, each with the
+   * launch of a server that waits for it (one being created, or one moving
+   * to it); installs being removed are removed.
+   */
+  private resumeInstalls(): void {
+    this.installs.resume((inst) => {
+      const rows = this.d.rows.list();
+      const waiting = rows.find((r) => r.installId === inst.id) ?? (inst.source ? rows.find((r) => r.installId === inst.source) : undefined);
+      if (!waiting) return null;
+      try {
+        return { launch: this.jobLaunch(waiting.id), serverId: waiting.id };
+      } catch {
+        return null;
+      }
+    }, SYSTEM);
   }
 
   /** Servers the orchestrator couldn't bring up are tried again, less and less often. */

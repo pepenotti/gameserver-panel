@@ -1,4 +1,4 @@
-import type { LaunchOption, LaunchSecretDecl, SecretBag, ServerRef, ToAgentOptions } from '@gsp/adapter-api';
+import type { InstallWanted, LaunchOption, LaunchSecretDecl, SecretBag, ServerRef, ToAgentOptions } from '@gsp/adapter-api';
 import type { PzLaunch } from '../../shared/launch';
 
 /** The launch settings the panel stores (the settings row `launch`). */
@@ -88,4 +88,15 @@ export function pzToAgent(srv: ServerRef, s: PzLaunchSettings, secrets: SecretBa
     branch: v.branch,
     updateOnStart: hints.afterInstall ? false : v.updateOnStart,
   };
+}
+
+/**
+ * The install a launch wants (HST-09, D12): the Steam branch. Which build
+ * that is, only an install job learns (steamcmd installs the branch's
+ * newest), so the panel gives a new server the newest install of the branch
+ * it has, and updates bring newer builds as new installs.
+ */
+export function pzWanted(s: PzLaunchSettings): InstallWanted {
+  const { branch } = parsePzLaunchSettings(s);
+  return { flavour: null, version: null, build: null, branch, channel: null };
 }

@@ -7,7 +7,7 @@
  * (`ServerRef.gameName`: fixed once created, and what backups and resets
  * name its files by).
  */
-import type { ChoicesCtx, I18n, LaunchChoice, LaunchChoices, LaunchChoicesQuery, LaunchOption, SecretBag, ServerRef } from '@gsp/adapter-api';
+import type { ChoicesCtx, I18n, InstallWanted, LaunchChoice, LaunchChoices, LaunchChoicesQuery, LaunchOption, SecretBag, ServerRef } from '@gsp/adapter-api';
 import { REPOS, type TerrariaVersionInfo, type VersionWarning } from '../shared/install';
 import { FLAVOURS, LARGE_WORLD_MIN_MB, MAX_PLAYERS, parseTerrariaLaunch, TML_CHANNELS, WORLD_SIZES, type TerrariaFlavour, type TerrariaLaunch, type TmlChannel, type WorldSize } from '../shared/launch';
 import { TERRARIA_META } from '../shared/meta';
@@ -181,6 +181,17 @@ export function terrariaToAgent(srv: ServerRef, s: TerrariaLaunchSettings, _secr
     password: v.password,
     memoryMb: v.memoryMb,
   });
+}
+
+/**
+ * The install a launch wants (HST-09, D12): the flavour, the version it pins
+ * (vanilla's game version, TShock's or tModLoader's release tag; none: the
+ * newest an install job finds) and tModLoader's release channel (an install
+ * made for stable releases never holds a preview).
+ */
+export function terrariaWanted(s: TerrariaLaunchSettings, srv: Pick<ServerRef, 'flavour'>): InstallWanted {
+  const p = terrariaToAgent({ id: 'wanted', gameName: 'wanted', flavour: srv.flavour }, s);
+  return { flavour: p.flavour, version: p.version, build: null, branch: null, channel: p.channel };
 }
 
 // ------------------------------------------------------------------ choices (UPD-02)

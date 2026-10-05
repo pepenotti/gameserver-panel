@@ -7,6 +7,7 @@ import type { AgentFeed } from '../http/deps';
 import type { OpContext, OpRunner } from '../ops/runner';
 import type { OpState } from '../ops/bus';
 import type { ServerHandle } from '../server/handle';
+import type { ServerHooks, StartPrep } from '../servers/registry';
 
 /** Language of in-game messages. */
 export type GameLang = Lang;
@@ -25,11 +26,16 @@ export interface ControlDeps {
   server: ServerHandle;
   /** For the safety backup before an update. */
   backups: Pick<BackupService, 'hasData' | 'create'>;
-  /** Before the game starts: the registry recreates a container that waits for changed settings (SRV-05). */
-  beforeStart?: () => Promise<void>;
+  /** Before the game starts: the registry makes its install ready and recreates a container that waits for changed settings or another install (SRV-05, HST-09). */
+  beforeStart?: (o?: StartPrep) => Promise<void>;
   /** The settings the panel saved to files the game rewrites from memory, put back before each start (CFG-05). */
   config?: Pick<ConfigStore, 'reapplyPanelEdits'>;
+  /** Updates of a server on a shared install (HST-09, UPD-03): the registry's; absent for the stack's own server. */
+  installs?: Pick<ServerHooks, 'prepareUpdate' | 'moveInstall'>;
 }
+
+/** An operation's steps for what the registry does before a start (an install's progress, a move). */
+const stepsOf = (ctx: OpContext | undefined): StartPrep['step'] => (ctx ? (step, progress) => ctx.step(step, { progress }) : undefined);
 
 export class Control {
   constructor(private readonly d: ControlDeps) {}
@@ -92,9 +98,9 @@ export class Control {
    * game may have written over put back, the adapter's before-start hook,
    * then the agent with the stored launch settings.
    */
-  async startAgent(o: { lockId?: string; by?: string | null; hints?: ToAgentOptions } = {}): Promise<void> {
+  async startAgent(o: { lockId?: string; by?: string | null; hints?: ToAgentOptions; op?: OpContext; backedUp?: boolean } = {}): Promise<void> {
     this.assertEula();
-    await this.d.beforeStart?.();
+    await this.d.beforeStart?.({ step: stepsOf(o.op), backedUp: o.backedUp });
     await this.d.config?.reapplyPanelEdits();
     const launch = this.d.server.launchEnvelope(o.hints);
     await this.d.server.adapter.hooks?.beforeStart?.(this.d.server.ctx(o.by ?? null));
@@ -110,7 +116,7 @@ export class Control {
     this.assertEula();
     return this.d.ops.start('start', by, async (ctx) => {
       ctx.step('starting');
-      await this.startAgent({ by });
+      await this.startAgent({ by, op: ctx });
     });
   }
 
@@ -137,13 +143,21 @@ export class Control {
         ctx.step('stopping');
         await this.d.agent.stop({ reason: 'restart' });
         ctx.step('starting');
-        await this.startAgent({ by });
+        await this.startAgent({ by, op: ctx });
       },
       { cancellable: countdownSec > 0 },
     );
   }
 
-  /** Stop (with warnings), install/validate for the stored launch settings, start again if it was running. */
+  /**
+   * An update or a file check (UPD-03, UPD-04). On a shared install
+   * (HST-09): the install it moves to is made first, beside the one the
+   * game runs (nothing changes for the players meanwhile); then the
+   * warnings, the stop, the safety backup, and the move, with the start
+   * again when it was running. Nothing newer: nothing stops. On its own
+   * install: stop (with warnings), install or check for the stored launch
+   * settings, start again if it was running.
+   */
   update(by: string | null, opts: { countdownSec: number; validate: boolean }, lang: GameLang): OpState {
     return this.d.ops.start(
       'update',
@@ -151,6 +165,31 @@ export class Control {
       async (ctx) => {
         const launch = this.d.server.launchEnvelope();
         const wasRunning = ['running', 'starting'].includes(this.d.feed.status_?.state ?? '');
+        if (this.d.installs) {
+          ctx.step(opts.validate ? 'validating' : 'updating');
+          const plan = await this.d.installs.prepareUpdate({ validate: opts.validate, step: stepsOf(ctx) });
+          if (plan === 'current') {
+            ctx.step('up-to-date', { progress: null });
+            return;
+          }
+          if (plan === 'move') {
+            await this.countdown(ctx, 'update', opts.countdownSec, lang);
+            if (wasRunning) {
+              ctx.step('stopping');
+              await this.d.agent.stop({ reason: 'update' });
+            }
+            ctx.step('safety-backup', { progress: null });
+            if (await this.d.backups.hasData()) await this.d.backups.create({ trigger: 'pre-update', hot: false });
+            if (wasRunning) {
+              ctx.step('starting');
+              await this.startAgent({ by, hints: { afterInstall: true }, op: ctx, backedUp: true });
+            } else {
+              ctx.step('moving');
+              await this.d.installs.moveInstall({ step: stepsOf(ctx), backedUp: true });
+            }
+            return;
+          }
+        }
         await this.countdown(ctx, 'update', opts.countdownSec, lang);
         if (wasRunning) {
           ctx.step('stopping');
@@ -168,7 +207,7 @@ export class Control {
         }
         if (wasRunning) {
           ctx.step('starting');
-          await this.startAgent({ by, hints: { afterInstall: true } });
+          await this.startAgent({ by, hints: { afterInstall: true }, op: ctx, backedUp: true });
         }
       },
       { cancellable: opts.countdownSec > 0 },

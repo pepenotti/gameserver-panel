@@ -16,7 +16,7 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 - Errors are `{"error": "<code>", …}`; the web translates the codes (`packages/web/src/i18n/*/errors.ts`).
 - Request shapes: `?` marks optional properties.
 
-## Host (33 routes)
+## Host (37 routes)
 
 | Method | Path | Access | Request |
 |---|---|---|---|
@@ -48,13 +48,17 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | GET | `/api/host/address` | `host.settings` | — |
 | PUT | `/api/host/address` | `host.settings` | `body { public: string \| null, home: string \| null }` |
 | POST | `/api/host/address/detect` | `host.settings` | — |
+| GET | `/api/host/installs` | `host.view` | — |
+| DELETE | `/api/host/installs/:id` | `host.settings` | `params { id: string }` |
+| DELETE | `/api/host/own-installs/:sid` | `host.settings` | `params { sid: string }` |
+| POST | `/api/adapters/:id/install-plan` | `servers.create` | `params { id: string }`<br>`body { flavour?: string \| null, launch?: object }` |
 | GET | `/api/servers` | session | — |
 | GET | `/api/adapters` | `servers.create` | — |
 | GET | `/api/adapters/:id/choices` | `servers.create` | `params { id: string }`<br>`query { flavour?: string, version?: string }` |
 | POST | `/api/servers` | `servers.create` | `body { id: string, name: string, adapter: string, flavour?: string \| null, launch?: object, ports?: { [key]: integer }, memLimitMb?: integer, cpus?: number \| null, eulaAccepted?: boolean }` |
 | GET | `/api/ws` | session | — |
 
-## One server: `/api/servers/:sid` (69 routes)
+## One server: `/api/servers/:sid` (71 routes)
 
 `:sid` is the server's id. The permission is checked on that server; the capability is what its game must support.
 
@@ -81,6 +85,8 @@ fails while this file is stale (AST-01: everything the UI does goes through this
 | GET | `/api/servers/:sid/server/launch/choices` | `server.update` | `versionPin` | `query { version?: string }` |
 | GET | `/api/servers/:sid/server/updates` | `server.update` | `updateCheck` | — |
 | POST | `/api/servers/:sid/server/update` | `server.update` | — | `body { countdownSec?: 0 \| 60 \| 300 \| 900, validate?: boolean }` |
+| GET | `/api/servers/:sid/install` | `server.view` | — | — |
+| POST | `/api/servers/:sid/install` | `server.update` | — | — |
 | GET | `/api/servers/:sid/config/meta` | `config.edit` | — | — |
 | GET | `/api/servers/:sid/config/pending` | `server.view` | — | — |
 | GET | `/api/servers/:sid/config/values` | `config.edit` | — | `query { id: string }` |

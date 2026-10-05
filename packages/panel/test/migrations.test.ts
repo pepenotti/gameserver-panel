@@ -63,7 +63,7 @@ describe('migration 6 (several servers)', () => {
     const db = panelDbAt5();
     migrate(db);
     expect((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(6);
+    expect(SCHEMA_VERSION).toBe(7);
     expect(rows(db, 'SELECT username, role, scope FROM users ORDER BY id')).toEqual([
       { username: 'alice', role: 'owner', scope: 'all' },
       { username: 'glenn', role: 'admin', scope: 'all' },
@@ -158,5 +158,48 @@ describe('migration 6 (several servers)', () => {
     // Booting again adds nothing.
     await makePanel({}, { db });
     expect(new ServersStore(db).count()).toBe(1);
+  });
+});
+
+describe('migration 7 (shared installs, HST-09, D12)', () => {
+  /** A database at migration 6 with servers in it, as a panel from before shared installs left it. */
+  function panelDbAt6(): Db {
+    const db = new DatabaseSync(':memory:');
+    db.exec('PRAGMA foreign_keys = ON;');
+    migrate(db, 6);
+    const insert = db.prepare("INSERT INTO servers (id, name, adapter, flavour, game_name, ports, mem_limit_mb, secrets, spec, created_at, sort) VALUES (?, ?, ?, ?, ?, '{}', 1024, '{}', ?, ?, ?)");
+    insert.run('mc-one', 'One', 'minecraft', 'paper', 'mc-one', JSON.stringify({ id: 'mc-one', runtime: 'java', env: {}, ports: [], memoryMb: 1024 }), T, 1);
+    insert.run('tr-one', 'Two', 'terraria', 'vanilla', 'tr-one', JSON.stringify({ id: 'tr-one', runtime: 'native', env: {}, ports: [], memoryMb: 1024 }), T, 2);
+    db.prepare("INSERT INTO server_grants (user_id, server_id, role) SELECT 1, 'mc-one', 'admin' WHERE EXISTS (SELECT 1 FROM users WHERE id = 1)").run();
+    return db;
+  }
+
+  it('adds the installs and their left-overs, and leaves every server on its own install, rebuilding nothing', () => {
+    const db = panelDbAt6();
+    // A table's definition, whitespace aside, without the one column migration 7 adds.
+    const tables = () =>
+      rows(db, "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT IN ('installs', 'install_leftovers') ORDER BY name").map((t) => ({ name: t.name, sql: (t.sql as string).replace(/\s+/g, '').replace(',install_idTEXT', '') }));
+    const before = tables();
+    migrate(db);
+    expect((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(7);
+    // Every table is the one it was; `servers` only gained its column.
+    expect(tables()).toEqual(before);
+    expect(rows(db, "SELECT name FROM pragma_table_info('servers') WHERE name = 'install_id'")).toEqual([{ name: 'install_id' }]);
+    // Servers from before run from their own install until they move at their next start.
+    expect(new ServersStore(db).list().map((s) => [s.id, s.installId])).toEqual([
+      ['mc-one', null],
+      ['tr-one', null],
+    ]);
+    expect(rows(db, 'SELECT COUNT(*) AS n FROM installs')).toEqual([{ n: 0 }]);
+    // Install ids are the orchestrator's (`INSTALL_ID_PATTERN`); states are four.
+    const add = (id: string, state = 'ready') => db.prepare("INSERT INTO installs (id, adapter, runtime, wanted, state, created_at) VALUES (?, 'minecraft', 'java', '[]', ?, 'now')").run(id, state);
+    expect(() => add('i0123abcd')).not.toThrow();
+    for (const bad of ['x0123abcd', 'i0123', `i${'a'.repeat(32)}`, 'i0123ABCD', 'i0123-abcd']) expect(() => add(bad), bad).toThrow(/CHECK/);
+    expect(() => add('i0123abce', 'half')).toThrow(/CHECK/);
+    // A server's left-over goes with it.
+    new ServersStore(db).setInstall('mc-one', 'i0123abcd');
+    db.prepare("INSERT INTO install_leftovers (server_id, bytes, files, since) VALUES ('mc-one', 10, 2, 'now')").run();
+    new ServersStore(db).purge('mc-one');
+    expect(rows(db, 'SELECT COUNT(*) AS n FROM install_leftovers')).toEqual([{ n: 0 }]);
   });
 });

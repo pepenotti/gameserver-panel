@@ -6,11 +6,12 @@ import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'r
 import { useParams } from 'react-router';
 import type { Permission, Role } from '@gsp/shared';
 import { api, serverApi, type ServerApi } from './http';
+import type { ServerInstallView } from './installs';
 import type { I18n } from './meta';
 import { SessionContext, useSession } from './session';
 
 /** Why a server's container waits for its game's next start (mirrors packages/panel/src/servers/registry.ts). */
-export type ContainerPendingReason = 'settings' | 'image' | 'derivation';
+export type ContainerPendingReason = 'settings' | 'image' | 'derivation' | 'install';
 
 /** A server in `GET /api/servers` (mirrors packages/panel/src/routes/servers.ts). */
 export interface ServerSummary {
@@ -34,7 +35,7 @@ export interface ServerSummary {
   cpus: number | null;
   /** Its container waits to be recreated with changed limits at the game's next start. */
   containerPending: boolean;
-  /** Why: changed `settings` (new limits), a newer runtime `image`, containers built another way (`derivation`); empty when nothing waits. */
+  /** Why: changed `settings` (new limits), a newer runtime `image`, containers built another way (`derivation`), another `install` (HST-09); empty when nothing waits. */
   containerPendingReasons: ContainerPendingReason[];
   /** False for the server the install's environment describes: only the stack itself removes it. */
   managed: boolean;
@@ -43,6 +44,8 @@ export interface ServerSummary {
   permissions: Permission[];
   /** The game's license the owner must accept (D6), and its acceptance; null for games without one. */
   eula: EulaSummary | null;
+  /** What it runs from (HST-09); null for the stack's own server. */
+  install: ServerInstallView | null;
 }
 
 /** A game's license on a server (mirrors `EulaSummary` in packages/panel/src/routes/servers.ts). */

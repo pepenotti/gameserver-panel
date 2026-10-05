@@ -14,6 +14,7 @@ import { forFlavour, impliedBy, launchRefusalOf, localize, type I18n, type Launc
 import { useMeta } from '../api/useMeta';
 import { EulaNotice } from '../components/Eula';
 import { GameNotes } from '../components/GameNotes';
+import { InstallCard } from '../components/InstallCard';
 import { LaunchField, launchKey } from '../components/LaunchField';
 import { PendingBadge } from '../components/PendingBadge';
 import { DeleteServerModal, RenameServerModal } from '../components/ServerAdmin';
@@ -304,6 +305,8 @@ export function Server() {
       </Card>
 
       {server && <ContainerCard server={server} needMb={needMb} />}
+
+      {server?.install && <InstallCard server={server} />}
 
       <Card withBorder>
         <Group justify="space-between" mb="sm">

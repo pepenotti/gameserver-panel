@@ -193,6 +193,9 @@ const running = (id: string) =>
  * delay while the new "container" starts; once the agent answers, the stream is started again at once.
  */
 async function agentUp(id: string): Promise<void> {
+  // A new server's game is installed first, by an install job of its own (HST-09): its container comes once that is
+  // ready, which a busy machine may take a while to do. Waited for on its own, as the start that installed it used to be.
+  await until(`${id}'s install`, () => !rig.deps.servers.awaitingInstall(id));
   await until(`${id}'s agent`, async () => (await srv(id).agent.status().catch(() => null)) !== null);
   if (!srv(id).feed.connected) (srv(id).agent as AgentClient).startStream();
   await until(`${id}'s events`, () => srv(id).feed.connected);

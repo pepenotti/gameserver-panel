@@ -174,6 +174,8 @@ export function serverRoutes(app: FastifyInstance, deps: Deps): void {
       await deps.servers.followLaunch(srvOf(req).id, body, actor(req), req.ip);
       handle.setLaunchSettings(body);
       audit.log({ ...by(req), action: 'server.launch-settings', detail: { before, after: handle.publicLaunchSettings(body) } });
+      // Another version (UPD-02, HST-09): the install it wants is found or made now, beside the one it runs.
+      deps.servers.launchChanged(srvOf(req).id, actor(req));
       return handle.publicLaunchSettings();
     },
   );

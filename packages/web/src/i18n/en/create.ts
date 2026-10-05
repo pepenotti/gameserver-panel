@@ -39,4 +39,8 @@ export default {
   hostTooSmall: 'This panel gives one server at most {{max}} MiB, and this game needs at least {{need}} MiB: it cannot be created here.',
   choicesUnavailable: 'The list of versions could not be loaded ({{error}}). You can still type one.',
   portFollows: 'Comes with it: {{list}}.',
+  installExisting: 'Uses the game files already on this computer ({{size}}, used by {{count}} server(s)): nothing to download.',
+  installInstalling: 'Uses the game files being downloaded now for {{count}} other server(s): nothing more to download.',
+  installDownload: 'Downloads the game files once: about {{size}}. Other servers of this version will share them.',
+  installDownloadUnknown: 'Downloads the game files once; other servers of this version will share them.',
 } as const;

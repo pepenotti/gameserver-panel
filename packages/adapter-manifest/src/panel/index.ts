@@ -427,6 +427,8 @@ export function manifestPanelAdapter(m: SteamGameManifest, hooks: ManifestPanelH
     ...(players ? { players } : {}),
     updates: { check: (ctx, launch) => checkUpdate(m, ctx, launch) },
     ...(catalog.length ? { consoleCatalog: catalog } : {}),
+    // HST-09, D12: the Steam branch; the build is the newest an install job finds.
+    install: { wanted: (s) => ({ flavour: null, version: null, build: null, branch: checkSettings(m, s).branch, channel: null }) },
   };
   return hooks.panel ? hooks.panel(adapter) : adapter;
 }

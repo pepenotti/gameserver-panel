@@ -228,3 +228,11 @@ describe('a game moderated through list files passes the panel contract (D4)', (
   panelAdapterCoreSuite(tide(), { server, secrets: () => ({ adminKey: 'k-123456789' }), player: '76561198000000001' });
   panelAdapterConfigSuite(tide(), { server, files: () => ({ 'data/banned.txt': '# banned SteamIDs\n', 'data/worlds/tide/settings.ini': 'port=3000\nmotd=hi\nadminpass=x\n' }) });
 });
+
+describe('the install a launch wants (HST-09, D12)', () => {
+  it('names the Steam branch; the build is the newest an install job finds', () => {
+    const a = avorion();
+    expect(a.install!.wanted(a.launch.defaults(), gal)).toEqual({ flavour: null, version: null, build: null, branch: AVORION.steam.defaultBranch, channel: null });
+    expect(a.install!.wanted({ ...a.launch.defaults(), branch: 'beta' }, gal)).toMatchObject({ branch: 'beta' });
+  });
+});
