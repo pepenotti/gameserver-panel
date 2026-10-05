@@ -95,7 +95,7 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
       if (body !== undefined) throw badRequest('This route takes no body');
     };
 
-    if (path === '/v1/health' || path === '/v1/host' || path === '/v1/servers') {
+    if (path === '/v1/health' || path === '/v1/host' || path === '/v1/host/usage' || path === '/v1/servers') {
       if (method !== 'GET') throw methodNotAllowed();
       noQuery();
       noBody();
@@ -109,6 +109,8 @@ export function createOrchestratorServer(o: OrchestratorServerOptions): http.Ser
         const host: HostInfo = { ...(await o.backend.host()), hostPorts: o.policy.hostPorts.map(([from, to]) => ({ from, to })), maxMemMb: o.policy.maxMemMb };
         return [200, host];
       }
+      // HST-03: what this stack's servers and volumes take now; nothing of another stack.
+      if (path === '/v1/host/usage') return [200, await o.backend.usage()];
       return [200, await o.backend.list()];
     }
 

@@ -1,4 +1,4 @@
-import type { ApplyOptions, DeleteResponse, HostInfo, InstallDeleteResponse, InstallInfo, InstallJobSpec, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
+import type { ApplyOptions, DeleteResponse, HostInfo, HostUsage, InstallDeleteResponse, InstallInfo, InstallJobSpec, ServerContainer, ServerSpec, ServerStats } from '@gsp/shared';
 import { conflict } from './errors';
 import type { CopySource } from './installs';
 
@@ -12,6 +12,8 @@ export interface Backend {
   /** Resolves when the backend can work; throws `unavailable` otherwise. */
   ping(): Promise<void>;
   host(): Promise<HostInfo>;
+  /** This stack's server containers (a stats sample of each that runs) and volumes (their disk use), never another stack's (HST-03). */
+  usage(): Promise<HostUsage>;
   list(): Promise<ServerContainer[]>;
   /**
    * Create or recreate (volumes kept); never starts the container. A

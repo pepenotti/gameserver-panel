@@ -72,6 +72,17 @@ export interface DockerInfo {
   MemTotal: number;
   ServerVersion: string;
   OperatingSystem: string;
+  /** The kernel Docker runs on: a WSL 2 kernel names Microsoft (`…-microsoft-standard-WSL2`). */
+  KernelVersion?: string;
+  /** Engine labels, `key=value`: Docker Desktop adds `com.docker.desktop.address=…`, its CLI's socket or pipe. */
+  Labels?: string[] | null;
+}
+
+/** A volume in `GET /system/df?type=volume`: its size as Docker measured it (-1: not measured). */
+export interface DockerDfVolume {
+  Name: string;
+  Labels: Labels;
+  UsageData?: { Size?: number; RefCount?: number } | null;
 }
 
 export interface DockerStats {

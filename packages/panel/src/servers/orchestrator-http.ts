@@ -6,6 +6,7 @@ import {
   type DeleteResponse,
   type HealthResponse,
   type HostInfo,
+  type HostUsage,
   type InstallDeleteResponse,
   type InstallInfo,
   type InstallJobSpec,
@@ -99,6 +100,11 @@ export class OrchestratorHttp implements OrchestratorClient {
 
   async host(): Promise<HostInfo> {
     return this.call('GET', '/v1/host');
+  }
+
+  /** Measuring the disk may take a while on a big host: up to two minutes more. */
+  async usage(): Promise<HostUsage> {
+    return this.call('GET', '/v1/host/usage', undefined, 120_000);
   }
 
   async list(): Promise<ServerContainer[]> {

@@ -3,6 +3,7 @@ import type {
   DeleteResponse,
   HealthResponse,
   HostInfo,
+  HostUsage,
   InstallDeleteResponse,
   InstallInfo,
   InstallJobSpec,
@@ -35,6 +36,8 @@ export class OrchestratorCallError extends Error {
 export interface OrchestratorClient {
   health(): Promise<HealthResponse>;
   host(): Promise<HostInfo>;
+  /** What this stack's servers and volumes take now (HST-03); an orchestrator without it answers `not-found` (no such route). */
+  usage(): Promise<HostUsage>;
   /** This stack's server containers. */
   list(): Promise<ServerContainer[]>;
   /**
@@ -70,6 +73,7 @@ export class NoOrchestrator implements OrchestratorClient {
   }
   health = () => this.fail();
   host = () => this.fail();
+  usage = () => this.fail();
   list = () => this.fail();
   apply = (_spec: ServerSpec, _o?: ApplyOptions) => this.fail();
   start = (_id: string) => this.fail();

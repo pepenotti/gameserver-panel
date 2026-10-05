@@ -20,11 +20,12 @@ export {
   type Derivation,
   type StackContext,
 } from './derive';
-export { DockerBackend, statsOf } from './docker-backend';
+export { DISK_USAGE_TTL_MS, DockerBackend, statsOf } from './docker-backend';
 export { DockerClient, DOCKER_API_VERSION, type DockerTarget } from './docker';
 export { badRequest, conflict, installConflict, notFound, OrchError, refused, unavailable } from './errors';
 export { COPY_COMMAND, gameMismatch, JOB_DATA_TMPFS, JOB_MEMORY_MB, MAX_INSTALL_JOBS, planInstallJob, serverMismatch, type CopySource, type InstallGame, type JobPlan } from './installs';
 export { canonicalJson, specHash } from './hash';
+export { traitsOf, volumeUseOf } from './host';
 export { createOrchestratorServer, type OrchestratorServerOptions } from './http';
 export { isNamedPipe, listenOnSocket } from './listen';
 export { formatRanges, inRanges, parsePortRanges, type Policy, type PortRange } from './policy';

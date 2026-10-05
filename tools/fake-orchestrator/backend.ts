@@ -27,7 +27,7 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import dgram from 'node:dgram';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, type Dirent } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -64,6 +64,8 @@ import {
   type CpuArch,
   type DeleteResponse,
   type HostInfo,
+  type HostTraits,
+  type HostUsage,
   type InstallDeleteResponse,
   type InstallInfo,
   type InstallJob,
@@ -73,6 +75,8 @@ import {
   type ServerContainer,
   type ServerSpec,
   type ServerStats,
+  type ServerUsage,
+  type VolumeUsage,
 } from '@gsp/shared';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -109,6 +113,38 @@ export interface FakeBackendOptions {
   log?: (line: string) => void;
   /** Before an agent that exited on its own is started again (unless-stopped). Default 2000. */
   restartDelayMs?: number;
+  /**
+   * The host it says it is (HST-05, HST-07): this machine's architecture and
+   * a Docker Engine on its platform unless told otherwise, so the
+   * development loop can look like an ARM host or Docker Desktop.
+   */
+  host?: { arch?: CpuArch; traits?: Partial<HostTraits> };
+}
+
+/** The fake's host traits by default: Docker Engine on this machine's platform, its players' addresses expected to arrive. */
+function defaultTraits(): HostTraits {
+  const platform = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux';
+  return { docker: 'engine', platform, addressesVisible: 'expected' };
+}
+
+/** Bytes of the files under a folder (links not followed); 0 when it isn't there. */
+function folderBytes(dir: string): number {
+  let total = 0;
+  const walk = (d: string) => {
+    let entries: Dirent[];
+    try {
+      entries = readdirSync(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.isFile()) total += lstatSync(p).size;
+    }
+  };
+  walk(dir);
+  return total;
 }
 
 interface Stored {
@@ -313,7 +349,26 @@ export class FakeBackend implements Backend {
   async ping(): Promise<void> {}
 
   async host(): Promise<HostInfo> {
-    return { arch: archOf(os.arch()), cpus: os.cpus().length, memBytes: os.totalmem(), dockerVersion: 'fake', os: `${os.type()} (fake orchestrator)` };
+    const traits = { ...defaultTraits(), ...this.o.host?.traits };
+    return { arch: this.o.host?.arch ?? archOf(os.arch()), cpus: os.cpus().length, memBytes: os.totalmem(), dockerVersion: 'fake', os: `${os.type()} (fake orchestrator)`, traits };
+  }
+
+  /** Its "containers" (zeros for stats, with the memory limit, as `stats`) and its folders' sizes in place of volumes (HST-03). */
+  async usage(): Promise<HostUsage> {
+    const at = new Date().toISOString();
+    const servers: ServerUsage[] = [...this.stored.keys()].sort().map((id) => {
+      const state = this.liveOf(id).state;
+      const s = this.stored.get(id)!;
+      return { id, state: state === 'missing' ? 'exited' : state, stats: state === 'running' ? { id, at, cpuPercent: 0, memBytes: 0, memLimitBytes: s.spec.memoryMb * MIB, netRxBytes: 0, netTxBytes: 0 } : null };
+    });
+    const volumes: VolumeUsage[] = [];
+    for (const [id, s] of [...this.stored].sort(([a], [b]) => (a < b ? -1 : 1))) {
+      for (const kind of s.spec.install === undefined ? (['data', 'install', 'steam'] as const) : (['data', 'steam'] as const)) {
+        volumes.push({ name: `${id}/${kind}`, use: kind, server: id, install: null, bytes: folderBytes(path.join(this.dir(id), kind)) });
+      }
+    }
+    for (const id of [...this.stockedInstalls.keys()].sort()) volumes.push({ name: `installs/${id}`, use: 'shared-install', server: null, install: id, bytes: folderBytes(this.installDir(id)) });
+    return { at, servers, volumes, volumesAt: at };
   }
 
   async list(): Promise<ServerContainer[]> {

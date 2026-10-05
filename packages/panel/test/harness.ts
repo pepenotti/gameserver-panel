@@ -13,6 +13,8 @@ import {
   type CpuArch,
   type DerivationState,
   type GrantRole,
+  type HostTraits,
+  type HostUsage,
   type InstallInfo,
   type InstallJobSpec,
   type InstallKey,
@@ -22,7 +24,9 @@ import {
   type SeqEvent,
   type ServerContainer,
   type ServerSpec,
+  type ServerStats,
   type SharedInstallMarker,
+  type VolumeUsage,
 } from '@gsp/shared';
 import { AgentCallError, type AgentApi } from '../src/agent/client';
 import { buildApp } from '../src/app';
@@ -154,6 +158,16 @@ export class FakeOrchestrator implements OrchestratorClient {
   derivation = { version: 1, safeFrom: 0 };
   arch: CpuArch = 'amd64';
   cpus = 8;
+  /** The memory Docker has (`MemTotal`). */
+  memBytes = 64 * 1024 ** 3;
+  /** The host's traits (HST-07); undefined: an orchestrator that doesn't say. */
+  traits: HostTraits | undefined = undefined;
+  /** `GET /v1/host/usage` (HST-03): off, an orchestrator older than it (`not-found`). */
+  hasUsage = true;
+  /** One stats sample by server id (a running container without one: zeros). */
+  readonly stats_ = new Map<string, Partial<ServerStats>>();
+  /** This stack's volumes and their sizes, as `/system/df` measured them; null: not measured now. */
+  volumes: VolumeUsage[] | null = [];
   /** `ORCH_HOST_PORTS` as `GET /v1/host` reports it; undefined: an orchestrator that doesn't say. */
   hostPorts: PortRangeInfo[] | undefined = undefined;
   /** `ORCH_MAX_MEM_MB`; undefined: an orchestrator that doesn't say. */
@@ -255,12 +269,26 @@ export class FakeOrchestrator implements OrchestratorClient {
     return {
       arch: this.arch,
       cpus: this.cpus,
-      memBytes: 64 * 1024 ** 3,
+      memBytes: this.memBytes,
       dockerVersion: 'fake',
       os: 'fake',
       ...(this.hostPorts ? { hostPorts: this.hostPorts } : {}),
       ...(this.maxMemMb !== undefined ? { maxMemMb: this.maxMemMb } : {}),
+      ...(this.traits ? { traits: this.traits } : {}),
     };
+  }
+  async usage(): Promise<HostUsage> {
+    this.check('usage');
+    if (!this.hasUsage) throw new OrchestratorCallError(404, 'not-found', 'No such route');
+    const at = new Date().toISOString();
+    const servers = [...this.containers.values()]
+      .sort((a, b) => (a.id < b.id ? -1 : 1))
+      .map((c) => ({
+        id: c.id,
+        state: c.state === 'missing' ? ('exited' as const) : c.state,
+        stats: c.state === 'running' ? { id: c.id, at, cpuPercent: 0, memBytes: 0, memLimitBytes: c.spec.memoryMb * 1024 ** 2, netRxBytes: 0, netTxBytes: 0, ...this.stats_.get(c.id) } : null,
+      }));
+    return { at, servers, volumes: this.volumes, volumesAt: this.volumes ? at : null };
   }
   async list() {
     this.check('list');

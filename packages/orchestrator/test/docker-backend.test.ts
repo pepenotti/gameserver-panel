@@ -323,7 +323,14 @@ describe('running servers (SRV-03, SRV-06)', () => {
 
   it("describes the host for HST-05 and SRV-05", async () => {
     const { fd, backend } = await setup();
-    expect(await backend.host()).toEqual({ arch: 'amd64', cpus: 8, memBytes: 16 * 1024 ** 3, dockerVersion: '29.0.0-fake', os: 'Fake Linux' });
+    expect(await backend.host()).toEqual({
+      arch: 'amd64',
+      cpus: 8,
+      memBytes: 16 * 1024 ** 3,
+      dockerVersion: '29.0.0-fake',
+      os: 'Fake Linux',
+      traits: { docker: 'engine', platform: 'linux', addressesVisible: 'expected' },
+    });
     fd.info.Architecture = 'aarch64';
     expect((await backend.host()).arch).toBe('arm64');
     fd.info.Architecture = 's390x';
