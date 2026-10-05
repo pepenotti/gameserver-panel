@@ -430,6 +430,9 @@ export async function signIn(panel, env, stateFile) {
   const all = readState(stateFile);
   const saved = (all[panel.url] ??= {});
   const save = () => writeState(stateFile, all);
+  // Fails here, before the panel changes anything, when the state can't be kept: a new password
+  // or 2FA secret this script sets and then can't save would lock the owner out of the stack.
+  save();
   const code = async () => {
     if (!saved.totpSecret) throw new Error('the owner has 2FA from an authenticator this script does not have; run it against a fresh stack, or keep the state file of the run that set the owner up');
     let step = totpStep(Date.now(), saved.lastStep ?? null);
@@ -471,6 +474,9 @@ export async function signIn(panel, env, stateFile) {
   }
   if (session.pending === 'password') {
     const next = `Smoke-${randomBytes(18).toString('base64url')}`;
+    // Kept before it is set; if setting it fails, the next run tries it, is refused, and goes on to the .env's.
+    saved.password = next;
+    save();
     session = await panel.call('POST', '/api/auth/password', { current: password, next });
     password = next;
     how.push('new password set');
@@ -481,6 +487,7 @@ export async function signIn(panel, env, stateFile) {
     const setup = await panel.call('POST', '/api/auth/totp/setup');
     saved.totpSecret = setup.secret;
     saved.lastStep = null;
+    save();
     const enabled = await panel.call('POST', '/api/auth/totp/enable', { code: await code() });
     saved.recoveryCodes = enabled.recoveryCodes;
     session = enabled;

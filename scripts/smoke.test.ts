@@ -1,9 +1,11 @@
 // The smoke test's own parts (M7, HST-05): its options, where it finds the
 // panel, its 2FA codes and its report. The run against a real stack is
 // recorded in docs/verification/smoke.md.
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { duration, formatReport, isLoopback, panelUrl, parseArgs, parseEnv, reachable, totp, totpStep } from './smoke.mjs';
+import { duration, formatReport, isLoopback, panelUrl, parseArgs, parseEnv, reachable, signIn, totp, totpStep } from './smoke.mjs';
 
 describe('the smoke test’s options (M7, HST-05)', () => {
   it('defaults to a small vanilla Terraria server with a fresh id, from this checkout’s .env', () => {
@@ -151,5 +153,59 @@ describe('the smoke test waits for a stack that is still starting', () => {
     const panel = scripted([failing('ENOTFOUND')]);
     await expect(reachable(panel, 60_000, clock())).rejects.toThrow('write ENOTFOUND');
     expect(panel.calls).toHaveLength(1);
+  });
+});
+
+describe('the smoke test keeps what it sets on a stack', () => {
+  it('stops before the panel changes anything when it cannot save its state', async () => {
+    // A state file under a file can't be written on any system.
+    const dir = mkdtempSync(path.join(tmpdir(), 'gsp-smoke-'));
+    try {
+      const blocker = path.join(dir, 'not-a-folder');
+      writeFileSync(blocker, '');
+      const calls: string[] = [];
+      const panel = {
+        cookie: null,
+        csrf: null,
+        raw: async (m: string, p: string) => {
+          calls.push(`${m} ${p}`);
+          return { status: 200, body: { pending: 'password' } };
+        },
+        call: async (m: string, p: string) => {
+          calls.push(`${m} ${p}`);
+          return { pending: null };
+        },
+      };
+      await expect(signIn(panel as never, { PANEL_OWNER_PASSWORD: 'from-the-env' }, path.join(blocker, 'smoke-owner.json'))).rejects.toThrow();
+      expect(calls).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('saves a new password before setting it', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'gsp-smoke-'));
+    try {
+      const file = path.join(dir, 'smoke-owner.json');
+      let savedWhenSet: string | undefined;
+      const panel = {
+        url: 'https://wt7.localhost:30743',
+        cookie: null,
+        csrf: null,
+        raw: async () => ({ status: 200, body: { pending: 'password' } }),
+        call: async (_m: string, p: string, body: { next?: string }) => {
+          if (p === '/api/auth/password') {
+            savedWhenSet = JSON.parse(readFileSync(file, 'utf8'))['https://wt7.localhost:30743'].password;
+            expect(savedWhenSet).toBe(body.next);
+            throw new Error('the panel failed');
+          }
+          return { pending: null };
+        },
+      };
+      await expect(signIn(panel as never, { PANEL_OWNER_PASSWORD: 'from-the-env' }, file)).rejects.toThrow('the panel failed');
+      expect(savedWhenSet).toMatch(/^Smoke-/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -12,7 +12,7 @@
 // slot (unless --force).
 import { execFileSync } from 'node:child_process';
 import dgram from 'node:dgram';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -89,6 +89,11 @@ const example = readFileSync(path.join(root, '.env.example'), 'utf8');
 const { text } = fillEnv(example, '', { overrides: slotOverrides(slot), extrasComment: `Worktree slot ${slot} (scripts/worktree-env.mjs)` });
 writeFileSync(envPath, text, { mode: 0o600 });
 writeFileSync(path.join(root, '.env.dev'), devEnvText(slot));
+// The stack's backups folder, made now by this user: Docker Engine on Linux creates a missing
+// bind-mount folder as root, and then neither the panel (user 1000) nor scripts here can write in .tmp.
+mkdirSync(path.resolve(root, slotOverrides(slot).BACKUP_DIR), { recursive: true });
+const uid = process.getuid?.();
+if (uid !== undefined && uid !== 1000) console.warn(`worktree-env: the panel runs as user 1000 and you are ${uid}; give it the backups folder: sudo chown 1000:1000 ${slotOverrides(slot).BACKUP_DIR}`);
 
 console.log(`Slot ${slot}: ports ${first}-${last}, Compose project ${projectName(slot)}.
   .env      fresh secrets; stack HTTPS on 127.0.0.1:${block.stackHttps}, game servers on 127.0.0.1:${slotGamePorts(slot)} (fake images allowed)
