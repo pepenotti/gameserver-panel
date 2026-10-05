@@ -15,7 +15,7 @@ import type http from 'node:http';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readTarZst, unpack } from '@gsp/archive';
 import { createWorkshopSource } from '@gsp/adapter-pz/panel/core';
@@ -74,11 +74,23 @@ const bindUdp = (port: number) =>
     });
   });
 
-/** A free UDP port whose next one is free too: Valheim's query port is its game port + 1. */
+/** Where game ports are picked: below every system's ephemeral range (Linux hands them out from 32768, Windows from 49152). */
+const GAME_PORTS = { from: 20_000, count: 12_000 };
+
+/**
+ * A free UDP port whose next one is free too: Valheim's query port is its
+ * game port + 1. Picked at random below the ephemeral ranges, never as port
+ * 0's answer: the system hands ephemeral ports out in order (measured on
+ * Windows), so the port after one it just gave is the very next any socket
+ * on the machine gets. A new server binds its ports only once its install is
+ * ready (HST-09), seconds later, and in a full gate run another test's
+ * socket took the query port in between: the fake orchestrator then refused
+ * the server's container and it waited for its install forever.
+ */
 async function freePair(): Promise<number> {
-  for (let i = 0; i < 20; i++) {
-    const p = await bindUdp(0);
-    if (p && p < 65535 && (await bindUdp(p + 1))) return p;
+  for (let i = 0; i < 200; i++) {
+    const p = GAME_PORTS.from + randomInt(GAME_PORTS.count);
+    if ((await bindUdp(p)) && (await bindUdp(p + 1))) return p;
   }
   throw new Error('no free pair of UDP ports');
 }
@@ -193,8 +205,14 @@ async function agentUp(id: string): Promise<void> {
   // A new server's game is installed first, by an install job of its own (HST-09): its container comes once that is
   // ready, which a busy machine may take a while to do. Waited for on its own, as the start that installed it used to be.
   const install = () => rig.deps.servers.installs.get(rig.deps.serverRows.get(id)?.installId ?? '');
-  // A failure says what the install and the fake orchestrator's agents said.
-  const said = () => `${JSON.stringify(install())} ${JSON.stringify(rig.deps.servers.installs.progress(install()?.id ?? ''))}\n${rig.logs.slice(-60).join('\n')}`;
+  // A failure says what the install, the panel's attempts at the container and the fake orchestrator's agents said.
+  const reconciled = () =>
+    rig.deps.audit
+      .list({ serverId: id, limit: 50 })
+      .filter((e) => e.action === 'server.reconcile')
+      .map((e) => e.detail ?? '')
+      .join('\n');
+  const said = () => `${JSON.stringify(install())} ${JSON.stringify(rig.deps.servers.installs.progress(install()?.id ?? ''))}\n${reconciled()}\n${rig.logs.slice(-60).join('\n')}`;
   await until(`${id}'s install`, () => !rig.deps.servers.awaitingInstall(id) || install()?.state === 'failed').catch((e: Error) => {
     throw new Error(`${e.message}: ${said()}`, { cause: e });
   });
