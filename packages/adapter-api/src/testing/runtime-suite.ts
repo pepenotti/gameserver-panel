@@ -6,7 +6,7 @@
 //       runtimeAdapterSuite(adapter, { validLaunch, live: agentHost(…) });
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Capability, ControlHandle, InstallCtx, LineSignal, RuntimeAdapter, RuntimeCtx } from '../index';
 import { expectI18n, metaTests } from './meta';
 
@@ -89,22 +89,44 @@ function snapshot(dir: string): Record<string, string> {
   return out;
 }
 
-/** Index of the first signal at or after `from` that matches, or -1 after `timeoutMs`. */
+/** Index of the first signal at or after `from` that matches, or -1 after `timeoutMs` or once the game exited without one. */
 function waitSignal(game: LiveGame, pred: (s: LineSignal) => boolean, timeoutMs: number, from = 0): Promise<number> {
-  const hit = game.signals.findIndex((s, i) => i >= from && pred(s));
+  const find = () => game.signals.findIndex((s, i) => i >= from && pred(s));
+  const hit = find();
   if (hit >= 0) return Promise.resolve(hit);
   return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      off();
-      resolve(-1);
-    }, timeoutMs);
-    const off = game.onSignal((s) => {
-      if (!pred(s)) return;
+    const done = (i: number) => {
       clearTimeout(timer);
       off();
-      resolve(game.signals.lastIndexOf(s));
+      resolve(i);
+    };
+    const timer = setTimeout(() => done(-1), timeoutMs);
+    const off = game.onSignal((s) => {
+      if (pred(s)) done(game.signals.lastIndexOf(s));
     });
+    // A game that exited won't say it any more.
+    void game.exited.then(() => done(find()));
   });
+}
+
+/**
+ * What a started game said, with when (ms after its start), for a failed
+ * test's report: a flaky failure otherwise leaves nothing to go on. Its last
+ * lines, or null when it said nothing since the last report.
+ */
+function transcript(game: LiveGame): () => string | null {
+  const t0 = Date.now();
+  const line = (ms: string, s: LineSignal) => `${ms.padStart(6)} ${s.fatal ? '!' : ' '} ${s.message}`;
+  // Lines printed before this listens (none, as hosts start games) have no time.
+  const lines = game.signals.map((s) => line('?', s));
+  game.onSignal((s) => lines.push(line(String(Date.now() - t0), s)));
+  void game.exited.then((e) => lines.push(line(String(Date.now() - t0), { message: `(exited: code ${e.code}, signal ${e.signal})` })));
+  let reported = 0;
+  return () => {
+    if (lines.length === reported) return null;
+    reported = lines.length;
+    return lines.slice(-30).join('\n');
+  };
 }
 
 /** A `LineSignal.progress` names its run with a non-empty key, and its text (when given) is text; a warning is worded in both languages. */
@@ -222,6 +244,13 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
     let ctx: InstallCtx;
     let p: unknown;
     let game: LiveGame | null = null;
+    /** What the last game started said, once one was. */
+    let said: (() => string | null) | null = null;
+    const start = async (): Promise<LiveGame> => {
+      const g = await host.start(adapter, ctx, p);
+      said = transcript(g);
+      return g;
+    };
 
     beforeAll(async () => {
       ctx = await host.context(adapter);
@@ -230,6 +259,12 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
     afterAll(async () => {
       game?.kill();
       await host.dispose();
+    });
+    beforeEach(({ onTestFailed }) => {
+      onTestFailed(() => {
+        const lines = said?.();
+        if (lines) console.error(`${adapter.meta.id}, the last game started (ms after its start; ! marks a fatal line):\n${lines}`);
+      });
     });
 
     it('finds nothing installed in empty roots', () => {
@@ -291,7 +326,7 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
     it(
       'starts and says when it is ready, then when its channel is',
       async () => {
-        game = await host.start(adapter, ctx, p);
+        game = await start();
         const ready = await waitSignal(game, (s) => !!s.ready, waitMs);
         expect(ready, 'a line with `ready`').toBeGreaterThanOrEqual(0);
         if (hasChannel) expect(await waitSignal(game, (s) => !!s.channelReady, waitMs, ready), 'a `channelReady` line from `ready` on').toBeGreaterThanOrEqual(ready);
@@ -346,7 +381,7 @@ function liveTests(adapter: RuntimeAdapter, host: RuntimeHost, validLaunch: () =
     it(
       'asks a game that is still starting to stop without throwing',
       async () => {
-        game = await host.start(adapter, ctx, p);
+        game = await start();
         await expect(adapter.stop(game.ctl, { budgetMs: waitMs })).resolves.toBeUndefined();
         game.kill();
         await game.exited;
