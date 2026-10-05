@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft 0.30 |
+| Status | Draft 0.31 |
 | Date | 2026-09-24 |
 | Name | `gameserver-panel` |
 | License | PolyForm Noncommercial 1.0.0 (D9) |
@@ -222,7 +222,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 
 | ID | P | Requirement |
 |---|---|---|
-| SRV-01 | P0 | Create a server from an adapter: name, game, flavour and version, ports, memory limit. Port conflicts with other servers and with the host are refused. |
+| SRV-01 | P0 | Create a server from an adapter: name, game, flavour and version, ports, memory limit. Port conflicts with other servers and with the host are refused. A server of a game version not installed yet is created at once and gets its container when its install is ready (its progress shown; a start waits for it); one of a version already installed is ready at once (HST-09). |
 | SRV-02 | P0 | List servers with their state, players, version and next scheduled restart. Each server has its own pages. |
 | SRV-03 | P0 | Start, stop, restart and kill. Stop and restart use countdown warnings wherever the game can message players. |
 | SRV-04 | P0 | Delete a server after typing its name. A final backup is taken first; backups are kept unless the owner chooses otherwise. The owner may force the removal of a server that can't be stopped, won't run or whose agent can't be reached: the final backup is still taken when possible, and the result says when it wasn't and why. |
@@ -238,7 +238,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 |---|---|---|
 | UPD-01 | P0 | Install from the adapter's source, once per game, flavour and version (HST-09), with progress shown in the UI. |
 | UPD-02 | P0 | Choose and pin a version: Steam branch, Minecraft version, loader version. The create form lists the versions a game's download services offer before the server exists. |
-| UPD-03 | P0 | Update checks with a per-server policy: apply when nobody is playing, apply after a countdown, or only notify. Applying an update moves the server to the new version's install at its next start; the new version is downloaded once for every server on the old one. |
+| UPD-03 | P0 | Update checks with a per-server policy: apply when nobody is playing, apply after a countdown, or only notify. Applying an update moves the server to the new version's install at its next start; the new version is downloaded once for every server on the old one. Every server on the old install moves to the new one at its next start (at once when stopped), whatever its own policy: a server's policy decides when its game is stopped for an update, and a pinned version keeps a server where it is (Q19). |
 | UPD-04 | P0 | Every update takes a safety backup first. |
 | UPD-05 | P0 | Minecraft never moves to a new game version on its own, since that breaks mods and worlds. It only takes builds of the pinned version (for Paper, from the pinned build channel or a more stable one: STABLE unless an admin picks BETA or ALPHA, with a warning), unless an admin chooses a new version. |
 | UPD-06 | P0 | Minecraft's loader is picked per server when it's created: vanilla, Paper or Fabric. |
@@ -327,7 +327,7 @@ Priorities: **P0** blocks v1 · **P1** is a v1 target · **P2** comes later.
 | HST-06 | P0 | A setup and operations guide for each of Linux, Windows and macOS, with firewall and router notes. |
 | HST-07 | P0 | The panel knows what its host can't do and says so where it matters: the orchestrator reports the host's traits (CPU architecture, the memory Docker gives it, and whether players' addresses reach the games, which they don't through Docker Desktop's port relay), the host page lists the limitations that apply, and each affected feature (address bans, per-address game settings, addresses in the activity log) shows its own note. |
 | HST-08 | P0 | Public address: the owner sets the name friends use to reach this host, a DNS name (by default the DuckDNS name the panel already uses for HTTPS, when there is one) or an IP address, and optionally the host's address on the home network (by default the panel's `LAN_IP` when it is a private address). A "detect" button asks one fixed public service for this host's public IP, only when the owner presses it (NFR-09). Every server's connection info (SRV-08) uses these. |
-| HST-09 | P0 | Shared installs (D12): a game's server files are downloaded once per game, flavour and version, and every server on that version mounts them read-only, so a second server never downloads them again. An update installs the new version beside the old one and each server moves to it at its next start; a version no server uses is removed after the owner confirms. The host page shows each install, its size and the servers using it. The install job runs as its own short-lived container with the same hardening as a server; the panel shows its progress on the server's page and the host page. Installs are never backed up. |
+| HST-09 | P0 | Shared installs (D12): a game's server files are downloaded once per game, flavour and version, and every server on that version mounts them read-only, so a second server never downloads them again. An update installs the new version beside the old one and each server moves to it at its next start; a version no server uses is removed after the owner confirms. The panel settings page shows each install, its size and the servers using it (listing needs `host.view`, removal `host.settings`). The install job runs as its own short-lived container with the same hardening as a server; the panel shows its progress on the server's page and the host page. Installs are never backed up. |
 
 ### 8.11 Language and usability — UX
 
@@ -547,6 +547,7 @@ None open. New questions go here, with an ID, until they're answered.
 | Q16 | Share one install among servers of the same game and version instead of downloading each? | Yes, and build it before Counter-Strike 2 (owner, 2026-10-03). | HST-09, D12 |
 | Q17 | When does Counter-Strike 2 come? | After v1, as the first new game (owner, 2026-10-03). | §7 |
 | Q18 | Counter-Strike 2 plugins (Metamod, CounterStrikeSharp)? | Yes, as a second step after vanilla CS2, re-applied after every update (owner, 2026-10-03). | §7, MOD-06 |
+| Q19 | When one server on a shared install is updated, do servers whose policy is notify-only move too? | Yes: every server on the old install moves at its next start; pinning a version is how a server stays where it is (owner, 2026-10-05). | UPD-03, HST-09 |
 
 ### Answered
 
@@ -612,3 +613,4 @@ None open. New questions go here, with an ID, until they're answered.
 | 0.28 | 2026-10-03 | The owner joined real servers locally: Minecraft (all three loaders), Terraria vanilla and TShock, Project Zomboid; their join facts are verified (SRV-08). M3 and M6 accepted; M5 accepted except a tModLoader client join. Shared installs (HST-09, D12) come first in M7 (Q16); Counter-Strike 2 is the first game after v1, with plugins as a second step (Q17, Q18; §7). |
 | 0.29 | 2026-10-03 | M7-0 fact-finding for shared installs (`docs/verification/shared-installs.md`, `fixtures/shared-installs`): every game runs from a read-only install, three with a fix (Minecraft's bundler unpacked by the install job; tModLoader's logs and Project Zomboid's Workshop downloads redirected into the server's data); install jobs, install volumes and the `install` pending reason (D3, D12, HST-09, SRV-05, UPD-01, UPD-03, NFR-02, BAK-01); a beta branch is named to steamcmd explicitly. |
 | 0.30 | 2026-10-03 | M7-A: shared installs built below the panel (install jobs and volumes, read-only mounts, agent modes, every game's declaration), checked on real servers; NFR-02 names the jobs' own memory limit and network; TShock loads plugins from the server's data (§7). |
+| 0.31 | 2026-10-05 | M7-B: shared installs through the panel (create, update once from a copy, move at the next start, migrate existing servers by a local copy, owner-only removal, the host's installs on the settings page); SRV-01 and UPD-03 say how; Q19 answered. |
