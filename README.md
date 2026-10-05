@@ -81,11 +81,13 @@ node scripts/stack.mjs clean                     # …and every volume of the st
 A slot's stack serves `https://wt<slot>.localhost:30<slot>43` and runs the
 fake game images unless `.env` says otherwise (`SERVER_IMAGE_VARIANT`).
 [docs/verification/m2-acceptance.md](docs/verification/m2-acceptance.md) walks
-through a run with real servers.
+through a run with real servers, and `node scripts/smoke.mjs` checks a running
+stack end to end ([docs/verification/smoke.md](docs/verification/smoke.md)).
 
-To host a real server, see [docs/runbook-linux.md](docs/runbook-linux.md) or
-[docs/runbook-windows.md](docs/runbook-windows.md) (being rewritten for
-several servers in M7).
+To host real servers, follow the setup and operations guide for your
+computer: [Linux](docs/runbook-linux.md), [Windows](docs/runbook-windows.md)
+or [macOS](docs/runbook-macos.md) (untested so far). What each platform and
+game can't do is in [docs/limitations.md](docs/limitations.md).
 
 ## License
 
