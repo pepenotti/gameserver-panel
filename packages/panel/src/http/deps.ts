@@ -8,6 +8,8 @@ import type { Users } from '../auth/users';
 import type { Db } from '../db/db';
 import type { PanelEnv } from '../env';
 import type { HostAddress } from '../host/address';
+import type { HostOverviewService } from '../host/overview';
+import type { HostTraitsCache } from '../host/traits';
 import type { DiscordNotifier } from '../notifier/discord';
 import type { PanelBus } from '../ops/bus';
 import type { HostJobs } from '../scheduler/host-jobs';
@@ -59,4 +61,8 @@ export interface Deps {
   choices: LaunchChoicesService;
   /** The host's public and home-network addresses (HST-08), for every server's connection info (SRV-08). */
   hostAddress: HostAddress;
+  /** The host as the orchestrator describes it, kept a minute: its traits for the notes where they matter (HST-07). */
+  hostTraits: HostTraitsCache;
+  /** The host overview (HST-03, SRV-05, HST-07). */
+  hostOverview: HostOverviewService;
 }
