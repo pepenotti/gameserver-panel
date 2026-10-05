@@ -396,3 +396,47 @@ servers running from one install at the same time; the web pages on the real sta
 choice), every install and left-over through the host routes; then `node scripts/stack.mjs clean`
 and `docker rmi gsp/native:s5`. `docker ps -a`, `docker volume ls`, `docker network ls` filtered by
 `gsp-s5`, and `docker images` for `:s5`, listed nothing. No other stack was touched.
+
+## Acceptance (M7, HST-09) — 2026-10-05
+
+On the slot-1 acceptance stack (Docker Desktop, real images built from `main` at v0.4.2), which
+had eight servers on their own per-server installs (Project Zomboid, Minecraft vanilla, Paper
+and Fabric, Terraria vanilla, TShock and tModLoader, Valheim), all created through the panel in
+M2–M6 and played on by the owner.
+
+**Upgrade.** The rebuilt panel ran migration 7 at boot. Every server showed the pending reason
+`install`; the two that were running kept running.
+
+**Migration, one game at a time** (each through `POST /api/servers/:sid/install`, "Move now",
+with the server stopped; the running ones stopped first). Each move copied the server's own
+install locally and ran an install job on the copy; none downloaded the game again. Every server
+then started and ran from its install mounted read-only (`/opt/game` `ro`, `/data` `rw`):
+
+| Server | Install | Move | Start to running |
+|---|---|---|---|
+| TShock 1.4.5.8 | 97 MiB | 10 s | 12 s |
+| Minecraft vanilla 26.3 | 126 MiB (bundler warmed up) | 12 s | ✓ |
+| Paper 26.2 | 226 MiB | 17 s | 29 s |
+| Fabric 26.3 | 129 MiB (bundler warmed up) | 16 s | 24 s |
+| tModLoader 1.4.4.9 | 166 MiB (logs redirected) | 16 s | 13 s |
+| Terraria vanilla 1.4.5.8 | 56 MiB | 12 s | 12 s |
+| Project Zomboid 42.21.0 | 6.9 GiB | 111 s | 78 s |
+| Valheim 1.0.16 | 2.0 GiB | 61 s | 66 s |
+
+One thing the operator script got wrong, not the panel: a start sent the moment the install
+showed `ready` was refused while the move operation was still finishing; the web shows that
+operation, and a start sent after it ends is taken.
+
+**A second server of a version already installed.** The create form's plan said "uses the
+existing files, 58 MB, 1 server"; the new vanilla Terraria server was created in 4 s on the
+same install, with no install job.
+
+**An update on two servers sharing one install.** A file check (update with `validate`) on one
+of them created exactly one new install (one `install.create`, copied from the old one). The
+stopped server moved at once; the running one kept running with the pending reason `install`
+and moved at its next restart, with no second job. The old install was left unused, for the
+owner to remove from the panel settings page, as were the eight per-server installs the
+migration replaced.
+
+This meets M7's first done-when: two servers of the same game and version share one install,
+and an update moves each at its next start without a second download.
